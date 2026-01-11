@@ -14,7 +14,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { colors, gradients, categoryGradients } from '../theme/colors';
-import { categories } from '../data/mockData';
 
 type Step = 'type' | 'details' | 'services' | 'budget' | 'review';
 

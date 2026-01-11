@@ -12,7 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
-import { providers } from '../data/mockData';
+
+// Local providers data
+const providers = [
+  { id: 'p1', name: 'Pro Sound Istanbul', category: 'technical', subcategory: 'Ses Sistemleri', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', rating: 4.9, reviews: 128, location: 'İstanbul', verified: true, price: '₺50.000 - ₺150.000', description: 'Profesyonel ses sistemleri ve akustik çözümler.', completedJobs: 450, responseTime: '< 1 saat', portfolio: [] },
+  { id: 'p2', name: 'Elite VIP Transfer', category: 'transport', subcategory: 'VIP Ulaşım', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', rating: 4.8, reviews: 89, location: 'İstanbul', verified: true, price: '₺5.000 - ₺25.000', description: 'Lüks araç filosu ile VIP transfer hizmetleri.', completedJobs: 890, responseTime: '< 30 dk', portfolio: [] },
+];
 
 export function ProviderDetailScreen() {
   const navigation = useNavigation();

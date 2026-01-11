@@ -14,7 +14,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import { conversations } from '../data/mockData';
+
+// Local conversations data
+const conversations = [
+  {
+    id: 'c1',
+    participantName: 'Pro Sound Istanbul',
+    participantImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400',
+    online: true,
+    messages: [
+      { id: 'm1', senderId: 'provider', text: 'Merhaba! Etkinliğiniz için ses sistemi hizmeti konusunda size yardımcı olabilirim.', time: '10:30', type: 'text' },
+      { id: 'm2', senderId: 'me', text: 'Merhaba, 500 kişilik açık alan için profesyonel ses sistemi arıyoruz.', time: '10:32', type: 'text' },
+      { id: 'm3', senderId: 'provider', text: 'Harika! Bu tarz etkinliklerde deneyimli ekibimiz var. Line array sistemimiz 1000 kişiye kadar açık alanları rahatlıkla karşılayabilir.', time: '10:35', type: 'text' },
+      { id: 'm4', senderId: 'me', text: 'Fiyat teklifinizi alabilir miyim?', time: '10:36', type: 'text' },
+    ],
+  },
+  {
+    id: 'c2',
+    participantName: 'Elite VIP Transfer',
+    participantImage: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400',
+    online: false,
+    messages: [
+      { id: 'm1', senderId: 'provider', text: 'VIP transfer hizmetlerimiz hakkında bilgi almak ister misiniz?', time: '09:00', type: 'text' },
+      { id: 'm2', senderId: 'me', text: 'Evet, 20 kişilik VIP konuk grubumuz için havalimanı transferi gerekiyor.', time: '09:15', type: 'text' },
+    ],
+  },
+];
 
 export function ChatScreen() {
   const navigation = useNavigation();

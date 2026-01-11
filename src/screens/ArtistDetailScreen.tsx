@@ -14,7 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
-import { artists } from '../data/mockData';
+
+// Local artists data
+const artists = [
+  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9, reviews: 234, verified: true, price: '₺150.000 - ₺250.000', bio: 'Türk alternatif pop müziğinin öncü isimlerinden.', followers: '2.4M', events: 156, tags: ['Pop', 'Alternatif', 'Rock'] },
+  { id: '2', name: 'DJ Burak Yeter', genre: 'EDM / House', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', rating: 4.8, reviews: 189, verified: true, price: '₺80.000 - ₺150.000', bio: 'Uluslararası arenada tanınan Türk DJ.', followers: '1.8M', events: 320, tags: ['EDM', 'House', 'Club'] },
+  { id: '3', name: 'Sezen Aksu', genre: 'Pop / Türk Sanat', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400', rating: 5.0, reviews: 456, verified: true, price: '₺500.000+', bio: 'Türk pop müziğinin mihenk taşı.', followers: '5.2M', events: 890, tags: ['Pop', 'Türk Sanat', 'Legend'] },
+  { id: '4', name: 'Duman', genre: 'Rock', image: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400', rating: 4.9, reviews: 312, verified: true, price: '₺200.000 - ₺350.000', bio: 'Türk rock müziğinin en sevilen gruplarından.', followers: '3.1M', events: 245, tags: ['Rock', 'Alternatif', 'Band'] },
+];
 
 const { width } = Dimensions.get('window');
 
@@ -99,7 +106,7 @@ export function ArtistDetailScreen() {
 
           {/* Tags */}
           <View style={styles.tagsRow}>
-            {artist.tags.map((tag, index) => (
+            {(artist.tags || []).map((tag, index) => (
               <View key={index} style={styles.tag}>
                 <Text style={styles.tagText}>{tag}</Text>
               </View>
@@ -169,7 +176,7 @@ export function ArtistDetailScreen() {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {artists.filter(a => a.id !== artist.id).slice(0, 3).map((similarArtist) => (
+            {(artists || []).filter(a => a.id !== artist.id).slice(0, 3).map((similarArtist) => (
               <TouchableOpacity key={similarArtist.id} style={styles.similarCard}>
                 <Image source={{ uri: similarArtist.image }} style={styles.similarImage} />
                 <Text style={styles.similarName} numberOfLines={1}>{similarArtist.name}</Text>

@@ -13,7 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
-import { events } from '../data/mockData';
+
+// Local events data
+const events = [
+  { id: '1', title: 'Yaz Festivali 2024', date: '15-17 Temmuz 2024', location: 'İstanbul', venue: 'KüçükÇiftlik Park', status: 'planning', progress: 65, budget: 2500000, spent: 1625000, image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800', services: [{ id: 's1', category: 'booking', name: 'Ana Sahne', status: 'confirmed', provider: 'Mabel Matiz', price: 200000 }] },
+  { id: '2', title: 'Kurumsal Gala', date: '22 Ağustos 2024', location: 'Ankara', venue: 'JW Marriott', status: 'confirmed', progress: 100, budget: 800000, spent: 750000, image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800', services: [] },
+];
 
 const { width } = Dimensions.get('window');
 

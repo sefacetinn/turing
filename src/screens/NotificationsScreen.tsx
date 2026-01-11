@@ -5,20 +5,27 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import { notifications } from '../data/mockData';
 
 type NotificationFilter = 'all' | 'unread' | 'offers' | 'messages' | 'system';
+
+// Local notification data to avoid import issues
+const localNotifications = [
+  { id: 'n1', type: 'offer', title: 'Yeni Teklif Alındı', message: 'Pro Sound Istanbul ses sistemi için ₺85.000 teklif gönderdi.', time: '5 dk önce', date: 'Bugün', read: false, action: 'Teklifi İncele' },
+  { id: 'n2', type: 'message', title: 'Yeni Mesaj', message: 'SecurePro Güvenlik size mesaj gönderdi.', time: '1 saat önce', date: 'Bugün', read: false, action: 'Mesajı Oku' },
+  { id: 'n3', type: 'reminder', title: 'Etkinlik Hatırlatması', message: 'Yaz Festivali 2024 için 30 gün kaldı.', time: '3 saat önce', date: 'Bugün', read: true, action: 'Etkinliğe Git' },
+  { id: 'n4', type: 'offer', title: 'Teklif Kabul Edildi', message: 'SecurePro Güvenlik teklifiniz onaylandı.', time: '14:30', date: 'Dün', read: true, action: null },
+  { id: 'n5', type: 'system', title: 'Profil Tamamlama', message: 'Profilinizi %80 tamamladınız.', time: '10:00', date: 'Dün', read: true, action: 'Profili Tamamla' },
+];
 
 export function NotificationsScreen() {
   const navigation = useNavigation<any>();
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
-  const [notificationsList, setNotificationsList] = useState(notifications || []);
+  const [notificationsList, setNotificationsList] = useState(localNotifications);
 
   const filters: { key: NotificationFilter; label: string }[] = [
     { key: 'all', label: 'Tümü' },
@@ -74,7 +81,7 @@ export function NotificationsScreen() {
     );
   };
 
-  const handleNotificationPress = (notification: typeof notifications[0]) => {
+  const handleNotificationPress = (notification: typeof localNotifications[0]) => {
     markAsRead(notification.id);
 
     // Navigate based on notification type
@@ -93,18 +100,18 @@ export function NotificationsScreen() {
     }
   };
 
-  const filteredNotifications = getFilteredNotifications() || [];
-  const unreadCount = (notificationsList || []).filter(n => !n.read).length;
+  const filteredNotifications = getFilteredNotifications();
+  const unreadCount = notificationsList.filter(n => !n.read).length;
 
   // Group notifications by date
-  const groupedNotifications = filteredNotifications.reduce((groups, notification) => {
+  const groupedNotifications: Record<string, typeof localNotifications> = {};
+  for (const notification of filteredNotifications) {
     const date = notification.date || 'Diğer';
-    if (!groups[date]) {
-      groups[date] = [];
+    if (!groupedNotifications[date]) {
+      groupedNotifications[date] = [];
     }
-    groups[date].push(notification);
-    return groups;
-  }, {} as Record<string, typeof notifications>);
+    groupedNotifications[date].push(notification);
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

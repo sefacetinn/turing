@@ -14,7 +14,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import { artists, providers, categories } from '../data/mockData';
+
+// Local data
+const artists = [
+  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9, type: 'artist' },
+  { id: '2', name: 'DJ Burak Yeter', genre: 'EDM / House', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', rating: 4.8, type: 'artist' },
+];
+
+const providers = [
+  { id: 'p1', name: 'Pro Sound Istanbul', category: 'technical', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', rating: 4.9, type: 'provider' },
+  { id: 'p2', name: 'Elite VIP Transfer', category: 'transport', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', rating: 4.8, type: 'provider' },
+];
+
+const categories = [
+  { id: 'booking', name: 'Booking', icon: 'musical-notes', gradient: ['#9333EA', '#6366f1'] },
+  { id: 'technical', name: 'Teknik', icon: 'volume-high', gradient: ['#059669', '#34d399'] },
+  { id: 'venue', name: 'Mekan', icon: 'business', gradient: ['#2563eb', '#60a5fa'] },
+  { id: 'accommodation', name: 'Konaklama', icon: 'bed', gradient: ['#db2777', '#f472b6'] },
+  { id: 'transport', name: 'Ulaşım', icon: 'car', gradient: ['#dc2626', '#f87171'] },
+  { id: 'operation', name: 'Operasyon', icon: 'settings', gradient: ['#d97706', '#fbbf24'] },
+];
 
 type FilterType = 'all' | 'artists' | 'providers' | 'venues';
 type SortType = 'relevance' | 'rating' | 'price_low' | 'price_high';

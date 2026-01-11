@@ -12,7 +12,47 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
-import { offers } from '../data/mockData';
+
+// Local offers data
+const offers = [
+  {
+    id: 'o1',
+    providerName: 'Pro Sound Istanbul',
+    providerImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400',
+    service: 'Ses Sistemi',
+    eventTitle: 'Yaz Festivali 2024',
+    status: 'pending',
+    amount: 85000,
+    originalAmount: 95000,
+    discount: 10,
+    validUntil: '20 Temmuz 2024',
+    notes: 'Line array sistem, 4 subwoofer, 2 monitor dahil. Kurulum ve teknik destek dahildir.',
+    items: [
+      { name: 'Line Array Hoparlör Sistemi', quantity: 1, price: 45000 },
+      { name: 'Subwoofer (4 adet)', quantity: 4, price: 20000 },
+      { name: 'Sahne Monitör Sistemi', quantity: 2, price: 10000 },
+      { name: 'Kurulum ve Teknik Ekip', quantity: 1, price: 10000 },
+    ],
+  },
+  {
+    id: 'o2',
+    providerName: 'LightShow Pro',
+    providerImage: 'https://images.unsplash.com/photo-1504501650895-2441b7915699?w=400',
+    service: 'Aydınlatma',
+    eventTitle: 'Yaz Festivali 2024',
+    status: 'accepted',
+    amount: 72000,
+    originalAmount: 72000,
+    discount: 0,
+    validUntil: '15 Temmuz 2024',
+    notes: 'Moving head, LED bar ve atmosfer aydınlatma dahil.',
+    items: [
+      { name: 'Moving Head (8 adet)', quantity: 8, price: 40000 },
+      { name: 'LED Bar (12 adet)', quantity: 12, price: 20000 },
+      { name: 'Teknik Ekip', quantity: 1, price: 12000 },
+    ],
+  },
+];
 
 export function OfferDetailScreen() {
   const navigation = useNavigation();
