@@ -276,6 +276,78 @@ function OrganizerHomeContent() {
 function ProviderHomeContent() {
   const navigation = useNavigation<any>();
 
+  // Mock provider stats
+  const providerStats = {
+    monthlyEarnings: 185000,
+    pendingPayments: 42500,
+    completedJobs: 24,
+    upcomingJobs: 4,
+    pendingOffers: 12,
+    rating: 4.9,
+    responseRate: 95,
+  };
+
+  // Mock upcoming jobs
+  const upcomingJobs = [
+    {
+      id: '1',
+      title: 'Yaz Festivali 2024',
+      date: '15-17 Temmuz',
+      location: 'İstanbul, Kadıköy',
+      role: 'Ses Sistemi',
+      earnings: 85000,
+      daysUntil: 15,
+      image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
+    },
+    {
+      id: '2',
+      title: 'Düğün - Ayşe & Mehmet',
+      date: '1 Eylül',
+      location: 'İstanbul, Beşiktaş',
+      role: 'DJ Set',
+      earnings: 25000,
+      daysUntil: 55,
+      image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
+    },
+  ];
+
+  // Mock recent requests
+  const recentRequests = [
+    {
+      id: '1',
+      title: 'Kurumsal Gala Gecesi',
+      category: 'Işık & Ses Sistemi',
+      organizer: 'XYZ Holding',
+      location: 'Ankara',
+      date: '22 Ağustos 2024',
+      budget: '50.000 - 70.000 ₺',
+      isNew: true,
+      timeAgo: '2 saat önce',
+    },
+    {
+      id: '2',
+      title: 'Tech Conference 2024',
+      category: 'Sahne Kurulum',
+      organizer: 'TechTR',
+      location: 'İstanbul',
+      date: '10-11 Ekim 2024',
+      budget: '40.000 - 60.000 ₺',
+      isNew: true,
+      timeAgo: '5 saat önce',
+    },
+    {
+      id: '3',
+      title: 'Yılbaşı Partisi',
+      category: 'DJ Set',
+      organizer: 'Acme Events',
+      location: 'İzmir',
+      date: '31 Aralık 2024',
+      budget: '15.000 - 25.000 ₺',
+      isNew: false,
+      timeAgo: '1 gün önce',
+    },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -296,34 +368,70 @@ function ProviderHomeContent() {
           </TouchableOpacity>
         </View>
 
+        {/* Earnings Card */}
+        <View style={styles.earningsCard}>
+          <LinearGradient
+            colors={gradients.primary}
+            style={styles.earningsCardGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.earningsCardHeader}>
+              <View>
+                <Text style={styles.earningsCardLabel}>Bu Ay Kazanç</Text>
+                <Text style={styles.earningsCardValue}>₺{providerStats.monthlyEarnings.toLocaleString('tr-TR')}</Text>
+              </View>
+              <View style={styles.earningsCardBadge}>
+                <Ionicons name="trending-up" size={14} color={colors.success} />
+                <Text style={styles.earningsCardBadgeText}>+18%</Text>
+              </View>
+            </View>
+            <View style={styles.earningsCardDivider} />
+            <View style={styles.earningsCardFooter}>
+              <View style={styles.earningsCardStat}>
+                <Text style={styles.earningsCardStatLabel}>Bekleyen Ödeme</Text>
+                <Text style={styles.earningsCardStatValue}>₺{providerStats.pendingPayments.toLocaleString('tr-TR')}</Text>
+              </View>
+              <View style={styles.earningsCardStat}>
+                <Text style={styles.earningsCardStatLabel}>Tamamlanan İş</Text>
+                <Text style={styles.earningsCardStatValue}>{providerStats.completedJobs}</Text>
+              </View>
+              <View style={styles.earningsCardStat}>
+                <Text style={styles.earningsCardStatLabel}>Yanıt Oranı</Text>
+                <Text style={styles.earningsCardStatValue}>{providerStats.responseRate}%</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
         {/* Stats Overview */}
         <View style={styles.providerStatsRow}>
-          <View style={styles.providerStatCard}>
+          <TouchableOpacity style={styles.providerStatCard}>
             <LinearGradient
-              colors={gradients.primary}
+              colors={['rgba(147, 51, 234, 0.2)', 'rgba(147, 51, 234, 0.1)']}
               style={styles.providerStatIcon}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Ionicons name="document-text" size={20} color="white" />
+              <Ionicons name="document-text" size={20} color={colors.brand[400]} />
             </LinearGradient>
-            <Text style={styles.providerStatNumber}>12</Text>
-            <Text style={styles.providerStatLabel}>Bekleyen Teklif</Text>
-          </View>
-          <View style={styles.providerStatCard}>
-            <View style={[styles.providerStatIcon, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
+            <Text style={styles.providerStatNumber}>{providerStats.pendingOffers}</Text>
+            <Text style={styles.providerStatLabel}>Yeni Teklif</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.providerStatCard}>
+            <View style={[styles.providerStatIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
               <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             </View>
-            <Text style={styles.providerStatNumber}>8</Text>
-            <Text style={styles.providerStatLabel}>Aktif İş</Text>
-          </View>
-          <View style={styles.providerStatCard}>
-            <View style={[styles.providerStatIcon, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
+            <Text style={styles.providerStatNumber}>{providerStats.upcomingJobs}</Text>
+            <Text style={styles.providerStatLabel}>Yaklaşan İş</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.providerStatCard}>
+            <View style={[styles.providerStatIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
               <Ionicons name="star" size={20} color={colors.warning} />
             </View>
-            <Text style={styles.providerStatNumber}>4.9</Text>
+            <Text style={styles.providerStatNumber}>{providerStats.rating}</Text>
             <Text style={styles.providerStatLabel}>Puan</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Actions */}
@@ -331,36 +439,89 @@ function ProviderHomeContent() {
           <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
         </View>
 
-        <View style={styles.quickActionsGrid}>
-          <TouchableOpacity style={styles.quickActionItem}>
-            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-              <Ionicons name="add-circle" size={24} color={colors.brand[400]} />
-            </View>
-            <Text style={styles.quickActionText}>Teklif Gönder</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickActionsScroll}
+        >
+          <TouchableOpacity style={styles.quickActionCard}>
+            <LinearGradient
+              colors={gradients.primary}
+              style={styles.quickActionCardIcon}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="add-circle" size={22} color="white" />
+            </LinearGradient>
+            <Text style={styles.quickActionCardText}>Teklif Gönder</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionItem}>
-            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-              <Ionicons name="calendar" size={24} color={colors.info} />
+          <TouchableOpacity style={styles.quickActionCard}>
+            <View style={[styles.quickActionCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Ionicons name="calendar" size={22} color={colors.info} />
             </View>
-            <Text style={styles.quickActionText}>Takvim</Text>
+            <Text style={styles.quickActionCardText}>Müsaitlik</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionItem}>
-            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-              <Ionicons name="wallet" size={24} color={colors.success} />
+          <TouchableOpacity style={styles.quickActionCard}>
+            <View style={[styles.quickActionCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <Ionicons name="wallet" size={22} color={colors.success} />
             </View>
-            <Text style={styles.quickActionText}>Kazançlar</Text>
+            <Text style={styles.quickActionCardText}>Kazançlar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionItem}>
-            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-              <Ionicons name="analytics" size={24} color={colors.warning} />
+          <TouchableOpacity style={styles.quickActionCard}>
+            <View style={[styles.quickActionCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+              <Ionicons name="briefcase" size={22} color={colors.warning} />
             </View>
-            <Text style={styles.quickActionText}>İstatistikler</Text>
+            <Text style={styles.quickActionCardText}>Portföy</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionCard}>
+            <View style={[styles.quickActionCardIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="analytics" size={22} color={colors.error} />
+            </View>
+            <Text style={styles.quickActionCardText}>Raporlar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Upcoming Jobs */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Yaklaşan İşler</Text>
+          <TouchableOpacity style={styles.sectionLink}>
+            <Text style={styles.sectionLinkText}>Tümü</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.upcomingJobsScroll}
+        >
+          {upcomingJobs.map((job) => (
+            <TouchableOpacity key={job.id} style={styles.upcomingJobCard} activeOpacity={0.8}>
+              <Image source={{ uri: job.image }} style={styles.upcomingJobImage} />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.9)']}
+                style={styles.upcomingJobGradient}
+              />
+              <View style={styles.upcomingJobDaysBadge}>
+                <Ionicons name="time" size={10} color={colors.brand[400]} />
+                <Text style={styles.upcomingJobDaysText}>{job.daysUntil} gün</Text>
+              </View>
+              <View style={styles.upcomingJobContent}>
+                <Text style={styles.upcomingJobRole}>{job.role}</Text>
+                <Text style={styles.upcomingJobTitle} numberOfLines={1}>{job.title}</Text>
+                <View style={styles.upcomingJobMeta}>
+                  <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.upcomingJobMetaText}>{job.date}</Text>
+                </View>
+                <Text style={styles.upcomingJobEarnings}>₺{job.earnings.toLocaleString('tr-TR')}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         {/* Recent Requests */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Son Talepler</Text>
+          <Text style={styles.sectionTitle}>Yeni Talepler</Text>
           <TouchableOpacity style={styles.sectionLink}>
             <Text style={styles.sectionLinkText}>Tümü</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
@@ -368,25 +529,69 @@ function ProviderHomeContent() {
         </View>
 
         <View style={styles.requestsList}>
-          {[1, 2, 3].map((item) => (
-            <TouchableOpacity key={item} style={styles.requestCard} activeOpacity={0.8}>
+          {recentRequests.map((request) => (
+            <TouchableOpacity key={request.id} style={styles.requestCard} activeOpacity={0.8}>
               <View style={styles.requestHeader}>
-                <View style={styles.requestBadge}>
-                  <Text style={styles.requestBadgeText}>YENİ</Text>
-                </View>
-                <Text style={styles.requestTime}>2 saat önce</Text>
+                {request.isNew && (
+                  <View style={styles.requestBadge}>
+                    <Text style={styles.requestBadgeText}>YENİ</Text>
+                  </View>
+                )}
+                <Text style={styles.requestTime}>{request.timeAgo}</Text>
               </View>
-              <Text style={styles.requestTitle}>Yaz Festivali 2024</Text>
-              <Text style={styles.requestSubtitle}>Teknik Ekipman Talebi</Text>
-              <View style={styles.requestFooter}>
-                <View style={styles.requestLocation}>
-                  <Ionicons name="location" size={12} color={colors.zinc[500]} />
-                  <Text style={styles.requestLocationText}>İstanbul, Kadıköy</Text>
+              <Text style={styles.requestTitle}>{request.title}</Text>
+              <Text style={styles.requestSubtitle}>{request.category}</Text>
+              <View style={styles.requestDivider} />
+              <View style={styles.requestDetails}>
+                <View style={styles.requestDetailItem}>
+                  <Ionicons name="person-outline" size={12} color={colors.zinc[500]} />
+                  <Text style={styles.requestDetailText}>{request.organizer}</Text>
                 </View>
-                <Text style={styles.requestDate}>15 Temmuz 2024</Text>
+                <View style={styles.requestDetailItem}>
+                  <Ionicons name="location-outline" size={12} color={colors.zinc[500]} />
+                  <Text style={styles.requestDetailText}>{request.location}</Text>
+                </View>
+              </View>
+              <View style={styles.requestFooter}>
+                <View style={styles.requestDateBadge}>
+                  <Ionicons name="calendar" size={12} color={colors.brand[400]} />
+                  <Text style={styles.requestDateText}>{request.date}</Text>
+                </View>
+                <Text style={styles.requestBudget}>{request.budget}</Text>
               </View>
             </TouchableOpacity>
           ))}
+        </View>
+
+        {/* Performance Card */}
+        <View style={styles.performanceCard}>
+          <View style={styles.performanceHeader}>
+            <Ionicons name="trophy" size={20} color={colors.warning} />
+            <Text style={styles.performanceTitle}>Performans Özeti</Text>
+          </View>
+          <View style={styles.performanceStats}>
+            <View style={styles.performanceStatItem}>
+              <View style={styles.performanceStatBar}>
+                <View style={[styles.performanceStatFill, { width: '95%', backgroundColor: colors.success }]} />
+              </View>
+              <Text style={styles.performanceStatLabel}>Yanıt Oranı</Text>
+              <Text style={styles.performanceStatValue}>95%</Text>
+            </View>
+            <View style={styles.performanceStatItem}>
+              <View style={styles.performanceStatBar}>
+                <View style={[styles.performanceStatFill, { width: '88%', backgroundColor: colors.brand[500] }]} />
+              </View>
+              <Text style={styles.performanceStatLabel}>Tamamlama</Text>
+              <Text style={styles.performanceStatValue}>88%</Text>
+            </View>
+            <View style={styles.performanceStatItem}>
+              <View style={styles.performanceStatBar}>
+                <View style={[styles.performanceStatFill, { width: '98%', backgroundColor: colors.warning }]} />
+              </View>
+              <Text style={styles.performanceStatLabel}>Memnuniyet</Text>
+              <Text style={styles.performanceStatValue}>98%</Text>
+            </View>
+          </View>
         </View>
 
         <View style={{ height: 24 }} />
@@ -893,5 +1098,259 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: colors.text,
+  },
+  // Enhanced Provider Styles
+  earningsCard: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  earningsCardGradient: {
+    padding: 20,
+  },
+  earningsCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  earningsCardLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  earningsCardValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'white',
+    marginTop: 4,
+  },
+  earningsCardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  earningsCardBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  earningsCardDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginVertical: 16,
+  },
+  earningsCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  earningsCardStat: {
+    alignItems: 'center',
+  },
+  earningsCardStatLabel: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: 4,
+  },
+  earningsCardStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
+  },
+  quickActionsScroll: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  quickActionCard: {
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    width: 90,
+  },
+  quickActionCardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  quickActionCardText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.zinc[400],
+    textAlign: 'center',
+  },
+  upcomingJobsScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  upcomingJobCard: {
+    width: 180,
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  },
+  upcomingJobImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  upcomingJobGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+  },
+  upcomingJobDaysBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  upcomingJobDaysText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.brand[400],
+  },
+  upcomingJobContent: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+  },
+  upcomingJobRole: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.brand[400],
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  upcomingJobTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  upcomingJobMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  upcomingJobMetaText: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  upcomingJobEarnings: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.success,
+    marginTop: 6,
+  },
+  requestDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginVertical: 12,
+  },
+  requestDetails: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  requestDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  requestDetailText: {
+    fontSize: 11,
+    color: colors.zinc[500],
+  },
+  requestDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  requestDateText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: colors.brand[400],
+  },
+  requestBudget: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.success,
+  },
+  performanceCard: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  performanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  performanceTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  performanceStats: {
+    gap: 12,
+  },
+  performanceStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  performanceStatBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  performanceStatFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  performanceStatLabel: {
+    fontSize: 11,
+    color: colors.zinc[500],
+    width: 80,
+  },
+  performanceStatValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+    width: 35,
+    textAlign: 'right',
   },
 });

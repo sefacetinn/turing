@@ -128,7 +128,7 @@ export function OfferDetailScreen() {
   };
 
   const handleNavigateToChat = () => {
-    navigation.navigate('MessagesTab', {
+    (navigation as any).navigate('MessagesTab', {
       screen: 'Chat',
       params: { conversationId: offer.id }
     });

@@ -11,6 +11,9 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EventsScreen } from './src/screens/EventsScreen';
 import { EventDetailScreen } from './src/screens/EventDetailScreen';
+import { OrganizerEventDetailScreen } from './src/screens/OrganizerEventDetailScreen';
+import { ProviderEventDetailScreen } from './src/screens/ProviderEventDetailScreen';
+import { CalendarViewScreen } from './src/screens/CalendarViewScreen';
 import { OffersScreen } from './src/screens/OffersScreen';
 import { OfferDetailScreen } from './src/screens/OfferDetailScreen';
 import { MessagesScreen } from './src/screens/MessagesScreen';
@@ -76,7 +79,13 @@ function EventsStack() {
         {() => <EventsScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+      <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
+      <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
+      <Stack.Screen name="CalendarView">
+        {() => <CalendarViewScreen isProviderMode={isProviderMode} />}
+      </Stack.Screen>
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
     </Stack.Navigator>
   );
 }
@@ -142,9 +151,9 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
           backgroundColor: '#09090b',
           borderTopColor: 'rgba(255, 255, 255, 0.08)',
           borderTopWidth: 1,
-          paddingTop: 6,
-          paddingBottom: 6,
-          height: 56,
+          paddingTop: 4,
+          paddingBottom: 4,
+          height: 52,
           elevation: 0,
           shadowOpacity: 0,
         },
@@ -183,12 +192,12 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
             <View style={{
               alignItems: 'center',
               justifyContent: 'center',
-              width: 40,
-              height: 28,
-              borderRadius: 14,
+              width: 36,
+              height: 24,
+              borderRadius: 12,
               backgroundColor: focused ? 'rgba(147, 51, 234, 0.15)' : 'transparent',
             }}>
-              <Ionicons name={iconName} size={22} color={color} />
+              <Ionicons name={iconName} size={20} color={color} />
             </View>
           );
         },
@@ -247,7 +256,8 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
 }
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Auto-login for testing - set to true and false for organizer mode
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [isProviderMode, setIsProviderMode] = useState(false);
 
   const handleLogin = useCallback((asProvider: boolean) => {

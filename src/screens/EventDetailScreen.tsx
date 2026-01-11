@@ -16,14 +16,14 @@ import { colors, gradients } from '../theme/colors';
 
 // Local events data
 const events = [
-  { id: '1', title: 'Yaz Festivali 2024', date: '15-17 Temmuz 2024', location: 'İstanbul', venue: 'KüçükÇiftlik Park', status: 'planning', progress: 65, budget: 2500000, spent: 1625000, image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800', services: [{ id: 's1', category: 'booking', name: 'Ana Sahne', status: 'confirmed', provider: 'Mabel Matiz', price: 200000 }] },
-  { id: '2', title: 'Kurumsal Gala', date: '22 Ağustos 2024', location: 'Ankara', venue: 'JW Marriott', status: 'confirmed', progress: 100, budget: 800000, spent: 750000, image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800', services: [] },
+  { id: '1', title: 'Yaz Festivali 2024', description: '3 günlük açık hava müzik festivali', date: '15-17 Temmuz 2024', time: '16:00', location: 'İstanbul', district: 'Kadıköy', venue: 'KüçükÇiftlik Park', status: 'planning', progress: 65, budget: 2500000, spent: 1625000, attendees: 15000, image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800', services: [{ id: 's1', category: 'booking', name: 'Ana Sahne', status: 'confirmed', provider: 'Mabel Matiz', price: 200000 }] },
+  { id: '2', title: 'Kurumsal Gala', description: 'Yıllık şirket galası', date: '22 Ağustos 2024', time: '19:00', location: 'Ankara', district: 'Çankaya', venue: 'JW Marriott', status: 'confirmed', progress: 100, budget: 800000, spent: 750000, attendees: 500, image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800', services: [] },
 ];
 
 const { width } = Dimensions.get('window');
 
-const getCategoryGradient = (category: string): string[] => {
-  const gradientMap: Record<string, string[]> = {
+const getCategoryGradient = (category: string): readonly [string, string, ...string[]] => {
+  const gradientMap: Record<string, readonly [string, string, ...string[]]> = {
     booking: gradients.booking,
     technical: gradients.technical,
     venue: gradients.venue,
@@ -67,9 +67,13 @@ export function EventDetailScreen() {
   const event = events.find(e => e.id === eventId) || events[0];
   const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'budget'>('overview');
 
-  const confirmedServices = event.services.filter(s => s.status === 'confirmed').length;
-  const totalServices = event.services.length;
-  const budgetUsedPercent = Math.round((event.spent / event.budget) * 100);
+  if (!event) {
+    return null;
+  }
+
+  const confirmedServices = event.services?.filter(s => s.status === 'confirmed').length || 0;
+  const totalServices = event.services?.length || 0;
+  const budgetUsedPercent = event.budget ? Math.round((event.spent / event.budget) * 100) : 0;
 
   return (
     <View style={styles.container}>

@@ -164,7 +164,7 @@ export function ServiceProvidersScreen() {
     navigation.navigate('CategoryRequest', {
       category: category,
       bulkProviders: selectedProviders.map(id => {
-        const p = providers.find(pr => pr.id === id);
+        const p = allProviders.find((pr: Provider) => pr.id === id);
         return p ? { id: p.id, name: p.name, rating: p.rating, image: p.image } : null;
       }).filter(Boolean)
     });

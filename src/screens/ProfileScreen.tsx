@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
+import { userProfile } from '../data/mockData';
 
 interface ProfileScreenProps {
   isProviderMode: boolean;
@@ -64,19 +65,23 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.avatarText}>SC</Text>
+                <Text style={styles.avatarText}>
+                  {userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                </Text>
               </LinearGradient>
               <TouchableOpacity style={styles.editAvatarButton}>
                 <Ionicons name="camera" size={14} color="white" />
               </TouchableOpacity>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Sefa Çetin</Text>
-              <Text style={styles.profileEmail}>sefa@example.com</Text>
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={styles.verifiedText}>Doğrulanmış</Text>
-              </View>
+              <Text style={styles.profileName}>{userProfile.name}</Text>
+              <Text style={styles.profileEmail}>{userProfile.email}</Text>
+              {userProfile.verified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                  <Text style={styles.verifiedText}>Doğrulanmış</Text>
+                </View>
+              )}
             </View>
           </View>
         </TouchableOpacity>
@@ -111,17 +116,17 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>24</Text>
+            <Text style={styles.statNumber}>{userProfile.stats.totalEvents}</Text>
             <Text style={styles.statLabel}>Etkinlik</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>156</Text>
+            <Text style={styles.statNumber}>{userProfile.stats.totalOffers}</Text>
             <Text style={styles.statLabel}>Teklif</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={styles.statNumber}>4.9</Text>
+              <Text style={styles.statNumber}>{userProfile.stats.rating}</Text>
             </View>
             <Text style={styles.statLabel}>Puan</Text>
           </View>
@@ -262,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 24,
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
