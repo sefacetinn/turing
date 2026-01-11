@@ -697,10 +697,19 @@ export const quoteRequests = [
 // Get quote request for an offer
 export const getQuoteRequestForOffer = (offerId: string) => {
   const offerCategoryMap: Record<string, string> = {
-    'o1': 'qr1', // Technical offer -> Technical quote request
-    'o2': 'qr2', // Security offer -> Security quote request
-    'o3': 'qr8', // Accommodation offer -> Accommodation quote request
+    // OfferDetailScreen local offers
+    'o1': 'qr1', // Pro Sound Istanbul - Technical
+    'o2': 'qr1', // LightShow Pro - Technical (lighting)
+    // OffersScreen organizer offers
+    'o3': 'qr6', // Dream Decor - Decoration
+    'o4': 'qr4', // Booking offer
+    // Provider offers
+    'po1': 'qr1',
+    'po2': 'qr5',
+    'po3': 'qr3',
+    'po4': 'qr2',
   };
   const qrId = offerCategoryMap[offerId];
+  // Always return a quote request (fallback to first one)
   return quoteRequests.find(qr => qr.id === qrId) || quoteRequests[0];
 };
