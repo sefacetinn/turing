@@ -1,9 +1,22 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import { useColorScheme, ViewStyle } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { darkTheme, lightTheme, ThemeColors, ThemeType } from './colors';
+import { darkTheme, lightTheme, ThemeColors, ThemeType, shadows } from './colors';
 
 const THEME_STORAGE_KEY = '@app_theme';
+
+type ShadowSize = 'none' | 'sm' | 'md' | 'lg' | 'xl';
+
+interface ThemeHelpers {
+  // Get glass effect color (white opacity on dark, black opacity on light)
+  getGlass: (opacity: number) => string;
+  // Get glass border color
+  getGlassBorder: (opacity: number) => string;
+  // Get shadow style for current theme
+  getShadow: (size: ShadowSize) => ViewStyle;
+  // Get card style with appropriate background and shadow
+  getCardStyle: (elevated?: boolean) => ViewStyle;
+}
 
 interface ThemeContextType {
   theme: ThemeType;
@@ -11,7 +24,16 @@ interface ThemeContextType {
   isDark: boolean;
   toggleTheme: () => void;
   setTheme: (theme: ThemeType) => void;
+  helpers: ThemeHelpers;
 }
+
+// Default helpers (dark theme)
+const defaultHelpers: ThemeHelpers = {
+  getGlass: (opacity: number) => `rgba(255, 255, 255, ${opacity})`,
+  getGlassBorder: (opacity: number) => `rgba(255, 255, 255, ${opacity})`,
+  getShadow: () => ({}),
+  getCardStyle: () => ({}),
+};
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'dark',
@@ -19,6 +41,7 @@ const ThemeContext = createContext<ThemeContextType>({
   isDark: true,
   toggleTheme: () => {},
   setTheme: () => {},
+  helpers: defaultHelpers,
 });
 
 export const useTheme = () => useContext(ThemeContext);
@@ -69,13 +92,59 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const colors = theme === 'light' ? lightTheme : darkTheme;
   const isDark = theme === 'dark';
 
+  // Create theme helpers
+  const helpers = useMemo<ThemeHelpers>(() => ({
+    // Glass effect - white opacity on dark, black opacity on light
+    getGlass: (opacity: number) => {
+      return isDark
+        ? `rgba(255, 255, 255, ${opacity})`
+        : `rgba(0, 0, 0, ${opacity})`;
+    },
+
+    // Glass border color
+    getGlassBorder: (opacity: number) => {
+      return isDark
+        ? `rgba(255, 255, 255, ${opacity})`
+        : `rgba(0, 0, 0, ${opacity})`;
+    },
+
+    // Get shadow style (active only in light mode)
+    getShadow: (size: ShadowSize): ViewStyle => {
+      if (isDark || size === 'none') return {};
+      return shadows[size] as ViewStyle;
+    },
+
+    // Get card style with appropriate background and shadow
+    getCardStyle: (elevated = false): ViewStyle => {
+      if (isDark) {
+        return {
+          backgroundColor: colors.cardBackground,
+          borderWidth: 1,
+          borderColor: colors.border,
+        };
+      }
+
+      // Light mode - use shadow for depth
+      return elevated
+        ? {
+            backgroundColor: colors.cardBackgroundSolid,
+            ...(shadows.md as ViewStyle),
+          }
+        : {
+            backgroundColor: colors.cardBackground,
+            borderWidth: 1,
+            borderColor: colors.border,
+          };
+    },
+  }), [isDark, colors]);
+
   // Don't render until theme is loaded to prevent flash
   if (!isLoaded) {
     return null;
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, colors, isDark, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, colors, isDark, toggleTheme, setTheme, helpers }}>
       {children}
     </ThemeContext.Provider>
   );

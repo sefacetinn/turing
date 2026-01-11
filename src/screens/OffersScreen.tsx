@@ -13,7 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 // Status types: pending (initial), counter_offered (negotiating), accepted, rejected
 type OfferStatus = 'pending' | 'counter_offered' | 'accepted' | 'rejected';
@@ -353,6 +357,7 @@ const getCategoryGradient = (category: string): readonly [string, string, ...str
 
 export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [activeTab, setActiveTab] = useState<OfferTabType>('active');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -369,7 +374,7 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
       case 'pending': return colors.warning;
       case 'counter_offered': return colors.brand[400];
       case 'rejected': return colors.error;
-      default: return colors.zinc[500];
+      default: return colors.textMuted;
     }
   };
 
@@ -981,19 +986,22 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
             {isProviderMode ? 'Gönderilen Teklifler' : 'Gelen Teklifler'}
           </Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {stats.active} aktif teklif
           </Text>
         </View>
         {!isProviderMode && (
-          <TouchableOpacity style={styles.filterButton}>
+          <TouchableOpacity style={[styles.filterButton, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder
+          }]}>
             <Ionicons name="filter" size={18} color={colors.text} />
           </TouchableOpacity>
         )}
@@ -1002,55 +1010,64 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
       {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'active' && styles.tabActive]}
+          style={[styles.tab, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder
+          }, activeTab === 'active' && { backgroundColor: colors.glassStrong }]}
           onPress={() => setActiveTab('active')}
         >
           <Ionicons
             name={activeTab === 'active' ? 'flash' : 'flash-outline'}
             size={14}
-            color={activeTab === 'active' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'active' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'active' && { color: colors.brand[400] }]}>
             Aktif
           </Text>
-          <View style={[styles.tabBadge, activeTab === 'active' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'active' && styles.tabBadgeTextActive]}>
+          <View style={[styles.tabBadge, { backgroundColor: colors.glassStrong }, activeTab === 'active' && styles.tabBadgeActive]}>
+            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'active' && { color: colors.brand[400] }]}>
               {stats.active}
             </Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'accepted' && styles.tabActive]}
+          style={[styles.tab, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder
+          }, activeTab === 'accepted' && { backgroundColor: colors.glassStrong }]}
           onPress={() => setActiveTab('accepted')}
         >
           <Ionicons
             name={activeTab === 'accepted' ? 'checkmark-circle' : 'checkmark-circle-outline'}
             size={14}
-            color={activeTab === 'accepted' ? colors.success : colors.zinc[500]}
+            color={activeTab === 'accepted' ? colors.success : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'accepted' && styles.tabTextAccepted]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'accepted' && { color: colors.success }]}>
             Onaylanan
           </Text>
-          <View style={[styles.tabBadge, activeTab === 'accepted' && styles.tabBadgeAccepted]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'accepted' && styles.tabBadgeTextAccepted]}>
+          <View style={[styles.tabBadge, { backgroundColor: colors.glassStrong }, activeTab === 'accepted' && styles.tabBadgeAccepted]}>
+            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'accepted' && { color: colors.success }]}>
               {stats.accepted}
             </Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'rejected' && styles.tabActive]}
+          style={[styles.tab, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder
+          }, activeTab === 'rejected' && { backgroundColor: colors.glassStrong }]}
           onPress={() => setActiveTab('rejected')}
         >
           <Ionicons
             name={activeTab === 'rejected' ? 'close-circle' : 'close-circle-outline'}
             size={14}
-            color={activeTab === 'rejected' ? colors.error : colors.zinc[500]}
+            color={activeTab === 'rejected' ? colors.error : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'rejected' && styles.tabTextRejected]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'rejected' && { color: colors.error }]}>
             Reddedilen
           </Text>
-          <View style={[styles.tabBadge, activeTab === 'rejected' && styles.tabBadgeRejected]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'rejected' && styles.tabBadgeTextRejected]}>
+          <View style={[styles.tabBadge, { backgroundColor: colors.glassStrong }, activeTab === 'rejected' && styles.tabBadgeRejected]}>
+            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'rejected' && { color: colors.error }]}>
               {stats.rejected}
             </Text>
           </View>
@@ -1079,11 +1096,11 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           )
         ) : (
           <View style={styles.emptyState}>
-            <View style={styles.emptyStateIcon}>
-              <Ionicons name="pricetags-outline" size={48} color={colors.zinc[600]} />
+            <View style={[styles.emptyStateIcon, { backgroundColor: colors.glass }]}>
+              <Ionicons name="pricetags-outline" size={48} color={colors.textMuted} />
             </View>
-            <Text style={styles.emptyStateTitle}>Teklif Bulunamadı</Text>
-            <Text style={styles.emptyStateText}>
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Teklif Bulunamadı</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
               Bu kategoride henüz teklif yok.
             </Text>
           </View>

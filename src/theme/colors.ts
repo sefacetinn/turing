@@ -50,6 +50,39 @@ export const zincScale = {
   950: '#09090b',
 };
 
+// Shadow definitions
+export const shadows = {
+  none: {},
+  sm: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  md: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  lg: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  xl: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+};
+
 // ============================================
 // DARK THEME (Current Default)
 // ============================================
@@ -79,6 +112,13 @@ export const darkTheme = {
   borderLight: 'rgba(255, 255, 255, 0.04)',
   borderStrong: 'rgba(255, 255, 255, 0.12)',
 
+  // Glass/Glassmorphism effects - Dark
+  glass: 'rgba(255, 255, 255, 0.03)',
+  glassHover: 'rgba(255, 255, 255, 0.05)',
+  glassStrong: 'rgba(255, 255, 255, 0.08)',
+  glassBorder: 'rgba(255, 255, 255, 0.06)',
+  glassBorderStrong: 'rgba(255, 255, 255, 0.12)',
+
   // Text - Dark Theme
   text: '#fafafa',
   textSecondary: '#a1a1aa',
@@ -92,6 +132,7 @@ export const darkTheme = {
   // Card backgrounds
   cardBackground: 'rgba(255, 255, 255, 0.02)',
   cardBackgroundHover: 'rgba(255, 255, 255, 0.04)',
+  cardBackgroundSolid: '#18181b',
   cardBackgroundActive: 'rgba(147, 51, 234, 0.05)',
 
   // Input
@@ -111,6 +152,15 @@ export const darkTheme = {
   // Zinc scale
   zinc: zincScale,
 
+  // Shadows - No shadows in dark mode
+  shadow: {
+    none: {},
+    sm: {},
+    md: {},
+    lg: {},
+    xl: {},
+  },
+
   // Common
   white: '#ffffff',
   black: '#000000',
@@ -121,19 +171,20 @@ export const darkTheme = {
 // LIGHT THEME (Professional Light Mode)
 // ============================================
 export const lightTheme = {
-  // Brand - Slightly darker for better contrast on light
+  // Brand - Darker for better contrast on light backgrounds
   brand: {
     ...brandColors,
-    400: '#a855f7', // Slightly more saturated
-    500: '#9333ea',
-    600: '#7c3aed',
+    400: '#9333ea',
+    500: '#7c3aed',
+    600: '#6d28d9',
+    700: '#5b21b6',
   },
 
-  // Legacy
-  primary: '#7c3aed',
-  primaryDark: '#6d28d9',
-  secondary: '#ea580c',
-  secondaryDark: '#c2410c',
+  // Legacy - Improved contrast
+  primary: '#6d28d9', // Better contrast (5.9:1)
+  primaryDark: '#5b21b6',
+  secondary: '#c2410c',
+  secondaryDark: '#9a3412',
 
   // Category
   category: categoryColors,
@@ -148,8 +199,15 @@ export const lightTheme = {
   surfaceElevated: '#ffffff',
   surfaceHover: '#e4e4e7',
   border: 'rgba(0, 0, 0, 0.08)',
-  borderLight: 'rgba(0, 0, 0, 0.04)',
-  borderStrong: 'rgba(0, 0, 0, 0.12)',
+  borderLight: 'rgba(0, 0, 0, 0.05)',
+  borderStrong: 'rgba(0, 0, 0, 0.15)',
+
+  // Glass/Glassmorphism effects - Light (black opacity visible on white)
+  glass: 'rgba(0, 0, 0, 0.02)',
+  glassHover: 'rgba(0, 0, 0, 0.04)',
+  glassStrong: 'rgba(0, 0, 0, 0.06)',
+  glassBorder: 'rgba(0, 0, 0, 0.08)',
+  glassBorderStrong: 'rgba(0, 0, 0, 0.12)',
 
   // Text - Light Theme
   text: '#18181b',
@@ -161,39 +219,31 @@ export const lightTheme = {
   overlay: 'rgba(0, 0, 0, 0.5)',
   overlayLight: 'rgba(0, 0, 0, 0.3)',
 
-  // Card backgrounds
-  cardBackground: '#ffffff',
+  // Card backgrounds - Subtle gray tint for visibility
+  cardBackground: '#fafafa',
   cardBackgroundHover: '#f4f4f5',
-  cardBackgroundActive: 'rgba(147, 51, 234, 0.05)',
+  cardBackgroundSolid: '#ffffff',
+  cardBackgroundActive: 'rgba(109, 40, 217, 0.08)',
 
   // Input
   inputBackground: '#f4f4f5',
-  inputBorder: 'rgba(0, 0, 0, 0.1)',
-  inputFocusBorder: 'rgba(124, 58, 237, 0.5)',
+  inputBorder: 'rgba(0, 0, 0, 0.12)',
+  inputFocusBorder: 'rgba(109, 40, 217, 0.5)',
 
   // Tab bar
   tabBar: '#ffffff',
   tabBarBorder: 'rgba(0, 0, 0, 0.08)',
-  tabActive: brandColors[600],
+  tabActive: '#6d28d9',
   tabInactive: zincScale[400],
 
   // Status bar
   statusBarStyle: 'dark' as 'light' | 'dark',
 
-  // Zinc scale (inverted perception)
-  zinc: {
-    50: zincScale[950],
-    100: zincScale[900],
-    200: zincScale[800],
-    300: zincScale[700],
-    400: zincScale[600],
-    500: zincScale[500],
-    600: zincScale[400],
-    700: zincScale[300],
-    800: zincScale[200],
-    900: zincScale[100],
-    950: zincScale[50],
-  },
+  // Zinc scale - SAME as dark theme (components use isDark to choose)
+  zinc: zincScale,
+
+  // Shadows - Active in light mode
+  shadow: shadows,
 
   // Common
   white: '#ffffff',
@@ -229,37 +279,8 @@ export const categoryGradients = {
   festival: ['#10b981', '#34d399'] as const,
 };
 
-// Shadow styles for light theme
-export const lightShadows = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  xl: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-};
+// Legacy export for backward compatibility
+export const lightShadows = shadows;
 
 // Helper to get theme colors
 export const getTheme = (theme: ThemeType): ThemeColors => {

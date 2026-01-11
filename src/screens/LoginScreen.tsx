@@ -12,13 +12,18 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, gradients } from '../theme/colors';
+import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 interface LoginScreenProps {
   onLogin: (asProvider: boolean) => void;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
+  const { colors, isDark, helpers } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -30,7 +35,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Background Gradient Orbs */}
       <View style={styles.backgroundOrb1} />
       <View style={styles.backgroundOrb2} />
@@ -47,7 +52,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoGlow} />
+              <View style={[styles.logoGlow, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)' }]} />
               <LinearGradient
                 colors={['#9333ea', '#7c3aed', '#6366f1']}
                 style={styles.logoBox}
@@ -57,18 +62,25 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 <Ionicons name="musical-notes" size={38} color="white" />
               </LinearGradient>
               <View style={styles.sparkle}>
-                <Ionicons name="sparkles" size={20} color={colors.brand[300]} />
+                <Ionicons name="sparkles" size={20} color={colors.brand[400]} />
               </View>
             </View>
 
-            <Text style={styles.brandName}>TURING</Text>
-            <Text style={styles.brandTagline}>Etkinlik & Müzik Sektörü Platformu</Text>
+            <Text style={[styles.brandName, { color: colors.text }]}>TURING</Text>
+            <Text style={[styles.brandTagline, { color: colors.textSecondary }]}>Etkinlik & Müzik Sektörü Platformu</Text>
           </View>
 
           {/* Glass Card */}
-          <View style={styles.card}>
+          <View style={[styles.card, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder,
+            ...(isDark ? {} : helpers.getShadow('lg'))
+          }]}>
             {/* Mode Selection Tabs */}
-            <View style={styles.tabSelector}>
+            <View style={[styles.tabSelector, {
+              backgroundColor: colors.glass,
+              borderColor: colors.glassBorder
+            }]}>
               <TouchableOpacity
                 onPress={() => setSelectedMode('organizer')}
                 style={[
@@ -88,8 +100,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   </LinearGradient>
                 ) : (
                   <View style={styles.tabItemInner}>
-                    <Ionicons name="people-outline" size={18} color={colors.zinc[400]} />
-                    <Text style={styles.tabText}>Organizatör</Text>
+                    <Ionicons name="people-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.tabText, { color: colors.textMuted }]}>Organizatör</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -113,8 +125,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   </LinearGradient>
                 ) : (
                   <View style={styles.tabItemInner}>
-                    <Ionicons name="musical-notes-outline" size={18} color={colors.zinc[400]} />
-                    <Text style={styles.tabText}>Sağlayıcı</Text>
+                    <Ionicons name="musical-notes-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.tabText, { color: colors.textMuted }]}>Sağlayıcı</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -122,15 +134,18 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {/* Email Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>E-posta</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>E-posta</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.inputBorder
+              }]}>
+                <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="ornek@email.com"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -139,15 +154,18 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {/* Password Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Şifre</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Şifre</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.inputBorder
+              }]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { paddingRight: 48 }]}
+                  style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity
@@ -157,7 +175,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
-                    color={colors.zinc[500]}
+                    color={colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
@@ -166,7 +184,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             {/* Forgot Password */}
             {isLogin && (
               <TouchableOpacity style={styles.forgotButton}>
-                <Text style={styles.forgotText}>Şifremi Unuttum</Text>
+                <Text style={[styles.forgotText, { color: colors.brand[400] }]}>Şifremi Unuttum</Text>
               </TouchableOpacity>
             )}
 
@@ -185,31 +203,37 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {/* Divider */}
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>veya</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>veya</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             {/* Social Login */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialButton}>
+              <TouchableOpacity style={[styles.socialButton, {
+                backgroundColor: colors.glass,
+                borderColor: colors.glassBorder
+              }]}>
                 <Ionicons name="logo-google" size={20} color={colors.text} />
-                <Text style={styles.socialText}>Google</Text>
+                <Text style={[styles.socialText, { color: colors.text }]}>Google</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.socialButton}>
+              <TouchableOpacity style={[styles.socialButton, {
+                backgroundColor: colors.glass,
+                borderColor: colors.glassBorder
+              }]}>
                 <Ionicons name="logo-apple" size={20} color={colors.text} />
-                <Text style={styles.socialText}>Apple</Text>
+                <Text style={[styles.socialText, { color: colors.text }]}>Apple</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Toggle Login/Register */}
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleText}>
+            <Text style={[styles.toggleText, { color: colors.textMuted }]}>
               {isLogin ? 'Hesabınız yok mu?' : 'Zaten hesabınız var mı?'}
             </Text>
             <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-              <Text style={styles.toggleLink}>
+              <Text style={[styles.toggleLink, { color: colors.brand[400] }]}>
                 {isLogin ? 'Kayıt Ol' : 'Giriş Yap'}
               </Text>
             </TouchableOpacity>
@@ -217,11 +241,11 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, { color: colors.textMuted }]}>
               Devam ederek{' '}
-              <Text style={styles.footerLink}>Kullanım Şartları</Text>
+              <Text style={[styles.footerLink, { color: colors.textSecondary }]}>Kullanım Şartları</Text>
               {' '}ve{' '}
-              <Text style={styles.footerLink}>Gizlilik Politikası</Text>
+              <Text style={[styles.footerLink, { color: colors.textSecondary }]}>Gizlilik Politikası</Text>
               'nı kabul etmiş olursunuz.
             </Text>
           </View>

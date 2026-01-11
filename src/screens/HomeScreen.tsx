@@ -12,7 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 // Local artists data
 const artists = [
@@ -50,31 +54,35 @@ export function HomeScreen({ isProviderMode }: HomeScreenProps) {
 
 function OrganizerHomeContent() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header with Profile */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.profileSection} activeOpacity={0.8}>
             <Image
               source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200' }}
-              style={styles.profileAvatar}
+              style={[styles.profileAvatar, { borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.4)' }]}
             />
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>Ahmet Yılmaz</Text>
+              <Text style={[styles.profileName, { color: colors.text }]}>Ahmet Yılmaz</Text>
               <View style={styles.profileBadge}>
-                <View style={styles.profileBadgeDot} />
-                <Text style={styles.profileBadgeText}>Organizatör</Text>
+                <View style={[styles.profileBadgeDot, { backgroundColor: colors.success }]} />
+                <Text style={[styles.profileBadgeText, { color: colors.textMuted }]}>Organizatör</Text>
               </View>
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.notificationButton}
+            style={[styles.notificationButton, {
+              backgroundColor: colors.glass,
+              borderColor: colors.glassBorder
+            }]}
             onPress={() => navigation.navigate('Notifications')}
           >
-            <Ionicons name="notifications-outline" size={20} color={colors.zinc[400]} />
-            <View style={styles.notificationBadge}>
+            <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
+            <View style={[styles.notificationBadge, { borderColor: colors.background }]}>
               <Text style={styles.notificationBadgeText}>3</Text>
             </View>
           </TouchableOpacity>
@@ -82,22 +90,28 @@ function OrganizerHomeContent() {
 
         {/* Search Bar */}
         <TouchableOpacity
-          style={styles.searchContainer}
+          style={[styles.searchContainer, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder
+          }]}
           onPress={() => navigation.navigate('Search')}
           activeOpacity={0.8}
         >
-          <Ionicons name="search" size={18} color={colors.zinc[500]} style={styles.searchIcon} />
-          <Text style={styles.searchPlaceholder}>Sanatçı, mekan veya hizmet ara...</Text>
+          <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
+          <Text style={[styles.searchPlaceholder, { color: colors.textMuted }]}>Sanatçı, mekan veya hizmet ara...</Text>
         </TouchableOpacity>
 
         {/* Feature Card */}
         <TouchableOpacity
-          style={styles.featureCard}
+          style={[styles.featureCard, {
+            borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.3)',
+            ...(isDark ? {} : helpers.getShadow('md'))
+          }]}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('CreateEvent')}
         >
           <LinearGradient
-            colors={['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.1)']}
+            colors={isDark ? ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.1)'] : ['rgba(147, 51, 234, 0.08)', 'rgba(99, 102, 241, 0.05)']}
             style={styles.featureCardGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -106,10 +120,10 @@ function OrganizerHomeContent() {
               <View style={styles.featureCardLeft}>
                 <View style={styles.featureCardBadge}>
                   <Ionicons name="sparkles" size={12} color={colors.brand[400]} />
-                  <Text style={styles.featureCardBadgeText}>Hızlı Başla</Text>
+                  <Text style={[styles.featureCardBadgeText, { color: colors.brand[400] }]}>Hızlı Başla</Text>
                 </View>
-                <Text style={styles.featureCardTitle}>Etkinlik Oluştur</Text>
-                <Text style={styles.featureCardSubtitle}>Tüm hizmetleri tek yerden yönet</Text>
+                <Text style={[styles.featureCardTitle, { color: colors.text }]}>Etkinlik Oluştur</Text>
+                <Text style={[styles.featureCardSubtitle, { color: colors.textSecondary }]}>Tüm hizmetleri tek yerden yönet</Text>
               </View>
               <LinearGradient
                 colors={gradients.primary}
@@ -125,9 +139,9 @@ function OrganizerHomeContent() {
 
         {/* Categories Header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Hizmetler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmetler</Text>
           <TouchableOpacity style={styles.sectionLink}>
-            <Text style={styles.sectionLinkText}>Tümü</Text>
+            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
@@ -187,9 +201,9 @@ function OrganizerHomeContent() {
 
         {/* Recent Providers */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Son Görüntülenenler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Son Görüntülenenler</Text>
           <TouchableOpacity style={styles.sectionLink}>
-            <Text style={styles.sectionLinkText}>Tümü</Text>
+            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
@@ -198,33 +212,37 @@ function OrganizerHomeContent() {
           {recentProviders.map((provider) => (
             <TouchableOpacity
               key={provider.id}
-              style={styles.providerCard}
+              style={[styles.providerCard, {
+                backgroundColor: colors.cardBackground,
+                borderColor: colors.border,
+                ...(isDark ? {} : helpers.getShadow('sm'))
+              }]}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('ProviderDetail', { providerId: provider.id })}
             >
               <View style={styles.providerImageContainer}>
                 <Image source={{ uri: provider.image }} style={styles.providerImage} />
                 {provider.verified && (
-                  <View style={styles.verifiedBadge}>
+                  <View style={[styles.verifiedBadge, { borderColor: colors.background, backgroundColor: colors.brand[500] }]}>
                     <Ionicons name="checkmark" size={10} color="white" />
                   </View>
                 )}
               </View>
               <View style={styles.providerInfo}>
-                <Text style={styles.providerName}>{provider.name}</Text>
+                <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
                 <View style={styles.providerMeta}>
-                  <Text style={styles.providerCategory}>{provider.category}</Text>
-                  <Text style={styles.providerDot}>•</Text>
-                  <Ionicons name="location" size={10} color={colors.zinc[500]} />
-                  <Text style={styles.providerLocation}>{provider.location}</Text>
+                  <Text style={[styles.providerCategory, { color: colors.brand[400] }]}>{provider.category}</Text>
+                  <Text style={[styles.providerDot, { color: colors.textMuted }]}>•</Text>
+                  <Ionicons name="location" size={10} color={colors.textMuted} />
+                  <Text style={[styles.providerLocation, { color: colors.textMuted }]}>{provider.location}</Text>
                 </View>
               </View>
               <View style={styles.providerRating}>
                 <View style={styles.ratingRow}>
                   <Ionicons name="star" size={12} color="#fbbf24" />
-                  <Text style={styles.ratingText}>{provider.rating}</Text>
+                  <Text style={[styles.ratingText, { color: colors.text }]}>{provider.rating}</Text>
                 </View>
-                <Text style={styles.reviewCount}>{provider.reviews} yorum</Text>
+                <Text style={[styles.reviewCount, { color: colors.textMuted }]}>{provider.reviews} yorum</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -232,9 +250,9 @@ function OrganizerHomeContent() {
 
         {/* Featured Artists */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popüler Sanatçılar</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Popüler Sanatçılar</Text>
           <TouchableOpacity style={styles.sectionLink} onPress={() => navigation.navigate('Search')}>
-            <Text style={styles.sectionLinkText}>Tümü</Text>
+            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
@@ -243,17 +261,21 @@ function OrganizerHomeContent() {
           {(artists || []).slice(0, 4).map((artist) => (
             <TouchableOpacity
               key={artist.id}
-              style={styles.artistCard}
+              style={[styles.artistCard, {
+                backgroundColor: colors.cardBackground,
+                borderColor: colors.border,
+                ...(isDark ? {} : helpers.getShadow('sm'))
+              }]}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
             >
               <Image source={{ uri: artist.image }} style={styles.artistImage} />
               <View style={styles.artistInfo}>
-                <Text style={styles.artistName} numberOfLines={1}>{artist.name}</Text>
-                <Text style={styles.artistGenre} numberOfLines={1}>{artist.genre}</Text>
+                <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
+                <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
                 <View style={styles.artistRating}>
                   <Ionicons name="star" size={12} color="#fbbf24" />
-                  <Text style={styles.artistRatingText}>{artist.rating}</Text>
+                  <Text style={[styles.artistRatingText, { color: colors.text }]}>{artist.rating}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -261,18 +283,22 @@ function OrganizerHomeContent() {
         </ScrollView>
 
         {/* Quick Stats */}
-        <View style={styles.statsCard}>
+        <View style={[styles.statsCard, {
+          backgroundColor: colors.cardBackground,
+          borderColor: colors.border,
+          ...(isDark ? {} : helpers.getShadow('sm'))
+        }]}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>270+</Text>
-            <Text style={styles.statLabel}>Sanatçı</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>270+</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sanatçı</Text>
           </View>
-          <View style={[styles.statItem, styles.statItemBorder]}>
-            <Text style={styles.statNumber}>150+</Text>
-            <Text style={styles.statLabel}>Mekan</Text>
+          <View style={[styles.statItem, styles.statItemBorder, { borderColor: colors.border }]}>
+            <Text style={[styles.statNumber, { color: colors.text }]}>150+</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Mekan</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>500+</Text>
-            <Text style={styles.statLabel}>Sağlayıcı</Text>
+            <Text style={[styles.statNumber, { color: colors.text }]}>500+</Text>
+            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sağlayıcı</Text>
           </View>
         </View>
 
@@ -284,6 +310,7 @@ function OrganizerHomeContent() {
 
 function ProviderHomeContent() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   // Get time-based greeting
   const getGreeting = () => {
@@ -391,31 +418,37 @@ function ProviderHomeContent() {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Enhanced Header */}
         <View style={providerStyles.headerContainer}>
           <View style={providerStyles.headerTop}>
             <View style={providerStyles.greetingSection}>
-              <Text style={providerStyles.greetingText}>{getGreeting()}</Text>
-              <Text style={providerStyles.companyName}>EventPro 360</Text>
+              <Text style={[providerStyles.greetingText, { color: colors.textMuted }]}>{getGreeting()}</Text>
+              <Text style={[providerStyles.companyName, { color: colors.text }]}>EventPro 360</Text>
             </View>
             <View style={providerStyles.headerActions}>
               <TouchableOpacity
-                style={providerStyles.headerIconButton}
+                style={[providerStyles.headerIconButton, {
+                  backgroundColor: colors.glass,
+                  borderColor: colors.glassBorder
+                }]}
                 onPress={() => navigation.navigate('MessagesTab')}
               >
-                <Ionicons name="chatbubble-outline" size={20} color={colors.zinc[400]} />
-                <View style={providerStyles.headerBadge}>
+                <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
+                <View style={[providerStyles.headerBadge, { borderColor: colors.background }]}>
                   <Text style={providerStyles.headerBadgeText}>5</Text>
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
-                style={providerStyles.headerIconButton}
+                style={[providerStyles.headerIconButton, {
+                  backgroundColor: colors.glass,
+                  borderColor: colors.glassBorder
+                }]}
                 onPress={() => navigation.navigate('Notifications')}
               >
-                <Ionicons name="notifications-outline" size={20} color={colors.zinc[400]} />
-                <View style={providerStyles.headerBadge}>
+                <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
+                <View style={[providerStyles.headerBadge, { borderColor: colors.background }]}>
                   <Text style={providerStyles.headerBadgeText}>12</Text>
                 </View>
               </TouchableOpacity>
@@ -423,20 +456,23 @@ function ProviderHomeContent() {
           </View>
 
           {/* Status Bar */}
-          <View style={providerStyles.statusBar}>
+          <View style={[providerStyles.statusBar, {
+            backgroundColor: colors.glass,
+            borderColor: colors.glassBorder
+          }]}>
             <View style={providerStyles.statusItem}>
               <View style={[providerStyles.statusDot, { backgroundColor: colors.success }]} />
-              <Text style={providerStyles.statusText}>Çevrimiçi</Text>
+              <Text style={[providerStyles.statusText, { color: colors.textSecondary }]}>Çevrimiçi</Text>
             </View>
-            <View style={providerStyles.statusDivider} />
+            <View style={[providerStyles.statusDivider, { backgroundColor: colors.border }]} />
             <View style={providerStyles.statusItem}>
-              <Ionicons name="eye-outline" size={14} color={colors.zinc[500]} />
-              <Text style={providerStyles.statusText}>{providerStats.profileViews} görüntülenme</Text>
+              <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
+              <Text style={[providerStyles.statusText, { color: colors.textSecondary }]}>{providerStats.profileViews} görüntülenme</Text>
             </View>
-            <View style={providerStyles.statusDivider} />
+            <View style={[providerStyles.statusDivider, { backgroundColor: colors.border }]} />
             <View style={providerStyles.statusItem}>
               <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={providerStyles.statusText}>{providerStats.rating} ({providerStats.reviewCount})</Text>
+              <Text style={[providerStyles.statusText, { color: colors.textSecondary }]}>{providerStats.rating} ({providerStats.reviewCount})</Text>
             </View>
           </View>
         </View>
@@ -444,8 +480,11 @@ function ProviderHomeContent() {
         {/* Modern Earnings Card with Glassmorphism */}
         <View style={providerStyles.earningsSection}>
           <LinearGradient
-            colors={['rgba(147, 51, 234, 0.15)', 'rgba(99, 102, 241, 0.1)']}
-            style={providerStyles.earningsBackground}
+            colors={isDark ? ['rgba(147, 51, 234, 0.15)', 'rgba(99, 102, 241, 0.1)'] : ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.05)']}
+            style={[providerStyles.earningsBackground, {
+              borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.25)',
+              ...(isDark ? {} : helpers.getShadow('md'))
+            }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
@@ -453,55 +492,59 @@ function ProviderHomeContent() {
               <View style={providerStyles.earningsMainInfo}>
                 <View style={providerStyles.earningsLabelRow}>
                   <Ionicons name="wallet-outline" size={16} color={colors.brand[400]} />
-                  <Text style={providerStyles.earningsLabel}>Bu Ay Kazanç</Text>
+                  <Text style={[providerStyles.earningsLabel, { color: colors.textSecondary }]}>Bu Ay Kazanç</Text>
                 </View>
-                <Text style={providerStyles.earningsValue}>₺{providerStats.monthlyEarnings.toLocaleString('tr-TR')}</Text>
+                <Text style={[providerStyles.earningsValue, { color: colors.text }]}>₺{providerStats.monthlyEarnings.toLocaleString('tr-TR')}</Text>
                 <View style={providerStyles.earningsChange}>
                   <LinearGradient
                     colors={['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.1)']}
                     style={providerStyles.earningsChangeBadge}
                   >
                     <Ionicons name="trending-up" size={12} color={colors.success} />
-                    <Text style={providerStyles.earningsChangeText}>+24% geçen aya göre</Text>
+                    <Text style={[providerStyles.earningsChangeText, { color: colors.success }]}>+24% geçen aya göre</Text>
                   </LinearGradient>
                 </View>
               </View>
               <TouchableOpacity
-                style={providerStyles.earningsDetailButton}
+                style={[providerStyles.earningsDetailButton, {
+                  backgroundColor: colors.glassStrong
+                }]}
                 onPress={() => navigation.navigate('ProfileTab', { screen: 'ProfileMain' })}
               >
                 <Ionicons name="arrow-forward" size={20} color={colors.brand[400]} />
               </TouchableOpacity>
             </View>
 
-            <View style={providerStyles.earningsStatsRow}>
+            <View style={[providerStyles.earningsStatsRow, {
+              borderTopColor: colors.glassBorder
+            }]}>
               <View style={providerStyles.earningsStatItem}>
                 <View style={[providerStyles.earningsStatIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                   <Ionicons name="time-outline" size={16} color={colors.warning} />
                 </View>
                 <View>
-                  <Text style={providerStyles.earningsStatValue}>₺{(providerStats.pendingPayments / 1000).toFixed(0)}K</Text>
-                  <Text style={providerStyles.earningsStatLabel}>Bekleyen</Text>
+                  <Text style={[providerStyles.earningsStatValue, { color: colors.text }]}>₺{(providerStats.pendingPayments / 1000).toFixed(0)}K</Text>
+                  <Text style={[providerStyles.earningsStatLabel, { color: colors.textMuted }]}>Bekleyen</Text>
                 </View>
               </View>
-              <View style={providerStyles.earningsStatDivider} />
+              <View style={[providerStyles.earningsStatDivider, { backgroundColor: colors.glassBorder }]} />
               <View style={providerStyles.earningsStatItem}>
                 <View style={[providerStyles.earningsStatIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                   <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
                 </View>
                 <View>
-                  <Text style={providerStyles.earningsStatValue}>{providerStats.completedJobs}</Text>
-                  <Text style={providerStyles.earningsStatLabel}>Tamamlanan</Text>
+                  <Text style={[providerStyles.earningsStatValue, { color: colors.text }]}>{providerStats.completedJobs}</Text>
+                  <Text style={[providerStyles.earningsStatLabel, { color: colors.textMuted }]}>Tamamlanan</Text>
                 </View>
               </View>
-              <View style={providerStyles.earningsStatDivider} />
+              <View style={[providerStyles.earningsStatDivider, { backgroundColor: colors.glassBorder }]} />
               <View style={providerStyles.earningsStatItem}>
                 <View style={[providerStyles.earningsStatIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
                   <Ionicons name="pulse-outline" size={16} color={colors.brand[400]} />
                 </View>
                 <View>
-                  <Text style={providerStyles.earningsStatValue}>%{providerStats.conversionRate}</Text>
-                  <Text style={providerStyles.earningsStatLabel}>Dönüşüm</Text>
+                  <Text style={[providerStyles.earningsStatValue, { color: colors.text }]}>%{providerStats.conversionRate}</Text>
+                  <Text style={[providerStyles.earningsStatLabel, { color: colors.textMuted }]}>Dönüşüm</Text>
                 </View>
               </View>
             </View>
@@ -565,12 +608,16 @@ function ProviderHomeContent() {
 
         {/* Quick Actions - Redesigned */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hızlı İşlemler</Text>
         </View>
 
         <View style={providerStyles.quickActionsGrid}>
           <TouchableOpacity
-            style={providerStyles.quickActionItem}
+            style={[providerStyles.quickActionItem, {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border,
+              ...(isDark ? {} : helpers.getShadow('sm'))
+            }]}
             onPress={() => navigation.navigate('OffersTab')}
           >
             <LinearGradient
@@ -579,48 +626,60 @@ function ProviderHomeContent() {
             >
               <Ionicons name="send" size={20} color="white" />
             </LinearGradient>
-            <Text style={providerStyles.quickActionLabel}>Teklif Gönder</Text>
+            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Teklif Gönder</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={providerStyles.quickActionItem}
+            style={[providerStyles.quickActionItem, {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border,
+              ...(isDark ? {} : helpers.getShadow('sm'))
+            }]}
             onPress={() => navigation.navigate('EventsTab', { screen: 'CalendarView' })}
           >
             <View style={[providerStyles.quickActionIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
               <Ionicons name="calendar-outline" size={20} color={colors.info} />
             </View>
-            <Text style={providerStyles.quickActionLabel}>Müsaitlik</Text>
+            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Müsaitlik</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={providerStyles.quickActionItem}
+            style={[providerStyles.quickActionItem, {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border,
+              ...(isDark ? {} : helpers.getShadow('sm'))
+            }]}
             onPress={() => navigation.navigate('ProfileTab', { screen: 'ProviderServices' })}
           >
             <View style={[providerStyles.quickActionIconBox, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
               <Ionicons name="images-outline" size={20} color={colors.warning} />
             </View>
-            <Text style={providerStyles.quickActionLabel}>Portföy</Text>
+            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Portföy</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={providerStyles.quickActionItem}
+            style={[providerStyles.quickActionItem, {
+              backgroundColor: colors.cardBackground,
+              borderColor: colors.border,
+              ...(isDark ? {} : helpers.getShadow('sm'))
+            }]}
             onPress={() => navigation.navigate('ProfileTab', { screen: 'ProfileMain' })}
           >
             <View style={[providerStyles.quickActionIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
               <Ionicons name="bar-chart-outline" size={20} color={colors.success} />
             </View>
-            <Text style={providerStyles.quickActionLabel}>Raporlar</Text>
+            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Raporlar</Text>
           </TouchableOpacity>
         </View>
 
         {/* Upcoming Jobs - Enhanced Design */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Yaklaşan İşler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Yaklaşan İşler</Text>
           <TouchableOpacity
             style={styles.sectionLink}
             onPress={() => navigation.navigate('EventsTab')}
           >
-            <Text style={styles.sectionLinkText}>Tümü</Text>
+            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
@@ -699,12 +758,12 @@ function ProviderHomeContent() {
 
         {/* New Requests - Enhanced Design */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Yeni Talepler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Yeni Talepler</Text>
           <TouchableOpacity
             style={styles.sectionLink}
             onPress={() => navigation.navigate('OffersTab')}
           >
-            <Text style={styles.sectionLinkText}>Tümü ({recentRequests.length})</Text>
+            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü ({recentRequests.length})</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
