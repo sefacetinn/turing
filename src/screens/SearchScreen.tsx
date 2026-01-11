@@ -225,7 +225,7 @@ export function SearchScreen() {
           >
             <Ionicons
               name={filter.icon as any}
-              size={16}
+              size={14}
               color={activeFilter === filter.key ? colors.brand[400] : colors.zinc[500]}
             />
             <Text

@@ -355,6 +355,11 @@ export function OrganizerEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'services' && styles.sectionTabActive]}
             onPress={() => setActiveSection('services')}
           >
+            <Ionicons
+              name={activeSection === 'services' ? 'grid' : 'grid-outline'}
+              size={14}
+              color={activeSection === 'services' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'services' && styles.sectionTabTextActive]}>
               Hizmetler
             </Text>
@@ -363,6 +368,11 @@ export function OrganizerEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'timeline' && styles.sectionTabActive]}
             onPress={() => setActiveSection('timeline')}
           >
+            <Ionicons
+              name={activeSection === 'timeline' ? 'time' : 'time-outline'}
+              size={14}
+              color={activeSection === 'timeline' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'timeline' && styles.sectionTabTextActive]}>
               Zaman Çizelgesi
             </Text>
@@ -371,6 +381,11 @@ export function OrganizerEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'budget' && styles.sectionTabActive]}
             onPress={() => setActiveSection('budget')}
           >
+            <Ionicons
+              name={activeSection === 'budget' ? 'wallet' : 'wallet-outline'}
+              size={14}
+              color={activeSection === 'budget' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'budget' && styles.sectionTabTextActive]}>
               Bütçe
             </Text>
@@ -734,12 +749,15 @@ const styles = StyleSheet.create({
   },
   sectionTab: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: 6,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 4,
   },
   sectionTabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',

@@ -468,6 +468,11 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
           onPress={() => setActiveTab('pending')}
         >
+          <Ionicons
+            name={activeTab === 'pending' ? 'time' : 'time-outline'}
+            size={14}
+            color={activeTab === 'pending' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextActive]}>
             Bekleyen
           </Text>
@@ -481,6 +486,11 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           style={[styles.tab, activeTab === 'accepted' && styles.tabActive]}
           onPress={() => setActiveTab('accepted')}
         >
+          <Ionicons
+            name={activeTab === 'accepted' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+            size={14}
+            color={activeTab === 'accepted' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'accepted' && styles.tabTextActive]}>
             Kabul Edilen
           </Text>
@@ -489,6 +499,11 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           style={[styles.tab, activeTab === 'rejected' && styles.tabActive]}
           onPress={() => setActiveTab('rejected')}
         >
+          <Ionicons
+            name={activeTab === 'rejected' ? 'close-circle' : 'close-circle-outline'}
+            size={14}
+            color={activeTab === 'rejected' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'rejected' && styles.tabTextActive]}>
             Reddedilen
           </Text>
@@ -497,6 +512,11 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           style={[styles.tab, activeTab === 'all' && styles.tabActive]}
           onPress={() => setActiveTab('all')}
         >
+          <Ionicons
+            name={activeTab === 'all' ? 'list' : 'list-outline'}
+            size={14}
+            color={activeTab === 'all' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
             Tümü
           </Text>

@@ -440,6 +440,11 @@ export function ProviderEventsScreen() {
           style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
           onPress={() => setActiveTab('upcoming')}
         >
+          <Ionicons
+            name={activeTab === 'upcoming' ? 'calendar' : 'calendar-outline'}
+            size={14}
+            color={activeTab === 'upcoming' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'upcoming' && styles.tabTextActive]}>
             Yaklaşan
           </Text>
@@ -448,6 +453,11 @@ export function ProviderEventsScreen() {
           style={[styles.tab, activeTab === 'active' && styles.tabActive]}
           onPress={() => setActiveTab('active')}
         >
+          <Ionicons
+            name={activeTab === 'active' ? 'play-circle' : 'play-circle-outline'}
+            size={14}
+            color={activeTab === 'active' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
             Devam Eden
           </Text>
@@ -456,6 +466,11 @@ export function ProviderEventsScreen() {
           style={[styles.tab, activeTab === 'completed' && styles.tabActive]}
           onPress={() => setActiveTab('completed')}
         >
+          <Ionicons
+            name={activeTab === 'completed' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+            size={14}
+            color={activeTab === 'completed' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'completed' && styles.tabTextActive]}>
             Tamamlanan
           </Text>
@@ -464,6 +479,11 @@ export function ProviderEventsScreen() {
           style={[styles.tab, activeTab === 'all' && styles.tabActive]}
           onPress={() => setActiveTab('all')}
         >
+          <Ionicons
+            name={activeTab === 'all' ? 'list' : 'list-outline'}
+            size={14}
+            color={activeTab === 'all' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
             Tümü
           </Text>
@@ -594,6 +614,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -601,6 +623,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     marginRight: 6,
+    gap: 4,
   },
   tabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',

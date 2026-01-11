@@ -163,17 +163,30 @@ export function EventDetailScreen() {
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
-          {(['overview', 'services', 'budget'] as const).map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab === 'overview' ? 'Genel' : tab === 'services' ? 'Hizmetler' : 'Bütçe'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {(['overview', 'services', 'budget'] as const).map((tab) => {
+            const tabConfig = {
+              overview: { icon: 'information-circle-outline', iconActive: 'information-circle', label: 'Genel' },
+              services: { icon: 'grid-outline', iconActive: 'grid', label: 'Hizmetler' },
+              budget: { icon: 'wallet-outline', iconActive: 'wallet', label: 'Bütçe' },
+            };
+            const config = tabConfig[tab];
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tab, activeTab === tab && styles.tabActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Ionicons
+                  name={(activeTab === tab ? config.iconActive : config.icon) as any}
+                  size={14}
+                  color={activeTab === tab ? colors.brand[400] : colors.zinc[500]}
+                />
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                  {config.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Tab Content */}
@@ -459,9 +472,12 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+    flexDirection: 'row',
     paddingVertical: 6,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: 8,
+    gap: 4,
   },
   tabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.2)',

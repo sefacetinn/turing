@@ -49,8 +49,8 @@ export function FavoritesScreen() {
           onPress={() => setActiveTab('artists')}
         >
           <Ionicons
-            name="musical-notes"
-            size={18}
+            name={activeTab === 'artists' ? 'musical-notes' : 'musical-notes-outline'}
+            size={14}
             color={activeTab === 'artists' ? colors.brand[400] : colors.zinc[500]}
           />
           <Text style={[styles.tabText, activeTab === 'artists' && styles.tabTextActive]}>
@@ -63,8 +63,8 @@ export function FavoritesScreen() {
           onPress={() => setActiveTab('providers')}
         >
           <Ionicons
-            name="business"
-            size={18}
+            name={activeTab === 'providers' ? 'briefcase' : 'briefcase-outline'}
+            size={14}
             color={activeTab === 'providers' ? colors.brand[400] : colors.zinc[500]}
           />
           <Text style={[styles.tabText, activeTab === 'providers' && styles.tabTextActive]}>

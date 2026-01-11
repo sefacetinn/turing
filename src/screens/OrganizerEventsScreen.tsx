@@ -364,6 +364,11 @@ export function OrganizerEventsScreen() {
           style={[styles.tab, activeTab === 'active' && styles.tabActive]}
           onPress={() => setActiveTab('active')}
         >
+          <Ionicons
+            name={activeTab === 'active' ? 'calendar' : 'calendar-outline'}
+            size={14}
+            color={activeTab === 'active' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
             Aktif
           </Text>
@@ -377,6 +382,11 @@ export function OrganizerEventsScreen() {
           style={[styles.tab, activeTab === 'past' && styles.tabActive]}
           onPress={() => setActiveTab('past')}
         >
+          <Ionicons
+            name={activeTab === 'past' ? 'time' : 'time-outline'}
+            size={14}
+            color={activeTab === 'past' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
             Geçmiş
           </Text>
@@ -385,6 +395,11 @@ export function OrganizerEventsScreen() {
           style={[styles.tab, activeTab === 'all' && styles.tabActive]}
           onPress={() => setActiveTab('all')}
         >
+          <Ionicons
+            name={activeTab === 'all' ? 'list' : 'list-outline'}
+            size={14}
+            color={activeTab === 'all' ? colors.brand[400] : colors.zinc[500]}
+          />
           <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
             Tümü
           </Text>

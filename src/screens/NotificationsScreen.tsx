@@ -27,12 +27,12 @@ export function NotificationsScreen() {
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
   const [notificationsList, setNotificationsList] = useState(localNotifications);
 
-  const filters: { key: NotificationFilter; label: string }[] = [
-    { key: 'all', label: 'Tümü' },
-    { key: 'unread', label: 'Okunmamış' },
-    { key: 'offers', label: 'Teklifler' },
-    { key: 'messages', label: 'Mesajlar' },
-    { key: 'system', label: 'Sistem' },
+  const filters: { key: NotificationFilter; label: string; icon: string; iconActive: string }[] = [
+    { key: 'all', label: 'Tümü', icon: 'notifications-outline', iconActive: 'notifications' },
+    { key: 'unread', label: 'Okunmamış', icon: 'mail-unread-outline', iconActive: 'mail-unread' },
+    { key: 'offers', label: 'Teklifler', icon: 'pricetags-outline', iconActive: 'pricetags' },
+    { key: 'messages', label: 'Mesajlar', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
+    { key: 'system', label: 'Sistem', icon: 'settings-outline', iconActive: 'settings' },
   ];
 
   const getFilteredNotifications = () => {
@@ -140,6 +140,11 @@ export function NotificationsScreen() {
             style={[styles.filterTab, activeFilter === filter.key && styles.filterTabActive]}
             onPress={() => setActiveFilter(filter.key)}
           >
+            <Ionicons
+              name={(activeFilter === filter.key ? filter.iconActive : filter.icon) as any}
+              size={14}
+              color={activeFilter === filter.key ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text
               style={[
                 styles.filterTabText,

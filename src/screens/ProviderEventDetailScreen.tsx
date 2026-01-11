@@ -344,6 +344,11 @@ export function ProviderEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'overview' && styles.sectionTabActive]}
             onPress={() => setActiveSection('overview')}
           >
+            <Ionicons
+              name={activeSection === 'overview' ? 'information-circle' : 'information-circle-outline'}
+              size={14}
+              color={activeSection === 'overview' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'overview' && styles.sectionTabTextActive]}>
               Genel
             </Text>
@@ -352,6 +357,11 @@ export function ProviderEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'tasks' && styles.sectionTabActive]}
             onPress={() => setActiveSection('tasks')}
           >
+            <Ionicons
+              name={activeSection === 'tasks' ? 'checkbox' : 'checkbox-outline'}
+              size={14}
+              color={activeSection === 'tasks' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'tasks' && styles.sectionTabTextActive]}>
               Görevler
             </Text>
@@ -363,6 +373,11 @@ export function ProviderEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'schedule' && styles.sectionTabActive]}
             onPress={() => setActiveSection('schedule')}
           >
+            <Ionicons
+              name={activeSection === 'schedule' ? 'calendar' : 'calendar-outline'}
+              size={14}
+              color={activeSection === 'schedule' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'schedule' && styles.sectionTabTextActive]}>
               Program
             </Text>
@@ -371,6 +386,11 @@ export function ProviderEventDetailScreen() {
             style={[styles.sectionTab, activeSection === 'payments' && styles.sectionTabActive]}
             onPress={() => setActiveSection('payments')}
           >
+            <Ionicons
+              name={activeSection === 'payments' ? 'wallet' : 'wallet-outline'}
+              size={14}
+              color={activeSection === 'payments' ? colors.brand[400] : colors.zinc[500]}
+            />
             <Text style={[styles.sectionTabText, activeSection === 'payments' && styles.sectionTabTextActive]}>
               Ödemeler
             </Text>
