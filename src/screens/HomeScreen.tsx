@@ -126,7 +126,12 @@ function OrganizerHomeContent() {
         {/* Categories Grid */}
         <View style={styles.categoriesGrid}>
           {categories.map((category) => (
-            <TouchableOpacity key={category.id} style={styles.categoryCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryCard}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('ServiceProviders', { category: category.id })}
+            >
               <LinearGradient
                 colors={category.gradient}
                 style={styles.categoryCardGradient}
@@ -149,7 +154,11 @@ function OrganizerHomeContent() {
         </View>
 
         {/* Operation Category */}
-        <TouchableOpacity style={styles.operationCard} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.operationCard}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('OperationSubcategories')}
+        >
           <LinearGradient
             colors={gradients.operation}
             style={styles.operationCardGradient}

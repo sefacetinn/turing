@@ -1,4 +1,5 @@
 import React, { useState, useCallback, createContext, useContext } from 'react';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -20,6 +21,13 @@ import { ProviderDetailScreen } from './src/screens/ProviderDetailScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { CreateEventScreen } from './src/screens/CreateEventScreen';
+import { ServiceProvidersScreen } from './src/screens/ServiceProvidersScreen';
+import { OperationSubcategoriesScreen } from './src/screens/OperationSubcategoriesScreen';
+import { RequestOfferScreen } from './src/screens/RequestOfferScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
+import { EditProfileScreen } from './src/screens/EditProfileScreen';
+import { FavoritesScreen } from './src/screens/FavoritesScreen';
+import { CategoryRequestScreen } from './src/screens/CategoryRequestScreen';
 import { colors } from './src/theme/colors';
 
 // App Context
@@ -51,6 +59,10 @@ function HomeStack() {
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+      <Stack.Screen name="ServiceProviders" component={ServiceProvidersScreen} />
+      <Stack.Screen name="OperationSubcategories" component={OperationSubcategoriesScreen} />
+      <Stack.Screen name="RequestOffer" component={RequestOfferScreen} />
+      <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
     </Stack.Navigator>
   );
 }
@@ -109,6 +121,11 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
           />
         )}
       </Stack.Screen>
+      <Stack.Screen name="Settings">
+        {() => <SettingsScreen onLogout={onLogout} />}
+      </Stack.Screen>
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Favorites" component={FavoritesScreen} />
     </Stack.Navigator>
   );
 }
@@ -122,49 +139,65 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: 'rgba(9, 9, 11, 0.98)',
-          borderTopColor: 'rgba(255, 255, 255, 0.06)',
+          backgroundColor: '#09090b',
+          borderTopColor: 'rgba(255, 255, 255, 0.08)',
           borderTopWidth: 1,
-          paddingTop: 8,
-          paddingBottom: 8,
-          height: 65,
+          paddingTop: 6,
+          paddingBottom: 6,
+          height: 56,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarActiveTintColor: colors.brand[400],
-        tabBarInactiveTintColor: colors.zinc[500],
+        tabBarInactiveTintColor: colors.zinc[600],
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '500',
           marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 0,
         },
         tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
 
           switch (route.name) {
             case 'HomeTab':
-              iconName = focused ? 'home' : 'home-outline';
+              iconName = focused ? 'compass' : 'compass-outline';
               break;
             case 'EventsTab':
               iconName = focused ? 'calendar' : 'calendar-outline';
               break;
             case 'OffersTab':
-              iconName = focused ? 'document-text' : 'document-text-outline';
+              iconName = focused ? 'pricetags' : 'pricetags-outline';
               break;
             case 'MessagesTab':
-              iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
+              iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
               break;
             case 'ProfileTab':
-              iconName = focused ? 'person' : 'person-outline';
+              iconName = focused ? 'person-circle' : 'person-circle-outline';
               break;
           }
 
-          return <Ionicons name={iconName} size={22} color={color} />;
+          return (
+            <View style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: focused ? 'rgba(147, 51, 234, 0.15)' : 'transparent',
+            }}>
+              <Ionicons name={iconName} size={22} color={color} />
+            </View>
+          );
         },
       })}
     >
       <Tab.Screen
         name="HomeTab"
         component={HomeStack}
-        options={{ tabBarLabel: 'Ana Sayfa' }}
+        options={{ tabBarLabel: 'Keşfet' }}
       />
       <Tab.Screen
         name="EventsTab"
@@ -174,12 +207,34 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
       <Tab.Screen
         name="OffersTab"
         component={OffersStack}
-        options={{ tabBarLabel: 'Teklifler' }}
+        options={{
+          tabBarLabel: 'Teklifler',
+          tabBarBadge: 3,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.brand[500],
+            fontSize: 10,
+            fontWeight: '700',
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+          },
+        }}
       />
       <Tab.Screen
         name="MessagesTab"
         component={MessagesStack}
-        options={{ tabBarLabel: 'Mesajlar' }}
+        options={{
+          tabBarLabel: 'Mesajlar',
+          tabBarBadge: 2,
+          tabBarBadgeStyle: {
+            backgroundColor: colors.error,
+            fontSize: 10,
+            fontWeight: '700',
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+          },
+        }}
       />
       <Tab.Screen
         name="ProfileTab"

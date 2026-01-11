@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,8 +62,77 @@ export function OfferDetailScreen() {
   const route = useRoute();
   const { offerId } = (route.params as { offerId: string }) || { offerId: 'o1' };
 
-  const offer = offers.find(o => o.id === offerId) || offers[0];
+  const offerData = offers.find(o => o.id === offerId) || offers[0];
+  const [offer, setOffer] = useState(offerData);
   const [showNegotiate, setShowNegotiate] = useState(false);
+  const [counterOfferAmount, setCounterOfferAmount] = useState('');
+  const [counterOfferNote, setCounterOfferNote] = useState('');
+
+  const handleAcceptOffer = () => {
+    Alert.alert(
+      'Teklifi Kabul Et',
+      `${offer.providerName} firmasının ₺${offer.amount.toLocaleString()} tutarındaki teklifini kabul etmek istediğinize emin misiniz?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Kabul Et',
+          onPress: () => {
+            setOffer({ ...offer, status: 'accepted' });
+            Alert.alert(
+              'Teklif Kabul Edildi',
+              'Sağlayıcıya bildirim gönderildi. Detaylar için mesajlarınızı kontrol edin.',
+              [{ text: 'Tamam' }]
+            );
+          }
+        },
+      ]
+    );
+  };
+
+  const handleRejectOffer = () => {
+    Alert.alert(
+      'Teklifi Reddet',
+      'Bu teklifi reddetmek istediğinize emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Reddet',
+          style: 'destructive',
+          onPress: () => {
+            setOffer({ ...offer, status: 'rejected' });
+            Alert.alert(
+              'Teklif Reddedildi',
+              'Sağlayıcıya bildirim gönderildi.',
+              [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+            );
+          }
+        },
+      ]
+    );
+  };
+
+  const handleSendCounterOffer = () => {
+    if (!counterOfferAmount) {
+      Alert.alert('Hata', 'Lütfen bir tutar girin');
+      return;
+    }
+
+    setShowNegotiate(false);
+    Alert.alert(
+      'Karşı Teklif Gönderildi',
+      `₺${counterOfferAmount} tutarındaki karşı teklifiniz sağlayıcıya iletildi.`,
+      [{ text: 'Tamam' }]
+    );
+    setCounterOfferAmount('');
+    setCounterOfferNote('');
+  };
+
+  const handleNavigateToChat = () => {
+    navigation.navigate('MessagesTab', {
+      screen: 'Chat',
+      params: { conversationId: offer.id }
+    });
+  };
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { color: string; text: string; bg: string; icon: string }> = {
@@ -205,7 +277,7 @@ export function OfferDetailScreen() {
         <View style={styles.bottomActions}>
           <TouchableOpacity
             style={styles.rejectButton}
-            onPress={() => {}}
+            onPress={handleRejectOffer}
           >
             <Ionicons name="close" size={20} color={colors.error} />
             <Text style={styles.rejectButtonText}>Reddet</Text>
@@ -219,7 +291,7 @@ export function OfferDetailScreen() {
             <Text style={styles.negotiateButtonText}>Pazarlık</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.acceptButton}>
+          <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptOffer}>
             <LinearGradient
               colors={gradients.primary}
               style={styles.acceptButtonGradient}
@@ -236,7 +308,7 @@ export function OfferDetailScreen() {
       {/* Accepted/Rejected Actions */}
       {offer.status !== 'pending' && (
         <View style={styles.bottomActions}>
-          <TouchableOpacity style={styles.fullWidthButton}>
+          <TouchableOpacity style={styles.fullWidthButton} onPress={handleNavigateToChat}>
             <LinearGradient
               colors={offer.status === 'accepted' ? ['#059669', '#34d399'] : gradients.primary}
               style={styles.fullWidthButtonGradient}
@@ -255,6 +327,72 @@ export function OfferDetailScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Counter Offer Modal */}
+      <Modal
+        visible={showNegotiate}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowNegotiate(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Karşı Teklif</Text>
+              <TouchableOpacity onPress={() => setShowNegotiate(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>Mevcut Teklif</Text>
+              <Text style={styles.modalCurrentPrice}>₺{offer.amount.toLocaleString()}</Text>
+
+              <Text style={styles.modalLabel}>Önerdiğiniz Tutar</Text>
+              <View style={styles.modalInputContainer}>
+                <Text style={styles.modalCurrency}>₺</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Tutar girin"
+                  placeholderTextColor={colors.zinc[600]}
+                  value={counterOfferAmount}
+                  onChangeText={setCounterOfferAmount}
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              <Text style={styles.modalLabel}>Not (Opsiyonel)</Text>
+              <TextInput
+                style={styles.modalTextArea}
+                placeholder="Teklifinizle ilgili açıklama ekleyin..."
+                placeholderTextColor={colors.zinc[600]}
+                value={counterOfferNote}
+                onChangeText={setCounterOfferNote}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowNegotiate(false)}
+              >
+                <Text style={styles.modalCancelText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSubmitButton} onPress={handleSendCounterOffer}>
+                <LinearGradient
+                  colors={gradients.primary}
+                  style={styles.modalSubmitGradient}
+                >
+                  <Text style={styles.modalSubmitText}>Gönder</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -594,6 +732,114 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   fullWidthButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.zinc[400],
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  modalCurrentPrice: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  modalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modalCurrency: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.zinc[400],
+    marginRight: 8,
+  },
+  modalInput: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalTextArea: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    fontSize: 14,
+    color: colors.text,
+    minHeight: 80,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalSubmitButton: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  modalSubmitGradient: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSubmitText: {
     fontSize: 15,
     fontWeight: '600',
     color: 'white',

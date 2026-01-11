@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Switch } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
 
 interface ProfileScreenProps {
@@ -13,6 +14,7 @@ interface ProfileScreenProps {
 
 const menuItems = [
   { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
+  { id: 'favorites', icon: 'heart-outline', label: 'Favorilerim', chevron: true },
   { id: 'notifications', icon: 'notifications-outline', label: 'Bildirim Ayarları', chevron: true },
   { id: 'security', icon: 'shield-outline', label: 'Güvenlik', chevron: true },
   { id: 'payment', icon: 'card-outline', label: 'Ödeme Yöntemleri', chevron: true },
@@ -21,19 +23,39 @@ const menuItems = [
 ];
 
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
+  const navigation = useNavigation<any>();
+
+  const handleMenuPress = (itemId: string) => {
+    switch (itemId) {
+      case 'account':
+        navigation.navigate('EditProfile');
+        break;
+      case 'favorites':
+        navigation.navigate('Favorites');
+        break;
+      case 'notifications':
+      case 'security':
+      case 'payment':
+      case 'help':
+      case 'about':
+        navigation.navigate('Settings');
+        break;
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Profil</Text>
-          <TouchableOpacity style={styles.settingsButton}>
+          <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
             <Ionicons name="settings-outline" size={22} color={colors.zinc[400]} />
           </TouchableOpacity>
         </View>
 
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <TouchableOpacity style={styles.profileCard} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               <LinearGradient
@@ -57,7 +79,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
               </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Mode Switch */}
         <View style={styles.modeCard}>
@@ -116,6 +138,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
                 index === menuItems.length - 1 && styles.menuItemLast,
               ]}
               activeOpacity={0.7}
+              onPress={() => handleMenuPress(item.id)}
             >
               <View style={styles.menuItemLeft}>
                 <View style={styles.menuIcon}>
