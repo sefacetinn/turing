@@ -459,15 +459,15 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 6,
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 8,
   },
   tabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.2)',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.zinc[500],
   },

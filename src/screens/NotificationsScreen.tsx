@@ -254,18 +254,18 @@ const styles = StyleSheet.create({
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 20,
-    marginRight: 8,
+    borderRadius: 10,
+    marginRight: 6,
   },
   filterTabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',
   },
   filterTabText: {
-    fontSize: 13,
+    fontSize: 11,
     color: colors.zinc[500],
   },
   filterTabTextActive: {

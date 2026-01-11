@@ -729,14 +729,14 @@ const styles = StyleSheet.create({
   sectionTabs: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 10,
+    gap: 6,
   },
   sectionTab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 6,
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(147, 51, 234, 0.3)',
   },
   sectionTabText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
     color: colors.zinc[400],
   },
