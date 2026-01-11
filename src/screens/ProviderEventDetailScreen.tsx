@@ -690,14 +690,14 @@ const styles = StyleSheet.create({
   sectionTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     marginRight: 6,
-    gap: 5,
+    gap: 4,
   },
   sectionTabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',

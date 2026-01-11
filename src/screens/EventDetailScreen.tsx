@@ -473,10 +473,10 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     flexDirection: 'row',
-    paddingVertical: 6,
+    paddingVertical: 5,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     gap: 4,
   },
   tabActive: {
