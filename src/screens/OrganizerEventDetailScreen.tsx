@@ -744,7 +744,7 @@ const styles = StyleSheet.create({
   sectionTabs: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginBottom: 10,
     gap: 6,
   },
   sectionTab: {

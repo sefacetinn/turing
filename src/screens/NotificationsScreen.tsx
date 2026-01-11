@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginBottom: 12,
     gap: 8,
   },
   filterTab: {
