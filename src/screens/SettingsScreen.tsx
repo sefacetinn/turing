@@ -7,11 +7,12 @@ import {
   StyleSheet,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 interface SettingsScreenProps {
   onLogout?: () => void;
@@ -19,6 +20,7 @@ interface SettingsScreenProps {
 
 export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   const navigation = useNavigation<any>();
+  const { colors, isDark, toggleTheme } = useTheme();
 
   // Notification settings
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -32,12 +34,12 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
   const handleLogout = () => {
     Alert.alert(
-      'Çıkış Yap',
-      'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+      'Cikis Yap',
+      'Hesabinizdan cikis yapmak istediginize emin misiniz?',
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: 'Iptal', style: 'cancel' },
         {
-          text: 'Çıkış Yap',
+          text: 'Cikis Yap',
           style: 'destructive',
           onPress: () => onLogout?.()
         },
@@ -47,285 +49,365 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Hesabı Sil',
-      'Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz kalıcı olarak silinecektir.',
+      'Hesabi Sil',
+      'Bu islem geri alinamaz. Hesabiniz ve tum verileriniz kalici olarak silinecektir.',
       [
-        { text: 'İptal', style: 'cancel' },
+        { text: 'Iptal', style: 'cancel' },
         {
-          text: 'Hesabı Sil',
+          text: 'Hesabi Sil',
           style: 'destructive',
           onPress: () => {
-            Alert.alert('Bilgi', 'Hesap silme talebi alındı. 7 gün içinde hesabınız silinecektir.');
+            Alert.alert('Bilgi', 'Hesap silme talebi alindi. 7 gun icinde hesabiniz silinecektir.');
           }
         },
       ]
     );
   };
 
+  const handleRateApp = () => {
+    Alert.alert(
+      'Uygulamayi Degerlendir',
+      'Bizi degerlendirmek icin App Store\'a yonlendirileceksiniz.',
+      [
+        { text: 'Iptal', style: 'cancel' },
+        {
+          text: 'Devam',
+          onPress: () => {
+            // In a real app, this would open the App Store
+            Linking.openURL('https://apps.apple.com');
+          }
+        },
+      ]
+    );
+  };
+
+  const dynamicStyles = {
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    headerTitle: {
+      fontSize: 17,
+      fontWeight: '600' as const,
+      color: colors.text,
+    },
+    sectionTitle: {
+      fontSize: 13,
+      fontWeight: '600' as const,
+      color: colors.textSecondary,
+      textTransform: 'uppercase' as const,
+      letterSpacing: 0.5,
+      marginBottom: 12,
+    },
+    settingItem: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 14,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...(isDark ? {} : {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
+      }),
+    },
+    settingLabel: {
+      fontSize: 14,
+      fontWeight: '500' as const,
+      color: colors.text,
+    },
+    settingDescription: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    logoutButton: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: 8,
+      paddingVertical: 16,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.2)',
+      marginBottom: 12,
+    },
+    deleteButton: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: 8,
+      paddingVertical: 16,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    versionText: {
+      fontSize: 13,
+      fontWeight: '500' as const,
+      color: colors.textSecondary,
+    },
+    versionSubtext: {
+      fontSize: 11,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+  };
+
+  const renderSettingItem = (
+    icon: keyof typeof Ionicons.glyphMap,
+    iconBg: string,
+    iconColor: string,
+    label: string,
+    description?: string,
+    onPress?: () => void,
+    rightElement?: React.ReactNode
+  ) => (
+    <TouchableOpacity
+      style={dynamicStyles.settingItem}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
+      <View style={styles.settingInfo}>
+        <View style={[styles.settingIcon, { backgroundColor: iconBg }]}>
+          <Ionicons name={icon} size={18} color={iconColor} />
+        </View>
+        <View style={styles.settingText}>
+          <Text style={dynamicStyles.settingLabel}>{label}</Text>
+          {description && <Text style={dynamicStyles.settingDescription}>{description}</Text>}
+        </View>
+      </View>
+      {rightElement || (onPress && <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />)}
+    </TouchableOpacity>
+  );
+
+  const renderSwitch = (value: boolean, onValueChange: (val: boolean) => void) => (
+    <Switch
+      value={value}
+      onValueChange={onValueChange}
+      trackColor={{ false: isDark ? colors.zinc[700] : '#d4d4d8', true: colors.brand[500] }}
+      thumbColor="white"
+    />
+  );
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={dynamicStyles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ayarlar</Text>
+        <Text style={dynamicStyles.headerTitle}>Ayarlar</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Theme Section */}
+        <View style={styles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Gorunum</Text>
+          {renderSettingItem(
+            isDark ? 'moon' : 'sunny',
+            isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+            isDark ? '#818cf8' : '#f59e0b',
+            isDark ? 'Karanlik Mod' : 'Aydinlik Mod',
+            isDark ? 'Koyu tema aktif' : 'Acik tema aktif',
+            undefined,
+            renderSwitch(isDark, toggleTheme)
+          )}
+        </View>
+
         {/* Notifications Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bildirimler</Text>
+          <Text style={dynamicStyles.sectionTitle}>Bildirimler</Text>
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-                <Ionicons name="notifications" size={18} color={colors.brand[400]} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Push Bildirimleri</Text>
-                <Text style={styles.settingDescription}>Anlık bildirimler al</Text>
-              </View>
-            </View>
-            <Switch
-              value={pushNotifications}
-              onValueChange={setPushNotifications}
-              trackColor={{ false: colors.zinc[700], true: colors.brand[500] }}
-              thumbColor="white"
-            />
-          </View>
+          {renderSettingItem(
+            'notifications',
+            'rgba(147, 51, 234, 0.15)',
+            colors.brand[400],
+            'Push Bildirimleri',
+            'Anlik bildirimler al',
+            undefined,
+            renderSwitch(pushNotifications, setPushNotifications)
+          )}
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                <Ionicons name="mail" size={18} color={colors.info} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>E-posta Bildirimleri</Text>
-                <Text style={styles.settingDescription}>Önemli güncellemeler için</Text>
-              </View>
-            </View>
-            <Switch
-              value={emailNotifications}
-              onValueChange={setEmailNotifications}
-              trackColor={{ false: colors.zinc[700], true: colors.brand[500] }}
-              thumbColor="white"
-            />
-          </View>
+          {renderSettingItem(
+            'mail',
+            'rgba(59, 130, 246, 0.15)',
+            colors.info,
+            'E-posta Bildirimleri',
+            'Onemli guncellemeler icin',
+            undefined,
+            renderSwitch(emailNotifications, setEmailNotifications)
+          )}
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <Ionicons name="pricetag" size={18} color={colors.success} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Teklif Bildirimleri</Text>
-                <Text style={styles.settingDescription}>Yeni teklifler için uyarı</Text>
-              </View>
-            </View>
-            <Switch
-              value={offerNotifications}
-              onValueChange={setOfferNotifications}
-              trackColor={{ false: colors.zinc[700], true: colors.brand[500] }}
-              thumbColor="white"
-            />
-          </View>
+          {renderSettingItem(
+            'pricetag',
+            'rgba(16, 185, 129, 0.15)',
+            colors.success,
+            'Teklif Bildirimleri',
+            'Yeni teklifler icin uyari',
+            undefined,
+            renderSwitch(offerNotifications, setOfferNotifications)
+          )}
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                <Ionicons name="chatbubble" size={18} color={colors.warning} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Mesaj Bildirimleri</Text>
-                <Text style={styles.settingDescription}>Yeni mesajlar için uyarı</Text>
-              </View>
-            </View>
-            <Switch
-              value={messageNotifications}
-              onValueChange={setMessageNotifications}
-              trackColor={{ false: colors.zinc[700], true: colors.brand[500] }}
-              thumbColor="white"
-            />
-          </View>
+          {renderSettingItem(
+            'chatbubble',
+            'rgba(245, 158, 11, 0.15)',
+            colors.warning,
+            'Mesaj Bildirimleri',
+            'Yeni mesajlar icin uyari',
+            undefined,
+            renderSwitch(messageNotifications, setMessageNotifications)
+          )}
+
+          {renderSettingItem(
+            'options',
+            'rgba(113, 113, 122, 0.15)',
+            colors.textSecondary,
+            'Detayli Bildirim Ayarlari',
+            'Kategori bazli ayarlar',
+            () => navigation.navigate('NotificationSettings')
+          )}
         </View>
 
         {/* Privacy Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Gizlilik</Text>
+          <Text style={dynamicStyles.sectionTitle}>Gizlilik</Text>
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-                <Ionicons name="eye" size={18} color={colors.brand[400]} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Profili Göster</Text>
-                <Text style={styles.settingDescription}>Profilin herkese açık</Text>
-              </View>
-            </View>
-            <Switch
-              value={showProfile}
-              onValueChange={setShowProfile}
-              trackColor={{ false: colors.zinc[700], true: colors.brand[500] }}
-              thumbColor="white"
-            />
-          </View>
+          {renderSettingItem(
+            'eye',
+            'rgba(147, 51, 234, 0.15)',
+            colors.brand[400],
+            'Profili Goster',
+            'Profilin herkese acik',
+            undefined,
+            renderSwitch(showProfile, setShowProfile)
+          )}
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                <Ionicons name="location" size={18} color={colors.info} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Konum Paylaş</Text>
-                <Text style={styles.settingDescription}>Yakındaki sağlayıcılar için</Text>
-              </View>
-            </View>
-            <Switch
-              value={showLocation}
-              onValueChange={setShowLocation}
-              trackColor={{ false: colors.zinc[700], true: colors.brand[500] }}
-              thumbColor="white"
-            />
-          </View>
+          {renderSettingItem(
+            'location',
+            'rgba(59, 130, 246, 0.15)',
+            colors.info,
+            'Konum Paylas',
+            'Yakindaki saglayicilar icin',
+            undefined,
+            renderSwitch(showLocation, setShowLocation)
+          )}
         </View>
 
         {/* General Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Genel</Text>
+          <Text style={dynamicStyles.sectionTitle}>Genel</Text>
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-                <Ionicons name="language" size={18} color={colors.brand[400]} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Dil</Text>
-                <Text style={styles.settingDescription}>Türkçe</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'language',
+            'rgba(147, 51, 234, 0.15)',
+            colors.brand[400],
+            'Dil',
+            'Turkce',
+            () => navigation.navigate('Language')
+          )}
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                <Ionicons name="moon" size={18} color={colors.info} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Tema</Text>
-                <Text style={styles.settingDescription}>Koyu</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <Ionicons name="cash" size={18} color={colors.success} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Para Birimi</Text>
-                <Text style={styles.settingDescription}>TRY (₺)</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'cash',
+            'rgba(16, 185, 129, 0.15)',
+            colors.success,
+            'Para Birimi',
+            'TRY (₺)',
+            () => navigation.navigate('Currency')
+          )}
         </View>
 
         {/* Support Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Destek</Text>
+          <Text style={dynamicStyles.sectionTitle}>Destek</Text>
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-                <Ionicons name="help-circle" size={18} color={colors.brand[400]} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Yardım Merkezi</Text>
-                <Text style={styles.settingDescription}>SSS ve rehberler</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'help-circle',
+            'rgba(147, 51, 234, 0.15)',
+            colors.brand[400],
+            'Yardim Merkezi',
+            'SSS ve rehberler',
+            () => navigation.navigate('HelpSupport')
+          )}
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                <Ionicons name="chatbubbles" size={18} color={colors.info} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Bize Ulaşın</Text>
-                <Text style={styles.settingDescription}>Destek ekibimizle iletişime geçin</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'chatbubbles',
+            'rgba(59, 130, 246, 0.15)',
+            colors.info,
+            'Bize Ulasin',
+            'Destek ekibimizle iletisime gecin',
+            () => navigation.navigate('ContactSupport')
+          )}
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                <Ionicons name="star" size={18} color={colors.warning} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Uygulamayı Değerlendir</Text>
-                <Text style={styles.settingDescription}>App Store'da değerlendir</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'star',
+            'rgba(245, 158, 11, 0.15)',
+            colors.warning,
+            'Uygulamayi Degerlendir',
+            'App Store\'da degerlendir',
+            handleRateApp
+          )}
         </View>
 
         {/* Legal Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Yasal</Text>
+          <Text style={dynamicStyles.sectionTitle}>Yasal</Text>
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(113, 113, 122, 0.15)' }]}>
-                <Ionicons name="document-text" size={18} color={colors.zinc[400]} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Kullanım Koşulları</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'document-text',
+            'rgba(113, 113, 122, 0.15)',
+            colors.textSecondary,
+            'Kullanim Kosullari',
+            undefined,
+            () => navigation.navigate('Terms')
+          )}
 
-          <TouchableOpacity style={styles.settingItem}>
-            <View style={styles.settingInfo}>
-              <View style={[styles.settingIcon, { backgroundColor: 'rgba(113, 113, 122, 0.15)' }]}>
-                <Ionicons name="shield-checkmark" size={18} color={colors.zinc[400]} />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingLabel}>Gizlilik Politikası</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
-          </TouchableOpacity>
+          {renderSettingItem(
+            'shield-checkmark',
+            'rgba(113, 113, 122, 0.15)',
+            colors.textSecondary,
+            'Gizlilik Politikasi',
+            undefined,
+            () => navigation.navigate('PrivacyPolicy')
+          )}
         </View>
 
         {/* Account Actions */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <TouchableOpacity style={dynamicStyles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={styles.logoutText}>Çıkış Yap</Text>
+            <Text style={[styles.logoutText, { color: colors.error }]}>Cikis Yap</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAccount}>
-            <Ionicons name="trash-outline" size={20} color={colors.zinc[500]} />
-            <Text style={styles.deleteText}>Hesabı Sil</Text>
+          <TouchableOpacity style={dynamicStyles.deleteButton} onPress={handleDeleteAccount}>
+            <Ionicons name="trash-outline" size={20} color={colors.textMuted} />
+            <Text style={[styles.deleteText, { color: colors.textMuted }]}>Hesabi Sil</Text>
           </TouchableOpacity>
         </View>
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>Turing v1.0.0</Text>
-          <Text style={styles.versionSubtext}>Build 2024.1</Text>
+          <Text style={dynamicStyles.versionText}>Turing v1.0.0</Text>
+          <Text style={dynamicStyles.versionSubtext}>Build 2024.1</Text>
         </View>
 
         <View style={{ height: 32 }} />
@@ -335,29 +417,11 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-  },
   backButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: colors.text,
   },
   placeholder: {
     width: 40,
@@ -368,26 +432,6 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 16,
     paddingTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.zinc[500],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   settingInfo: {
     flexDirection: 'row',
@@ -405,62 +449,17 @@ const styles = StyleSheet.create({
   settingText: {
     flex: 1,
   },
-  settingLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  settingDescription: {
-    fontSize: 12,
-    color: colors.zinc[500],
-    marginTop: 2,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-    marginBottom: 12,
-  },
   logoutText: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.error,
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   deleteText: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
   versionContainer: {
     alignItems: 'center',
     paddingTop: 24,
     paddingBottom: 16,
-  },
-  versionText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.zinc[500],
-  },
-  versionSubtext: {
-    fontSize: 11,
-    color: colors.zinc[600],
-    marginTop: 2,
   },
 });

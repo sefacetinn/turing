@@ -1,11 +1,12 @@
 import React, { useState, useCallback, createContext, useContext } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
@@ -44,6 +45,11 @@ import { QuietHoursScreen } from './src/screens/QuietHoursScreen';
 import { ProviderServicesScreen } from './src/screens/ProviderServicesScreen';
 import { ContractScreen } from './src/screens/ContractScreen';
 import { ContractsListScreen } from './src/screens/ContractsListScreen';
+import { LanguageScreen } from './src/screens/LanguageScreen';
+import { CurrencyScreen } from './src/screens/CurrencyScreen';
+import { TermsScreen } from './src/screens/TermsScreen';
+import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
+import { ContactSupportScreen } from './src/screens/ContactSupportScreen';
 import { colors } from './src/theme/colors';
 
 // App Context
@@ -171,6 +177,11 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="Contracts">
         {() => <ContractsListScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
+      <Stack.Screen name="Language" component={LanguageScreen} />
+      <Stack.Screen name="Currency" component={CurrencyScreen} />
+      <Stack.Screen name="Terms" component={TermsScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="ContactSupport" component={ContactSupportScreen} />
     </Stack.Navigator>
   );
 }
@@ -178,23 +189,27 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
 // Main Tab Navigator
 function MainTabs({ onLogout }: { onLogout: () => void }) {
   const { isProviderMode } = useApp();
+  const { colors: themeColors, isDark } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#09090b',
-          borderTopColor: 'rgba(255, 255, 255, 0.08)',
+          backgroundColor: themeColors.tabBar,
+          borderTopColor: themeColors.tabBarBorder,
           borderTopWidth: 1,
           paddingTop: 4,
           paddingBottom: 4,
           height: 52,
-          elevation: 0,
-          shadowOpacity: 0,
+          elevation: isDark ? 0 : 8,
+          shadowOpacity: isDark ? 0 : 0.1,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowRadius: 8,
         },
-        tabBarActiveTintColor: colors.brand[400],
-        tabBarInactiveTintColor: colors.zinc[600],
+        tabBarActiveTintColor: themeColors.tabActive,
+        tabBarInactiveTintColor: themeColors.tabInactive,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '500',
@@ -256,7 +271,7 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
           tabBarLabel: 'Teklifler',
           tabBarBadge: 3,
           tabBarBadgeStyle: {
-            backgroundColor: colors.brand[500],
+            backgroundColor: themeColors.brand[500],
             fontSize: 10,
             fontWeight: '700',
             minWidth: 18,
@@ -272,7 +287,7 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
           tabBarLabel: 'Mesajlar',
           tabBarBadge: 2,
           tabBarBadgeStyle: {
-            backgroundColor: colors.error,
+            backgroundColor: themeColors.error,
             fontSize: 10,
             fontWeight: '700',
             minWidth: 18,
@@ -291,8 +306,34 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-export default function App() {
-  // Auto-login for testing - set to true and false for organizer mode
+// Custom Navigation Themes
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#09090b',
+    card: '#18181b',
+    text: '#fafafa',
+    border: 'rgba(255, 255, 255, 0.08)',
+    primary: '#9333ea',
+  },
+};
+
+const CustomLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#ffffff',
+    card: '#ffffff',
+    text: '#18181b',
+    border: 'rgba(0, 0, 0, 0.08)',
+    primary: '#7c3aed',
+  },
+};
+
+// App Content with Theme
+function AppContent() {
+  const { colors: themeColors, isDark } = useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [isProviderMode, setIsProviderMode] = useState(false);
 
@@ -312,21 +353,31 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <SafeAreaProvider>
-        <StatusBar style="light" />
+      <>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <LoginScreen onLogin={handleLogin} />
-      </SafeAreaProvider>
+      </>
     );
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppContext.Provider value={{ isProviderMode, toggleMode }}>
-        <NavigationContainer>
+        <NavigationContainer theme={isDark ? CustomDarkTheme : CustomLightTheme}>
           <MainTabs onLogout={handleLogout} />
         </NavigationContainer>
       </AppContext.Provider>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

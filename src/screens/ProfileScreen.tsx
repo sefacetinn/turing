@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { userProfile } from '../data/mockData';
 
 interface ProfileScreenProps {
@@ -38,6 +39,7 @@ const providerMenuItems = [
 
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
+  const { colors, isDark, toggleTheme } = useTheme();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
 
   const handleMenuPress = (itemId: string) => {
@@ -72,19 +74,181 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     }
   };
 
+  const dynamicStyles = {
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: 'bold' as const,
+      color: colors.text,
+    },
+    profileCard: {
+      marginHorizontal: 20,
+      padding: 20,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...(isDark ? {} : {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }),
+    },
+    profileName: {
+      fontSize: 20,
+      fontWeight: 'bold' as const,
+      color: colors.text,
+    },
+    profileEmail: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    editAvatarButton: {
+      position: 'absolute' as const,
+      bottom: -4,
+      right: -4,
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: isDark ? colors.zinc[700] : colors.zinc[200],
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      borderWidth: 2,
+      borderColor: colors.background,
+    },
+    modeCard: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      marginHorizontal: 20,
+      marginTop: 16,
+      padding: 16,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...(isDark ? {} : {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }),
+    },
+    modeLabel: {
+      fontSize: 14,
+      fontWeight: '600' as const,
+      color: colors.text,
+    },
+    modeDescription: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    statCard: {
+      flex: 1,
+      alignItems: 'center' as const,
+      padding: 16,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      ...(isDark ? {} : {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }),
+    },
+    statNumber: {
+      fontSize: 20,
+      fontWeight: 'bold' as const,
+      color: colors.text,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    menuSection: {
+      marginHorizontal: 20,
+      marginTop: 24,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden' as const,
+      ...(isDark ? {} : {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }),
+    },
+    menuItem: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    menuIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      marginRight: 12,
+    },
+    menuLabel: {
+      fontSize: 14,
+      color: colors.text,
+    },
+    logoutButton: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      gap: 8,
+      marginHorizontal: 20,
+      marginTop: 24,
+      paddingVertical: 14,
+      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.08)',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.2)',
+    },
+    versionText: {
+      textAlign: 'center' as const,
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 20,
+    },
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profil</Text>
+          <Text style={dynamicStyles.headerTitle}>Profil</Text>
           <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
-            <Ionicons name="settings-outline" size={22} color={colors.zinc[400]} />
+            <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* Profile Card */}
-        <TouchableOpacity style={styles.profileCard} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
+        <TouchableOpacity style={dynamicStyles.profileCard} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               <LinearGradient
@@ -97,27 +261,62 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
                   {userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </Text>
               </LinearGradient>
-              <TouchableOpacity style={styles.editAvatarButton}>
-                <Ionicons name="camera" size={14} color="white" />
-              </TouchableOpacity>
+              <View style={dynamicStyles.editAvatarButton}>
+                <Ionicons name="camera" size={14} color={isDark ? 'white' : colors.text} />
+              </View>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userProfile.name}</Text>
-              <Text style={styles.profileEmail}>{userProfile.email}</Text>
+              <Text style={dynamicStyles.profileName}>{userProfile.name}</Text>
+              <Text style={dynamicStyles.profileEmail}>{userProfile.email}</Text>
               {userProfile.verified && (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                  <Text style={styles.verifiedText}>Doğrulanmış</Text>
+                  <Text style={[styles.verifiedText, { color: colors.success }]}>Doğrulanmış</Text>
                 </View>
               )}
             </View>
           </View>
         </TouchableOpacity>
 
-        {/* Mode Switch */}
-        <View style={styles.modeCard}>
+        {/* Theme Switch */}
+        <View style={dynamicStyles.modeCard}>
           <View style={styles.modeInfo}>
-            <View style={[styles.modeIcon, isProviderMode ? styles.modeIconProvider : styles.modeIconOrganizer]}>
+            <View style={[
+              styles.modeIcon,
+              { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(251, 191, 36, 0.15)' }
+            ]}>
+              <Ionicons
+                name={isDark ? 'moon' : 'sunny'}
+                size={20}
+                color={isDark ? '#818cf8' : '#f59e0b'}
+              />
+            </View>
+            <View>
+              <Text style={dynamicStyles.modeLabel}>
+                {isDark ? 'Karanlık Mod' : 'Aydınlık Mod'}
+              </Text>
+              <Text style={dynamicStyles.modeDescription}>
+                {isDark ? 'Koyu tema aktif' : 'Açık tema aktif'}
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={toggleTheme}
+            trackColor={{ false: '#d4d4d8', true: colors.brand[600] }}
+            thumbColor={isDark ? colors.brand[400] : '#fafafa'}
+          />
+        </View>
+
+        {/* Mode Switch */}
+        <View style={dynamicStyles.modeCard}>
+          <View style={styles.modeInfo}>
+            <View style={[
+              styles.modeIcon,
+              isProviderMode
+                ? { backgroundColor: 'rgba(16, 185, 129, 0.15)' }
+                : { backgroundColor: 'rgba(147, 51, 234, 0.15)' }
+            ]}>
               <Ionicons
                 name={isProviderMode ? 'musical-notes' : 'people'}
                 size={20}
@@ -125,10 +324,10 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
               />
             </View>
             <View>
-              <Text style={styles.modeLabel}>
+              <Text style={dynamicStyles.modeLabel}>
                 {isProviderMode ? 'Sağlayıcı Modu' : 'Organizatör Modu'}
               </Text>
-              <Text style={styles.modeDescription}>
+              <Text style={dynamicStyles.modeDescription}>
                 {isProviderMode ? 'Hizmet sunuyorsunuz' : 'Etkinlik düzenliyorsunuz'}
               </Text>
             </View>
@@ -136,37 +335,37 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           <Switch
             value={isProviderMode}
             onValueChange={onToggleMode}
-            trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-            thumbColor={isProviderMode ? colors.brand[400] : colors.zinc[400]}
+            trackColor={{ false: isDark ? colors.zinc[700] : '#d4d4d8', true: colors.brand[600] }}
+            thumbColor={isProviderMode ? colors.brand[400] : isDark ? colors.zinc[400] : '#fafafa'}
           />
         </View>
 
         {/* Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{userProfile.stats.totalEvents}</Text>
-            <Text style={styles.statLabel}>Etkinlik</Text>
+          <View style={dynamicStyles.statCard}>
+            <Text style={dynamicStyles.statNumber}>{userProfile.stats.totalEvents}</Text>
+            <Text style={dynamicStyles.statLabel}>Etkinlik</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{userProfile.stats.totalOffers}</Text>
-            <Text style={styles.statLabel}>Teklif</Text>
+          <View style={dynamicStyles.statCard}>
+            <Text style={dynamicStyles.statNumber}>{userProfile.stats.totalOffers}</Text>
+            <Text style={dynamicStyles.statLabel}>Teklif</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={dynamicStyles.statCard}>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={styles.statNumber}>{userProfile.stats.rating}</Text>
+              <Text style={dynamicStyles.statNumber}>{userProfile.stats.rating}</Text>
             </View>
-            <Text style={styles.statLabel}>Puan</Text>
+            <Text style={dynamicStyles.statLabel}>Puan</Text>
           </View>
         </View>
 
         {/* Menu Items */}
-        <View style={styles.menuSection}>
+        <View style={dynamicStyles.menuSection}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={item.id}
               style={[
-                styles.menuItem,
+                dynamicStyles.menuItem,
                 index === 0 && styles.menuItemFirst,
                 index === menuItems.length - 1 && styles.menuItemLast,
               ]}
@@ -174,26 +373,26 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
               onPress={() => handleMenuPress(item.id)}
             >
               <View style={styles.menuItemLeft}>
-                <View style={styles.menuIcon}>
-                  <Ionicons name={item.icon as any} size={20} color={colors.zinc[400]} />
+                <View style={dynamicStyles.menuIcon}>
+                  <Ionicons name={item.icon as any} size={20} color={colors.textSecondary} />
                 </View>
-                <Text style={styles.menuLabel}>{item.label}</Text>
+                <Text style={dynamicStyles.menuLabel}>{item.label}</Text>
               </View>
               {item.chevron && (
-                <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               )}
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout} activeOpacity={0.7}>
+        <TouchableOpacity style={dynamicStyles.logoutButton} onPress={onLogout} activeOpacity={0.7}>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
-          <Text style={styles.logoutText}>Çıkış Yap</Text>
+          <Text style={[styles.logoutText, { color: colors.error }]}>Çıkış Yap</Text>
         </TouchableOpacity>
 
         {/* Version */}
-        <Text style={styles.versionText}>Turing v1.0.0</Text>
+        <Text style={dynamicStyles.versionText}>Turing v1.0.0</Text>
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -202,10 +401,6 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -214,24 +409,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
   settingsButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  profileCard: {
-    marginHorizontal: 20,
-    padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   avatarSection: {
     flexDirection: 'row',
@@ -252,32 +434,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: colors.zinc[700],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
   profileInfo: {
     marginLeft: 16,
     flex: 1,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  profileEmail: {
-    fontSize: 13,
-    color: colors.zinc[500],
-    marginTop: 2,
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -287,20 +446,7 @@ const styles = StyleSheet.create({
   },
   verifiedText: {
     fontSize: 12,
-    color: colors.success,
     fontWeight: '500',
-  },
-  modeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 20,
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   modeInfo: {
     flexDirection: 'row',
@@ -314,69 +460,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  modeIconOrganizer: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-  },
-  modeIconProvider: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  modeLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  modeDescription: {
-    fontSize: 12,
-    color: colors.zinc[500],
-    marginTop: 2,
-  },
   statsRow: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 12,
     marginTop: 16,
   },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: colors.zinc[500],
-    marginTop: 4,
-  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-  },
-  menuSection: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   menuItemFirst: {
     borderTopLeftRadius: 16,
@@ -391,41 +484,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  menuIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  menuLabel: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginHorizontal: 20,
-    marginTop: 24,
-    paddingVertical: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
-  },
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.error,
-  },
-  versionText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: colors.zinc[600],
-    marginTop: 20,
   },
 });
