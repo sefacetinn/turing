@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
+  Modal,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,13 +16,148 @@ import { useNavigation } from '@react-navigation/native';
 import { colors, gradients, categoryGradients } from '../theme/colors';
 
 type Step = 'type' | 'details' | 'services' | 'budget' | 'review';
+type DropdownType = 'date' | 'time' | 'city' | 'district' | 'venue' | null;
+
+// Location Data
+const locationData = {
+  'İstanbul': {
+    districts: ['Kadıköy', 'Beşiktaş', 'Şişli', 'Beyoğlu', 'Üsküdar', 'Bakırköy', 'Sarıyer', 'Maltepe'],
+    venues: {
+      'Kadıköy': [
+        { id: 'v1', name: 'KüçükÇiftlik Park', capacity: '15.000' },
+        { id: 'v2', name: 'Caddebostan Kültür Merkezi', capacity: '1.200' },
+        { id: 'v3', name: 'Kadıköy Haldun Taner Sahnesi', capacity: '400' },
+      ],
+      'Beşiktaş': [
+        { id: 'v4', name: 'Vodafone Park', capacity: '42.000' },
+        { id: 'v5', name: 'Zorlu PSM', capacity: '2.500' },
+        { id: 'v6', name: 'BJK Akatlar Kültür Merkezi', capacity: '800' },
+      ],
+      'Şişli': [
+        { id: 'v7', name: 'Volkswagen Arena', capacity: '5.000' },
+        { id: 'v8', name: 'Harbiye Açıkhava', capacity: '4.500' },
+        { id: 'v9', name: 'Lütfi Kırdar Kongre Merkezi', capacity: '3.000' },
+      ],
+      'Beyoğlu': [
+        { id: 'v10', name: 'Salon IKSV', capacity: '800' },
+        { id: 'v11', name: 'Babylon Bomonti', capacity: '1.500' },
+        { id: 'v12', name: 'Garajistanbul', capacity: '400' },
+      ],
+      'Üsküdar': [
+        { id: 'v13', name: 'Bağlarbaşı Kongre Merkezi', capacity: '2.000' },
+      ],
+      'Bakırköy': [
+        { id: 'v14', name: 'Bakırköy Belediye Nikah Salonu', capacity: '500' },
+      ],
+      'Sarıyer': [
+        { id: 'v15', name: 'Sarıyer Açıkhava Tiyatrosu', capacity: '1.000' },
+      ],
+      'Maltepe': [
+        { id: 'v16', name: 'Maltepe Sahil Etkinlik Alanı', capacity: '50.000' },
+      ],
+    },
+  },
+  'Ankara': {
+    districts: ['Çankaya', 'Keçiören', 'Yenimahalle', 'Etimesgut'],
+    venues: {
+      'Çankaya': [
+        { id: 'v17', name: 'Congresium', capacity: '3.000' },
+        { id: 'v18', name: 'CSO Ada Ankara', capacity: '2.000' },
+        { id: 'v19', name: 'IF Performance Hall', capacity: '1.200' },
+      ],
+      'Keçiören': [
+        { id: 'v20', name: 'Keçiören Belediyesi Etkinlik Alanı', capacity: '5.000' },
+      ],
+      'Yenimahalle': [
+        { id: 'v21', name: 'Ankara Arena', capacity: '10.000' },
+      ],
+      'Etimesgut': [
+        { id: 'v22', name: 'Etimesgut Belediyesi Kültür Merkezi', capacity: '800' },
+      ],
+    },
+  },
+  'İzmir': {
+    districts: ['Konak', 'Karşıyaka', 'Bornova', 'Alsancak'],
+    venues: {
+      'Konak': [
+        { id: 'v23', name: 'İzmir Fuar Alanı', capacity: '20.000' },
+        { id: 'v24', name: 'Ahmed Adnan Saygun Sanat Merkezi', capacity: '1.500' },
+      ],
+      'Karşıyaka': [
+        { id: 'v25', name: 'Karşıyaka Arena', capacity: '8.000' },
+      ],
+      'Bornova': [
+        { id: 'v26', name: 'Bornova Açıkhava Tiyatrosu', capacity: '2.500' },
+      ],
+      'Alsancak': [
+        { id: 'v27', name: 'Alsancak Stadyumu', capacity: '15.000' },
+      ],
+    },
+  },
+  'Antalya': {
+    districts: ['Muratpaşa', 'Konyaaltı', 'Lara', 'Belek'],
+    venues: {
+      'Muratpaşa': [
+        { id: 'v28', name: 'Antalya Expo Center', capacity: '10.000' },
+      ],
+      'Konyaaltı': [
+        { id: 'v29', name: 'Konyaaltı Açıkhava', capacity: '5.000' },
+      ],
+      'Lara': [
+        { id: 'v30', name: 'Titanic Convention Center', capacity: '3.000' },
+      ],
+      'Belek': [
+        { id: 'v31', name: 'Regnum Carya Convention Center', capacity: '4.000' },
+        { id: 'v32', name: 'Calista Luxury Resort Event Hall', capacity: '2.000' },
+      ],
+    },
+  },
+};
+
+const cities = Object.keys(locationData);
+
+// Date options
+const months = [
+  { value: '01', label: 'Ocak' },
+  { value: '02', label: 'Şubat' },
+  { value: '03', label: 'Mart' },
+  { value: '04', label: 'Nisan' },
+  { value: '05', label: 'Mayıs' },
+  { value: '06', label: 'Haziran' },
+  { value: '07', label: 'Temmuz' },
+  { value: '08', label: 'Ağustos' },
+  { value: '09', label: 'Eylül' },
+  { value: '10', label: 'Ekim' },
+  { value: '11', label: 'Kasım' },
+  { value: '12', label: 'Aralık' },
+];
+
+const generateDays = () => {
+  return Array.from({ length: 31 }, (_, i) => ({
+    value: String(i + 1).padStart(2, '0'),
+    label: String(i + 1),
+  }));
+};
+
+const generateYears = () => {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 3 }, (_, i) => ({
+    value: String(currentYear + i),
+    label: String(currentYear + i),
+  }));
+};
+
+const timeOptions = [
+  '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00',
+  '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
+];
 
 const eventTypes = [
-  { id: 'wedding', name: 'Düğün', icon: 'heart', gradient: categoryGradients.wedding },
-  { id: 'corporate', name: 'Kurumsal', icon: 'business', gradient: categoryGradients.corporate },
   { id: 'concert', name: 'Konser', icon: 'musical-notes', gradient: categoryGradients.concert },
-  { id: 'private', name: 'Özel Parti', icon: 'wine', gradient: categoryGradients.party },
   { id: 'festival', name: 'Festival', icon: 'people', gradient: categoryGradients.festival },
+  { id: 'corporate', name: 'Kurumsal', icon: 'business', gradient: categoryGradients.corporate },
+  { id: 'municipality', name: 'Belediye', icon: 'flag', gradient: ['#0891b2', '#06b6d4'] },
+  { id: 'private', name: 'Private', icon: 'wine', gradient: categoryGradients.party },
   { id: 'other', name: 'Diğer', icon: 'ellipsis-horizontal', gradient: ['#6b7280', '#4b5563'] },
 ];
 
@@ -48,18 +183,109 @@ const budgetRanges = [
 export function CreateEventScreen() {
   const navigation = useNavigation<any>();
   const [currentStep, setCurrentStep] = useState<Step>('type');
+  const [activeDropdown, setActiveDropdown] = useState<DropdownType>(null);
+  const [showAddVenue, setShowAddVenue] = useState(false);
+  const [newVenue, setNewVenue] = useState({
+    name: '',
+    address: '',
+    capacity: '',
+    venueType: '' as 'indoor' | 'outdoor' | 'hybrid' | '',
+    hasBackstage: false,
+    hasParking: false,
+    hasSoundSystem: false,
+    hasStage: false,
+    hasAirConditioning: false,
+    hasDisabledAccess: false,
+  });
+  const [customVenues, setCustomVenues] = useState<Array<{
+    id: string;
+    name: string;
+    capacity: string;
+    address: string;
+    venueType: string;
+    features: string[];
+  }>>([]);
   const [eventData, setEventData] = useState({
     type: '',
     name: '',
-    date: '',
+    day: '',
+    month: '',
+    year: '',
     time: '',
-    location: '',
+    city: '',
+    district: '',
+    venue: '',
     guestCount: '',
     description: '',
     services: [] as string[],
     budget: '',
     customBudget: '',
   });
+
+  // Derived data based on selections
+  const availableDistricts = useMemo(() => {
+    if (!eventData.city) return [];
+    return (locationData as any)[eventData.city]?.districts || [];
+  }, [eventData.city]);
+
+  const availableVenues = useMemo(() => {
+    if (!eventData.city || !eventData.district) return [];
+    const predefinedVenues = (locationData as any)[eventData.city]?.venues?.[eventData.district] || [];
+    const districtCustomVenues = customVenues.filter(v => v.id.startsWith(`${eventData.city}-${eventData.district}`));
+    return [...predefinedVenues, ...districtCustomVenues];
+  }, [eventData.city, eventData.district, customVenues]);
+
+  const handleAddVenue = () => {
+    if (!newVenue.name.trim() || !newVenue.venueType) return;
+
+    const features: string[] = [];
+    if (newVenue.hasBackstage) features.push('Kulis');
+    if (newVenue.hasParking) features.push('Otopark');
+    if (newVenue.hasSoundSystem) features.push('Ses Sistemi');
+    if (newVenue.hasStage) features.push('Sahne');
+    if (newVenue.hasAirConditioning) features.push('Klima');
+    if (newVenue.hasDisabledAccess) features.push('Engelli Erişimi');
+
+    const venueId = `${eventData.city}-${eventData.district}-custom-${Date.now()}`;
+    const venue = {
+      id: venueId,
+      name: newVenue.name,
+      capacity: newVenue.capacity || 'Belirtilmedi',
+      address: newVenue.address,
+      venueType: newVenue.venueType === 'indoor' ? 'Kapalı Alan' : newVenue.venueType === 'outdoor' ? 'Açık Alan' : 'Hibrit',
+      features,
+    };
+
+    setCustomVenues(prev => [...prev, venue]);
+    setEventData(prev => ({ ...prev, venue: venue.name }));
+    setNewVenue({
+      name: '',
+      address: '',
+      capacity: '',
+      venueType: '',
+      hasBackstage: false,
+      hasParking: false,
+      hasSoundSystem: false,
+      hasStage: false,
+      hasAirConditioning: false,
+      hasDisabledAccess: false,
+    });
+    setShowAddVenue(false);
+    setActiveDropdown(null);
+  };
+
+  const formattedDate = useMemo(() => {
+    if (eventData.day && eventData.month && eventData.year) {
+      const monthLabel = months.find(m => m.value === eventData.month)?.label;
+      return `${eventData.day} ${monthLabel} ${eventData.year}`;
+    }
+    return '';
+  }, [eventData.day, eventData.month, eventData.year]);
+
+  const formattedLocation = useMemo(() => {
+    const parts = [eventData.venue, eventData.district, eventData.city].filter(Boolean);
+    return parts.join(', ');
+  }, [eventData.city, eventData.district, eventData.venue]);
 
   const steps: { key: Step; label: string; icon: string }[] = [
     { key: 'type', label: 'Tür', icon: 'layers' },
@@ -76,7 +302,7 @@ export function CreateEventScreen() {
       case 'type':
         return eventData.type !== '';
       case 'details':
-        return eventData.name !== '' && eventData.date !== '' && eventData.location !== '';
+        return eventData.name !== '' && formattedDate !== '' && eventData.city !== '';
       case 'services':
         return eventData.services.length > 0;
       case 'budget':
@@ -114,7 +340,7 @@ export function CreateEventScreen() {
   const createEvent = () => {
     // In a real app, this would submit to an API
     console.log('Creating event:', eventData);
-    navigation.navigate('Events');
+    navigation.goBack();
   };
 
   const renderStepContent = () => {
@@ -169,62 +395,97 @@ export function CreateEventScreen() {
               <Text style={styles.formLabel}>Etkinlik Adı *</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Örn: Yıldız Düğün Organizasyonu"
+                placeholder="Örn: Yaz Festivali 2025"
                 placeholderTextColor={colors.zinc[600]}
                 value={eventData.name}
                 onChangeText={text => setEventData(prev => ({ ...prev, name: text }))}
               />
             </View>
 
-            <View style={styles.formRow}>
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.formLabel}>Tarih *</Text>
-                <TouchableOpacity style={styles.input}>
-                  <Ionicons name="calendar-outline" size={20} color={colors.zinc[500]} />
-                  <TextInput
-                    style={styles.inputText}
-                    placeholder="GG/AA/YYYY"
-                    placeholderTextColor={colors.zinc[600]}
-                    value={eventData.date}
-                    onChangeText={text => setEventData(prev => ({ ...prev, date: text }))}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <View style={[styles.formGroup, { flex: 1 }]}>
-                <Text style={styles.formLabel}>Saat</Text>
-                <TouchableOpacity style={styles.input}>
-                  <Ionicons name="time-outline" size={20} color={colors.zinc[500]} />
-                  <TextInput
-                    style={styles.inputText}
-                    placeholder="SS:DD"
-                    placeholderTextColor={colors.zinc[600]}
-                    value={eventData.time}
-                    onChangeText={text => setEventData(prev => ({ ...prev, time: text }))}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
+            {/* Date Dropdown */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Konum *</Text>
-              <TouchableOpacity style={styles.input}>
-                <Ionicons name="location-outline" size={20} color={colors.zinc[500]} />
-                <TextInput
-                  style={styles.inputText}
-                  placeholder="Şehir veya adres girin"
-                  placeholderTextColor={colors.zinc[600]}
-                  value={eventData.location}
-                  onChangeText={text => setEventData(prev => ({ ...prev, location: text }))}
-                />
+              <Text style={styles.formLabel}>Tarih *</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setActiveDropdown('date')}
+              >
+                <Ionicons name="calendar-outline" size={20} color={colors.zinc[500]} />
+                <Text style={[styles.dropdownButtonText, formattedDate && styles.dropdownButtonTextSelected]}>
+                  {formattedDate || 'Tarih seçin'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.zinc[500]} />
               </TouchableOpacity>
             </View>
+
+            {/* Time Dropdown */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Saat</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setActiveDropdown('time')}
+              >
+                <Ionicons name="time-outline" size={20} color={colors.zinc[500]} />
+                <Text style={[styles.dropdownButtonText, eventData.time && styles.dropdownButtonTextSelected]}>
+                  {eventData.time || 'Saat seçin'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.zinc[500]} />
+              </TouchableOpacity>
+            </View>
+
+            {/* City Dropdown */}
+            <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>İl *</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setActiveDropdown('city')}
+              >
+                <Ionicons name="location-outline" size={20} color={colors.zinc[500]} />
+                <Text style={[styles.dropdownButtonText, eventData.city && styles.dropdownButtonTextSelected]}>
+                  {eventData.city || 'İl seçin'}
+                </Text>
+                <Ionicons name="chevron-down" size={18} color={colors.zinc[500]} />
+              </TouchableOpacity>
+            </View>
+
+            {/* District Dropdown - Only show if city is selected */}
+            {eventData.city && (
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>İlçe</Text>
+                <TouchableOpacity
+                  style={styles.dropdownButton}
+                  onPress={() => setActiveDropdown('district')}
+                >
+                  <Ionicons name="navigate-outline" size={20} color={colors.zinc[500]} />
+                  <Text style={[styles.dropdownButtonText, eventData.district && styles.dropdownButtonTextSelected]}>
+                    {eventData.district || 'İlçe seçin'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.zinc[500]} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Venue Dropdown - Only show if district is selected */}
+            {eventData.district && availableVenues.length > 0 && (
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Mekan</Text>
+                <TouchableOpacity
+                  style={styles.dropdownButton}
+                  onPress={() => setActiveDropdown('venue')}
+                >
+                  <Ionicons name="business-outline" size={20} color={colors.zinc[500]} />
+                  <Text style={[styles.dropdownButtonText, eventData.venue && styles.dropdownButtonTextSelected]}>
+                    {eventData.venue || 'Mekan seçin'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.zinc[500]} />
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Tahmini Konuk Sayısı</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Örn: 150"
+                placeholder="Örn: 5000"
                 placeholderTextColor={colors.zinc[600]}
                 keyboardType="numeric"
                 value={eventData.guestCount}
@@ -389,7 +650,7 @@ export function CreateEventScreen() {
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewLabel}>Tarih & Saat</Text>
                 <Text style={styles.reviewValue}>
-                  {eventData.date} {eventData.time && `- ${eventData.time}`}
+                  {formattedDate} {eventData.time && `- ${eventData.time}`}
                 </Text>
               </View>
 
@@ -397,7 +658,7 @@ export function CreateEventScreen() {
 
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewLabel}>Konum</Text>
-                <Text style={styles.reviewValue}>{eventData.location}</Text>
+                <Text style={styles.reviewValue}>{formattedLocation || 'Belirtilmedi'}</Text>
               </View>
 
               {eventData.guestCount && (
@@ -527,6 +788,401 @@ export function CreateEventScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={activeDropdown === 'date'}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setActiveDropdown(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tarih Seçin</Text>
+              <TouchableOpacity onPress={() => setActiveDropdown(null)}>
+                <Ionicons name="close" size={24} color={colors.zinc[400]} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerRow}>
+              <View style={styles.datePickerColumn}>
+                <Text style={styles.datePickerLabel}>Gün</Text>
+                <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
+                  {generateDays().map(day => (
+                    <TouchableOpacity
+                      key={day.value}
+                      style={[styles.datePickerItem, eventData.day === day.value && styles.datePickerItemSelected]}
+                      onPress={() => setEventData(prev => ({ ...prev, day: day.value }))}
+                    >
+                      <Text style={[styles.datePickerItemText, eventData.day === day.value && styles.datePickerItemTextSelected]}>
+                        {day.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              <View style={styles.datePickerColumn}>
+                <Text style={styles.datePickerLabel}>Ay</Text>
+                <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
+                  {months.map(month => (
+                    <TouchableOpacity
+                      key={month.value}
+                      style={[styles.datePickerItem, eventData.month === month.value && styles.datePickerItemSelected]}
+                      onPress={() => setEventData(prev => ({ ...prev, month: month.value }))}
+                    >
+                      <Text style={[styles.datePickerItemText, eventData.month === month.value && styles.datePickerItemTextSelected]}>
+                        {month.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              <View style={styles.datePickerColumn}>
+                <Text style={styles.datePickerLabel}>Yıl</Text>
+                <ScrollView style={styles.datePickerScroll} showsVerticalScrollIndicator={false}>
+                  {generateYears().map(year => (
+                    <TouchableOpacity
+                      key={year.value}
+                      style={[styles.datePickerItem, eventData.year === year.value && styles.datePickerItemSelected]}
+                      onPress={() => setEventData(prev => ({ ...prev, year: year.value }))}
+                    >
+                      <Text style={[styles.datePickerItemText, eventData.year === year.value && styles.datePickerItemTextSelected]}>
+                        {year.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.modalConfirmButton}
+              onPress={() => setActiveDropdown(null)}
+            >
+              <Text style={styles.modalConfirmButtonText}>Tamam</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={activeDropdown === 'time'}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setActiveDropdown(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Saat Seçin</Text>
+              <TouchableOpacity onPress={() => setActiveDropdown(null)}>
+                <Ionicons name="close" size={24} color={colors.zinc[400]} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+              {timeOptions.map(time => (
+                <TouchableOpacity
+                  key={time}
+                  style={[styles.optionItem, eventData.time === time && styles.optionItemSelected]}
+                  onPress={() => {
+                    setEventData(prev => ({ ...prev, time }));
+                    setActiveDropdown(null);
+                  }}
+                >
+                  <Text style={[styles.optionItemText, eventData.time === time && styles.optionItemTextSelected]}>
+                    {time}
+                  </Text>
+                  {eventData.time === time && (
+                    <Ionicons name="checkmark" size={20} color={colors.brand[400]} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* City Picker Modal */}
+      <Modal
+        visible={activeDropdown === 'city'}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setActiveDropdown(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>İl Seçin</Text>
+              <TouchableOpacity onPress={() => setActiveDropdown(null)}>
+                <Ionicons name="close" size={24} color={colors.zinc[400]} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+              {cities.map(city => (
+                <TouchableOpacity
+                  key={city}
+                  style={[styles.optionItem, eventData.city === city && styles.optionItemSelected]}
+                  onPress={() => {
+                    setEventData(prev => ({ ...prev, city, district: '', venue: '' }));
+                    setActiveDropdown(null);
+                  }}
+                >
+                  <Text style={[styles.optionItemText, eventData.city === city && styles.optionItemTextSelected]}>
+                    {city}
+                  </Text>
+                  {eventData.city === city && (
+                    <Ionicons name="checkmark" size={20} color={colors.brand[400]} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* District Picker Modal */}
+      <Modal
+        visible={activeDropdown === 'district'}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setActiveDropdown(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>İlçe Seçin</Text>
+              <TouchableOpacity onPress={() => setActiveDropdown(null)}>
+                <Ionicons name="close" size={24} color={colors.zinc[400]} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+              {availableDistricts.map((district: string) => (
+                <TouchableOpacity
+                  key={district}
+                  style={[styles.optionItem, eventData.district === district && styles.optionItemSelected]}
+                  onPress={() => {
+                    setEventData(prev => ({ ...prev, district, venue: '' }));
+                    setActiveDropdown(null);
+                  }}
+                >
+                  <Text style={[styles.optionItemText, eventData.district === district && styles.optionItemTextSelected]}>
+                    {district}
+                  </Text>
+                  {eventData.district === district && (
+                    <Ionicons name="checkmark" size={20} color={colors.brand[400]} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Venue Picker Modal */}
+      <Modal
+        visible={activeDropdown === 'venue'}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setActiveDropdown(null);
+          setShowAddVenue(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {showAddVenue ? 'Yeni Mekan Ekle' : 'Mekan Seçin'}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                if (showAddVenue) {
+                  setShowAddVenue(false);
+                } else {
+                  setActiveDropdown(null);
+                }
+              }}>
+                <Ionicons name={showAddVenue ? 'arrow-back' : 'close'} size={24} color={colors.zinc[400]} />
+              </TouchableOpacity>
+            </View>
+
+            {!showAddVenue ? (
+              <>
+                <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+                  {availableVenues.map((venue: any) => (
+                    <TouchableOpacity
+                      key={venue.id}
+                      style={[styles.optionItem, styles.venueItem, eventData.venue === venue.name && styles.optionItemSelected]}
+                      onPress={() => {
+                        setEventData(prev => ({ ...prev, venue: venue.name }));
+                        setActiveDropdown(null);
+                      }}
+                    >
+                      <View style={styles.venueInfo}>
+                        <Text style={[styles.optionItemText, eventData.venue === venue.name && styles.optionItemTextSelected]}>
+                          {venue.name}
+                        </Text>
+                        <Text style={styles.venueCapacity}>Kapasite: {venue.capacity}</Text>
+                      </View>
+                      {eventData.venue === venue.name && (
+                        <Ionicons name="checkmark" size={20} color={colors.brand[400]} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+
+                  {availableVenues.length === 0 && (
+                    <View style={styles.emptyVenueState}>
+                      <Ionicons name="business-outline" size={40} color={colors.zinc[600]} />
+                      <Text style={styles.emptyVenueText}>Bu ilçede kayıtlı mekan bulunamadı</Text>
+                    </View>
+                  )}
+                </ScrollView>
+
+                {/* Add Venue Button */}
+                <TouchableOpacity
+                  style={styles.addVenueButton}
+                  onPress={() => setShowAddVenue(true)}
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
+                  <Text style={styles.addVenueButtonText}>Yeni Mekan Ekle</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <ScrollView style={styles.addVenueForm} showsVerticalScrollIndicator={false}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Mekan Adı *</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Örn: Hilton Convention Center"
+                    placeholderTextColor={colors.zinc[600]}
+                    value={newVenue.name}
+                    onChangeText={text => setNewVenue(prev => ({ ...prev, name: text }))}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Mekan Tipi *</Text>
+                  <View style={styles.venueTypeRow}>
+                    <TouchableOpacity
+                      style={[styles.venueTypeButton, newVenue.venueType === 'indoor' && styles.venueTypeButtonSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, venueType: 'indoor' }))}
+                    >
+                      <Ionicons name="home" size={18} color={newVenue.venueType === 'indoor' ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.venueTypeText, newVenue.venueType === 'indoor' && styles.venueTypeTextSelected]}>Kapalı</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.venueTypeButton, newVenue.venueType === 'outdoor' && styles.venueTypeButtonSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, venueType: 'outdoor' }))}
+                    >
+                      <Ionicons name="sunny" size={18} color={newVenue.venueType === 'outdoor' ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.venueTypeText, newVenue.venueType === 'outdoor' && styles.venueTypeTextSelected]}>Açık</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.venueTypeButton, newVenue.venueType === 'hybrid' && styles.venueTypeButtonSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, venueType: 'hybrid' }))}
+                    >
+                      <Ionicons name="git-merge" size={18} color={newVenue.venueType === 'hybrid' ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.venueTypeText, newVenue.venueType === 'hybrid' && styles.venueTypeTextSelected]}>Hibrit</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Adres</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Örn: Cumhuriyet Cad. No:12"
+                    placeholderTextColor={colors.zinc[600]}
+                    value={newVenue.address}
+                    onChangeText={text => setNewVenue(prev => ({ ...prev, address: text }))}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Kapasite</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Örn: 5000"
+                    placeholderTextColor={colors.zinc[600]}
+                    keyboardType="numeric"
+                    value={newVenue.capacity}
+                    onChangeText={text => setNewVenue(prev => ({ ...prev, capacity: text }))}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Mekan Özellikleri</Text>
+                  <View style={styles.featuresGrid}>
+                    <TouchableOpacity
+                      style={[styles.featureItem, newVenue.hasBackstage && styles.featureItemSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, hasBackstage: !prev.hasBackstage }))}
+                    >
+                      <Ionicons name="person" size={20} color={newVenue.hasBackstage ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.featureText, newVenue.hasBackstage && styles.featureTextSelected]}>Kulis</Text>
+                      {newVenue.hasBackstage && <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} style={styles.featureCheck} />}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.featureItem, newVenue.hasParking && styles.featureItemSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, hasParking: !prev.hasParking }))}
+                    >
+                      <Ionicons name="car" size={20} color={newVenue.hasParking ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.featureText, newVenue.hasParking && styles.featureTextSelected]}>Otopark</Text>
+                      {newVenue.hasParking && <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} style={styles.featureCheck} />}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.featureItem, newVenue.hasSoundSystem && styles.featureItemSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, hasSoundSystem: !prev.hasSoundSystem }))}
+                    >
+                      <Ionicons name="volume-high" size={20} color={newVenue.hasSoundSystem ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.featureText, newVenue.hasSoundSystem && styles.featureTextSelected]}>Ses Sistemi</Text>
+                      {newVenue.hasSoundSystem && <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} style={styles.featureCheck} />}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.featureItem, newVenue.hasStage && styles.featureItemSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, hasStage: !prev.hasStage }))}
+                    >
+                      <Ionicons name="tv" size={20} color={newVenue.hasStage ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.featureText, newVenue.hasStage && styles.featureTextSelected]}>Sahne</Text>
+                      {newVenue.hasStage && <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} style={styles.featureCheck} />}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.featureItem, newVenue.hasAirConditioning && styles.featureItemSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, hasAirConditioning: !prev.hasAirConditioning }))}
+                    >
+                      <Ionicons name="snow" size={20} color={newVenue.hasAirConditioning ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.featureText, newVenue.hasAirConditioning && styles.featureTextSelected]}>Klima</Text>
+                      {newVenue.hasAirConditioning && <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} style={styles.featureCheck} />}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.featureItem, newVenue.hasDisabledAccess && styles.featureItemSelected]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, hasDisabledAccess: !prev.hasDisabledAccess }))}
+                    >
+                      <Ionicons name="accessibility" size={20} color={newVenue.hasDisabledAccess ? colors.brand[400] : colors.zinc[500]} />
+                      <Text style={[styles.featureText, newVenue.hasDisabledAccess && styles.featureTextSelected]}>Engelli Erişimi</Text>
+                      {newVenue.hasDisabledAccess && <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} style={styles.featureCheck} />}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.modalConfirmButton, (!newVenue.name.trim() || !newVenue.venueType) && styles.modalConfirmButtonDisabled]}
+                  onPress={handleAddVenue}
+                  disabled={!newVenue.name.trim() || !newVenue.venueType}
+                >
+                  <Ionicons name="checkmark" size={18} color="white" />
+                  <Text style={styles.modalConfirmButtonText}>Mekanı Ekle</Text>
+                </TouchableOpacity>
+
+                <View style={{ height: 40 }} />
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -894,5 +1550,238 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
+  },
+  // Dropdown styles
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 10,
+  },
+  dropdownButtonText: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.zinc[500],
+  },
+  dropdownButtonTextSelected: {
+    color: colors.text,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  optionsList: {
+    paddingHorizontal: 20,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  optionItemSelected: {
+    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: colors.brand[400],
+  },
+  optionItemText: {
+    fontSize: 15,
+    color: colors.zinc[400],
+  },
+  optionItemTextSelected: {
+    color: colors.text,
+    fontWeight: '500',
+  },
+  venueItem: {
+    paddingVertical: 12,
+  },
+  venueInfo: {
+    flex: 1,
+  },
+  venueCapacity: {
+    fontSize: 12,
+    color: colors.zinc[500],
+    marginTop: 2,
+  },
+  // Date picker styles
+  datePickerRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  datePickerColumn: {
+    flex: 1,
+  },
+  datePickerLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.zinc[500],
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  datePickerScroll: {
+    height: 200,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 12,
+    padding: 4,
+  },
+  datePickerItem: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  datePickerItemSelected: {
+    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+  },
+  datePickerItemText: {
+    fontSize: 15,
+    color: colors.zinc[400],
+  },
+  datePickerItemTextSelected: {
+    color: colors.brand[400],
+    fontWeight: '600',
+  },
+  modalConfirmButton: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingVertical: 14,
+    backgroundColor: colors.brand[500],
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modalConfirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  modalConfirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  // Add Venue styles
+  emptyVenueState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyVenueText: {
+    fontSize: 14,
+    color: colors.zinc[500],
+    marginTop: 12,
+  },
+  addVenueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.brand[400],
+    borderStyle: 'dashed',
+  },
+  addVenueButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.brand[400],
+  },
+  addVenueForm: {
+    paddingHorizontal: 20,
+    maxHeight: 400,
+  },
+  venueTypeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  venueTypeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  venueTypeButtonSelected: {
+    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: colors.brand[400],
+  },
+  venueTypeText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.zinc[500],
+  },
+  venueTypeTextSelected: {
+    color: colors.brand[400],
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  featureItem: {
+    width: '47%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  featureItemSelected: {
+    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    borderColor: 'rgba(147, 51, 234, 0.3)',
+  },
+  featureText: {
+    flex: 1,
+    fontSize: 12,
+    color: colors.zinc[500],
+  },
+  featureTextSelected: {
+    color: colors.text,
+  },
+  featureCheck: {
+    marginLeft: 'auto',
   },
 });

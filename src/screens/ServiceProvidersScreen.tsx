@@ -7,6 +7,9 @@ import {
   StyleSheet,
   Image,
   TextInput,
+  Modal,
+  Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,15 +17,37 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
 
+interface Filters {
+  city: string | null;
+  minRating: number | null;
+  budgetRange: string | null;
+}
+
+const cities = ['İstanbul', 'Ankara', 'İzmir'];
+const ratingOptions = [4.5, 4.0, 3.5];
+const budgetRanges = [
+  { id: 'low', label: '₺0 - ₺50.000', min: 0, max: 50000 },
+  { id: 'mid', label: '₺50.000 - ₺150.000', min: 50000, max: 150000 },
+  { id: 'high', label: '₺150.000+', min: 150000, max: Infinity },
+];
+
 interface Provider {
   id: string;
   name: string;
   rating: number;
+  reviewCount: number;
   description: string;
   city: string;
   teamSize: string;
   image: string;
   previouslyWorked: boolean;
+  phone: string;
+  verified: boolean;
+  yearsExperience: number;
+  completedEvents: number;
+  priceRange: string;
+  responseTime: string;
+  specialties: string[];
 }
 
 // Category configurations
@@ -55,64 +80,66 @@ const getProvidersByCategory = (category: string): Provider[] => {
 
   if (normalizedCategory === 'booking') {
     return [
-      { id: 'b1', name: 'Duman', rating: 4.9, description: 'Rock müzik grubu', city: 'İstanbul', teamSize: '5 kişilik grup', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', previouslyWorked: true },
-      { id: 'b2', name: 'Mabel Matiz', rating: 4.8, description: 'Alternatif pop sanatçısı', city: 'İstanbul', teamSize: 'Solo sanatçı', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400', previouslyWorked: false },
-      { id: 'b3', name: 'DJ Burak Yeter', rating: 4.7, description: 'EDM / House DJ', city: 'Ankara', teamSize: 'Solo DJ', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', previouslyWorked: true },
-      { id: 'b4', name: 'Sezen Aksu', rating: 5.0, description: 'Pop / Türk Sanat müziği', city: 'İstanbul', teamSize: 'Solo sanatçı + orkestra', image: 'https://images.unsplash.com/photo-1499364615650-ec38552f4f34?w=400', previouslyWorked: false },
+      { id: 'b1', name: 'Atlantis Yapım', rating: 4.9, reviewCount: 342, description: 'Türkiye\'nin önde gelen sanatçı yönetim ve booking ajansı. Athena, Melike Şahin, Pinhani gibi sanatçıların temsilcisi.', city: 'İstanbul', teamSize: '15+ Sanatçı', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', previouslyWorked: true, phone: '+905321234567', verified: true, yearsExperience: 22, completedEvents: 850, priceRange: '₺50K - ₺500K', responseTime: '1 saat', specialties: ['Rock', 'Pop', 'Alternatif', 'Festival'] },
+      { id: 'b2', name: 'Poll Production', rating: 4.8, reviewCount: 287, description: 'Uluslararası sanatçı booking ve prodüksiyon. Tarkan, Sıla, Murat Boz temsilcisi.', city: 'İstanbul', teamSize: '20+ Sanatçı', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400', previouslyWorked: true, phone: '+905321234568', verified: true, yearsExperience: 28, completedEvents: 1200, priceRange: '₺100K - ₺1M', responseTime: '2 saat', specialties: ['Pop', 'Türk Pop', 'Gala', 'Kurumsal'] },
+      { id: 'b3', name: 'BKM Organizasyon', rating: 4.9, reviewCount: 456, description: 'Komedi ve stand-up booking. Cem Yılmaz, Ata Demirer, Yılmaz Erdoğan prodüksiyonları.', city: 'İstanbul', teamSize: '30+ Sanatçı', image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400', previouslyWorked: false, phone: '+905321234569', verified: true, yearsExperience: 35, completedEvents: 2500, priceRange: '₺80K - ₺800K', responseTime: '3 saat', specialties: ['Stand-up', 'Komedi', 'Tiyatro', 'Sinema'] },
+      { id: 'b4', name: 'Pozitif Live', rating: 4.7, reviewCount: 198, description: 'Alternatif ve indie müzik odaklı booking ajansı. Duman, Model, Manga temsilcisi.', city: 'İstanbul', teamSize: '12+ Sanatçı', image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400', previouslyWorked: false, phone: '+905321234570', verified: true, yearsExperience: 18, completedEvents: 620, priceRange: '₺60K - ₺400K', responseTime: '1 saat', specialties: ['Rock', 'Alternatif', 'Indie', 'Festival'] },
+      { id: 'b5', name: 'DMC Turkey', rating: 4.8, reviewCount: 167, description: 'Uluslararası DJ ve elektronik müzik booking. DJ\'ler ve prodüktörler için Türkiye temsilcisi.', city: 'İstanbul', teamSize: '25+ DJ', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', previouslyWorked: true, phone: '+905321234571', verified: true, yearsExperience: 15, completedEvents: 480, priceRange: '₺30K - ₺300K', responseTime: '30 dk', specialties: ['EDM', 'House', 'Techno', 'Club'] },
+      { id: 'b6', name: 'Türk Sanat Müziği Ajansı', rating: 4.6, reviewCount: 134, description: 'Geleneksel Türk müziği ve sanat müziği sanatçıları. Muazzez Ersoy, Ferdi Tayfur temsilcisi.', city: 'Ankara', teamSize: '18+ Sanatçı', image: 'https://images.unsplash.com/photo-1507838153414-b4b713384a76?w=400', previouslyWorked: false, phone: '+905321234572', verified: true, yearsExperience: 32, completedEvents: 920, priceRange: '₺40K - ₺250K', responseTime: '2 saat', specialties: ['TSM', 'Arabesk', 'Nostalji', 'Gala'] },
     ];
   }
 
   if (normalizedCategory === 'technical') {
     return [
-      { id: 't1', name: 'Pro Sound Istanbul', rating: 4.9, description: 'Profesyonel ses sistemleri', city: 'İstanbul', teamSize: '12 kişilik ekip', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', previouslyWorked: true },
-      { id: 't2', name: 'LightShow Pro', rating: 4.7, description: 'Sahne ışık sistemleri', city: 'İzmir', teamSize: '8 kişilik ekip', image: 'https://images.unsplash.com/photo-1504501650895-2441b7915699?w=400', previouslyWorked: false },
-      { id: 't3', name: 'Stage Tech', rating: 4.6, description: 'Sahne kurulum ve teknik destek', city: 'Ankara', teamSize: '15 kişilik ekip', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400', previouslyWorked: true },
-      { id: 't4', name: 'Audio Masters', rating: 4.8, description: 'Stüdyo ve canlı ses mühendisliği', city: 'İstanbul', teamSize: '6 kişilik ekip', image: 'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=400', previouslyWorked: false },
+      { id: 't1', name: 'Pro Sound Istanbul', rating: 4.9, reviewCount: 128, description: 'Türkiye\'nin lider ses sistemi sağlayıcısı. Line array ve festival sistemleri.', city: 'İstanbul', teamSize: '12 kişilik ekip', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', previouslyWorked: true, phone: '+905331234567', verified: true, yearsExperience: 18, completedEvents: 450, priceRange: '₺50K - ₺150K', responseTime: '1 saat', specialties: ['Line Array', 'Festival', 'Kurumsal'] },
+      { id: 't2', name: 'LightShow Pro', rating: 4.7, reviewCount: 98, description: 'Yaratıcı sahne aydınlatması ve görsel efektler.', city: 'İzmir', teamSize: '8 kişilik ekip', image: 'https://images.unsplash.com/photo-1504501650895-2441b7915699?w=400', previouslyWorked: false, phone: '+905331234568', verified: true, yearsExperience: 10, completedEvents: 280, priceRange: '₺30K - ₺100K', responseTime: '2 saat', specialties: ['LED', 'Lazer', 'Moving Head'] },
+      { id: 't3', name: 'Stage Tech', rating: 4.6, reviewCount: 156, description: 'Komple sahne kurulum ve teknik prodüksiyon.', city: 'Ankara', teamSize: '15 kişilik ekip', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400', previouslyWorked: true, phone: '+905331234569', verified: true, yearsExperience: 14, completedEvents: 380, priceRange: '₺40K - ₺120K', responseTime: '1 saat', specialties: ['Sahne', 'Rigging', 'Backline'] },
+      { id: 't4', name: 'Audio Masters', rating: 4.8, reviewCount: 87, description: 'Stüdyo kalitesinde canlı ses mühendisliği.', city: 'İstanbul', teamSize: '6 kişilik ekip', image: 'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=400', previouslyWorked: false, phone: '+905331234570', verified: true, yearsExperience: 12, completedEvents: 320, priceRange: '₺25K - ₺80K', responseTime: '45 dk', specialties: ['FOH', 'Monitor', 'Broadcast'] },
     ];
   }
 
   if (normalizedCategory === 'transport') {
     return [
-      { id: 'tr1', name: 'Elite VIP Transfer', rating: 4.8, description: 'Lüks VIP transfer hizmetleri', city: 'İstanbul', teamSize: '20 araçlık filo', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', previouslyWorked: true },
-      { id: 'tr2', name: 'Star Limousine', rating: 4.6, description: 'Limuzin ve özel araç kiralama', city: 'Ankara', teamSize: '15 araçlık filo', image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400', previouslyWorked: false },
-      { id: 'tr3', name: 'Comfort Fleet', rating: 4.5, description: 'Grup transferleri ve minibüs', city: 'İzmir', teamSize: '30 araçlık filo', image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400', previouslyWorked: false },
+      { id: 'tr1', name: 'Elite VIP Transfer', rating: 4.8, reviewCount: 89, description: 'Premium VIP transfer ve lüks araç filosu.', city: 'İstanbul', teamSize: '20 araçlık filo', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', previouslyWorked: true, phone: '+905341234567', verified: true, yearsExperience: 12, completedEvents: 890, priceRange: '₺5K - ₺25K', responseTime: '30 dk', specialties: ['VIP', 'Havalimanı', 'Kurumsal'] },
+      { id: 'tr2', name: 'Star Limousine', rating: 4.6, reviewCount: 67, description: 'Özel limuzin ve protokol araçları.', city: 'Ankara', teamSize: '15 araçlık filo', image: 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400', previouslyWorked: false, phone: '+905341234568', verified: true, yearsExperience: 8, completedEvents: 450, priceRange: '₺3K - ₺15K', responseTime: '1 saat', specialties: ['Limuzin', 'Düğün', 'Protokol'] },
+      { id: 'tr3', name: 'Comfort Fleet', rating: 4.5, reviewCount: 112, description: 'Grup transferleri ve şehirlerarası ulaşım.', city: 'İzmir', teamSize: '30 araçlık filo', image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400', previouslyWorked: false, phone: '+905341234569', verified: true, yearsExperience: 15, completedEvents: 680, priceRange: '₺2K - ₺10K', responseTime: '45 dk', specialties: ['Grup', 'Tur', 'Festival'] },
     ];
   }
 
   if (normalizedCategory === 'venue') {
     return [
-      { id: 'v1', name: 'KüçükÇiftlik Park', rating: 4.9, description: 'Açık hava konser alanı', city: 'İstanbul', teamSize: '15.000 kişi kapasiteli', image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400', previouslyWorked: true },
-      { id: 'v2', name: 'Volkswagen Arena', rating: 4.8, description: 'Kapalı konser salonu', city: 'İstanbul', teamSize: '5.000 kişi kapasiteli', image: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400', previouslyWorked: false },
-      { id: 'v3', name: 'Congresium', rating: 4.7, description: 'Kongre ve etkinlik merkezi', city: 'Ankara', teamSize: '3.000 kişi kapasiteli', image: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400', previouslyWorked: false },
+      { id: 'v1', name: 'KüçükÇiftlik Park', rating: 4.9, reviewCount: 312, description: 'İstanbul\'un ikonik açık hava konser mekanı.', city: 'İstanbul', teamSize: '15.000 kapasite', image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400', previouslyWorked: true, phone: '+905351234567', verified: true, yearsExperience: 20, completedEvents: 180, priceRange: '₺100K - ₺300K', responseTime: '3 saat', specialties: ['Konser', 'Festival', 'Açık Hava'] },
+      { id: 'v2', name: 'Volkswagen Arena', rating: 4.8, reviewCount: 245, description: 'Modern kapalı arena ve kongre merkezi.', city: 'İstanbul', teamSize: '5.000 kapasite', image: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400', previouslyWorked: false, phone: '+905351234568', verified: true, yearsExperience: 10, completedEvents: 420, priceRange: '₺80K - ₺250K', responseTime: '2 saat', specialties: ['Arena', 'Kongre', 'Kapalı'] },
+      { id: 'v3', name: 'Congresium', rating: 4.7, reviewCount: 178, description: 'Ankara\'nın en büyük kongre ve etkinlik merkezi.', city: 'Ankara', teamSize: '3.000 kapasite', image: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400', previouslyWorked: false, phone: '+905351234569', verified: true, yearsExperience: 15, completedEvents: 350, priceRange: '₺60K - ₺180K', responseTime: '2 saat', specialties: ['Kongre', 'Kurumsal', 'Fuar'] },
     ];
   }
 
   if (normalizedCategory === 'accommodation') {
     return [
-      { id: 'a1', name: 'Grand Hyatt', rating: 4.9, description: '5 yıldızlı lüks otel', city: 'İstanbul', teamSize: '400 oda kapasiteli', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400', previouslyWorked: true },
-      { id: 'a2', name: 'Swissotel', rating: 4.8, description: '5 yıldızlı business otel', city: 'İstanbul', teamSize: '600 oda kapasiteli', image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400', previouslyWorked: false },
-      { id: 'a3', name: 'JW Marriott', rating: 4.7, description: '5 yıldızlı otel', city: 'Ankara', teamSize: '350 oda kapasiteli', image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400', previouslyWorked: false },
+      { id: 'a1', name: 'Grand Hyatt', rating: 4.9, reviewCount: 420, description: 'Ultra lüks konaklama ve MICE hizmetleri.', city: 'İstanbul', teamSize: '400 oda', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400', previouslyWorked: true, phone: '+905361234567', verified: true, yearsExperience: 25, completedEvents: 560, priceRange: '₺2K - ₺10K/gece', responseTime: '1 saat', specialties: ['MICE', 'Gala', 'VIP'] },
+      { id: 'a2', name: 'Swissotel', rating: 4.8, reviewCount: 380, description: 'Business ve etkinlik odaklı 5 yıldızlı otel.', city: 'İstanbul', teamSize: '600 oda', image: 'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400', previouslyWorked: false, phone: '+905361234568', verified: true, yearsExperience: 20, completedEvents: 480, priceRange: '₺1.5K - ₺8K/gece', responseTime: '1 saat', specialties: ['Business', 'Toplantı', 'Balo'] },
+      { id: 'a3', name: 'JW Marriott', rating: 4.7, reviewCount: 290, description: 'Lüks konaklama ve kurumsal etkinlik çözümleri.', city: 'Ankara', teamSize: '350 oda', image: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=400', previouslyWorked: false, phone: '+905361234569', verified: true, yearsExperience: 12, completedEvents: 320, priceRange: '₺1.5K - ₺6K/gece', responseTime: '2 saat', specialties: ['Kurumsal', 'Düğün', 'Kokteyl'] },
     ];
   }
 
   if (normalizedCategory === 'flight') {
     return [
-      { id: 'f1', name: 'Jet Aviation', rating: 4.9, description: 'Özel jet kiralama', city: 'İstanbul', teamSize: '12 uçaklık filo', image: 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=400', previouslyWorked: false },
-      { id: 'f2', name: 'Sky Charter', rating: 4.7, description: 'Charter uçuş hizmetleri', city: 'Ankara', teamSize: '8 uçaklık filo', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400', previouslyWorked: false },
-      { id: 'f3', name: 'Heli Turkey', rating: 4.6, description: 'Helikopter kiralama', city: 'İstanbul', teamSize: '6 helikopterlik filo', image: 'https://images.unsplash.com/photo-1534321238895-da3ab632df3e?w=400', previouslyWorked: true },
+      { id: 'f1', name: 'Jet Aviation', rating: 4.9, reviewCount: 56, description: 'VIP jet kiralama ve özel uçuş hizmetleri.', city: 'İstanbul', teamSize: '12 uçak', image: 'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=400', previouslyWorked: false, phone: '+905371234567', verified: true, yearsExperience: 18, completedEvents: 890, priceRange: '₺50K - ₺200K', responseTime: '1 saat', specialties: ['Jet', 'VIP', 'Uluslararası'] },
+      { id: 'f2', name: 'Sky Charter', rating: 4.7, reviewCount: 34, description: 'Charter uçuş ve grup seyahatleri.', city: 'Ankara', teamSize: '8 uçak', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400', previouslyWorked: false, phone: '+905371234568', verified: true, yearsExperience: 10, completedEvents: 450, priceRange: '₺30K - ₺120K', responseTime: '2 saat', specialties: ['Charter', 'Grup', 'Yurtiçi'] },
+      { id: 'f3', name: 'Heli Turkey', rating: 4.6, reviewCount: 28, description: 'Helikopter kiralama ve hava taksi.', city: 'İstanbul', teamSize: '6 helikopter', image: 'https://images.unsplash.com/photo-1534321238895-da3ab632df3e?w=400', previouslyWorked: true, phone: '+905371234569', verified: true, yearsExperience: 8, completedEvents: 320, priceRange: '₺15K - ₺60K', responseTime: '30 dk', specialties: ['Helikopter', 'Transfer', 'Çekim'] },
     ];
   }
 
   // Default: Operation and sub-categories
   return [
-    { id: 'o1', name: 'SecurePro Güvenlik', rating: 4.8, description: 'Profesyonel etkinlik güvenliği', city: 'İstanbul', teamSize: '50 kişilik ekip', image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400', previouslyWorked: true },
-    { id: 'o2', name: 'Lezzet Catering', rating: 4.7, description: 'Premium yemek ve ikram', city: 'İstanbul', teamSize: '30 kişilik ekip', image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400', previouslyWorked: false },
-    { id: 'o3', name: 'Power Gen', rating: 4.6, description: 'Jeneratör ve enerji çözümleri', city: 'Ankara', teamSize: '20 jeneratörlük filo', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400', previouslyWorked: true },
-    { id: 'o4', name: 'Clean Event', rating: 4.5, description: 'Etkinlik temizlik ve sanitasyon', city: 'İzmir', teamSize: '25 kişilik ekip', image: 'https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=400', previouslyWorked: false },
+    { id: 'o1', name: 'SecurePro Güvenlik', rating: 4.8, reviewCount: 156, description: 'Profesyonel etkinlik güvenliği ve kalabalık yönetimi.', city: 'İstanbul', teamSize: '50 kişilik ekip', image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400', previouslyWorked: true, phone: '+905381234567', verified: true, yearsExperience: 15, completedEvents: 380, priceRange: '₺20K - ₺80K', responseTime: '2 saat', specialties: ['Güvenlik', 'VIP Koruma', 'Kalabalık'] },
+    { id: 'o2', name: 'Lezzet Catering', rating: 4.7, reviewCount: 203, description: 'Premium catering ve gastronomi deneyimleri.', city: 'İstanbul', teamSize: '30 kişilik ekip', image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400', previouslyWorked: false, phone: '+905381234568', verified: true, yearsExperience: 12, completedEvents: 520, priceRange: '₺30K - ₺150K', responseTime: '1 saat', specialties: ['Catering', 'Fine Dining', 'Kokteyl'] },
+    { id: 'o3', name: 'Power Gen', rating: 4.6, reviewCount: 89, description: 'Mobil enerji çözümleri ve jeneratör hizmetleri.', city: 'Ankara', teamSize: '20 jeneratör', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400', previouslyWorked: true, phone: '+905381234569', verified: true, yearsExperience: 18, completedEvents: 450, priceRange: '₺10K - ₺50K', responseTime: '1 saat', specialties: ['Jeneratör', 'Enerji', 'Açık Hava'] },
+    { id: 'o4', name: 'Clean Event', rating: 4.5, reviewCount: 67, description: 'Etkinlik temizlik ve çevre düzenleme hizmetleri.', city: 'İzmir', teamSize: '25 kişilik ekip', image: 'https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=400', previouslyWorked: false, phone: '+905381234570', verified: true, yearsExperience: 8, completedEvents: 280, priceRange: '₺8K - ₺35K', responseTime: '2 saat', specialties: ['Temizlik', 'Atık', 'Sanitasyon'] },
   ];
 };
 
-const cities = ['Tümü', 'İstanbul', 'Ankara', 'İzmir', 'Antalya', 'Bursa'];
+type FilterTab = 'all' | 'worked';
 
 export function ServiceProvidersScreen() {
   const navigation = useNavigation<any>();
@@ -120,21 +147,56 @@ export function ServiceProvidersScreen() {
   const { category } = (route.params as { category: string }) || { category: 'booking' };
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState('Tümü');
+  const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<Filters>({
+    city: null,
+    minRating: null,
+    budgetRange: null,
+  });
 
   const config = categoryConfig[category] || categoryConfig.booking;
   const allProviders = getProvidersByCategory(category);
 
+  const activeFilterCount = [filters.city, filters.minRating, filters.budgetRange].filter(Boolean).length;
+
   const filteredProviders = useMemo(() => {
-    return allProviders.filter(provider => {
-      const matchesSearch = provider.name.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
-        provider.description.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'));
-      const matchesCity = selectedCity === 'Tümü' || provider.city === selectedCity;
-      return matchesSearch && matchesCity;
-    });
-  }, [allProviders, searchQuery, selectedCity]);
+    let filtered = allProviders;
+
+    // Tab filter
+    if (activeTab === 'worked') {
+      filtered = filtered.filter(p => p.previouslyWorked);
+    }
+
+    // City filter
+    if (filters.city) {
+      filtered = filtered.filter(p => p.city === filters.city);
+    }
+
+    // Rating filter
+    if (filters.minRating) {
+      filtered = filtered.filter(p => p.rating >= filters.minRating!);
+    }
+
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(provider => {
+        const matchesSearch = provider.name.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR')) ||
+          provider.description.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'));
+        return matchesSearch;
+      });
+    }
+
+    return filtered;
+  }, [allProviders, searchQuery, activeTab, filters]);
+
+  const workedCount = allProviders.filter(p => p.previouslyWorked).length;
+
+  const clearFilters = () => {
+    setFilters({ city: null, minRating: null, budgetRange: null });
+  };
 
   const toggleProviderSelection = (providerId: string) => {
     setSelectedProviders(prev =>
@@ -172,6 +234,28 @@ export function ServiceProvidersScreen() {
     setSelectedProviders([]);
   };
 
+  const handleCall = (provider: Provider) => {
+    Alert.alert(
+      'Ara',
+      `${provider.name} ile iletişime geçmek istiyor musunuz?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Ara',
+          onPress: () => Linking.openURL(`tel:${provider.phone}`),
+        },
+      ]
+    );
+  };
+
+  const handleMessage = (provider: Provider) => {
+    navigation.navigate('Chat', {
+      providerId: provider.id,
+      providerName: provider.name,
+      providerImage: provider.image,
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -190,12 +274,25 @@ export function ServiceProvidersScreen() {
           </LinearGradient>
           <Text style={styles.headerTitle}>{config.title}</Text>
         </View>
-        <TouchableOpacity
-          style={[styles.selectionButton, selectionMode && styles.selectionButtonActive]}
-          onPress={() => setSelectionMode(!selectionMode)}
-        >
-          <Ionicons name={selectionMode ? 'close' : 'checkbox-outline'} size={20} color={selectionMode ? colors.brand[400] : colors.zinc[400]} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
+            onPress={() => setShowFilters(true)}
+          >
+            <Ionicons name="options-outline" size={18} color={activeFilterCount > 0 ? colors.brand[400] : colors.zinc[400]} />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.selectionButton, selectionMode && styles.selectionButtonActive]}
+            onPress={() => setSelectionMode(!selectionMode)}
+          >
+            <Ionicons name={selectionMode ? 'close' : 'checkbox-outline'} size={20} color={selectionMode ? colors.brand[400] : colors.zinc[400]} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -217,24 +314,32 @@ export function ServiceProvidersScreen() {
         </View>
       </View>
 
-      {/* City Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cityFilters}
-      >
-        {cities.map(city => (
+      {/* Minimal Tabs */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('all')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'all' && styles.tabButtonTextActive]}>
+            Tümü
+          </Text>
+        </TouchableOpacity>
+        {workedCount > 0 && (
           <TouchableOpacity
-            key={city}
-            style={[styles.cityChip, selectedCity === city && styles.cityChipActive]}
-            onPress={() => setSelectedCity(city)}
+            style={[styles.tabButton, activeTab === 'worked' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('worked')}
           >
-            <Text style={[styles.cityChipText, selectedCity === city && styles.cityChipTextActive]}>
-              {city}
+            <Ionicons
+              name="checkmark-circle"
+              size={12}
+              color={activeTab === 'worked' ? colors.success : colors.zinc[500]}
+            />
+            <Text style={[styles.tabButtonText, activeTab === 'worked' && styles.tabButtonTextWorked]}>
+              Çalıştıklarım
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        )}
+      </View>
 
       {/* Results Count */}
       <View style={styles.resultsCount}>
@@ -275,13 +380,23 @@ export function ServiceProvidersScreen() {
             <View style={styles.providerContent}>
               {/* Top: Image + Info */}
               <View style={styles.providerTop}>
-                <Image source={{ uri: provider.image }} style={styles.providerImage} />
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: provider.image }} style={styles.providerImage} />
+                  {provider.verified && (
+                    <View style={styles.verifiedBadge}>
+                      <Ionicons name="checkmark" size={10} color="white" />
+                    </View>
+                  )}
+                </View>
                 <View style={styles.providerInfo}>
                   <View style={styles.providerHeader}>
-                    <Text style={styles.providerName} numberOfLines={1}>{provider.name}</Text>
+                    <View style={styles.nameContainer}>
+                      <Text style={styles.providerName} numberOfLines={1}>{provider.name}</Text>
+                    </View>
                     <View style={styles.ratingContainer}>
                       <Ionicons name="star" size={12} color="#fbbf24" />
                       <Text style={styles.ratingText}>{provider.rating}</Text>
+                      <Text style={styles.reviewCountText}>({provider.reviewCount})</Text>
                     </View>
                   </View>
                   <Text style={styles.providerDescription} numberOfLines={2}>
@@ -293,21 +408,42 @@ export function ServiceProvidersScreen() {
                       <Text style={styles.metaText}>{provider.city}</Text>
                     </View>
                     <View style={styles.metaItem}>
-                      <Ionicons name="people" size={12} color={colors.zinc[500]} />
-                      <Text style={styles.metaText}>{provider.teamSize}</Text>
+                      <Ionicons name="time" size={12} color={colors.success} />
+                      <Text style={[styles.metaText, { color: colors.success }]}>{provider.responseTime}</Text>
                     </View>
                   </View>
                 </View>
               </View>
 
-              {/* Bottom: Badges + Actions */}
-              <View style={styles.providerBottom}>
-                {provider.previouslyWorked && (
-                  <View style={styles.workedBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                    <Text style={styles.workedBadgeText}>Daha önce çalıştık</Text>
+              {/* Specialties Tags */}
+              <View style={styles.specialtiesRow}>
+                {provider.specialties.slice(0, 3).map((specialty, index) => (
+                  <View key={index} style={styles.specialtyTag}>
+                    <Text style={styles.specialtyText}>{specialty}</Text>
                   </View>
-                )}
+                ))}
+              </View>
+
+              {/* Stats Row */}
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{provider.yearsExperience} yıl</Text>
+                  <Text style={styles.statLabel}>Deneyim</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{provider.completedEvents}</Text>
+                  <Text style={styles.statLabel}>Etkinlik</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statValue, { fontSize: 11 }]}>{provider.priceRange}</Text>
+                  <Text style={styles.statLabel}>Fiyat</Text>
+                </View>
+              </View>
+
+              {/* Bottom: Actions + Badge */}
+              <View style={styles.providerBottom}>
                 <View style={styles.actionButtons}>
                   <TouchableOpacity
                     style={styles.offerButton}
@@ -323,12 +459,24 @@ export function ServiceProvidersScreen() {
                     </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.detailButton}
-                    onPress={() => handleProviderDetail(provider)}
+                    style={styles.iconButton}
+                    onPress={() => handleCall(provider)}
                   >
-                    <Text style={styles.detailButtonText}>Detay</Text>
+                    <Ionicons name="call" size={16} color={colors.success} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => handleMessage(provider)}
+                  >
+                    <Ionicons name="chatbubble" size={16} color={colors.brand[400]} />
                   </TouchableOpacity>
                 </View>
+                {provider.previouslyWorked && (
+                  <View style={styles.workedBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                    <Text style={styles.workedBadgeText}>Daha önce çalıştık</Text>
+                  </View>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -355,6 +503,100 @@ export function ServiceProvidersScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilters}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filtreler</Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)}>
+                <Ionicons name="close" size={24} color={colors.zinc[400]} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* City Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Şehir</Text>
+                <View style={styles.filterOptions}>
+                  {cities.map(city => (
+                    <TouchableOpacity
+                      key={city}
+                      style={[styles.filterChip, filters.city === city && styles.filterChipActive]}
+                      onPress={() => setFilters(f => ({ ...f, city: f.city === city ? null : city }))}
+                    >
+                      <Text style={[styles.filterChipText, filters.city === city && styles.filterChipTextActive]}>
+                        {city}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Rating Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Minimum Puan</Text>
+                <View style={styles.filterOptions}>
+                  {ratingOptions.map(rating => (
+                    <TouchableOpacity
+                      key={rating}
+                      style={[styles.filterChip, filters.minRating === rating && styles.filterChipActive]}
+                      onPress={() => setFilters(f => ({ ...f, minRating: f.minRating === rating ? null : rating }))}
+                    >
+                      <Ionicons name="star" size={12} color={filters.minRating === rating ? colors.brand[400] : '#fbbf24'} />
+                      <Text style={[styles.filterChipText, filters.minRating === rating && styles.filterChipTextActive]}>
+                        {rating}+
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Budget Filter */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterLabel}>Bütçe Aralığı</Text>
+                <View style={styles.filterOptions}>
+                  {budgetRanges.map(range => (
+                    <TouchableOpacity
+                      key={range.id}
+                      style={[styles.filterChip, filters.budgetRange === range.id && styles.filterChipActive]}
+                      onPress={() => setFilters(f => ({ ...f, budgetRange: f.budgetRange === range.id ? null : range.id }))}
+                    >
+                      <Text style={[styles.filterChipText, filters.budgetRange === range.id && styles.filterChipTextActive]}>
+                        {range.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
+                <Text style={styles.clearButtonText}>Temizle</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.applyButton} onPress={() => setShowFilters(false)}>
+                <LinearGradient
+                  colors={gradients.primary}
+                  style={styles.applyButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.applyButtonText}>Uygula</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -394,6 +636,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filterButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.brand[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'white',
+  },
   selectionButton: {
     width: 40,
     height: 40,
@@ -425,32 +700,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
   },
-  cityFilters: {
+  tabRow: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
+    marginBottom: 12,
     gap: 8,
-    paddingBottom: 12,
   },
-  cityChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginRight: 6,
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
-  cityChipActive: {
+  tabButtonActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderColor: 'rgba(147, 51, 234, 0.3)',
   },
-  cityChipText: {
-    fontSize: 11,
+  tabButtonText: {
+    fontSize: 12,
     fontWeight: '500',
     color: colors.zinc[500],
   },
-  cityChipTextActive: {
+  tabButtonTextActive: {
     color: colors.brand[400],
-    fontWeight: '500',
+  },
+  tabButtonTextWorked: {
+    color: colors.success,
   },
   resultsCount: {
     flexDirection: 'row',
@@ -513,10 +790,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  imageContainer: {
+    position: 'relative',
+  },
   providerImage: {
     width: 72,
     height: 72,
     borderRadius: 12,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: colors.brand[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  nameContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   providerInfo: {
     flex: 1,
@@ -547,6 +846,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fbbf24',
   },
+  reviewCountText: {
+    fontSize: 10,
+    color: colors.zinc[500],
+    marginLeft: 2,
+  },
   providerDescription: {
     fontSize: 12,
     color: colors.zinc[400],
@@ -566,6 +870,50 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 11,
     color: colors.zinc[500],
+  },
+  specialtiesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  specialtyTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    borderRadius: 6,
+  },
+  specialtyText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: colors.brand[400],
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  statLabel: {
+    fontSize: 9,
+    color: colors.zinc[500],
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   providerBottom: {
     flexDirection: 'row',
@@ -620,6 +968,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.zinc[300],
   },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   bulkOfferContainer: {
     position: 'absolute',
     bottom: 0,
@@ -644,6 +1002,104 @@ const styles = StyleSheet.create({
   },
   bulkOfferText: {
     fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  filterSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.zinc[400],
+    marginBottom: 12,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: colors.brand[400],
+  },
+  filterChipText: {
+    fontSize: 13,
+    color: colors.zinc[400],
+  },
+  filterChipTextActive: {
+    color: colors.brand[400],
+    fontWeight: '500',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  clearButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.zinc[400],
+  },
+  applyButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  applyButtonGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 14,
     fontWeight: '600',
     color: 'white',
   },

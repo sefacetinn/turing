@@ -13,8 +13,21 @@ interface ProfileScreenProps {
   onLogout: () => void;
 }
 
-const menuItems = [
+const organizerMenuItems = [
   { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
+  { id: 'contracts', icon: 'document-text-outline', label: 'Sözleşmelerim', chevron: true },
+  { id: 'favorites', icon: 'heart-outline', label: 'Favorilerim', chevron: true },
+  { id: 'notifications', icon: 'notifications-outline', label: 'Bildirim Ayarları', chevron: true },
+  { id: 'security', icon: 'shield-outline', label: 'Güvenlik', chevron: true },
+  { id: 'payment', icon: 'card-outline', label: 'Ödeme Yöntemleri', chevron: true },
+  { id: 'help', icon: 'help-circle-outline', label: 'Yardım & Destek', chevron: true },
+  { id: 'about', icon: 'information-circle-outline', label: 'Hakkında', chevron: true },
+];
+
+const providerMenuItems = [
+  { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
+  { id: 'services', icon: 'construct-outline', label: 'Verdiğim Hizmetler', chevron: true },
+  { id: 'contracts', icon: 'document-text-outline', label: 'Sözleşmelerim', chevron: true },
   { id: 'favorites', icon: 'heart-outline', label: 'Favorilerim', chevron: true },
   { id: 'notifications', icon: 'notifications-outline', label: 'Bildirim Ayarları', chevron: true },
   { id: 'security', icon: 'shield-outline', label: 'Güvenlik', chevron: true },
@@ -25,21 +38,36 @@ const menuItems = [
 
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
+  const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
 
   const handleMenuPress = (itemId: string) => {
     switch (itemId) {
       case 'account':
         navigation.navigate('EditProfile');
         break;
+      case 'services':
+        navigation.navigate('ProviderServices');
+        break;
+      case 'contracts':
+        navigation.navigate('Contracts');
+        break;
       case 'favorites':
         navigation.navigate('Favorites');
         break;
       case 'notifications':
+        navigation.navigate('NotificationSettings');
+        break;
       case 'security':
+        navigation.navigate('Security');
+        break;
       case 'payment':
+        navigation.navigate('PaymentMethods');
+        break;
       case 'help':
+        navigation.navigate('HelpSupport');
+        break;
       case 'about':
-        navigation.navigate('Settings');
+        navigation.navigate('About');
         break;
     }
   };

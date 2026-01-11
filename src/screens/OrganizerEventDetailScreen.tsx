@@ -121,12 +121,30 @@ export function OrganizerEventDetailScreen() {
     return { confirmed, pending, offered, total: event.services.length };
   }, [event.services]);
 
+  const handleServicePress = (service: Service) => {
+    if (service.status === 'confirmed' && service.provider) {
+      // Navigate to provider detail
+      navigation.navigate('ProviderDetail', { providerId: service.id });
+    } else if (service.status === 'offered') {
+      // Navigate to offers
+      navigation.navigate('MainTabs', { screen: 'Offers' });
+    } else if (service.status === 'pending') {
+      // Navigate to find providers
+      navigation.navigate('ServiceProviders', { category: service.category });
+    }
+  };
+
   const renderServiceCard = (service: Service) => {
     const statusInfo = getStatusInfo(service.status);
     const categoryInfo = getCategoryInfo(service.category);
 
     return (
-      <TouchableOpacity key={service.id} style={styles.serviceCard} activeOpacity={0.8}>
+      <TouchableOpacity
+        key={service.id}
+        style={styles.serviceCard}
+        activeOpacity={0.8}
+        onPress={() => handleServicePress(service)}
+      >
         <View style={styles.serviceHeader}>
           <LinearGradient
             colors={categoryInfo.gradient}
@@ -164,7 +182,10 @@ export function OrganizerEventDetailScreen() {
         </View>
 
         {service.status === 'pending' && (
-          <TouchableOpacity style={styles.serviceActionButton}>
+          <TouchableOpacity
+            style={styles.serviceActionButton}
+            onPress={() => navigation.navigate('ServiceProviders', { category: service.category })}
+          >
             <LinearGradient
               colors={gradients.primary}
               style={styles.serviceActionGradient}
@@ -178,7 +199,10 @@ export function OrganizerEventDetailScreen() {
         )}
 
         {service.status === 'offered' && (
-          <TouchableOpacity style={styles.serviceActionButton}>
+          <TouchableOpacity
+            style={styles.serviceActionButton}
+            onPress={() => navigation.navigate('MainTabs', { screen: 'Offers' })}
+          >
             <LinearGradient
               colors={gradients.primary}
               style={styles.serviceActionGradient}
@@ -410,7 +434,21 @@ export function OrganizerEventDetailScreen() {
             ))}
 
             {/* Add Service Button */}
-            <TouchableOpacity style={styles.addServiceButton}>
+            <TouchableOpacity
+              style={styles.addServiceButton}
+              onPress={() => {
+                Alert.alert(
+                  'Hizmet Ekle',
+                  'Hangi kategoriden hizmet eklemek istiyorsunuz?',
+                  [
+                    { text: 'Booking', onPress: () => navigation.navigate('ServiceProviders', { category: 'booking' }) },
+                    { text: 'Teknik', onPress: () => navigation.navigate('ServiceProviders', { category: 'technical' }) },
+                    { text: 'Operasyon', onPress: () => navigation.navigate('ServiceProviders', { category: 'operation' }) },
+                    { text: 'İptal', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
               <Ionicons name="add" size={20} color={colors.brand[400]} />
               <Text style={styles.addServiceText}>Hizmet Ekle</Text>
             </TouchableOpacity>
@@ -489,7 +527,12 @@ export function OrganizerEventDetailScreen() {
             })}
 
             {/* Export Button */}
-            <TouchableOpacity style={styles.exportButton}>
+            <TouchableOpacity
+              style={styles.exportButton}
+              onPress={() => {
+                Alert.alert('Rapor İndiriliyor', 'Bütçe raporu PDF olarak hazırlanıyor...');
+              }}
+            >
               <Ionicons name="download-outline" size={18} color={colors.brand[400]} />
               <Text style={styles.exportButtonText}>Bütçe Raporu İndir (PDF)</Text>
             </TouchableOpacity>
@@ -521,10 +564,30 @@ export function OrganizerEventDetailScreen() {
 
       {/* Fixed Bottom Actions */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.messageButton}>
-          <Ionicons name="chatbubble-outline" size={20} color={colors.text} />
+        <TouchableOpacity
+          style={styles.messageButton}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Messages' })}
+        >
+          <Ionicons name="chatbubble-outline" size={20} color={colors.brand[400]} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.primaryButton}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => {
+            Alert.alert(
+              'Etkinliği Yayınla',
+              'Etkinliğinizi yayınlamak istediğinize emin misiniz? Yayınlandıktan sonra tedarikçiler tekliflerini gönderebilecek.',
+              [
+                { text: 'İptal', style: 'cancel' },
+                {
+                  text: 'Yayınla',
+                  onPress: () => {
+                    Alert.alert('Başarılı', 'Etkinliğiniz yayınlandı! Tedarikçilerden teklif almaya başlayabilirsiniz.');
+                  }
+                },
+              ]
+            );
+          }}
+        >
           <LinearGradient
             colors={gradients.primary}
             style={styles.primaryButtonGradient}

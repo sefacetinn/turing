@@ -15,6 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 
+interface ChatParams {
+  conversationId?: string;
+  providerId?: string;
+  providerName?: string;
+  providerImage?: string;
+}
+
 // Local conversations data
 const conversations = [
   {
@@ -44,12 +51,48 @@ const conversations = [
 export function ChatScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { conversationId } = (route.params as { conversationId: string }) || { conversationId: 'c1' };
+  const params = (route.params || {}) as ChatParams;
 
-  const conversation = conversations.find(c => c.id === conversationId) || conversations[0];
+  // Support both conversationId and providerId/providerName/providerImage
+  const getConversationData = React.useMemo(() => {
+    // First check for conversationId
+    if (params?.conversationId) {
+      const found = conversations.find(c => c.id === params.conversationId);
+      if (found) return found;
+    }
+
+    // If providerId is passed, create a new conversation
+    if (params?.providerId && params?.providerName) {
+      return {
+        id: `new_${params.providerId}`,
+        participantName: params.providerName,
+        participantImage: params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
+        online: true,
+        messages: [
+          {
+            id: 'm1',
+            senderId: 'provider' as const,
+            text: `Merhaba! ${params.providerName} olarak size nasıl yardımcı olabiliriz?`,
+            time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+            type: 'text' as const
+          },
+        ],
+      };
+    }
+
+    // Default fallback
+    return conversations[0];
+  }, [params?.conversationId, params?.providerId, params?.providerName, params?.providerImage]);
+
+  const conversation = getConversationData;
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState(conversation.messages);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Update messages when conversation changes
+  React.useEffect(() => {
+    setMessages(conversation.messages);
+  }, [conversation]);
 
   const sendMessage = () => {
     if (!message.trim()) return;

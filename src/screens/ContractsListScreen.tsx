@@ -1,0 +1,699 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { colors, gradients } from '../theme/colors';
+
+type ContractStatus = 'pending_signature' | 'signed' | 'completed' | 'cancelled';
+type TabType = 'pending' | 'signed' | 'all';
+
+interface Contract {
+  id: string;
+  eventName: string;
+  serviceName: string;
+  serviceCategory: string;
+  otherPartyName: string;
+  otherPartyImage: string;
+  amount: number;
+  status: ContractStatus;
+  date: string;
+  eventDate: string;
+  needsMySignature: boolean;
+}
+
+interface ContractsListScreenProps {
+  isProviderMode?: boolean;
+}
+
+// Mock contracts data
+const mockContracts: Contract[] = [
+  {
+    id: 'c1',
+    eventName: 'Kurumsal Gala',
+    serviceName: 'VIP Transfer',
+    serviceCategory: 'transport',
+    otherPartyName: 'XYZ Holding',
+    otherPartyImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200',
+    amount: 12500,
+    status: 'pending_signature',
+    date: '16 Ocak 2024',
+    eventDate: '22 Ağustos 2024',
+    needsMySignature: true,
+  },
+  {
+    id: 'c2',
+    eventName: 'Zeytinli Rock Festivali',
+    serviceName: 'Ana Sahne Ses Sistemi',
+    serviceCategory: 'technical',
+    otherPartyName: 'Festival Org.',
+    otherPartyImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
+    amount: 245000,
+    status: 'pending_signature',
+    date: '14 Ocak 2024',
+    eventDate: '18-20 Temmuz 2024',
+    needsMySignature: false,
+  },
+  {
+    id: 'c3',
+    eventName: 'Tech Conference 2024',
+    serviceName: 'Işık Sistemi',
+    serviceCategory: 'technical',
+    otherPartyName: 'ABC Teknoloji',
+    otherPartyImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200',
+    amount: 38000,
+    status: 'signed',
+    date: '10 Ocak 2024',
+    eventDate: '20 Ağustos 2024',
+    needsMySignature: false,
+  },
+  {
+    id: 'c4',
+    eventName: 'Düğün - Selin & Burak',
+    serviceName: 'DJ Set',
+    serviceCategory: 'booking',
+    otherPartyName: 'Selin Demir',
+    otherPartyImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+    amount: 22000,
+    status: 'signed',
+    date: '5 Ocak 2024',
+    eventDate: '15 Eylül 2024',
+    needsMySignature: false,
+  },
+  {
+    id: 'c5',
+    eventName: 'MegaFon Arena - Tarkan',
+    serviceName: 'Etkinlik Güvenliği',
+    serviceCategory: 'operation',
+    otherPartyName: 'MegaFon Events',
+    otherPartyImage: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=200',
+    amount: 185000,
+    status: 'completed',
+    date: '1 Ocak 2024',
+    eventDate: '25 Temmuz 2024',
+    needsMySignature: false,
+  },
+];
+
+const getCategoryColor = (category: string) => {
+  const categoryColors: Record<string, string> = {
+    technical: '#3b82f6',
+    booking: '#ec4899',
+    venue: '#10b981',
+    transport: '#f59e0b',
+    operation: '#8b5cf6',
+  };
+  return categoryColors[category] || colors.brand[400];
+};
+
+export function ContractsListScreen({ isProviderMode = true }: ContractsListScreenProps) {
+  const navigation = useNavigation<any>();
+  const [activeTab, setActiveTab] = useState<TabType>('pending');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  const filteredContracts = useMemo(() => {
+    if (activeTab === 'pending') {
+      return mockContracts.filter(c => c.status === 'pending_signature');
+    }
+    if (activeTab === 'signed') {
+      return mockContracts.filter(c => c.status === 'signed' || c.status === 'completed');
+    }
+    return mockContracts;
+  }, [activeTab]);
+
+  const stats = useMemo(() => ({
+    pending: mockContracts.filter(c => c.status === 'pending_signature').length,
+    needsSignature: mockContracts.filter(c => c.needsMySignature).length,
+    signed: mockContracts.filter(c => c.status === 'signed' || c.status === 'completed').length,
+    totalValue: mockContracts
+      .filter(c => c.status === 'signed' || c.status === 'completed')
+      .reduce((sum, c) => sum + c.amount, 0),
+  }), []);
+
+  const getStatusInfo = (contract: Contract) => {
+    if (contract.status === 'pending_signature') {
+      if (contract.needsMySignature) {
+        return { label: 'İmzanız Bekleniyor', color: colors.warning, icon: 'create-outline' as const };
+      }
+      return { label: 'Karşı Taraf İmzası Bekleniyor', color: colors.brand[400], icon: 'hourglass-outline' as const };
+    }
+    if (contract.status === 'signed') {
+      return { label: 'İmzalandı', color: colors.success, icon: 'checkmark-circle' as const };
+    }
+    if (contract.status === 'completed') {
+      return { label: 'Tamamlandı', color: colors.success, icon: 'checkmark-done-circle' as const };
+    }
+    return { label: 'İptal', color: colors.error, icon: 'close-circle' as const };
+  };
+
+  const renderContractCard = (contract: Contract) => {
+    const statusInfo = getStatusInfo(contract);
+    const categoryColor = getCategoryColor(contract.serviceCategory);
+
+    return (
+      <TouchableOpacity
+        key={contract.id}
+        style={[
+          styles.contractCard,
+          contract.needsMySignature && styles.contractCardUrgent
+        ]}
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate('Contract', { contractId: contract.id })}
+      >
+        {/* Category Top Bar */}
+        <View style={[styles.categoryBar, { backgroundColor: categoryColor }]} />
+
+        {/* Urgent Banner */}
+        {contract.needsMySignature && (
+          <View style={styles.urgentBanner}>
+            <Ionicons name="alert-circle" size={14} color={colors.warning} />
+            <Text style={styles.urgentBannerText}>İmzanız Gerekli</Text>
+          </View>
+        )}
+
+        {/* Card Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <Text style={styles.contractId}>#{contract.id.toUpperCase()}</Text>
+            <Text style={styles.contractDate}>{contract.date}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: `${statusInfo.color}15` }]}>
+            <Ionicons name={statusInfo.icon} size={12} color={statusInfo.color} />
+            <Text style={[styles.statusText, { color: statusInfo.color }]}>
+              {statusInfo.label}
+            </Text>
+          </View>
+        </View>
+
+        {/* Event Info */}
+        <Text style={styles.eventName}>{contract.eventName}</Text>
+        <View style={styles.serviceBadge}>
+          <View style={[styles.serviceDot, { backgroundColor: categoryColor }]} />
+          <Text style={styles.serviceName}>{contract.serviceName}</Text>
+        </View>
+
+        {/* Other Party */}
+        <View style={styles.otherPartyRow}>
+          <Ionicons name="person-outline" size={14} color={colors.zinc[500]} />
+          <Text style={styles.otherPartyText}>{contract.otherPartyName}</Text>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.cardFooter}>
+          <View style={styles.footerLeft}>
+            <Ionicons name="calendar-outline" size={14} color={colors.zinc[500]} />
+            <Text style={styles.eventDateText}>Etkinlik: {contract.eventDate}</Text>
+          </View>
+          <Text style={styles.amountText}>₺{contract.amount.toLocaleString('tr-TR')}</Text>
+        </View>
+
+        {/* Action Button for urgent */}
+        {contract.needsMySignature && (
+          <TouchableOpacity
+            style={styles.signNowButton}
+            onPress={() => navigation.navigate('Contract', { contractId: contract.id })}
+          >
+            <LinearGradient
+              colors={gradients.primary}
+              style={styles.signNowGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="finger-print" size={16} color="white" />
+              <Text style={styles.signNowText}>Şimdi İmzala</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Sözleşmelerim</Text>
+        <TouchableOpacity style={styles.headerButton}>
+          <Ionicons name="search-outline" size={20} color={colors.zinc[400]} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Stats Summary */}
+      <View style={styles.statsSection}>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <View style={[styles.statIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+              <Ionicons name="document-text-outline" size={18} color={colors.warning} />
+            </View>
+            <View>
+              <Text style={styles.statValue}>{stats.pending}</Text>
+              <Text style={styles.statLabel}>Bekleyen</Text>
+            </View>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <View style={[styles.statIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="create-outline" size={18} color={colors.error} />
+            </View>
+            <View>
+              <Text style={styles.statValue}>{stats.needsSignature}</Text>
+              <Text style={styles.statLabel}>İmza Bekliyor</Text>
+            </View>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <View style={[styles.statIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
+            </View>
+            <View>
+              <Text style={styles.statValue}>{stats.signed}</Text>
+              <Text style={styles.statLabel}>İmzalı</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Total Value */}
+        <View style={styles.totalValueSection}>
+          <Text style={styles.totalValueLabel}>Toplam Sözleşme Değeri</Text>
+          <Text style={styles.totalValueAmount}>₺{stats.totalValue.toLocaleString('tr-TR')}</Text>
+        </View>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
+          onPress={() => setActiveTab('pending')}
+        >
+          <Ionicons
+            name={activeTab === 'pending' ? 'time' : 'time-outline'}
+            size={16}
+            color={activeTab === 'pending' ? colors.warning : colors.zinc[500]}
+          />
+          <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextPending]}>
+            Bekleyen
+          </Text>
+          <View style={[styles.tabBadge, activeTab === 'pending' && styles.tabBadgePending]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'pending' && styles.tabBadgeTextPending]}>
+              {stats.pending}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'signed' && styles.tabActive]}
+          onPress={() => setActiveTab('signed')}
+        >
+          <Ionicons
+            name={activeTab === 'signed' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+            size={16}
+            color={activeTab === 'signed' ? colors.success : colors.zinc[500]}
+          />
+          <Text style={[styles.tabText, activeTab === 'signed' && styles.tabTextSigned]}>
+            İmzalı
+          </Text>
+          <View style={[styles.tabBadge, activeTab === 'signed' && styles.tabBadgeSigned]}>
+            <Text style={[styles.tabBadgeText, activeTab === 'signed' && styles.tabBadgeTextSigned]}>
+              {stats.signed}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'all' && styles.tabActive]}
+          onPress={() => setActiveTab('all')}
+        >
+          <Ionicons
+            name={activeTab === 'all' ? 'documents' : 'documents-outline'}
+            size={16}
+            color={activeTab === 'all' ? colors.brand[400] : colors.zinc[500]}
+          />
+          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextAll]}>
+            Tümü
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Contracts List */}
+      <ScrollView
+        style={styles.contractsList}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contractsListContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[400]}
+          />
+        }
+      >
+        {filteredContracts.length > 0 ? (
+          filteredContracts.map(renderContractCard)
+        ) : (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyStateIcon}>
+              <Ionicons name="document-text-outline" size={48} color={colors.zinc[600]} />
+            </View>
+            <Text style={styles.emptyStateTitle}>Sözleşme Bulunamadı</Text>
+            <Text style={styles.emptyStateText}>
+              Bu kategoride henüz sözleşme bulunmuyor.
+            </Text>
+          </View>
+        )}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: colors.zinc[500],
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginHorizontal: 8,
+  },
+  totalValueSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  totalValueLabel: {
+    fontSize: 12,
+    color: colors.zinc[500],
+  },
+  totalValueAmount: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    gap: 6,
+  },
+  tabActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.zinc[400],
+  },
+  tabTextPending: {
+    color: colors.warning,
+  },
+  tabTextSigned: {
+    color: colors.success,
+  },
+  tabTextAll: {
+    color: colors.brand[400],
+  },
+  tabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  tabBadgePending: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  tabBadgeSigned: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.zinc[400],
+  },
+  tabBadgeTextPending: {
+    color: colors.warning,
+  },
+  tabBadgeTextSigned: {
+    color: colors.success,
+  },
+  contractsList: {
+    flex: 1,
+  },
+  contractsListContent: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  contractCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
+    overflow: 'hidden',
+  },
+  contractCardUrgent: {
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    backgroundColor: 'rgba(245, 158, 11, 0.03)',
+  },
+  categoryBar: {
+    height: 4,
+  },
+  urgentBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  urgentBannerText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.warning,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: 16,
+    paddingBottom: 12,
+  },
+  cardHeaderLeft: {
+    gap: 2,
+  },
+  contractId: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.zinc[400],
+  },
+  contractDate: {
+    fontSize: 10,
+    color: colors.zinc[600],
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  eventName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  serviceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  serviceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  serviceName: {
+    fontSize: 13,
+    color: colors.zinc[400],
+  },
+  otherPartyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  otherPartyText: {
+    fontSize: 12,
+    color: colors.zinc[500],
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  eventDateText: {
+    fontSize: 11,
+    color: colors.zinc[500],
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  signNowButton: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  signNowGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  signNowText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'white',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: colors.zinc[500],
+    textAlign: 'center',
+  },
+});

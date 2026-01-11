@@ -153,7 +153,7 @@ export function FavoritesScreen() {
             </Text>
             <TouchableOpacity
               style={styles.exploreButton}
-              onPress={() => navigation.navigate('HomeTab')}
+              onPress={() => navigation.getParent()?.navigate('HomeTab')}
             >
               <LinearGradient
                 colors={gradients.primary}

@@ -8,6 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { LoginScreen } from './src/screens/LoginScreen';
+import { RegisterScreen } from './src/screens/RegisterScreen';
+import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { EventsScreen } from './src/screens/EventsScreen';
 import { EventDetailScreen } from './src/screens/EventDetailScreen';
@@ -31,6 +33,17 @@ import { SettingsScreen } from './src/screens/SettingsScreen';
 import { EditProfileScreen } from './src/screens/EditProfileScreen';
 import { FavoritesScreen } from './src/screens/FavoritesScreen';
 import { CategoryRequestScreen } from './src/screens/CategoryRequestScreen';
+import { NotificationSettingsScreen } from './src/screens/NotificationSettingsScreen';
+import { SecurityScreen } from './src/screens/SecurityScreen';
+import { PaymentMethodsScreen } from './src/screens/PaymentMethodsScreen';
+import { HelpSupportScreen } from './src/screens/HelpSupportScreen';
+import { AboutScreen } from './src/screens/AboutScreen';
+import { AddCardScreen } from './src/screens/AddCardScreen';
+import { ChangePasswordScreen } from './src/screens/ChangePasswordScreen';
+import { QuietHoursScreen } from './src/screens/QuietHoursScreen';
+import { ProviderServicesScreen } from './src/screens/ProviderServicesScreen';
+import { ContractScreen } from './src/screens/ContractScreen';
+import { ContractsListScreen } from './src/screens/ContractsListScreen';
 import { colors } from './src/theme/colors';
 
 // App Context
@@ -66,6 +79,7 @@ function HomeStack() {
       <Stack.Screen name="OperationSubcategories" component={OperationSubcategoriesScreen} />
       <Stack.Screen name="RequestOffer" component={RequestOfferScreen} />
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }
@@ -86,6 +100,8 @@ function EventsStack() {
       </Stack.Screen>
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+      <Stack.Screen name="ServiceProviders" component={ServiceProvidersScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }
@@ -99,6 +115,10 @@ function OffersStack() {
         {() => <OffersScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
+      <Stack.Screen name="Contract" component={ContractScreen} />
+      <Stack.Screen name="Contracts">
+        {() => <ContractsListScreen isProviderMode={isProviderMode} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
@@ -135,6 +155,22 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       </Stack.Screen>
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+      <Stack.Screen name="Security" component={SecurityScreen} />
+      <Stack.Screen name="PaymentMethods" component={PaymentMethodsScreen} />
+      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Stack.Screen name="About" component={AboutScreen} />
+      <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
+      <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="AddCard" component={AddCardScreen} />
+      <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+      <Stack.Screen name="QuietHours" component={QuietHoursScreen} />
+      <Stack.Screen name="ProviderServices" component={ProviderServicesScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Contract" component={ContractScreen} />
+      <Stack.Screen name="Contracts">
+        {() => <ContractsListScreen isProviderMode={isProviderMode} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }

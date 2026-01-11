@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,44 +11,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 
-type NotificationFilter = 'all' | 'unread' | 'offers' | 'messages' | 'system';
+type NotificationTab = 'all' | 'offers' | 'messages' | 'system';
 
-// Local notification data to avoid import issues
+// Local notification data
 const localNotifications = [
   { id: 'n1', type: 'offer', title: 'Yeni Teklif Alındı', message: 'Pro Sound Istanbul ses sistemi için ₺85.000 teklif gönderdi.', time: '5 dk önce', date: 'Bugün', read: false, action: 'Teklifi İncele' },
   { id: 'n2', type: 'message', title: 'Yeni Mesaj', message: 'SecurePro Güvenlik size mesaj gönderdi.', time: '1 saat önce', date: 'Bugün', read: false, action: 'Mesajı Oku' },
   { id: 'n3', type: 'reminder', title: 'Etkinlik Hatırlatması', message: 'Yaz Festivali 2024 için 30 gün kaldı.', time: '3 saat önce', date: 'Bugün', read: true, action: 'Etkinliğe Git' },
   { id: 'n4', type: 'offer', title: 'Teklif Kabul Edildi', message: 'SecurePro Güvenlik teklifiniz onaylandı.', time: '14:30', date: 'Dün', read: true, action: null },
   { id: 'n5', type: 'system', title: 'Profil Tamamlama', message: 'Profilinizi %80 tamamladınız.', time: '10:00', date: 'Dün', read: true, action: 'Profili Tamamla' },
+  { id: 'n6', type: 'message', title: 'Yeni Mesaj', message: 'Elite VIP Transfer size mesaj gönderdi.', time: '09:15', date: 'Dün', read: true, action: 'Mesajı Oku' },
+  { id: 'n7', type: 'offer', title: 'Karşı Teklif', message: 'LightShow Pro ₺95.000 karşı teklif gönderdi.', time: '16:45', date: '2 gün önce', read: true, action: 'Teklifi İncele' },
 ];
 
 export function NotificationsScreen() {
   const navigation = useNavigation<any>();
-  const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
   const [notificationsList, setNotificationsList] = useState(localNotifications);
-
-  const filters: { key: NotificationFilter; label: string; icon: string; iconActive: string }[] = [
-    { key: 'all', label: 'Tümü', icon: 'notifications-outline', iconActive: 'notifications' },
-    { key: 'unread', label: 'Okunmamış', icon: 'mail-unread-outline', iconActive: 'mail-unread' },
-    { key: 'offers', label: 'Teklifler', icon: 'pricetags-outline', iconActive: 'pricetags' },
-    { key: 'messages', label: 'Mesajlar', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
-    { key: 'system', label: 'Sistem', icon: 'settings-outline', iconActive: 'settings' },
-  ];
-
-  const getFilteredNotifications = () => {
-    switch (activeFilter) {
-      case 'unread':
-        return notificationsList.filter(n => !n.read);
-      case 'offers':
-        return notificationsList.filter(n => n.type === 'offer');
-      case 'messages':
-        return notificationsList.filter(n => n.type === 'message');
-      case 'system':
-        return notificationsList.filter(n => n.type === 'system' || n.type === 'reminder');
-      default:
-        return notificationsList;
-    }
-  };
+  const [activeTab, setActiveTab] = useState<NotificationTab>('all');
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -100,8 +79,21 @@ export function NotificationsScreen() {
     }
   };
 
-  const filteredNotifications = getFilteredNotifications();
   const unreadCount = notificationsList.filter(n => !n.read).length;
+
+  // Filter notifications by tab
+  const filteredNotifications = useMemo(() => {
+    if (activeTab === 'all') return notificationsList;
+    if (activeTab === 'offers') return notificationsList.filter(n => n.type === 'offer');
+    if (activeTab === 'messages') return notificationsList.filter(n => n.type === 'message');
+    if (activeTab === 'system') return notificationsList.filter(n => n.type === 'system' || n.type === 'reminder');
+    return notificationsList;
+  }, [notificationsList, activeTab]);
+
+  // Count by type
+  const offerCount = notificationsList.filter(n => n.type === 'offer').length;
+  const messageCount = notificationsList.filter(n => n.type === 'message').length;
+  const systemCount = notificationsList.filter(n => n.type === 'system' || n.type === 'reminder').length;
 
   // Group notifications by date
   const groupedNotifications: Record<string, typeof localNotifications> = {};
@@ -128,39 +120,66 @@ export function NotificationsScreen() {
         )}
       </View>
 
-      {/* Filter Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterContainer}
-      >
-        {filters.map(filter => (
-          <TouchableOpacity
-            key={filter.key}
-            style={[styles.filterTab, activeFilter === filter.key && styles.filterTabActive]}
-            onPress={() => setActiveFilter(filter.key)}
-          >
-            <Ionicons
-              name={(activeFilter === filter.key ? filter.iconActive : filter.icon) as any}
-              size={14}
-              color={activeFilter === filter.key ? colors.brand[400] : colors.zinc[500]}
-            />
-            <Text
-              style={[
-                styles.filterTabText,
-                activeFilter === filter.key && styles.filterTabTextActive,
-              ]}
-            >
-              {filter.label}
-            </Text>
-            {filter.key === 'unread' && unreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Tabs */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('all')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'all' && styles.tabButtonTextActive]}>
+            Tümü
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'offers' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('offers')}
+        >
+          <Ionicons
+            name="document-text"
+            size={12}
+            color={activeTab === 'offers' ? colors.brand[400] : colors.zinc[500]}
+          />
+          <Text style={[styles.tabButtonText, activeTab === 'offers' && styles.tabButtonTextActive]}>
+            Teklifler
+          </Text>
+          {offerCount > 0 && (
+            <View style={[styles.tabBadge, activeTab === 'offers' && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, activeTab === 'offers' && styles.tabBadgeTextActive]}>{offerCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'messages' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('messages')}
+        >
+          <Ionicons
+            name="chatbubble"
+            size={12}
+            color={activeTab === 'messages' ? colors.brand[400] : colors.zinc[500]}
+          />
+          <Text style={[styles.tabButtonText, activeTab === 'messages' && styles.tabButtonTextActive]}>
+            Mesajlar
+          </Text>
+          {messageCount > 0 && (
+            <View style={[styles.tabBadge, activeTab === 'messages' && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, activeTab === 'messages' && styles.tabBadgeTextActive]}>{messageCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'system' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('system')}
+        >
+          <Ionicons
+            name="information-circle"
+            size={12}
+            color={activeTab === 'system' ? colors.brand[400] : colors.zinc[500]}
+          />
+          <Text style={[styles.tabButtonText, activeTab === 'system' && styles.tabButtonTextActive]}>
+            Sistem
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Notifications List */}
       <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
@@ -206,7 +225,11 @@ export function NotificationsScreen() {
         {filteredNotifications.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="notifications-off-outline" size={48} color={colors.zinc[600]} />
-            <Text style={styles.emptyStateTitle}>Bildirim yok</Text>
+            <Text style={styles.emptyStateTitle}>
+              {activeTab === 'all' ? 'Bildirim yok' :
+               activeTab === 'offers' ? 'Teklif bildirimi yok' :
+               activeTab === 'messages' ? 'Mesaj bildirimi yok' : 'Sistem bildirimi yok'}
+            </Text>
             <Text style={styles.emptyStateText}>
               Yeni bildirimler burada görünecek
             </Text>
@@ -251,44 +274,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.brand[400],
   },
-  filterContainer: {
+  tabRow: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     gap: 8,
   },
-  filterTab: {
+  tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 10,
-    marginRight: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
-  filterTabActive: {
+  tabButtonActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',
   },
-  filterTabText: {
-    fontSize: 11,
+  tabButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
     color: colors.zinc[500],
   },
-  filterTabTextActive: {
+  tabButtonTextActive: {
     color: colors.brand[400],
-    fontWeight: '500',
   },
-  badge: {
-    backgroundColor: colors.error,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
+  tabBadge: {
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
-  badgeText: {
-    fontSize: 11,
+  tabBadgeActive: {
+    backgroundColor: 'rgba(147, 51, 234, 0.3)',
+  },
+  tabBadgeText: {
+    fontSize: 10,
     fontWeight: '600',
-    color: 'white',
+    color: colors.zinc[500],
+  },
+  tabBadgeTextActive: {
+    color: colors.brand[400],
   },
   notificationsList: {
     flex: 1,
