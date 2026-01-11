@@ -62,10 +62,10 @@ export function SearchScreen() {
     let results: any[] = [];
 
     if (activeFilter === 'all' || activeFilter === 'artists') {
-      results = [...results, ...artists.map(a => ({ ...a, type: 'artist' }))];
+      results = [...results, ...(artists || []).map(a => ({ ...a, type: 'artist' }))];
     }
     if (activeFilter === 'all' || activeFilter === 'providers') {
-      results = [...results, ...providers.map(p => ({ ...p, type: 'provider' }))];
+      results = [...results, ...(providers || []).map(p => ({ ...p, type: 'provider' }))];
     }
 
     // Filter by search query
@@ -277,7 +277,7 @@ export function SearchScreen() {
           <View style={styles.filterSection}>
             <Text style={styles.filterSectionTitle}>Kategoriler</Text>
             <View style={styles.categoriesGrid}>
-              {categories.slice(0, 6).map(category => (
+              {(categories || []).slice(0, 6).map(category => (
                 <TouchableOpacity
                   key={category.id}
                   style={[

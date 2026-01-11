@@ -215,7 +215,7 @@ function OrganizerHomeContent() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.artistsScroll}>
-          {artists.slice(0, 4).map((artist) => (
+          {(artists || []).slice(0, 4).map((artist) => (
             <TouchableOpacity
               key={artist.id}
               style={styles.artistCard}

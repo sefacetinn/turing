@@ -18,7 +18,7 @@ type NotificationFilter = 'all' | 'unread' | 'offers' | 'messages' | 'system';
 export function NotificationsScreen() {
   const navigation = useNavigation<any>();
   const [activeFilter, setActiveFilter] = useState<NotificationFilter>('all');
-  const [notificationsList, setNotificationsList] = useState(notifications);
+  const [notificationsList, setNotificationsList] = useState(notifications || []);
 
   const filters: { key: NotificationFilter; label: string }[] = [
     { key: 'all', label: 'Tümü' },
