@@ -188,3 +188,190 @@ export interface OperationCategoryConfig {
   icon: string;
   description: string;
 }
+
+// ============================================
+// Quote Request Requirement Types
+// ============================================
+
+// Booking (Sanatçı/DJ) Requirements
+export interface BookingRequirements {
+  eventType: string;
+  venueType: string;
+  guestCount: string;
+  duration: string;
+  setCount: string;
+  soundSystem: boolean;
+  accommodation: boolean;
+  travel: boolean;
+  backstageNeeds: string;
+}
+
+// Technical (Teknik) Requirements
+export interface TechnicalRequirements {
+  indoorOutdoor: string;
+  venueSize: string;
+  soundRequirements: string[];
+  lightingRequirements: string[];
+  stageSize: string;
+  powerAvailable: string;
+  setupTime: string;
+}
+
+// Venue (Mekan) Requirements
+export interface VenueRequirements {
+  venueStyle: string;
+  venueCapacity: string;
+  indoorOutdoor: string;
+  cateringIncluded: boolean;
+  parkingNeeded: boolean;
+  accessibilityNeeded: boolean;
+}
+
+// Transport (Ulaşım) Requirements
+export interface TransportRequirements {
+  pickupLocation: string;
+  dropoffLocation: string;
+  pickupTime: string;
+  passengerCount: string;
+  vehicleType: string;
+  returnTrip: boolean;
+}
+
+// Accommodation (Konaklama) Requirements
+export interface AccommodationRequirements {
+  checkInDate: string;
+  checkOutDate: string;
+  roomCount: string;
+  roomType: string;
+  starRating: string;
+  breakfastIncluded: boolean;
+}
+
+// Flight (Uçuş) Requirements
+export interface FlightRequirements {
+  departureCity: string;
+  arrivalCity: string;
+  passengerCount: string;
+  flightClass: string;
+  baggageNeeds: string;
+  roundTrip: boolean;
+}
+
+// Security (Güvenlik) Requirements
+export interface SecurityRequirements {
+  guardCount: string;
+  shiftHours: string;
+  securityAreas: string[];
+  armedSecurity: boolean;
+}
+
+// Catering Requirements
+export interface CateringRequirements {
+  guestCount: string;
+  mealType: string[];
+  serviceStyle: string;
+  dietaryRestrictions: string[];
+}
+
+// Generator (Jeneratör) Requirements
+export interface GeneratorRequirements {
+  powerRequirement: string;
+  generatorDuration: string;
+  backupNeeded: boolean;
+}
+
+// Beverage (İçecek) Requirements
+export interface BeverageRequirements {
+  barType: string;
+  beverageTypes: string[];
+  guestCount: string;
+  bartenderCount: string;
+}
+
+// Medical (Medikal) Requirements
+export interface MedicalRequirements {
+  medicalServices: string[];
+  guestCount: string;
+  duration: string;
+  ambulanceStandby: boolean;
+}
+
+// Media (Medya) Requirements
+export interface MediaRequirements {
+  mediaServices: string[];
+  duration: string;
+  deliveryFormat: string[];
+}
+
+// Barrier (Bariyer) Requirements
+export interface BarrierRequirements {
+  barrierType: string;
+  barrierLength: string;
+  duration: string;
+}
+
+// Tent (Çadır) Requirements
+export interface TentRequirements {
+  tentType: string;
+  tentSize: string;
+  tentFeatures: string[];
+}
+
+// Ticketing (Biletleme) Requirements
+export interface TicketingRequirements {
+  ticketCapacity: string;
+  ticketTypes: string[];
+  ticketTech: string[];
+}
+
+// Decoration (Dekorasyon) Requirements
+export interface DecorationRequirements {
+  decorTheme: string;
+  decorAreas: string[];
+  guestCount: string;
+  floralsNeeded: boolean;
+}
+
+// Production (Prodüksiyon) Requirements
+export interface ProductionRequirements {
+  productionServices: string[];
+  eventType: string;
+  crewSize: string;
+  duration: string;
+}
+
+// Union type for all requirements
+export type CategoryRequirements =
+  | BookingRequirements
+  | TechnicalRequirements
+  | VenueRequirements
+  | TransportRequirements
+  | AccommodationRequirements
+  | FlightRequirements
+  | SecurityRequirements
+  | CateringRequirements
+  | GeneratorRequirements
+  | BeverageRequirements
+  | MedicalRequirements
+  | MediaRequirements
+  | BarrierRequirements
+  | TentRequirements
+  | TicketingRequirements
+  | DecorationRequirements
+  | ProductionRequirements;
+
+// Quote Request Interface
+export interface QuoteRequest {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  category: ServiceCategory | OperationSubCategory;
+  eventDate: string;
+  budget: string;
+  notes: string;
+  requirements: CategoryRequirements;
+  organizerName: string;
+  organizerImage: string;
+  createdAt: string;
+  status: 'pending' | 'offered' | 'accepted' | 'rejected';
+}

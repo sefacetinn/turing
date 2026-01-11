@@ -15,6 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { colors, gradients } from '../theme/colors';
+import { ServiceRequirementsDisplay } from '../components';
+import { getQuoteRequestForOffer } from '../data/mockData';
+import { CategoryRequirements } from '../types';
 
 // Local offers data
 const offers = [
@@ -67,6 +70,9 @@ export function OfferDetailScreen() {
   const [showNegotiate, setShowNegotiate] = useState(false);
   const [counterOfferAmount, setCounterOfferAmount] = useState('');
   const [counterOfferNote, setCounterOfferNote] = useState('');
+
+  // Get the quote request with requirements for this offer
+  const quoteRequest = getQuoteRequestForOffer(offerId);
 
   const handleAcceptOffer = () => {
     Alert.alert(
@@ -190,6 +196,26 @@ export function OfferDetailScreen() {
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
         </View>
+
+        {/* Service Requirements Section */}
+        {quoteRequest && (
+          <View style={styles.requirementsSection}>
+            <ServiceRequirementsDisplay
+              category={quoteRequest.category}
+              requirements={quoteRequest.requirements as CategoryRequirements}
+              budget={quoteRequest.budget}
+            />
+            {quoteRequest.notes && (
+              <View style={styles.requestNotesCard}>
+                <View style={styles.requestNotesHeader}>
+                  <Ionicons name="chatbubble-outline" size={14} color={colors.zinc[500]} />
+                  <Text style={styles.requestNotesLabel}>Organizatör Notu</Text>
+                </View>
+                <Text style={styles.requestNotesText}>{quoteRequest.notes}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Price Section */}
         <View style={styles.priceSection}>
@@ -504,6 +530,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.zinc[500],
     marginTop: 2,
+  },
+  requirementsSection: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    gap: 12,
+  },
+  requestNotesCard: {
+    padding: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  requestNotesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  requestNotesLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.zinc[500],
+  },
+  requestNotesText: {
+    fontSize: 13,
+    color: colors.zinc[400],
+    lineHeight: 18,
   },
   priceSection: {
     paddingHorizontal: 20,
