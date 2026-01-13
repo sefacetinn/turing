@@ -13,7 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 const { width } = Dimensions.get('window');
 
@@ -101,6 +104,7 @@ export function ProviderEventDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const [activeSection, setActiveSection] = useState<'overview' | 'tasks' | 'schedule' | 'payments'>('overview');
+  const { colors, isDark, helpers } = useTheme();
 
   const event = mockEventDetail;
 
@@ -124,11 +128,18 @@ export function ProviderEventDetailScreen() {
   };
 
   const renderTeamMember = (member: TeamMember) => (
-    <View key={member.id} style={styles.teamMember}>
+    <View key={member.id} style={[
+      styles.teamMember,
+      {
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+      },
+      ...(isDark ? [] : [helpers.getShadow('sm')]),
+    ]}>
       <Image source={{ uri: member.image }} style={styles.teamMemberImage} />
       <View style={styles.teamMemberInfo}>
-        <Text style={styles.teamMemberName}>{member.name}</Text>
-        <Text style={styles.teamMemberRole}>{member.role}</Text>
+        <Text style={[styles.teamMemberName, { color: colors.text }]}>{member.name}</Text>
+        <Text style={[styles.teamMemberRole, { color: colors.textMuted }]}>{member.role}</Text>
       </View>
       <TouchableOpacity
         style={styles.callButton}
@@ -144,8 +155,8 @@ export function ProviderEventDetailScreen() {
       switch (status) {
         case 'completed': return colors.success;
         case 'in_progress': return colors.warning;
-        case 'pending': return colors.zinc[500];
-        default: return colors.zinc[500];
+        case 'pending': return colors.textMuted;
+        default: return colors.textMuted;
       }
     };
 
@@ -154,17 +165,24 @@ export function ProviderEventDetailScreen() {
         case 'high': return colors.error;
         case 'medium': return colors.warning;
         case 'low': return colors.success;
-        default: return colors.zinc[500];
+        default: return colors.textMuted;
       }
     };
 
     return (
-      <TouchableOpacity key={task.id} style={styles.taskCard}>
+      <TouchableOpacity key={task.id} style={[
+        styles.taskCard,
+        {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+        },
+        ...(isDark ? [] : [helpers.getShadow('sm')]),
+      ]}>
         <View style={styles.taskHeader}>
           <View style={[styles.taskStatusDot, { backgroundColor: getStatusColor(task.status) }]} />
           <View style={styles.taskInfo}>
-            <Text style={styles.taskTitle}>{task.title}</Text>
-            <Text style={styles.taskDescription}>{task.description}</Text>
+            <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+            <Text style={[styles.taskDescription, { color: colors.textMuted }]}>{task.description}</Text>
           </View>
           <View style={[styles.priorityBadge, { backgroundColor: `${getPriorityColor(task.priority)}20` }]}>
             <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
@@ -174,13 +192,13 @@ export function ProviderEventDetailScreen() {
         </View>
         <View style={styles.taskFooter}>
           <View style={styles.taskDueDate}>
-            <Ionicons name="calendar-outline" size={12} color={colors.zinc[500]} />
-            <Text style={styles.taskDueDateText}>{task.dueDate}</Text>
+            <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+            <Text style={[styles.taskDueDateText, { color: colors.textMuted }]}>{task.dueDate}</Text>
           </View>
           {task.status !== 'completed' && (
             <TouchableOpacity style={styles.completeButton}>
               <Ionicons name="checkmark" size={14} color={colors.success} />
-              <Text style={styles.completeButtonText}>Tamamla</Text>
+              <Text style={[styles.completeButtonText, { color: colors.success }]}>Tamamla</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -191,18 +209,18 @@ export function ProviderEventDetailScreen() {
   const renderScheduleItem = (item: ScheduleItem, index: number) => (
     <View key={item.id} style={styles.scheduleItem}>
       <View style={styles.scheduleTime}>
-        <Text style={styles.scheduleTimeText}>{item.time}</Text>
-        <Text style={styles.scheduleDuration}>{item.duration}</Text>
+        <Text style={[styles.scheduleTimeText, { color: colors.brand[400] }]}>{item.time}</Text>
+        <Text style={[styles.scheduleDuration, { color: colors.textMuted }]}>{item.duration}</Text>
       </View>
       <View style={styles.scheduleLineContainer}>
-        <View style={styles.scheduleDot} />
-        {index < mockSchedule.length - 1 && <View style={styles.scheduleLine} />}
+        <View style={[styles.scheduleDot, { backgroundColor: colors.brand[500] }]} />
+        {index < mockSchedule.length - 1 && <View style={[styles.scheduleLine, { backgroundColor: colors.brand[700] }]} />}
       </View>
       <View style={styles.scheduleContent}>
-        <Text style={styles.scheduleTitle}>{item.title}</Text>
+        <Text style={[styles.scheduleTitle, { color: colors.text }]}>{item.title}</Text>
         <View style={styles.scheduleStage}>
-          <Ionicons name="location-outline" size={12} color={colors.zinc[500]} />
-          <Text style={styles.scheduleStageText}>{item.stage}</Text>
+          <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+          <Text style={[styles.scheduleStageText, { color: colors.textMuted }]}>{item.stage}</Text>
         </View>
       </View>
     </View>
@@ -214,18 +232,25 @@ export function ProviderEventDetailScreen() {
         case 'paid': return { label: 'Ödendi', color: colors.success, icon: 'checkmark-circle' as const };
         case 'pending': return { label: 'Bekliyor', color: colors.warning, icon: 'time' as const };
         case 'overdue': return { label: 'Gecikmiş', color: colors.error, icon: 'alert-circle' as const };
-        default: return { label: status, color: colors.zinc[500], icon: 'help-circle' as const };
+        default: return { label: status, color: colors.textMuted, icon: 'help-circle' as const };
       }
     };
 
     const statusInfo = getStatusInfo(payment.status);
 
     return (
-      <View key={payment.id} style={styles.paymentCard}>
+      <View key={payment.id} style={[
+        styles.paymentCard,
+        {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+        },
+        ...(isDark ? [] : [helpers.getShadow('sm')]),
+      ]}>
         <View style={styles.paymentHeader}>
           <View style={styles.paymentInfo}>
-            <Text style={styles.paymentTitle}>{payment.title}</Text>
-            <Text style={styles.paymentDueDate}>
+            <Text style={[styles.paymentTitle, { color: colors.text }]}>{payment.title}</Text>
+            <Text style={[styles.paymentDueDate, { color: colors.textMuted }]}>
               {payment.status === 'paid' ? `Ödeme: ${payment.paidDate}` : `Vade: ${payment.dueDate}`}
             </Text>
           </View>
@@ -236,13 +261,13 @@ export function ProviderEventDetailScreen() {
             </Text>
           </View>
         </View>
-        <Text style={styles.paymentAmount}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
+        <Text style={[styles.paymentAmount, { color: colors.text }]}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header Image */}
         <View style={styles.headerImage}>
@@ -288,20 +313,27 @@ export function ProviderEventDetailScreen() {
         </View>
 
         {/* Organizer Card */}
-        <View style={styles.organizerCard}>
+        <View style={[
+          styles.organizerCard,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+          },
+          ...(isDark ? [] : [helpers.getShadow('sm')]),
+        ]}>
           <Image source={{ uri: event.organizerImage }} style={styles.organizerImage} />
           <View style={styles.organizerInfo}>
-            <Text style={styles.organizerLabel}>Organizatör</Text>
-            <Text style={styles.organizerName}>{event.organizerName}</Text>
+            <Text style={[styles.organizerLabel, { color: colors.textMuted }]}>Organizatör</Text>
+            <Text style={[styles.organizerName, { color: colors.text }]}>{event.organizerName}</Text>
           </View>
           <View style={styles.organizerActions}>
             <TouchableOpacity
-              style={styles.organizerActionButton}
+              style={[styles.organizerActionButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}
               onPress={() => handleCall(event.organizerPhone)}
             >
               <Ionicons name="call" size={18} color={colors.success} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.organizerActionButton}>
+            <TouchableOpacity style={[styles.organizerActionButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
               <Ionicons name="chatbubble" size={18} color={colors.brand[400]} />
             </TouchableOpacity>
           </View>
@@ -341,28 +373,54 @@ export function ProviderEventDetailScreen() {
           contentContainerStyle={styles.sectionTabs}
         >
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'overview' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+              activeSection === 'overview' && {
+                backgroundColor: 'rgba(147, 51, 234, 0.15)',
+                borderColor: 'rgba(147, 51, 234, 0.3)',
+              },
+            ]}
             onPress={() => setActiveSection('overview')}
           >
             <Ionicons
               name={activeSection === 'overview' ? 'information-circle' : 'information-circle-outline'}
               size={14}
-              color={activeSection === 'overview' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'overview' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'overview' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'overview' ? colors.brand[400] : colors.textSecondary },
+            ]}>
               Genel
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'tasks' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+              activeSection === 'tasks' && {
+                backgroundColor: 'rgba(147, 51, 234, 0.15)',
+                borderColor: 'rgba(147, 51, 234, 0.3)',
+              },
+            ]}
             onPress={() => setActiveSection('tasks')}
           >
             <Ionicons
               name={activeSection === 'tasks' ? 'checkbox' : 'checkbox-outline'}
               size={14}
-              color={activeSection === 'tasks' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'tasks' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'tasks' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'tasks' ? colors.brand[400] : colors.textSecondary },
+            ]}>
               Görevler
             </Text>
             <View style={styles.sectionTabBadge}>
@@ -370,28 +428,54 @@ export function ProviderEventDetailScreen() {
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'schedule' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+              activeSection === 'schedule' && {
+                backgroundColor: 'rgba(147, 51, 234, 0.15)',
+                borderColor: 'rgba(147, 51, 234, 0.3)',
+              },
+            ]}
             onPress={() => setActiveSection('schedule')}
           >
             <Ionicons
               name={activeSection === 'schedule' ? 'calendar' : 'calendar-outline'}
               size={14}
-              color={activeSection === 'schedule' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'schedule' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'schedule' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'schedule' ? colors.brand[400] : colors.textSecondary },
+            ]}>
               Program
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'payments' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+              activeSection === 'payments' && {
+                backgroundColor: 'rgba(147, 51, 234, 0.15)',
+                borderColor: 'rgba(147, 51, 234, 0.3)',
+              },
+            ]}
             onPress={() => setActiveSection('payments')}
           >
             <Ionicons
               name={activeSection === 'payments' ? 'wallet' : 'wallet-outline'}
               size={14}
-              color={activeSection === 'payments' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'payments' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'payments' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'payments' ? colors.brand[400] : colors.textSecondary },
+            ]}>
               Ödemeler
             </Text>
           </TouchableOpacity>
@@ -402,23 +486,23 @@ export function ProviderEventDetailScreen() {
           <View style={styles.overviewSection}>
             {/* Description */}
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>Açıklama</Text>
-              <Text style={styles.descriptionText}>{event.description}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Açıklama</Text>
+              <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
             </View>
 
             {/* Task Progress */}
             <View style={styles.sectionBlock}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Görev İlerlemesi</Text>
-                <Text style={styles.sectionSubtitle}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Görev İlerlemesi</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
                   {taskStats.completed}/{taskStats.total} tamamlandı
                 </Text>
               </View>
-              <View style={styles.progressBar}>
+              <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.surfaceAlt }]}>
                 <View
                   style={[
                     styles.progressFill,
-                    { width: `${(taskStats.completed / taskStats.total) * 100}%` }
+                    { width: `${(taskStats.completed / taskStats.total) * 100}%`, backgroundColor: colors.brand[500] }
                   ]}
                 />
               </View>
@@ -426,42 +510,63 @@ export function ProviderEventDetailScreen() {
 
             {/* Team */}
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>Ekip ({mockTeam.length} kişi)</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Ekip ({mockTeam.length} kişi)</Text>
               {mockTeam.map(member => renderTeamMember(member))}
             </View>
 
             {/* Documents */}
             <View style={styles.sectionBlock}>
-              <Text style={styles.sectionTitle}>Dökümanlar</Text>
-              <TouchableOpacity style={styles.documentItem}>
-                <View style={styles.documentIcon}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Dökümanlar</Text>
+              <TouchableOpacity style={[
+                styles.documentItem,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                },
+                ...(isDark ? [] : [helpers.getShadow('sm')]),
+              ]}>
+                <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
                   <Ionicons name="document-text" size={20} color={colors.brand[400]} />
                 </View>
                 <View style={styles.documentInfo}>
-                  <Text style={styles.documentName}>Sözleşme.pdf</Text>
-                  <Text style={styles.documentSize}>2.4 MB</Text>
+                  <Text style={[styles.documentName, { color: colors.text }]}>Sözleşme.pdf</Text>
+                  <Text style={[styles.documentSize, { color: colors.textMuted }]}>2.4 MB</Text>
                 </View>
-                <Ionicons name="download-outline" size={20} color={colors.zinc[500]} />
+                <Ionicons name="download-outline" size={20} color={colors.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.documentItem}>
-                <View style={styles.documentIcon}>
+              <TouchableOpacity style={[
+                styles.documentItem,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                },
+                ...(isDark ? [] : [helpers.getShadow('sm')]),
+              ]}>
+                <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
                   <Ionicons name="document-text" size={20} color={colors.success} />
                 </View>
                 <View style={styles.documentInfo}>
-                  <Text style={styles.documentName}>Sahne_Plani.pdf</Text>
-                  <Text style={styles.documentSize}>5.1 MB</Text>
+                  <Text style={[styles.documentName, { color: colors.text }]}>Sahne_Plani.pdf</Text>
+                  <Text style={[styles.documentSize, { color: colors.textMuted }]}>5.1 MB</Text>
                 </View>
-                <Ionicons name="download-outline" size={20} color={colors.zinc[500]} />
+                <Ionicons name="download-outline" size={20} color={colors.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.documentItem}>
-                <View style={styles.documentIcon}>
+              <TouchableOpacity style={[
+                styles.documentItem,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                },
+                ...(isDark ? [] : [helpers.getShadow('sm')]),
+              ]}>
+                <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
                   <Ionicons name="image" size={20} color={colors.warning} />
                 </View>
                 <View style={styles.documentInfo}>
-                  <Text style={styles.documentName}>Ekipman_Listesi.xlsx</Text>
-                  <Text style={styles.documentSize}>156 KB</Text>
+                  <Text style={[styles.documentName, { color: colors.text }]}>Ekipman_Listesi.xlsx</Text>
+                  <Text style={[styles.documentSize, { color: colors.textMuted }]}>156 KB</Text>
                 </View>
-                <Ionicons name="download-outline" size={20} color={colors.zinc[500]} />
+                <Ionicons name="download-outline" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -473,15 +578,15 @@ export function ProviderEventDetailScreen() {
             <View style={styles.taskStats}>
               <View style={styles.taskStatItem}>
                 <View style={[styles.taskStatDot, { backgroundColor: colors.success }]} />
-                <Text style={styles.taskStatText}>{taskStats.completed} Tamamlandı</Text>
+                <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.completed} Tamamlandı</Text>
               </View>
               <View style={styles.taskStatItem}>
                 <View style={[styles.taskStatDot, { backgroundColor: colors.warning }]} />
-                <Text style={styles.taskStatText}>{taskStats.inProgress} Devam Ediyor</Text>
+                <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.inProgress} Devam Ediyor</Text>
               </View>
               <View style={styles.taskStatItem}>
-                <View style={[styles.taskStatDot, { backgroundColor: colors.zinc[500] }]} />
-                <Text style={styles.taskStatText}>{taskStats.pending} Bekliyor</Text>
+                <View style={[styles.taskStatDot, { backgroundColor: colors.textMuted }]} />
+                <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.pending} Bekliyor</Text>
               </View>
             </View>
             {mockTasks.map(task => renderTask(task))}
@@ -492,7 +597,7 @@ export function ProviderEventDetailScreen() {
         {activeSection === 'schedule' && (
           <View style={styles.scheduleSection}>
             <View style={styles.scheduleHeader}>
-              <Text style={styles.scheduleDate}>15 Temmuz 2024 - 1. Gün</Text>
+              <Text style={[styles.scheduleDate, { color: colors.text }]}>15 Temmuz 2024 - 1. Gün</Text>
             </View>
             {mockSchedule.map((item, index) => renderScheduleItem(item, index))}
           </View>
@@ -504,9 +609,9 @@ export function ProviderEventDetailScreen() {
             {mockPayments.map(payment => renderPayment(payment))}
 
             {/* Invoice Button */}
-            <TouchableOpacity style={styles.invoiceButton}>
+            <TouchableOpacity style={[styles.invoiceButton, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
               <Ionicons name="document-text-outline" size={18} color={colors.brand[400]} />
-              <Text style={styles.invoiceButtonText}>Fatura Oluştur</Text>
+              <Text style={[styles.invoiceButtonText, { color: colors.brand[400] }]}>Fatura Oluştur</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -515,10 +620,22 @@ export function ProviderEventDetailScreen() {
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.supportButton}>
+      <View style={[
+        styles.bottomActions,
+        {
+          backgroundColor: colors.background,
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+        },
+      ]}>
+        <TouchableOpacity style={[
+          styles.supportButton,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+          },
+        ]}>
           <Ionicons name="help-circle-outline" size={20} color={colors.text} />
-          <Text style={styles.supportButtonText}>Destek</Text>
+          <Text style={[styles.supportButtonText, { color: colors.text }]}>Destek</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.checkInButton}>
           <LinearGradient
@@ -630,13 +747,11 @@ const styles = StyleSheet.create({
   },
   organizerLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginBottom: 2,
   },
   organizerName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   organizerActions: {
     flexDirection: 'row',
@@ -706,10 +821,8 @@ const styles = StyleSheet.create({
   sectionTabText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   sectionTabTextActive: {
-    color: colors.brand[400],
   },
   sectionTabBadge: {
     backgroundColor: colors.error,
@@ -737,16 +850,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 12,
   },
   sectionSubtitle: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   descriptionText: {
     fontSize: 14,
-    color: colors.zinc[400],
     lineHeight: 22,
   },
   progressBar: {
@@ -782,11 +892,9 @@ const styles = StyleSheet.create({
   teamMemberName: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   teamMemberRole: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   callButton: {
@@ -822,11 +930,9 @@ const styles = StyleSheet.create({
   documentName: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   documentSize: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   tasksSection: {
@@ -849,7 +955,6 @@ const styles = StyleSheet.create({
   },
   taskStatText: {
     fontSize: 12,
-    color: colors.zinc[400],
   },
   taskCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -877,12 +982,10 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 4,
   },
   taskDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   priorityBadge: {
     paddingHorizontal: 8,
@@ -906,7 +1009,6 @@ const styles = StyleSheet.create({
   },
   taskDueDateText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   completeButton: {
     flexDirection: 'row',
@@ -920,7 +1022,6 @@ const styles = StyleSheet.create({
   completeButtonText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.success,
   },
   scheduleSection: {
     padding: 20,
@@ -931,7 +1032,6 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   scheduleItem: {
     flexDirection: 'row',
@@ -944,11 +1044,9 @@ const styles = StyleSheet.create({
   scheduleTimeText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   scheduleDuration: {
     fontSize: 10,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   scheduleLineContainer: {
@@ -976,7 +1074,6 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
     marginBottom: 4,
   },
   scheduleStage: {
@@ -986,7 +1083,6 @@ const styles = StyleSheet.create({
   },
   scheduleStageText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   paymentsSection: {
     padding: 20,
@@ -1011,11 +1107,9 @@ const styles = StyleSheet.create({
   paymentTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   paymentDueDate: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   paymentStatusBadge: {
@@ -1035,7 +1129,6 @@ const styles = StyleSheet.create({
   paymentAmount: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
   },
   invoiceButton: {
     flexDirection: 'row',
@@ -1050,7 +1143,6 @@ const styles = StyleSheet.create({
   invoiceButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   bottomActions: {
     position: 'absolute',
@@ -1080,7 +1172,6 @@ const styles = StyleSheet.create({
   supportButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   checkInButton: {
     flex: 1,

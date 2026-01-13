@@ -10,7 +10,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 const operationSubcategories = [
   { id: 'security', name: 'Güvenlik', description: 'Profesyonel güvenlik hizmetleri', icon: 'shield-checkmark', count: 45 },
@@ -29,13 +32,14 @@ const operationSubcategories = [
 
 export function OperationSubcategoriesScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const handleSubcategoryPress = (subcategory: typeof operationSubcategories[0]) => {
     navigation.navigate('ServiceProviders', { category: subcategory.id });
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -50,14 +54,14 @@ export function OperationSubcategoriesScreen() {
           >
             <Ionicons name="settings" size={16} color="white" />
           </LinearGradient>
-          <Text style={styles.headerTitle}>Operasyon Hizmetleri</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Operasyon Hizmetleri</Text>
         </View>
         <View style={styles.placeholder} />
       </View>
 
       {/* Subtitle */}
       <View style={styles.subtitleContainer}>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>
           Etkinliğiniz için ihtiyacınız olan tüm operasyonel hizmetler
         </Text>
       </View>
@@ -68,7 +72,14 @@ export function OperationSubcategoriesScreen() {
           {operationSubcategories.map((subcategory) => (
             <TouchableOpacity
               key={subcategory.id}
-              style={styles.card}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+                  ...(isDark ? {} : helpers.getShadow('sm')),
+                },
+              ]}
               activeOpacity={0.8}
               onPress={() => handleSubcategoryPress(subcategory)}
             >
@@ -82,8 +93,8 @@ export function OperationSubcategoriesScreen() {
               </LinearGradient>
 
               <View style={styles.cardContent}>
-                <Text style={styles.cardTitle}>{subcategory.name}</Text>
-                <Text style={styles.cardDescription} numberOfLines={1}>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{subcategory.name}</Text>
+                <Text style={[styles.cardDescription, { color: colors.textMuted }]} numberOfLines={1}>
                   {subcategory.description}
                 </Text>
               </View>
@@ -92,20 +103,27 @@ export function OperationSubcategoriesScreen() {
                 <View style={styles.countBadge}>
                   <Text style={styles.countText}>{subcategory.count}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.zinc[600]} />
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Info Card */}
-        <View style={styles.infoCard}>
+        <View style={[
+          styles.infoCard,
+          {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.05)' : 'rgba(147, 51, 234, 0.08)',
+            borderColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.2)',
+            ...(isDark ? {} : helpers.getShadow('sm')),
+          },
+        ]}>
           <View style={styles.infoIconContainer}>
             <Ionicons name="information-circle" size={20} color={colors.brand[400]} />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Birden Fazla Hizmet Mi Gerekiyor?</Text>
-            <Text style={styles.infoText}>
+            <Text style={[styles.infoTitle, { color: colors.text }]}>Birden Fazla Hizmet Mi Gerekiyor?</Text>
+            <Text style={[styles.infoText, { color: colors.textSecondary }]}>
               Toplu teklif almak için birden fazla sağlayıcı seçebilirsiniz
             </Text>
           </View>
@@ -120,7 +138,6 @@ export function OperationSubcategoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -150,7 +167,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
   },
   placeholder: {
     width: 40,
@@ -161,7 +177,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: colors.zinc[500],
     textAlign: 'center',
   },
   content: {
@@ -194,11 +209,9 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   cardDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   cardRight: {
@@ -237,11 +250,9 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   infoText: {
     fontSize: 12,
-    color: colors.zinc[400],
     marginTop: 4,
     lineHeight: 18,
   },

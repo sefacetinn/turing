@@ -4,7 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 interface PaymentMethod {
   id: string;
@@ -18,6 +21,7 @@ interface PaymentMethod {
 
 export function PaymentMethodsScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
     { id: '1', type: 'card', brand: 'Visa', last4: '4242', expiry: '12/26', isDefault: true },
@@ -80,20 +84,20 @@ export function PaymentMethodsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ödeme Yöntemleri</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Ödeme Yöntemleri</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cards Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Kartlarım</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Kartlarım</Text>
 
           {paymentMethods
             .filter((m) => m.type === 'card')
@@ -135,7 +139,7 @@ export function PaymentMethodsScreen() {
                       onPress={() => handleSetDefault(card.id)}
                     >
                       <Ionicons name="checkmark-circle-outline" size={18} color={colors.brand[400]} />
-                      <Text style={styles.actionText}>Varsayılan Yap</Text>
+                      <Text style={[styles.actionText, { color: colors.brand[400] }]}>Varsayılan Yap</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
@@ -150,29 +154,49 @@ export function PaymentMethodsScreen() {
             ))}
 
           {/* Add Card Button */}
-          <TouchableOpacity style={styles.addButton} onPress={handleAddCard} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+              }
+            ]}
+            onPress={handleAddCard}
+            activeOpacity={0.7}
+          >
             <View style={styles.addButtonInner}>
               <Ionicons name="add-circle" size={24} color={colors.brand[400]} />
-              <Text style={styles.addButtonText}>Yeni Kart Ekle</Text>
+              <Text style={[styles.addButtonText, { color: colors.brand[400] }]}>Yeni Kart Ekle</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Bank Accounts Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Banka Hesapları</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Banka Hesapları</Text>
 
           {paymentMethods
             .filter((m) => m.type === 'bank')
             .map((bank) => (
-              <View key={bank.id} style={styles.bankCard}>
+              <View
+                key={bank.id}
+                style={[
+                  styles.bankCard,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+                    ...(isDark ? {} : helpers.getShadow('sm')),
+                  }
+                ]}
+              >
                 <View style={styles.bankInfo}>
                   <View style={styles.bankIcon}>
                     <Ionicons name="business" size={24} color={colors.brand[400]} />
                   </View>
                   <View>
-                    <Text style={styles.bankName}>{bank.bankName}</Text>
-                    <Text style={styles.bankAccount}>TR** **** **** **** **** {bank.last4}</Text>
+                    <Text style={[styles.bankName, { color: colors.text }]}>{bank.bankName}</Text>
+                    <Text style={[styles.bankAccount, { color: colors.textMuted }]}>TR** **** **** **** **** {bank.last4}</Text>
                   </View>
                 </View>
                 <View style={styles.cardActions}>
@@ -182,7 +206,7 @@ export function PaymentMethodsScreen() {
                       onPress={() => handleSetDefault(bank.id)}
                     >
                       <Ionicons name="checkmark-circle-outline" size={18} color={colors.brand[400]} />
-                      <Text style={styles.actionText}>Varsayılan</Text>
+                      <Text style={[styles.actionText, { color: colors.brand[400] }]}>Varsayılan</Text>
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
@@ -197,42 +221,61 @@ export function PaymentMethodsScreen() {
             ))}
 
           {/* Add Bank Button */}
-          <TouchableOpacity style={styles.addButton} onPress={handleAddBank} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+              }
+            ]}
+            onPress={handleAddBank}
+            activeOpacity={0.7}
+          >
             <View style={styles.addButtonInner}>
               <Ionicons name="add-circle" size={24} color={colors.brand[400]} />
-              <Text style={styles.addButtonText}>Banka Hesabı Ekle</Text>
+              <Text style={[styles.addButtonText, { color: colors.brand[400] }]}>Banka Hesabı Ekle</Text>
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Billing History */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fatura Geçmişi</Text>
-          <View style={styles.historyCard}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Fatura Geçmişi</Text>
+          <View
+            style={[
+              styles.historyCard,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+                ...(isDark ? {} : helpers.getShadow('sm')),
+              }
+            ]}
+          >
             <TouchableOpacity style={styles.historyRow} activeOpacity={0.7}>
               <View style={styles.historyInfo}>
-                <Text style={styles.historyTitle}>Ocak 2025 Faturası</Text>
-                <Text style={styles.historyDate}>15 Ocak 2025</Text>
+                <Text style={[styles.historyTitle, { color: colors.text }]}>Ocak 2025 Faturası</Text>
+                <Text style={[styles.historyDate, { color: colors.textMuted }]}>15 Ocak 2025</Text>
               </View>
               <View style={styles.historyRight}>
-                <Text style={styles.historyAmount}>₺2.450</Text>
+                <Text style={[styles.historyAmount, { color: colors.text }]}>₺2.450</Text>
                 <Ionicons name="download-outline" size={20} color={colors.brand[400]} />
               </View>
             </TouchableOpacity>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
             <TouchableOpacity style={styles.historyRow} activeOpacity={0.7}>
               <View style={styles.historyInfo}>
-                <Text style={styles.historyTitle}>Aralık 2024 Faturası</Text>
-                <Text style={styles.historyDate}>15 Aralık 2024</Text>
+                <Text style={[styles.historyTitle, { color: colors.text }]}>Aralık 2024 Faturası</Text>
+                <Text style={[styles.historyDate, { color: colors.textMuted }]}>15 Aralık 2024</Text>
               </View>
               <View style={styles.historyRight}>
-                <Text style={styles.historyAmount}>₺1.890</Text>
+                <Text style={[styles.historyAmount, { color: colors.text }]}>₺1.890</Text>
                 <Ionicons name="download-outline" size={20} color={colors.brand[400]} />
               </View>
             </TouchableOpacity>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
             <TouchableOpacity style={styles.viewAllRow} activeOpacity={0.7}>
-              <Text style={styles.viewAllText}>Tüm Faturaları Gör</Text>
+              <Text style={[styles.viewAllText, { color: colors.brand[400] }]}>Tüm Faturaları Gör</Text>
               <Ionicons name="chevron-forward" size={18} color={colors.brand[400]} />
             </TouchableOpacity>
           </View>
@@ -243,8 +286,8 @@ export function PaymentMethodsScreen() {
           <View style={styles.infoBox}>
             <Ionicons name="shield-checkmark" size={24} color={colors.success} />
             <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Güvenli Ödemeler</Text>
-              <Text style={styles.infoText}>
+              <Text style={[styles.infoTitle, { color: colors.success }]}>Güvenli Ödemeler</Text>
+              <Text style={[styles.infoText, { color: colors.textMuted }]}>
                 Tüm ödeme bilgileriniz 256-bit SSL şifreleme ile korunmaktadır.
               </Text>
             </View>
@@ -260,7 +303,6 @@ export function PaymentMethodsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -278,7 +320,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   section: {
     paddingHorizontal: 20,
@@ -287,7 +328,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 16,
@@ -357,7 +397,6 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 13,
-    color: colors.brand[400],
   },
   addButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -376,7 +415,6 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   bankCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -402,11 +440,9 @@ const styles = StyleSheet.create({
   bankName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   bankAccount: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 4,
   },
   historyCard: {
@@ -428,11 +464,9 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   historyDate: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   historyRight: {
@@ -443,7 +477,6 @@ const styles = StyleSheet.create({
   historyAmount: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   divider: {
     height: 1,
@@ -460,7 +493,6 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   infoBox: {
     flexDirection: 'row',
@@ -477,12 +509,10 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.success,
     marginBottom: 4,
   },
   infoText: {
     fontSize: 12,
-    color: colors.zinc[400],
     lineHeight: 18,
   },
 });

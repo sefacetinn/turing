@@ -12,7 +12,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles
+const colors = defaultColors;
 
 // Local events data
 const events = [
@@ -63,6 +67,7 @@ export function EventDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { eventId } = (route.params as { eventId: string }) || { eventId: '1' };
+  const { colors, isDark, helpers } = useTheme();
 
   const event = events.find(e => e.id === eventId) || events[0];
   const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'budget'>('overview');
@@ -76,12 +81,12 @@ export function EventDetailScreen() {
   const budgetUsedPercent = event.budget ? Math.round((event.spent / event.budget) * 100) : 0;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header Image */}
       <View style={styles.headerImage}>
         <Image source={{ uri: event.image }} style={styles.coverImage} />
         <LinearGradient
-          colors={['transparent', 'rgba(9,9,11,0.8)', colors.background]}
+          colors={isDark ? ['transparent', 'rgba(9,9,11,0.8)', colors.background] : ['transparent', 'rgba(255,255,255,0.8)', colors.background]}
           style={styles.imageGradient}
         />
         <SafeAreaView style={styles.headerActions}>
@@ -107,36 +112,36 @@ export function EventDetailScreen() {
               {getStatusInfo(event.status).text}
             </Text>
           </View>
-          <Text style={styles.eventTitle}>{event.title}</Text>
-          <Text style={styles.eventDescription}>{event.description}</Text>
+          <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
+          <Text style={[styles.eventDescription, { color: colors.textMuted }]}>{event.description}</Text>
 
           {/* Quick Info */}
           <View style={styles.quickInfo}>
             <View style={styles.quickInfoItem}>
-              <Ionicons name="calendar-outline" size={16} color={colors.zinc[400]} />
-              <Text style={styles.quickInfoText}>{event.date}</Text>
+              <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.quickInfoText, { color: colors.textMuted }]}>{event.date}</Text>
             </View>
             <View style={styles.quickInfoItem}>
-              <Ionicons name="time-outline" size={16} color={colors.zinc[400]} />
-              <Text style={styles.quickInfoText}>{event.time}</Text>
+              <Ionicons name="time-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.quickInfoText, { color: colors.textMuted }]}>{event.time}</Text>
             </View>
             <View style={styles.quickInfoItem}>
-              <Ionicons name="location-outline" size={16} color={colors.zinc[400]} />
-              <Text style={styles.quickInfoText}>{event.venue}, {event.district}</Text>
+              <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.quickInfoText, { color: colors.textMuted }]}>{event.venue}, {event.district}</Text>
             </View>
             <View style={styles.quickInfoItem}>
-              <Ionicons name="people-outline" size={16} color={colors.zinc[400]} />
-              <Text style={styles.quickInfoText}>{event.attendees.toLocaleString()} katılımcı</Text>
+              <Ionicons name="people-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.quickInfoText, { color: colors.textMuted }]}>{event.attendees.toLocaleString()} katılımcı</Text>
             </View>
           </View>
         </View>
 
         {/* Stats Cards */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{event.progress}%</Text>
-            <Text style={styles.statLabel}>İlerleme</Text>
-            <View style={styles.progressBar}>
+          <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{event.progress}%</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>İlerleme</Text>
+            <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]}>
               <LinearGradient
                 colors={gradients.primary}
                 style={[styles.progressFill, { width: `${event.progress}%` }]}
@@ -145,24 +150,24 @@ export function EventDetailScreen() {
               />
             </View>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{confirmedServices}/{totalServices}</Text>
-            <Text style={styles.statLabel}>Hizmetler</Text>
-            <View style={styles.progressBar}>
+          <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{confirmedServices}/{totalServices}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Hizmetler</Text>
+            <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]}>
               <View style={[styles.progressFillGreen, { width: `${(confirmedServices/totalServices)*100}%` }]} />
             </View>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{budgetUsedPercent}%</Text>
-            <Text style={styles.statLabel}>Bütçe</Text>
-            <View style={styles.progressBar}>
+          <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{budgetUsedPercent}%</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Bütçe</Text>
+            <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]}>
               <View style={[styles.progressFillOrange, { width: `${budgetUsedPercent}%` }]} />
             </View>
           </View>
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabsContainer}>
+        <View style={[styles.tabsContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
           {(['overview', 'services', 'budget'] as const).map((tab) => {
             const tabConfig = {
               overview: { icon: 'information-circle-outline', iconActive: 'information-circle', label: 'Genel' },
@@ -179,9 +184,9 @@ export function EventDetailScreen() {
                 <Ionicons
                   name={(activeTab === tab ? config.iconActive : config.icon) as any}
                   size={14}
-                  color={activeTab === tab ? colors.brand[400] : colors.zinc[500]}
+                  color={activeTab === tab ? colors.brand[400] : colors.textSecondary}
                 />
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                <Text style={[styles.tabText, { color: activeTab === tab ? colors.brand[400] : colors.textSecondary }]}>
                   {config.label}
                 </Text>
               </TouchableOpacity>
@@ -195,7 +200,7 @@ export function EventDetailScreen() {
             {event.services.map((service, index) => {
               const statusInfo = getStatusInfo(service.status);
               return (
-                <TouchableOpacity key={service.id} style={styles.serviceCard}>
+                <TouchableOpacity key={service.id} style={[styles.serviceCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                   <LinearGradient
                     colors={getCategoryGradient(service.category)}
                     style={styles.serviceIcon}
@@ -205,13 +210,13 @@ export function EventDetailScreen() {
                     <Ionicons name={getCategoryIcon(service.category) as any} size={18} color="white" />
                   </LinearGradient>
                   <View style={styles.serviceInfo}>
-                    <Text style={styles.serviceName}>{service.name}</Text>
-                    <Text style={styles.serviceProvider}>
+                    <Text style={[styles.serviceName, { color: colors.text }]}>{service.name}</Text>
+                    <Text style={[styles.serviceProvider, { color: colors.textSecondary }]}>
                       {service.provider || 'Tedarikçi bekleniyor'}
                     </Text>
                   </View>
                   <View style={styles.serviceRight}>
-                    <Text style={styles.servicePrice}>₺{service.price.toLocaleString()}</Text>
+                    <Text style={[styles.servicePrice, { color: colors.text }]}>₺{service.price.toLocaleString()}</Text>
                     <View style={[styles.serviceStatus, { backgroundColor: statusInfo.bg }]}>
                       <Text style={[styles.serviceStatusText, { color: statusInfo.color }]}>
                         {statusInfo.text}
@@ -222,9 +227,9 @@ export function EventDetailScreen() {
               );
             })}
 
-            <TouchableOpacity style={styles.addServiceButton}>
+            <TouchableOpacity style={[styles.addServiceButton, { borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : colors.brand[300] }]}>
               <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
-              <Text style={styles.addServiceText}>Hizmet Ekle</Text>
+              <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -232,7 +237,7 @@ export function EventDetailScreen() {
         {activeTab === 'overview' && (
           <View style={styles.overviewSection}>
             {/* Timeline */}
-            <Text style={styles.sectionTitle}>Zaman Çizelgesi</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Zaman Çizelgesi</Text>
             <View style={styles.timeline}>
               {[
                 { title: 'Etkinlik Oluşturuldu', date: '1 Haziran 2024', done: true },
@@ -243,18 +248,18 @@ export function EventDetailScreen() {
                 { title: 'Etkinlik Günü', date: event.date, done: false },
               ].map((item, index) => (
                 <View key={index} style={styles.timelineItem}>
-                  <View style={styles.timelineDot}>
+                  <View style={[styles.timelineDot, { backgroundColor: item.done ? colors.brand[500] : colors.textSecondary }]}>
                     {item.done ? (
                       <Ionicons name="checkmark" size={12} color="white" />
                     ) : (
-                      <View style={styles.timelineDotEmpty} />
+                      <View style={[styles.timelineDotEmpty, { backgroundColor: colors.textSecondary }]} />
                     )}
                   </View>
                   <View style={styles.timelineContent}>
-                    <Text style={[styles.timelineTitle, !item.done && styles.timelineTitlePending]}>
+                    <Text style={[styles.timelineTitle, { color: colors.text }, !item.done && { color: colors.textSecondary }]}>
                       {item.title}
                     </Text>
-                    <Text style={styles.timelineDate}>{item.date}</Text>
+                    <Text style={[styles.timelineDate, { color: colors.textSecondary }]}>{item.date}</Text>
                   </View>
                 </View>
               ))}
@@ -264,33 +269,33 @@ export function EventDetailScreen() {
 
         {activeTab === 'budget' && (
           <View style={styles.budgetSection}>
-            <View style={styles.budgetSummary}>
+            <View style={[styles.budgetSummary, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
               <View style={styles.budgetItem}>
-                <Text style={styles.budgetLabel}>Toplam Bütçe</Text>
-                <Text style={styles.budgetValue}>₺{event.budget.toLocaleString()}</Text>
+                <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Toplam Bütçe</Text>
+                <Text style={[styles.budgetValue, { color: colors.text }]}>₺{event.budget.toLocaleString()}</Text>
               </View>
               <View style={styles.budgetItem}>
-                <Text style={styles.budgetLabel}>Harcanan</Text>
+                <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Harcanan</Text>
                 <Text style={[styles.budgetValue, { color: colors.warning }]}>
                   ₺{event.spent.toLocaleString()}
                 </Text>
               </View>
               <View style={styles.budgetItem}>
-                <Text style={styles.budgetLabel}>Kalan</Text>
+                <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Kalan</Text>
                 <Text style={[styles.budgetValue, { color: colors.success }]}>
                   ₺{(event.budget - event.spent).toLocaleString()}
                 </Text>
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Harcama Dağılımı</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Harcama Dağılımı</Text>
             {event.services.filter(s => s.status === 'confirmed').map((service) => (
-              <View key={service.id} style={styles.budgetRow}>
+              <View key={service.id} style={[styles.budgetRow, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
                 <View style={styles.budgetRowLeft}>
                   <View style={[styles.budgetDot, { backgroundColor: getCategoryGradient(service.category)[0] }]} />
-                  <Text style={styles.budgetRowName}>{service.name}</Text>
+                  <Text style={[styles.budgetRowName, { color: colors.text }]}>{service.name}</Text>
                 </View>
-                <Text style={styles.budgetRowValue}>₺{service.price.toLocaleString()}</Text>
+                <Text style={[styles.budgetRowValue, { color: colors.text }]}>₺{service.price.toLocaleString()}</Text>
               </View>
             ))}
           </View>
@@ -300,10 +305,10 @@ export function EventDetailScreen() {
       </ScrollView>
 
       {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.secondaryButton}>
+      <View style={[styles.bottomActions, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+        <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.cardBackground, borderColor: isDark ? 'transparent' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
           <Ionicons name="create-outline" size={20} color={colors.text} />
-          <Text style={styles.secondaryButtonText}>Düzenle</Text>
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Düzenle</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.primaryButton}>
           <LinearGradient
@@ -394,12 +399,10 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: colors.text,
     marginBottom: 8,
   },
   eventDescription: {
     fontSize: 14,
-    color: colors.zinc[400],
     lineHeight: 20,
     marginBottom: 16,
   },
@@ -415,7 +418,6 @@ const styles = StyleSheet.create({
   },
   quickInfoText: {
     fontSize: 13,
-    color: colors.zinc[400],
   },
   statsRow: {
     flexDirection: 'row',
@@ -434,11 +436,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: colors.text,
   },
   statLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 2,
     marginBottom: 8,
   },
@@ -469,6 +469,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 12,
     padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   tab: {
     flex: 1,
@@ -485,10 +487,8 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 11,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
   tabTextActive: {
-    color: colors.brand[400],
   },
   servicesSection: {
     paddingHorizontal: 20,
@@ -518,11 +518,9 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   serviceProvider: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   serviceRight: {
@@ -531,7 +529,6 @@ const styles = StyleSheet.create({
   servicePrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   serviceStatus: {
     paddingHorizontal: 8,
@@ -558,7 +555,6 @@ const styles = StyleSheet.create({
   addServiceText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   overviewSection: {
     paddingHorizontal: 20,
@@ -567,7 +563,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 16,
   },
   timeline: {
@@ -581,7 +576,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.brand[500],
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -590,7 +584,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.zinc[600],
   },
   timelineContent: {
     flex: 1,
@@ -599,14 +592,11 @@ const styles = StyleSheet.create({
   timelineTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   timelineTitlePending: {
-    color: colors.zinc[500],
   },
   timelineDate: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   budgetSection: {
@@ -619,6 +609,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   budgetItem: {
     flex: 1,
@@ -626,13 +618,11 @@ const styles = StyleSheet.create({
   },
   budgetLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginBottom: 4,
   },
   budgetValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: colors.text,
   },
   budgetRow: {
     flexDirection: 'row',
@@ -654,12 +644,10 @@ const styles = StyleSheet.create({
   },
   budgetRowName: {
     fontSize: 14,
-    color: colors.text,
   },
   budgetRowValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   bottomActions: {
     position: 'absolute',
@@ -684,11 +672,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   secondaryButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   primaryButton: {
     flex: 1.5,

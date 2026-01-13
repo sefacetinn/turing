@@ -13,7 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 // Local artists data
 const artists = [
@@ -31,6 +34,7 @@ export function ArtistDetailScreen() {
   const { artistId } = (route.params as { artistId: string }) || { artistId: '1' };
 
   const artist = artists.find(a => a.id === artistId) || artists[0];
+  const { colors, isDark, helpers } = useTheme();
   const [isFavorite, setIsFavorite] = useState(false);
 
   const reviews = [
@@ -40,12 +44,12 @@ export function ArtistDetailScreen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.headerImage}>
         <Image source={{ uri: artist.image }} style={styles.coverImage} />
         <LinearGradient
-          colors={['transparent', 'rgba(9,9,11,0.9)', colors.background]}
+          colors={['transparent', isDark ? 'rgba(9,9,11,0.9)' : 'rgba(255,255,255,0.9)', colors.background]}
           style={styles.imageGradient}
         />
         <SafeAreaView style={styles.headerActions}>
@@ -74,33 +78,33 @@ export function ArtistDetailScreen() {
         {/* Artist Info */}
         <View style={styles.artistInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.artistName}>{artist.name}</Text>
+            <Text style={[styles.artistName, { color: colors.text }]}>{artist.name}</Text>
             {artist.verified && (
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark-circle" size={20} color={colors.brand[400]} />
               </View>
             )}
           </View>
-          <Text style={styles.artistGenre}>{artist.genre}</Text>
+          <Text style={[styles.artistGenre, { color: colors.textMuted }]}>{artist.genre}</Text>
 
           {/* Stats Row */}
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
             <View style={styles.statItem}>
               <Ionicons name="star" size={16} color="#fbbf24" />
-              <Text style={styles.statValue}>{artist.rating}</Text>
-              <Text style={styles.statLabel}>({artist.reviews})</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{artist.rating}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>({artist.reviews})</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border }]} />
             <View style={styles.statItem}>
               <Ionicons name="people" size={16} color={colors.zinc[400]} />
-              <Text style={styles.statValue}>{artist.followers}</Text>
-              <Text style={styles.statLabel}>takipçi</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{artist.followers}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>takipçi</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border }]} />
             <View style={styles.statItem}>
               <Ionicons name="calendar" size={16} color={colors.zinc[400]} />
-              <Text style={styles.statValue}>{artist.events}</Text>
-              <Text style={styles.statLabel}>etkinlik</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{artist.events}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>etkinlik</Text>
             </View>
           </View>
 
@@ -108,23 +112,23 @@ export function ArtistDetailScreen() {
           <View style={styles.tagsRow}>
             {(artist.tags || []).map((tag, index) => (
               <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
+                <Text style={[styles.tagText, { color: colors.brand[400] }]}>{tag}</Text>
               </View>
             ))}
           </View>
 
           {/* Bio */}
-          <Text style={styles.bioTitle}>Hakkında</Text>
-          <Text style={styles.bioText}>{artist.bio}</Text>
+          <Text style={[styles.bioTitle, { color: colors.text }]}>Hakkında</Text>
+          <Text style={[styles.bioText, { color: colors.textMuted }]}>{artist.bio}</Text>
 
           {/* Price */}
-          <View style={styles.priceCard}>
+          <View style={[styles.priceCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]}>
             <View style={styles.priceLeft}>
-              <Text style={styles.priceLabel}>Fiyat Aralığı</Text>
-              <Text style={styles.priceValue}>{artist.price}</Text>
+              <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Fiyat Aralığı</Text>
+              <Text style={[styles.priceValue, { color: colors.text }]}>{artist.price}</Text>
             </View>
             <TouchableOpacity style={styles.priceButton}>
-              <Text style={styles.priceButtonText}>Teklif İste</Text>
+              <Text style={[styles.priceButtonText, { color: colors.brand[400] }]}>Teklif İste</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -132,22 +136,22 @@ export function ArtistDetailScreen() {
         {/* Reviews Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Değerlendirmeler</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Değerlendirmeler</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>Tümü ({artist.reviews})</Text>
+              <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümü ({artist.reviews})</Text>
             </TouchableOpacity>
           </View>
 
           {reviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
+            <View key={review.id} style={[styles.reviewCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
               <View style={styles.reviewHeader}>
                 <View style={styles.reviewUser}>
                   <View style={styles.reviewAvatar}>
-                    <Text style={styles.reviewAvatarText}>{review.user[0]}</Text>
+                    <Text style={[styles.reviewAvatarText, { color: colors.brand[400] }]}>{review.user[0]}</Text>
                   </View>
                   <View>
-                    <Text style={styles.reviewUserName}>{review.user}</Text>
-                    <Text style={styles.reviewDate}>{review.date}</Text>
+                    <Text style={[styles.reviewUserName, { color: colors.text }]}>{review.user}</Text>
+                    <Text style={[styles.reviewDate, { color: colors.textMuted }]}>{review.date}</Text>
                   </View>
                 </View>
                 <View style={styles.reviewRating}>
@@ -161,7 +165,7 @@ export function ArtistDetailScreen() {
                   ))}
                 </View>
               </View>
-              <Text style={styles.reviewComment}>{review.comment}</Text>
+              <Text style={[styles.reviewComment, { color: colors.textMuted }]}>{review.comment}</Text>
             </View>
           ))}
         </View>
@@ -169,9 +173,9 @@ export function ArtistDetailScreen() {
         {/* Similar Artists */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Benzer Sanatçılar</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Benzer Sanatçılar</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>Tümü</Text>
+              <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümü</Text>
             </TouchableOpacity>
           </View>
 
@@ -179,11 +183,11 @@ export function ArtistDetailScreen() {
             {(artists || []).filter(a => a.id !== artist.id).slice(0, 3).map((similarArtist) => (
               <TouchableOpacity key={similarArtist.id} style={styles.similarCard}>
                 <Image source={{ uri: similarArtist.image }} style={styles.similarImage} />
-                <Text style={styles.similarName} numberOfLines={1}>{similarArtist.name}</Text>
-                <Text style={styles.similarGenre} numberOfLines={1}>{similarArtist.genre}</Text>
+                <Text style={[styles.similarName, { color: colors.text }]} numberOfLines={1}>{similarArtist.name}</Text>
+                <Text style={[styles.similarGenre, { color: colors.textMuted }]} numberOfLines={1}>{similarArtist.genre}</Text>
                 <View style={styles.similarRating}>
                   <Ionicons name="star" size={12} color="#fbbf24" />
-                  <Text style={styles.similarRatingText}>{similarArtist.rating}</Text>
+                  <Text style={[styles.similarRatingText, { color: colors.text }]}>{similarArtist.rating}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -194,8 +198,8 @@ export function ArtistDetailScreen() {
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={styles.bottomAction}>
-        <TouchableOpacity style={styles.messageButton}>
+      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.surface, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+        <TouchableOpacity style={[styles.messageButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.cardBackground }]}>
           <Ionicons name="chatbubble-outline" size={20} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.bookButton}>
@@ -279,12 +283,10 @@ const styles = StyleSheet.create({
   artistName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.text,
   },
   verifiedBadge: {},
   artistGenre: {
     fontSize: 15,
-    color: colors.zinc[400],
     marginTop: 4,
   },
   statsRow: {
@@ -306,11 +308,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   statLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   statDivider: {
     width: 1,
@@ -332,18 +332,15 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   bioTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginTop: 24,
     marginBottom: 8,
   },
   bioText: {
     fontSize: 14,
-    color: colors.zinc[400],
     lineHeight: 22,
   },
   priceCard: {
@@ -360,12 +357,10 @@ const styles = StyleSheet.create({
   priceLeft: {},
   priceLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   priceValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.text,
     marginTop: 2,
   },
   priceButton: {
@@ -377,7 +372,6 @@ const styles = StyleSheet.create({
   priceButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   section: {
     marginTop: 32,
@@ -392,11 +386,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   seeAllText: {
     fontSize: 13,
-    color: colors.brand[400],
   },
   reviewCard: {
     padding: 14,
@@ -426,16 +418,13 @@ const styles = StyleSheet.create({
   reviewAvatarText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   reviewUserName: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   reviewDate: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   reviewRating: {
     flexDirection: 'row',
@@ -443,7 +432,6 @@ const styles = StyleSheet.create({
   },
   reviewComment: {
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 20,
   },
   similarCard: {
@@ -459,11 +447,9 @@ const styles = StyleSheet.create({
   similarName: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   similarGenre: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   similarRating: {
@@ -475,7 +461,6 @@ const styles = StyleSheet.create({
   similarRatingText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.text,
   },
   bottomAction: {
     position: 'absolute',

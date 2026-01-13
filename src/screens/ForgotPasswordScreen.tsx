@@ -12,7 +12,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles
+const colors = defaultColors;
 
 interface ForgotPasswordScreenProps {
   onNavigateBack: () => void;
@@ -21,6 +25,7 @@ interface ForgotPasswordScreenProps {
 type Step = 'email' | 'code' | 'newPassword' | 'success';
 
 export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenProps) {
+  const { colors, isDark, helpers } = useTheme();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -60,21 +65,24 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
         </LinearGradient>
       </View>
 
-      <Text style={styles.title}>Şifremi Unuttum</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title, { color: colors.text }]}>Şifremi Unuttum</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         E-posta adresinizi girin, size şifre sıfırlama kodu gönderelim.
       </Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>E-posta</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>E-posta</Text>
+        <View style={[styles.inputContainer, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+        }]}>
+          <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.text }]}
             value={email}
             onChangeText={setEmail}
             placeholder="ornek@email.com"
-            placeholderTextColor={colors.zinc[600]}
+            placeholderTextColor={colors.textMuted}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -108,16 +116,22 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
         </LinearGradient>
       </View>
 
-      <Text style={styles.title}>Doğrulama Kodu</Text>
-      <Text style={styles.subtitle}>
-        <Text style={styles.emailHighlight}>{email}</Text> adresine gönderilen 6 haneli kodu girin.
+      <Text style={[styles.title, { color: colors.text }]}>Doğrulama Kodu</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text style={[styles.emailHighlight, { color: colors.brand[400] }]}>{email}</Text> adresine gönderilen 6 haneli kodu girin.
       </Text>
 
       <View style={styles.codeContainer}>
         {code.map((digit, index) => (
-          <View key={index} style={[styles.codeBox, digit && styles.codeBoxFilled]}>
+          <View key={index} style={[styles.codeBox, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+          }, digit && {
+            borderColor: colors.brand[500],
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+          }]}>
             <TextInput
-              style={styles.codeInput}
+              style={[styles.codeInput, { color: colors.text }]}
               value={digit}
               onChangeText={(text) => {
                 const newCode = [...code];
@@ -132,8 +146,8 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
       </View>
 
       <TouchableOpacity style={styles.resendRow}>
-        <Text style={styles.resendText}>Kod gelmedi mi? </Text>
-        <Text style={styles.resendLink}>Tekrar Gönder</Text>
+        <Text style={[styles.resendText, { color: colors.textMuted }]}>Kod gelmedi mi? </Text>
+        <Text style={[styles.resendLink, { color: colors.brand[400] }]}>Tekrar Gönder</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={handleVerifyCode} activeOpacity={0.8}>
@@ -163,21 +177,24 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
         </LinearGradient>
       </View>
 
-      <Text style={styles.title}>Yeni Şifre</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title, { color: colors.text }]}>Yeni Şifre</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Hesabınız için yeni bir şifre belirleyin.
       </Text>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Yeni Şifre</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Yeni Şifre</Text>
+        <View style={[styles.inputContainer, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+        }]}>
+          <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
           <TextInput
-            style={[styles.input, { paddingRight: 48 }]}
+            style={[styles.input, { paddingRight: 48, color: colors.text }]}
             value={newPassword}
             onChangeText={setNewPassword}
             placeholder="En az 8 karakter"
-            placeholderTextColor={colors.zinc[600]}
+            placeholderTextColor={colors.textMuted}
             secureTextEntry={!showPassword}
           />
           <TouchableOpacity
@@ -187,22 +204,25 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
             <Ionicons
               name={showPassword ? 'eye-off-outline' : 'eye-outline'}
               size={18}
-              color={colors.zinc[500]}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Şifre Tekrar</Text>
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+        <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Şifre Tekrar</Text>
+        <View style={[styles.inputContainer, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+        }]}>
+          <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
           <TextInput
-            style={[styles.input, { paddingRight: 48 }]}
+            style={[styles.input, { paddingRight: 48, color: colors.text }]}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             placeholder="Şifrenizi tekrar girin"
-            placeholderTextColor={colors.zinc[600]}
+            placeholderTextColor={colors.textMuted}
             secureTextEntry={!showConfirmPassword}
           />
           <TouchableOpacity
@@ -212,21 +232,23 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
             <Ionicons
               name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
               size={18}
-              color={colors.zinc[500]}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Password Requirements */}
-      <View style={styles.requirements}>
+      <View style={[styles.requirements, {
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
+      }]}>
         <View style={styles.requirementRow}>
           <Ionicons
             name={newPassword.length >= 8 ? 'checkmark-circle' : 'ellipse-outline'}
             size={16}
-            color={newPassword.length >= 8 ? colors.success : colors.zinc[600]}
+            color={newPassword.length >= 8 ? colors.success : colors.textMuted}
           />
-          <Text style={[styles.requirementText, newPassword.length >= 8 && styles.requirementMet]}>
+          <Text style={[styles.requirementText, { color: colors.textMuted }, newPassword.length >= 8 && { color: colors.success }]}>
             En az 8 karakter
           </Text>
         </View>
@@ -234,9 +256,9 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
           <Ionicons
             name={/[A-Z]/.test(newPassword) ? 'checkmark-circle' : 'ellipse-outline'}
             size={16}
-            color={/[A-Z]/.test(newPassword) ? colors.success : colors.zinc[600]}
+            color={/[A-Z]/.test(newPassword) ? colors.success : colors.textMuted}
           />
-          <Text style={[styles.requirementText, /[A-Z]/.test(newPassword) && styles.requirementMet]}>
+          <Text style={[styles.requirementText, { color: colors.textMuted }, /[A-Z]/.test(newPassword) && { color: colors.success }]}>
             En az 1 büyük harf
           </Text>
         </View>
@@ -244,9 +266,9 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
           <Ionicons
             name={/[0-9]/.test(newPassword) ? 'checkmark-circle' : 'ellipse-outline'}
             size={16}
-            color={/[0-9]/.test(newPassword) ? colors.success : colors.zinc[600]}
+            color={/[0-9]/.test(newPassword) ? colors.success : colors.textMuted}
           />
-          <Text style={[styles.requirementText, /[0-9]/.test(newPassword) && styles.requirementMet]}>
+          <Text style={[styles.requirementText, { color: colors.textMuted }, /[0-9]/.test(newPassword) && { color: colors.success }]}>
             En az 1 rakam
           </Text>
         </View>
@@ -274,8 +296,8 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
         </View>
       </View>
 
-      <Text style={styles.title}>Başarılı!</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title, { color: colors.text }]}>Başarılı!</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
       </Text>
 
@@ -294,10 +316,14 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Background Gradient Orbs */}
-      <View style={styles.backgroundOrb1} />
-      <View style={styles.backgroundOrb2} />
+      <View style={[styles.backgroundOrb1, {
+        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+      }]} />
+      <View style={[styles.backgroundOrb2, {
+        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)'
+      }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -310,7 +336,9 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
           {/* Back Button */}
           {step !== 'success' && (
             <TouchableOpacity
-              style={styles.backButton}
+              style={[styles.backButton, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+              }]}
               onPress={step === 'email' ? onNavigateBack : () => setStep('email')}
             >
               <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -320,16 +348,30 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
           {/* Progress Indicator */}
           {step !== 'success' && (
             <View style={styles.progressContainer}>
-              <View style={[styles.progressDot, step === 'email' && styles.progressDotActive]} />
-              <View style={[styles.progressLine, (step === 'code' || step === 'newPassword') && styles.progressLineActive]} />
-              <View style={[styles.progressDot, step === 'code' && styles.progressDotActive]} />
-              <View style={[styles.progressLine, step === 'newPassword' && styles.progressLineActive]} />
-              <View style={[styles.progressDot, step === 'newPassword' && styles.progressDotActive]} />
+              <View style={[styles.progressDot, {
+                backgroundColor: isDark ? colors.zinc[700] : colors.border
+              }, step === 'email' && { backgroundColor: colors.brand[500] }]} />
+              <View style={[styles.progressLine, {
+                backgroundColor: isDark ? colors.zinc[700] : colors.border
+              }, (step === 'code' || step === 'newPassword') && { backgroundColor: colors.brand[500] }]} />
+              <View style={[styles.progressDot, {
+                backgroundColor: isDark ? colors.zinc[700] : colors.border
+              }, step === 'code' && { backgroundColor: colors.brand[500] }]} />
+              <View style={[styles.progressLine, {
+                backgroundColor: isDark ? colors.zinc[700] : colors.border
+              }, step === 'newPassword' && { backgroundColor: colors.brand[500] }]} />
+              <View style={[styles.progressDot, {
+                backgroundColor: isDark ? colors.zinc[700] : colors.border
+              }, step === 'newPassword' && { backgroundColor: colors.brand[500] }]} />
             </View>
           )}
 
           {/* Glass Card */}
-          <View style={styles.card}>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('lg'))
+          }]}>
             {step === 'email' && renderEmailStep()}
             {step === 'code' && renderCodeStep()}
             {step === 'newPassword' && renderNewPasswordStep()}
@@ -344,7 +386,6 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   backgroundOrb1: {
     position: 'absolute',
@@ -392,7 +433,6 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.zinc[700],
   },
   progressDotActive: {
     backgroundColor: colors.brand[500],
@@ -400,7 +440,6 @@ const styles = StyleSheet.create({
   progressLine: {
     width: 40,
     height: 2,
-    backgroundColor: colors.zinc[700],
     marginHorizontal: 8,
   },
   progressLineActive: {
@@ -433,13 +472,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.zinc[400],
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 20,
@@ -454,7 +491,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -474,7 +510,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     fontSize: 15,
-    color: colors.text,
   },
   eyeButton: {
     padding: 14,
@@ -502,7 +537,6 @@ const styles = StyleSheet.create({
   codeInput: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
     textAlign: 'center',
     width: '100%',
     height: '100%',
@@ -514,7 +548,6 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 14,
-    color: colors.zinc[500],
   },
   resendLink: {
     fontSize: 14,
@@ -535,7 +568,6 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 13,
-    color: colors.zinc[600],
   },
   requirementMet: {
     color: colors.success,

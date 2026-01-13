@@ -12,7 +12,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles
+const colors = defaultColors;
 
 interface RegisterScreenProps {
   onRegister: (asProvider: boolean) => void;
@@ -20,6 +24,7 @@ interface RegisterScreenProps {
 }
 
 export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreenProps) {
+  const { colors, isDark, helpers } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [name, setName] = useState('');
@@ -39,11 +44,17 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Background Gradient Orbs */}
-      <View style={styles.backgroundOrb1} />
-      <View style={styles.backgroundOrb2} />
-      <View style={styles.backgroundOrb3} />
+      <View style={[styles.backgroundOrb1, {
+        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+      }]} />
+      <View style={[styles.backgroundOrb2, {
+        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)'
+      }]} />
+      <View style={[styles.backgroundOrb3, {
+        backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'
+      }]} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -56,7 +67,9 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              <View style={styles.logoGlow} />
+              <View style={[styles.logoGlow, {
+                backgroundColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)'
+              }]} />
               <LinearGradient
                 colors={['#9333ea', '#7c3aed', '#6366f1']}
                 style={styles.logoBox}
@@ -66,14 +79,21 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                 <Ionicons name="musical-notes" size={32} color="white" />
               </LinearGradient>
             </View>
-            <Text style={styles.brandName}>Hesap Oluştur</Text>
-            <Text style={styles.brandTagline}>Turing'e hoş geldiniz</Text>
+            <Text style={[styles.brandName, { color: colors.text }]}>Hesap Oluştur</Text>
+            <Text style={[styles.brandTagline, { color: colors.textSecondary }]}>Turing'e hoş geldiniz</Text>
           </View>
 
           {/* Glass Card */}
-          <View style={styles.card}>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('lg'))
+          }]}>
             {/* Mode Selection Tabs */}
-            <View style={styles.tabSelector}>
+            <View style={[styles.tabSelector, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border
+            }]}>
               <TouchableOpacity
                 onPress={() => setSelectedMode('organizer')}
                 style={[
@@ -93,8 +113,8 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                   </LinearGradient>
                 ) : (
                   <View style={styles.tabItemInner}>
-                    <Ionicons name="people-outline" size={18} color={colors.zinc[400]} />
-                    <Text style={styles.tabText}>Organizatör</Text>
+                    <Ionicons name="people-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.tabText, { color: colors.textMuted }]}>Organizatör</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -118,8 +138,8 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                   </LinearGradient>
                 ) : (
                   <View style={styles.tabItemInner}>
-                    <Ionicons name="musical-notes-outline" size={18} color={colors.zinc[400]} />
-                    <Text style={styles.tabText}>Sağlayıcı</Text>
+                    <Ionicons name="musical-notes-outline" size={18} color={colors.textMuted} />
+                    <Text style={[styles.tabText, { color: colors.textMuted }]}>Sağlayıcı</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -127,15 +147,18 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Name Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Ad Soyad</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Ad Soyad</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+              }]}>
+                <Ionicons name="person-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   value={name}
                   onChangeText={setName}
                   placeholder="Adınız Soyadınız"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   autoCapitalize="words"
                 />
               </View>
@@ -143,15 +166,18 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Email Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>E-posta</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>E-posta</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+              }]}>
+                <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="ornek@email.com"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -160,15 +186,18 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Phone Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Telefon</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="call-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Telefon</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+              }]}>
+                <Ionicons name="call-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   value={phone}
                   onChangeText={setPhone}
                   placeholder="0555 123 4567"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="phone-pad"
                 />
               </View>
@@ -176,15 +205,18 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Password Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Şifre</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Şifre</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+              }]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { paddingRight: 48 }]}
+                  style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="En az 8 karakter"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
                 />
                 <TouchableOpacity
@@ -194,7 +226,7 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
-                    color={colors.zinc[500]}
+                    color={colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
@@ -202,15 +234,18 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Confirm Password Input */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Şifre Tekrar</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Şifre Tekrar</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
+              }]}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { paddingRight: 48 }]}
+                  style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Şifrenizi tekrar girin"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showConfirmPassword}
                 />
                 <TouchableOpacity
@@ -220,7 +255,7 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
-                    color={colors.zinc[500]}
+                    color={colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
@@ -232,12 +267,17 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
               onPress={() => setAcceptTerms(!acceptTerms)}
               activeOpacity={0.7}
             >
-              <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
+              <View style={[styles.checkbox, {
+                borderColor: colors.textSecondary
+              }, acceptTerms && {
+                backgroundColor: colors.brand[500],
+                borderColor: colors.brand[500]
+              }]}>
                 {acceptTerms && <Ionicons name="checkmark" size={14} color="white" />}
               </View>
-              <Text style={styles.termsText}>
-                <Text style={styles.termsLink}>Kullanım Şartları</Text> ve{' '}
-                <Text style={styles.termsLink}>Gizlilik Politikası</Text>'nı kabul ediyorum
+              <Text style={[styles.termsText, { color: colors.textMuted }]}>
+                <Text style={[styles.termsLink, { color: colors.brand[400] }]}>Kullanım Şartları</Text> ve{' '}
+                <Text style={[styles.termsLink, { color: colors.brand[400] }]}>Gizlilik Politikası</Text>'nı kabul ediyorum
               </Text>
             </TouchableOpacity>
 
@@ -256,29 +296,35 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Divider */}
             <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>veya</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textMuted }]}>veya</Text>
+              <View style={[styles.dividerLine, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]} />
             </View>
 
             {/* Social Login */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialButton}>
+              <TouchableOpacity style={[styles.socialButton, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border
+              }]}>
                 <Ionicons name="logo-google" size={20} color={colors.text} />
-                <Text style={styles.socialText}>Google</Text>
+                <Text style={[styles.socialText, { color: colors.text }]}>Google</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.socialButton}>
+              <TouchableOpacity style={[styles.socialButton, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border
+              }]}>
                 <Ionicons name="logo-apple" size={20} color={colors.text} />
-                <Text style={styles.socialText}>Apple</Text>
+                <Text style={[styles.socialText, { color: colors.text }]}>Apple</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Toggle Login/Register */}
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleText}>Zaten hesabınız var mı?</Text>
+            <Text style={[styles.toggleText, { color: colors.textMuted }]}>Zaten hesabınız var mı?</Text>
             <TouchableOpacity onPress={onNavigateToLogin}>
-              <Text style={styles.toggleLink}>Giriş Yap</Text>
+              <Text style={[styles.toggleLink, { color: colors.brand[400] }]}>Giriş Yap</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -290,7 +336,6 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   backgroundOrb1: {
     position: 'absolute',
@@ -355,11 +400,9 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
   },
   brandTagline: {
     fontSize: 14,
-    color: colors.zinc[400],
     marginTop: 4,
   },
   card: {
@@ -401,7 +444,6 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   tabTextActive: {
     fontSize: 14,
@@ -414,7 +456,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -434,7 +475,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     fontSize: 15,
-    color: colors.text,
   },
   eyeButton: {
     padding: 14,
@@ -450,7 +490,6 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.zinc[600],
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -462,11 +501,9 @@ const styles = StyleSheet.create({
   termsText: {
     flex: 1,
     fontSize: 13,
-    color: colors.zinc[500],
     lineHeight: 20,
   },
   termsLink: {
-    color: colors.brand[400],
   },
   submitButton: {
     flexDirection: 'row',
@@ -493,7 +530,6 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginHorizontal: 16,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -517,7 +553,6 @@ const styles = StyleSheet.create({
   socialText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -528,11 +563,9 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 14,
-    color: colors.zinc[500],
   },
   toggleLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.brand[400],
   },
 });

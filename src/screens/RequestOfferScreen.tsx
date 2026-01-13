@@ -13,7 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 // Mock events for selection
 const userEvents = [
@@ -26,6 +29,7 @@ export function RequestOfferScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { provider, category } = (route.params as { provider?: any; category?: string }) || {};
+  const { colors, isDark, helpers } = useTheme();
 
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [budget, setBudget] = useState('');
@@ -49,24 +53,31 @@ export function RequestOfferScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Teklif Talebi</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Teklif Talebi</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Provider Info */}
         {provider && (
-          <View style={styles.providerCard}>
+          <View style={[
+            styles.providerCard,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            },
+            ...(isDark ? [] : [helpers.getShadow('sm')])
+          ]}>
             <Image source={{ uri: provider.image }} style={styles.providerImage} />
             <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{provider.name}</Text>
-              <Text style={styles.providerCategory}>{provider.description}</Text>
+              <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
+              <Text style={[styles.providerCategory, { color: colors.textMuted }]}>{provider.description}</Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={12} color="#fbbf24" />
                 <Text style={styles.ratingText}>{provider.rating}</Text>
@@ -77,8 +88,8 @@ export function RequestOfferScreen() {
 
         {/* Event Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Etkinlik Seçin</Text>
-          <Text style={styles.sectionSubtitle}>Bu teklif hangi etkinlik için?</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Etkinlik Seçin</Text>
+          <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>Bu teklif hangi etkinlik için?</Text>
 
           <View style={styles.eventsList}>
             {userEvents.map(event => (
@@ -86,7 +97,15 @@ export function RequestOfferScreen() {
                 key={event.id}
                 style={[
                   styles.eventCard,
-                  selectedEvent === event.id && styles.eventCardSelected
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+                  },
+                  selectedEvent === event.id && [
+                    styles.eventCardSelected,
+                    { borderColor: colors.brand[500] }
+                  ],
+                  ...(isDark ? [] : [helpers.getShadow('sm')])
                 ]}
                 onPress={() => setSelectedEvent(event.id)}
               >
@@ -99,16 +118,16 @@ export function RequestOfferScreen() {
                       <Ionicons name="checkmark" size={12} color="white" />
                     </LinearGradient>
                   ) : (
-                    <View style={styles.eventRadioEmpty} />
+                    <View style={[styles.eventRadioEmpty, { borderColor: colors.textMuted }]} />
                   )}
                 </View>
                 <View style={styles.eventInfo}>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                   <View style={styles.eventMeta}>
-                    <Ionicons name="calendar-outline" size={12} color={colors.zinc[500]} />
-                    <Text style={styles.eventMetaText}>{event.date}</Text>
-                    <Ionicons name="location-outline" size={12} color={colors.zinc[500]} />
-                    <Text style={styles.eventMetaText}>{event.location}</Text>
+                    <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                    <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.date}</Text>
+                    <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                    <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.location}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -122,20 +141,26 @@ export function RequestOfferScreen() {
               <View style={styles.newEventIcon}>
                 <Ionicons name="add" size={20} color={colors.brand[400]} />
               </View>
-              <Text style={styles.newEventText}>Yeni Etkinlik Oluştur</Text>
+              <Text style={[styles.newEventText, { color: colors.brand[400] }]}>Yeni Etkinlik Oluştur</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Budget */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bütçe Aralığı</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="cash-outline" size={18} color={colors.zinc[500]} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Bütçe Aralığı</Text>
+          <View style={[
+            styles.inputContainer,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            }
+          ]}>
+            <Ionicons name="cash-outline" size={18} color={colors.textMuted} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: colors.text }]}
               placeholder="Örn: 50.000 - 100.000 TL"
-              placeholderTextColor={colors.zinc[600]}
+              placeholderTextColor={colors.textMuted}
               value={budget}
               onChangeText={setBudget}
               keyboardType="default"
@@ -146,26 +171,38 @@ export function RequestOfferScreen() {
         {/* Date & Duration */}
         <View style={styles.row}>
           <View style={[styles.section, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.sectionTitle}>Tarih</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="calendar-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Tarih</Text>
+            <View style={[
+              styles.inputContainer,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+              }
+            ]}>
+              <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="GG/AA/YYYY"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 value={date}
                 onChangeText={setDate}
               />
             </View>
           </View>
           <View style={[styles.section, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.sectionTitle}>Süre</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="time-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Süre</Text>
+            <View style={[
+              styles.inputContainer,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+              }
+            ]}>
+              <Ionicons name="time-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 placeholder="Örn: 4 saat"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 value={duration}
                 onChangeText={setDuration}
               />
@@ -175,13 +212,19 @@ export function RequestOfferScreen() {
 
         {/* Attendees */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Katılımcı Sayısı</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons name="people-outline" size={18} color={colors.zinc[500]} />
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Katılımcı Sayısı</Text>
+          <View style={[
+            styles.inputContainer,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            }
+          ]}>
+            <Ionicons name="people-outline" size={18} color={colors.textMuted} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: colors.text }]}
               placeholder="Tahmini katılımcı sayısı"
-              placeholderTextColor={colors.zinc[600]}
+              placeholderTextColor={colors.textMuted}
               value={attendees}
               onChangeText={setAttendees}
               keyboardType="number-pad"
@@ -191,12 +234,18 @@ export function RequestOfferScreen() {
 
         {/* Requirements */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Özel Gereksinimler</Text>
-          <View style={styles.textAreaContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Özel Gereksinimler</Text>
+          <View style={[
+            styles.textAreaContainer,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            }
+          ]}>
             <TextInput
-              style={styles.textArea}
+              style={[styles.textArea, { color: colors.text }]}
               placeholder="Özel isteklerinizi veya gereksinimlerinizi yazın..."
-              placeholderTextColor={colors.zinc[600]}
+              placeholderTextColor={colors.textMuted}
               value={requirements}
               onChangeText={setRequirements}
               multiline
@@ -208,12 +257,18 @@ export function RequestOfferScreen() {
 
         {/* Description */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ek Açıklama</Text>
-          <View style={styles.textAreaContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Ek Açıklama</Text>
+          <View style={[
+            styles.textAreaContainer,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            }
+          ]}>
             <TextInput
-              style={styles.textArea}
+              style={[styles.textArea, { color: colors.text }]}
               placeholder="Etkinlik hakkında detaylı bilgi verin..."
-              placeholderTextColor={colors.zinc[600]}
+              placeholderTextColor={colors.textMuted}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -227,7 +282,13 @@ export function RequestOfferScreen() {
       </ScrollView>
 
       {/* Submit Button */}
-      <View style={styles.bottomAction}>
+      <View style={[
+        styles.bottomAction,
+        {
+          backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background,
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+        }
+      ]}>
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <LinearGradient
             colors={gradients.primary}
@@ -247,7 +308,6 @@ export function RequestOfferScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -267,7 +327,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
   },
   placeholder: {
     width: 40,
@@ -298,11 +357,9 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   providerCategory: {
     fontSize: 12,
-    color: colors.zinc[400],
     marginTop: 2,
   },
   ratingRow: {
@@ -322,12 +379,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginBottom: 12,
   },
   eventsList: {
@@ -343,7 +398,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   eventCardSelected: {
-    borderColor: colors.brand[500],
     backgroundColor: 'rgba(147, 51, 234, 0.05)',
   },
   eventRadio: {
@@ -354,7 +408,6 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: colors.zinc[600],
   },
   eventRadioSelected: {
     width: 22,
@@ -369,7 +422,6 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   eventMeta: {
     flexDirection: 'row',
@@ -379,7 +431,6 @@ const styles = StyleSheet.create({
   },
   eventMetaText: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginRight: 8,
   },
   newEventCard: {
@@ -404,7 +455,6 @@ const styles = StyleSheet.create({
   newEventText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   row: {
     flexDirection: 'row',
@@ -424,7 +474,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: colors.text,
   },
   textAreaContainer: {
     paddingHorizontal: 14,
@@ -437,7 +486,6 @@ const styles = StyleSheet.create({
   },
   textArea: {
     fontSize: 14,
-    color: colors.text,
     minHeight: 80,
   },
   bottomAction: {

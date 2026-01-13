@@ -14,10 +14,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 export function ChangePasswordScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -60,7 +64,7 @@ export function ChangePasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -70,7 +74,7 @@ export function ChangePasswordScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Şifre Değiştir</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Şifre Değiştir</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -87,7 +91,7 @@ export function ChangePasswordScreen() {
             </LinearGradient>
           </View>
 
-          <Text style={styles.description}>
+          <Text style={[styles.description, { color: colors.textMuted }]}>
             Güvenliğiniz için güçlü bir şifre seçin. Şifreniz en az 8 karakter uzunluğunda olmalı ve farklı karakter türleri içermelidir.
           </Text>
 
@@ -95,15 +99,18 @@ export function ChangePasswordScreen() {
           <View style={styles.form}>
             {/* Current Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Mevcut Şifre</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Mevcut Şifre</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.inputBorder
+              }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { paddingRight: 48 }]}
+                  style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                   placeholder="Mevcut şifrenizi girin"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showCurrentPassword}
                 />
                 <TouchableOpacity
@@ -113,7 +120,7 @@ export function ChangePasswordScreen() {
                   <Ionicons
                     name={showCurrentPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={20}
-                    color={colors.zinc[500]}
+                    color={colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
@@ -121,15 +128,18 @@ export function ChangePasswordScreen() {
 
             {/* New Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Yeni Şifre</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.zinc[500]} style={styles.inputIcon} />
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Yeni Şifre</Text>
+              <View style={[styles.inputContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.inputBorder
+              }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { paddingRight: 48 }]}
+                  style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="Yeni şifrenizi girin"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showNewPassword}
                 />
                 <TouchableOpacity
@@ -139,23 +149,26 @@ export function ChangePasswordScreen() {
                   <Ionicons
                     name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={20}
-                    color={colors.zinc[500]}
+                    color={colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Password Requirements */}
-            <View style={styles.requirementsCard}>
-              <Text style={styles.requirementsTitle}>Şifre Gereksinimleri</Text>
+            <View style={[styles.requirementsCard, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+              ...(isDark ? {} : helpers.getShadow('sm'))
+            }]}>
+              <Text style={[styles.requirementsTitle, { color: colors.textMuted }]}>Şifre Gereksinimleri</Text>
               {requirements.map((req) => (
                 <View key={req.id} style={styles.requirementRow}>
                   <Ionicons
                     name={req.met ? 'checkmark-circle' : 'ellipse-outline'}
                     size={18}
-                    color={req.met ? colors.success : colors.zinc[600]}
+                    color={req.met ? colors.success : colors.textMuted}
                   />
-                  <Text style={[styles.requirementText, req.met && styles.requirementMet]}>
+                  <Text style={[styles.requirementText, { color: colors.textMuted }, req.met && { color: colors.success }]}>
                     {req.label}
                   </Text>
                 </View>
@@ -164,18 +177,22 @@ export function ChangePasswordScreen() {
 
             {/* Confirm Password */}
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Yeni Şifre (Tekrar)</Text>
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Yeni Şifre (Tekrar)</Text>
               <View style={[
                 styles.inputContainer,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.inputBorder
+                },
                 confirmPassword.length > 0 && (passwordsMatch ? styles.inputSuccess : styles.inputError)
               ]}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.zinc[500]} style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
-                  style={[styles.input, { paddingRight: 48 }]}
+                  style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Yeni şifrenizi tekrar girin"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showConfirmPassword}
                 />
                 <TouchableOpacity
@@ -185,12 +202,12 @@ export function ChangePasswordScreen() {
                   <Ionicons
                     name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={20}
-                    color={colors.zinc[500]}
+                    color={colors.textMuted}
                   />
                 </TouchableOpacity>
               </View>
               {confirmPassword.length > 0 && !passwordsMatch && (
-                <Text style={styles.errorText}>Şifreler eşleşmiyor</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>Şifreler eşleşmiyor</Text>
               )}
             </View>
           </View>
@@ -245,7 +262,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   iconContainer: {
     alignItems: 'center',
@@ -260,7 +276,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: colors.zinc[400],
     textAlign: 'center',
     paddingHorizontal: 32,
     lineHeight: 22,
@@ -275,7 +290,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -301,7 +315,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 12,
     fontSize: 15,
-    color: colors.text,
   },
   eyeButton: {
     padding: 14,
@@ -322,7 +335,6 @@ const styles = StyleSheet.create({
   requirementsTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.zinc[400],
     marginBottom: 4,
   },
   requirementRow: {
@@ -332,7 +344,6 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 13,
-    color: colors.zinc[600],
   },
   requirementMet: {
     color: colors.success,

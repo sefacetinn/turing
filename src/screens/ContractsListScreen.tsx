@@ -11,7 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 type ContractStatus = 'pending_signature' | 'signed' | 'completed' | 'cancelled';
 type TabType = 'pending' | 'signed' | 'all';
@@ -116,6 +119,7 @@ const getCategoryColor = (category: string) => {
 
 export function ContractsListScreen({ isProviderMode = true }: ContractsListScreenProps) {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -168,6 +172,8 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
         key={contract.id}
         style={[
           styles.contractCard,
+          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground },
+          ...(isDark ? [] : [helpers.getShadow('sm')]),
           contract.needsMySignature && styles.contractCardUrgent
         ]}
         activeOpacity={0.9}
@@ -180,15 +186,15 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
         {contract.needsMySignature && (
           <View style={styles.urgentBanner}>
             <Ionicons name="alert-circle" size={14} color={colors.warning} />
-            <Text style={styles.urgentBannerText}>İmzanız Gerekli</Text>
+            <Text style={[styles.urgentBannerText, { color: colors.warning }]}>İmzanız Gerekli</Text>
           </View>
         )}
 
         {/* Card Header */}
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={styles.contractId}>#{contract.id.toUpperCase()}</Text>
-            <Text style={styles.contractDate}>{contract.date}</Text>
+            <Text style={[styles.contractId, { color: colors.textSecondary }]}>#{contract.id.toUpperCase()}</Text>
+            <Text style={[styles.contractDate, { color: colors.textMuted }]}>{contract.date}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: `${statusInfo.color}15` }]}>
             <Ionicons name={statusInfo.icon} size={12} color={statusInfo.color} />
@@ -199,25 +205,25 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
         </View>
 
         {/* Event Info */}
-        <Text style={styles.eventName}>{contract.eventName}</Text>
+        <Text style={[styles.eventName, { color: colors.text }]}>{contract.eventName}</Text>
         <View style={styles.serviceBadge}>
           <View style={[styles.serviceDot, { backgroundColor: categoryColor }]} />
-          <Text style={styles.serviceName}>{contract.serviceName}</Text>
+          <Text style={[styles.serviceName, { color: colors.textSecondary }]}>{contract.serviceName}</Text>
         </View>
 
         {/* Other Party */}
         <View style={styles.otherPartyRow}>
-          <Ionicons name="person-outline" size={14} color={colors.zinc[500]} />
-          <Text style={styles.otherPartyText}>{contract.otherPartyName}</Text>
+          <Ionicons name="person-outline" size={14} color={colors.textMuted} />
+          <Text style={[styles.otherPartyText, { color: colors.textMuted }]}>{contract.otherPartyName}</Text>
         </View>
 
         {/* Footer */}
-        <View style={styles.cardFooter}>
+        <View style={[styles.cardFooter, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
           <View style={styles.footerLeft}>
-            <Ionicons name="calendar-outline" size={14} color={colors.zinc[500]} />
-            <Text style={styles.eventDateText}>Etkinlik: {contract.eventDate}</Text>
+            <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+            <Text style={[styles.eventDateText, { color: colors.textMuted }]}>Etkinlik: {contract.eventDate}</Text>
           </View>
-          <Text style={styles.amountText}>₺{contract.amount.toLocaleString('tr-TR')}</Text>
+          <Text style={[styles.amountText, { color: colors.success }]}>₺{contract.amount.toLocaleString('tr-TR')}</Text>
         </View>
 
         {/* Action Button for urgent */}
@@ -242,15 +248,15 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sözleşmelerim</Text>
-        <TouchableOpacity style={styles.headerButton}>
-          <Ionicons name="search-outline" size={20} color={colors.zinc[400]} />
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Sözleşmelerim</Text>
+        <TouchableOpacity style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surface }]}>
+          <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -262,8 +268,8 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
               <Ionicons name="document-text-outline" size={18} color={colors.warning} />
             </View>
             <View>
-              <Text style={styles.statValue}>{stats.pending}</Text>
-              <Text style={styles.statLabel}>Bekleyen</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.pending}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Bekleyen</Text>
             </View>
           </View>
           <View style={styles.statDivider} />
@@ -272,8 +278,8 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
               <Ionicons name="create-outline" size={18} color={colors.error} />
             </View>
             <View>
-              <Text style={styles.statValue}>{stats.needsSignature}</Text>
-              <Text style={styles.statLabel}>İmza Bekliyor</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.needsSignature}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>İmza Bekliyor</Text>
             </View>
           </View>
           <View style={styles.statDivider} />
@@ -282,16 +288,16 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
               <Ionicons name="checkmark-circle-outline" size={18} color={colors.success} />
             </View>
             <View>
-              <Text style={styles.statValue}>{stats.signed}</Text>
-              <Text style={styles.statLabel}>İmzalı</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.signed}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>İmzalı</Text>
             </View>
           </View>
         </View>
 
         {/* Total Value */}
         <View style={styles.totalValueSection}>
-          <Text style={styles.totalValueLabel}>Toplam Sözleşme Değeri</Text>
-          <Text style={styles.totalValueAmount}>₺{stats.totalValue.toLocaleString('tr-TR')}</Text>
+          <Text style={[styles.totalValueLabel, { color: colors.textMuted }]}>Toplam Sözleşme Değeri</Text>
+          <Text style={[styles.totalValueAmount, { color: colors.success }]}>₺{stats.totalValue.toLocaleString('tr-TR')}</Text>
         </View>
       </View>
 
@@ -304,13 +310,13 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
           <Ionicons
             name={activeTab === 'pending' ? 'time' : 'time-outline'}
             size={16}
-            color={activeTab === 'pending' ? colors.warning : colors.zinc[500]}
+            color={activeTab === 'pending' ? colors.warning : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'pending' && styles.tabTextPending]}>
+          <Text style={[styles.tabText, { color: activeTab === 'pending' ? colors.warning : colors.textMuted }]}>
             Bekleyen
           </Text>
           <View style={[styles.tabBadge, activeTab === 'pending' && styles.tabBadgePending]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'pending' && styles.tabBadgeTextPending]}>
+            <Text style={[styles.tabBadgeText, { color: activeTab === 'pending' ? colors.warning : colors.textMuted }]}>
               {stats.pending}
             </Text>
           </View>
@@ -323,13 +329,13 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
           <Ionicons
             name={activeTab === 'signed' ? 'checkmark-circle' : 'checkmark-circle-outline'}
             size={16}
-            color={activeTab === 'signed' ? colors.success : colors.zinc[500]}
+            color={activeTab === 'signed' ? colors.success : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'signed' && styles.tabTextSigned]}>
+          <Text style={[styles.tabText, { color: activeTab === 'signed' ? colors.success : colors.textMuted }]}>
             İmzalı
           </Text>
           <View style={[styles.tabBadge, activeTab === 'signed' && styles.tabBadgeSigned]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'signed' && styles.tabBadgeTextSigned]}>
+            <Text style={[styles.tabBadgeText, { color: activeTab === 'signed' ? colors.success : colors.textMuted }]}>
               {stats.signed}
             </Text>
           </View>
@@ -342,9 +348,9 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
           <Ionicons
             name={activeTab === 'all' ? 'documents' : 'documents-outline'}
             size={16}
-            color={activeTab === 'all' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'all' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextAll]}>
+          <Text style={[styles.tabText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
             Tümü
           </Text>
         </TouchableOpacity>
@@ -368,10 +374,10 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
         ) : (
           <View style={styles.emptyState}>
             <View style={styles.emptyStateIcon}>
-              <Ionicons name="document-text-outline" size={48} color={colors.zinc[600]} />
+              <Ionicons name="document-text-outline" size={48} color={colors.textSecondary} />
             </View>
-            <Text style={styles.emptyStateTitle}>Sözleşme Bulunamadı</Text>
-            <Text style={styles.emptyStateText}>
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Sözleşme Bulunamadı</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
               Bu kategoride henüz sözleşme bulunmuyor.
             </Text>
           </View>
@@ -385,7 +391,6 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -403,7 +408,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
     marginLeft: 8,
   },
   headerButton: {
@@ -444,11 +448,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
   },
   statLabel: {
     fontSize: 10,
-    color: colors.zinc[500],
   },
   statDivider: {
     width: 1,
@@ -466,12 +468,10 @@ const styles = StyleSheet.create({
   },
   totalValueLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   totalValueAmount: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.success,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -497,17 +497,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
-  tabTextPending: {
-    color: colors.warning,
-  },
-  tabTextSigned: {
-    color: colors.success,
-  },
-  tabTextAll: {
-    color: colors.brand[400],
-  },
+  tabTextPending: {},
+  tabTextSigned: {},
+  tabTextAll: {},
   tabBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -523,14 +516,9 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.zinc[400],
   },
-  tabBadgeTextPending: {
-    color: colors.warning,
-  },
-  tabBadgeTextSigned: {
-    color: colors.success,
-  },
+  tabBadgeTextPending: {},
+  tabBadgeTextSigned: {},
   contractsList: {
     flex: 1,
   },
@@ -563,7 +551,6 @@ const styles = StyleSheet.create({
   urgentBannerText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.warning,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -578,11 +565,9 @@ const styles = StyleSheet.create({
   contractId: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.zinc[400],
   },
   contractDate: {
     fontSize: 10,
-    color: colors.zinc[600],
   },
   statusBadge: {
     flexDirection: 'row',
@@ -599,7 +584,6 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     paddingHorizontal: 16,
     marginBottom: 8,
   },
@@ -617,7 +601,6 @@ const styles = StyleSheet.create({
   },
   serviceName: {
     fontSize: 13,
-    color: colors.zinc[400],
   },
   otherPartyRow: {
     flexDirection: 'row',
@@ -628,7 +611,6 @@ const styles = StyleSheet.create({
   },
   otherPartyText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   cardFooter: {
     flexDirection: 'row',
@@ -646,12 +628,10 @@ const styles = StyleSheet.create({
   },
   eventDateText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   amountText: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.success,
   },
   signNowButton: {
     marginHorizontal: 16,
@@ -688,12 +668,10 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.zinc[500],
     textAlign: 'center',
   },
 });

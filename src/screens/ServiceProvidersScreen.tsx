@@ -15,7 +15,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 interface Filters {
   city: string | null;
@@ -144,6 +147,7 @@ type FilterTab = 'all' | 'worked';
 export function ServiceProvidersScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
+  const { colors, isDark, helpers } = useTheme();
   const { category } = (route.params as { category: string }) || { category: 'booking' };
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -257,7 +261,7 @@ export function ServiceProvidersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -272,11 +276,16 @@ export function ServiceProvidersScreen() {
           >
             <Ionicons name={config.icon as any} size={16} color="white" />
           </LinearGradient>
-          <Text style={styles.headerTitle}>{config.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{config.title}</Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
+            style={[
+              styles.filterButton,
+              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground },
+              activeFilterCount > 0 && styles.filterButtonActive,
+              ...(isDark ? [] : [helpers.getShadow('sm')])
+            ]}
             onPress={() => setShowFilters(true)}
           >
             <Ionicons name="options-outline" size={18} color={activeFilterCount > 0 ? colors.brand[400] : colors.zinc[400]} />
@@ -287,7 +296,12 @@ export function ServiceProvidersScreen() {
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.selectionButton, selectionMode && styles.selectionButtonActive]}
+            style={[
+              styles.selectionButton,
+              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground },
+              selectionMode && styles.selectionButtonActive,
+              ...(isDark ? [] : [helpers.getShadow('sm')])
+            ]}
             onPress={() => setSelectionMode(!selectionMode)}
           >
             <Ionicons name={selectionMode ? 'close' : 'checkbox-outline'} size={20} color={selectionMode ? colors.brand[400] : colors.zinc[400]} />
@@ -297,10 +311,17 @@ export function ServiceProvidersScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
+        <View style={[
+          styles.searchInputContainer,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+          },
+          ...(isDark ? [] : [helpers.getShadow('sm')])
+        ]}>
           <Ionicons name="search" size={18} color={colors.zinc[500]} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Hizmet sağlayıcı ara..."
             placeholderTextColor={colors.zinc[500]}
             value={searchQuery}
@@ -317,16 +338,26 @@ export function ServiceProvidersScreen() {
       {/* Minimal Tabs */}
       <View style={styles.tabRow}>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
+          style={[
+            styles.tabButton,
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground },
+            activeTab === 'all' && styles.tabButtonActive,
+            ...(isDark ? [] : [helpers.getShadow('sm')])
+          ]}
           onPress={() => setActiveTab('all')}
         >
-          <Text style={[styles.tabButtonText, activeTab === 'all' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
             Tümü
           </Text>
         </TouchableOpacity>
         {workedCount > 0 && (
           <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'worked' && styles.tabButtonActive]}
+            style={[
+              styles.tabButton,
+              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground },
+              activeTab === 'worked' && styles.tabButtonActive,
+              ...(isDark ? [] : [helpers.getShadow('sm')])
+            ]}
             onPress={() => setActiveTab('worked')}
           >
             <Ionicons
@@ -334,7 +365,7 @@ export function ServiceProvidersScreen() {
               size={12}
               color={activeTab === 'worked' ? colors.success : colors.zinc[500]}
             />
-            <Text style={[styles.tabButtonText, activeTab === 'worked' && styles.tabButtonTextWorked]}>
+            <Text style={[styles.tabButtonText, { color: activeTab === 'worked' ? colors.success : colors.textMuted }]}>
               Çalıştıklarım
             </Text>
           </TouchableOpacity>
@@ -343,11 +374,11 @@ export function ServiceProvidersScreen() {
 
       {/* Results Count */}
       <View style={styles.resultsCount}>
-        <Text style={styles.resultsCountText}>
+        <Text style={[styles.resultsCountText, { color: colors.textMuted }]}>
           {filteredProviders.length} sağlayıcı bulundu
         </Text>
         {selectionMode && selectedProviders.length > 0 && (
-          <Text style={styles.selectedCountText}>
+          <Text style={[styles.selectedCountText, { color: colors.brand[400] }]}>
             {selectedProviders.length} seçildi
           </Text>
         )}
@@ -368,7 +399,7 @@ export function ServiceProvidersScreen() {
             {/* Selection Checkbox */}
             {selectionMode && (
               <View style={styles.checkboxContainer}>
-                <View style={[styles.checkbox, selectedProviders.includes(provider.id) && styles.checkboxChecked]}>
+                <View style={[styles.checkbox, { borderColor: colors.textSecondary }, selectedProviders.includes(provider.id) && styles.checkboxChecked]}>
                   {selectedProviders.includes(provider.id) && (
                     <Ionicons name="checkmark" size={14} color="white" />
                   )}
@@ -391,21 +422,21 @@ export function ServiceProvidersScreen() {
                 <View style={styles.providerInfo}>
                   <View style={styles.providerHeader}>
                     <View style={styles.nameContainer}>
-                      <Text style={styles.providerName} numberOfLines={1}>{provider.name}</Text>
+                      <Text style={[styles.providerName, { color: colors.text }]} numberOfLines={1}>{provider.name}</Text>
                     </View>
                     <View style={styles.ratingContainer}>
                       <Ionicons name="star" size={12} color="#fbbf24" />
                       <Text style={styles.ratingText}>{provider.rating}</Text>
-                      <Text style={styles.reviewCountText}>({provider.reviewCount})</Text>
+                      <Text style={[styles.reviewCountText, { color: colors.textMuted }]}>({provider.reviewCount})</Text>
                     </View>
                   </View>
-                  <Text style={styles.providerDescription} numberOfLines={2}>
+                  <Text style={[styles.providerDescription, { color: colors.textMuted }]} numberOfLines={2}>
                     {provider.description}
                   </Text>
                   <View style={styles.providerMeta}>
                     <View style={styles.metaItem}>
                       <Ionicons name="location" size={12} color={colors.zinc[500]} />
-                      <Text style={styles.metaText}>{provider.city}</Text>
+                      <Text style={[styles.metaText, { color: colors.textMuted }]}>{provider.city}</Text>
                     </View>
                     <View style={styles.metaItem}>
                       <Ionicons name="time" size={12} color={colors.success} />
@@ -419,7 +450,7 @@ export function ServiceProvidersScreen() {
               <View style={styles.specialtiesRow}>
                 {provider.specialties.slice(0, 3).map((specialty, index) => (
                   <View key={index} style={styles.specialtyTag}>
-                    <Text style={styles.specialtyText}>{specialty}</Text>
+                    <Text style={[styles.specialtyText, { color: colors.brand[400] }]}>{specialty}</Text>
                   </View>
                 ))}
               </View>
@@ -427,18 +458,18 @@ export function ServiceProvidersScreen() {
               {/* Stats Row */}
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{provider.yearsExperience} yıl</Text>
-                  <Text style={styles.statLabel}>Deneyim</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{provider.yearsExperience} yıl</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Deneyim</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{provider.completedEvents}</Text>
-                  <Text style={styles.statLabel}>Etkinlik</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{provider.completedEvents}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Etkinlik</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { fontSize: 11 }]}>{provider.priceRange}</Text>
-                  <Text style={styles.statLabel}>Fiyat</Text>
+                  <Text style={[styles.statValue, { color: colors.text, fontSize: 11 }]}>{provider.priceRange}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Fiyat</Text>
                 </View>
               </View>
 
@@ -474,7 +505,7 @@ export function ServiceProvidersScreen() {
                 {provider.previouslyWorked && (
                   <View style={styles.workedBadge}>
                     <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                    <Text style={styles.workedBadgeText}>Daha önce çalıştık</Text>
+                    <Text style={[styles.workedBadgeText, { color: colors.success }]}>Daha önce çalıştık</Text>
                   </View>
                 )}
               </View>
@@ -515,7 +546,7 @@ export function ServiceProvidersScreen() {
           <View style={styles.modalContent}>
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filtreler</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Filtreler</Text>
               <TouchableOpacity onPress={() => setShowFilters(false)}>
                 <Ionicons name="close" size={24} color={colors.zinc[400]} />
               </TouchableOpacity>
@@ -524,7 +555,7 @@ export function ServiceProvidersScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* City Filter */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterLabel}>Şehir</Text>
+                <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Şehir</Text>
                 <View style={styles.filterOptions}>
                   {cities.map(city => (
                     <TouchableOpacity
@@ -532,7 +563,7 @@ export function ServiceProvidersScreen() {
                       style={[styles.filterChip, filters.city === city && styles.filterChipActive]}
                       onPress={() => setFilters(f => ({ ...f, city: f.city === city ? null : city }))}
                     >
-                      <Text style={[styles.filterChipText, filters.city === city && styles.filterChipTextActive]}>
+                      <Text style={[styles.filterChipText, { color: filters.city === city ? colors.brand[400] : colors.textMuted }]}>
                         {city}
                       </Text>
                     </TouchableOpacity>
@@ -542,7 +573,7 @@ export function ServiceProvidersScreen() {
 
               {/* Rating Filter */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterLabel}>Minimum Puan</Text>
+                <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Minimum Puan</Text>
                 <View style={styles.filterOptions}>
                   {ratingOptions.map(rating => (
                     <TouchableOpacity
@@ -551,7 +582,7 @@ export function ServiceProvidersScreen() {
                       onPress={() => setFilters(f => ({ ...f, minRating: f.minRating === rating ? null : rating }))}
                     >
                       <Ionicons name="star" size={12} color={filters.minRating === rating ? colors.brand[400] : '#fbbf24'} />
-                      <Text style={[styles.filterChipText, filters.minRating === rating && styles.filterChipTextActive]}>
+                      <Text style={[styles.filterChipText, { color: filters.minRating === rating ? colors.brand[400] : colors.textMuted }]}>
                         {rating}+
                       </Text>
                     </TouchableOpacity>
@@ -561,7 +592,7 @@ export function ServiceProvidersScreen() {
 
               {/* Budget Filter */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterLabel}>Bütçe Aralığı</Text>
+                <Text style={[styles.filterLabel, { color: colors.textMuted }]}>Bütçe Aralığı</Text>
                 <View style={styles.filterOptions}>
                   {budgetRanges.map(range => (
                     <TouchableOpacity
@@ -569,7 +600,7 @@ export function ServiceProvidersScreen() {
                       style={[styles.filterChip, filters.budgetRange === range.id && styles.filterChipActive]}
                       onPress={() => setFilters(f => ({ ...f, budgetRange: f.budgetRange === range.id ? null : range.id }))}
                     >
-                      <Text style={[styles.filterChipText, filters.budgetRange === range.id && styles.filterChipTextActive]}>
+                      <Text style={[styles.filterChipText, { color: filters.budgetRange === range.id ? colors.brand[400] : colors.textMuted }]}>
                         {range.label}
                       </Text>
                     </TouchableOpacity>
@@ -581,7 +612,7 @@ export function ServiceProvidersScreen() {
             {/* Modal Actions */}
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-                <Text style={styles.clearButtonText}>Temizle</Text>
+                <Text style={[styles.clearButtonText, { color: colors.textMuted }]}>Temizle</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.applyButton} onPress={() => setShowFilters(false)}>
                 <LinearGradient
@@ -634,7 +665,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   headerActions: {
     flexDirection: 'row',
@@ -698,7 +728,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: colors.text,
   },
   tabRow: {
     flexDirection: 'row',
@@ -721,13 +750,6 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
-  },
-  tabButtonTextActive: {
-    color: colors.brand[400],
-  },
-  tabButtonTextWorked: {
-    color: colors.success,
   },
   resultsCount: {
     flexDirection: 'row',
@@ -738,11 +760,9 @@ const styles = StyleSheet.create({
   },
   resultsCountText: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   selectedCountText: {
     fontSize: 13,
-    color: colors.brand[400],
     fontWeight: '500',
   },
   providerList: {
@@ -774,7 +794,6 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.zinc[600],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -829,7 +848,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
     marginRight: 8,
   },
   ratingContainer: {
@@ -848,12 +866,10 @@ const styles = StyleSheet.create({
   },
   reviewCountText: {
     fontSize: 10,
-    color: colors.zinc[500],
     marginLeft: 2,
   },
   providerDescription: {
     fontSize: 12,
-    color: colors.zinc[400],
     marginTop: 4,
     lineHeight: 16,
   },
@@ -869,7 +885,6 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   specialtiesRow: {
     flexDirection: 'row',
@@ -886,7 +901,6 @@ const styles = StyleSheet.create({
   specialtyText: {
     fontSize: 10,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   statsRow: {
     flexDirection: 'row',
@@ -903,11 +917,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.text,
   },
   statLabel: {
     fontSize: 9,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   statDivider: {
@@ -935,7 +947,6 @@ const styles = StyleSheet.create({
   },
   workedBadgeText: {
     fontSize: 11,
-    color: colors.success,
     fontWeight: '500',
   },
   actionButtons: {
@@ -966,7 +977,6 @@ const styles = StyleSheet.create({
   detailButtonText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.zinc[300],
   },
   iconButton: {
     width: 36,
@@ -1029,7 +1039,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   filterSection: {
     paddingHorizontal: 20,
@@ -1038,7 +1047,6 @@ const styles = StyleSheet.create({
   filterLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 12,
   },
   filterOptions: {
@@ -1063,11 +1071,6 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     fontSize: 13,
-    color: colors.zinc[400],
-  },
-  filterChipTextActive: {
-    color: colors.brand[400],
-    fontWeight: '500',
   },
   modalActions: {
     flexDirection: 'row',
@@ -1087,7 +1090,6 @@ const styles = StyleSheet.create({
   clearButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   applyButton: {
     flex: 1,

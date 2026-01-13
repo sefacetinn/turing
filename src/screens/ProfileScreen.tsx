@@ -39,7 +39,7 @@ const providerMenuItems = [
 
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { colors, isDark } = useTheme();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
 
   const handleMenuPress = (itemId: string) => {
@@ -278,44 +278,14 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           </View>
         </TouchableOpacity>
 
-        {/* Theme Switch */}
-        <View style={dynamicStyles.modeCard}>
-          <View style={styles.modeInfo}>
-            <View style={[
-              styles.modeIcon,
-              { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(251, 191, 36, 0.15)' }
-            ]}>
-              <Ionicons
-                name={isDark ? 'moon' : 'sunny'}
-                size={20}
-                color={isDark ? '#818cf8' : '#f59e0b'}
-              />
-            </View>
-            <View>
-              <Text style={dynamicStyles.modeLabel}>
-                {isDark ? 'Karanlık Mod' : 'Aydınlık Mod'}
-              </Text>
-              <Text style={dynamicStyles.modeDescription}>
-                {isDark ? 'Koyu tema aktif' : 'Açık tema aktif'}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: '#d4d4d8', true: colors.brand[600] }}
-            thumbColor={isDark ? colors.brand[400] : '#fafafa'}
-          />
-        </View>
-
         {/* Mode Switch */}
         <View style={dynamicStyles.modeCard}>
           <View style={styles.modeInfo}>
             <View style={[
               styles.modeIcon,
               isProviderMode
-                ? { backgroundColor: 'rgba(16, 185, 129, 0.15)' }
-                : { backgroundColor: 'rgba(147, 51, 234, 0.15)' }
+                ? { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(16, 185, 129, 0.25)' }
+                : { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(147, 51, 234, 0.25)' }
             ]}>
               <Ionicons
                 name={isProviderMode ? 'musical-notes' : 'people'}

@@ -12,11 +12,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-
-// Default colors for static styles (dark theme)
-const colors = defaultColors;
 
 interface LoginScreenProps {
   onLogin: (asProvider: boolean) => void;
@@ -258,7 +255,6 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   backgroundOrb1: {
     position: 'absolute',
@@ -328,12 +324,10 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.text,
     letterSpacing: 1,
   },
   brandTagline: {
     fontSize: 14,
-    color: colors.zinc[400],
     marginTop: 4,
   },
   card: {
@@ -375,7 +369,6 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   tabTextActive: {
     fontSize: 14,
@@ -388,7 +381,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 8,
     marginLeft: 4,
   },
@@ -408,7 +400,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 12,
     fontSize: 15,
-    color: colors.text,
   },
   eyeButton: {
     padding: 14,
@@ -419,7 +410,6 @@ const styles = StyleSheet.create({
   },
   forgotText: {
     fontSize: 14,
-    color: colors.brand[400],
   },
   submitButton: {
     flexDirection: 'row',
@@ -446,7 +436,6 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginHorizontal: 16,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -470,7 +459,6 @@ const styles = StyleSheet.create({
   socialText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -481,12 +469,10 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 14,
-    color: colors.zinc[500],
   },
   toggleLink: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   footer: {
     marginTop: 'auto',
@@ -494,12 +480,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: colors.zinc[600],
     textAlign: 'center',
     lineHeight: 18,
   },
   footerLink: {
-    color: colors.zinc[500],
     textDecorationLine: 'underline',
   },
 });

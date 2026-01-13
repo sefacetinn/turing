@@ -3,8 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, Alert } f
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 interface Session {
   id: string;
@@ -16,6 +15,7 @@ interface Session {
 
 export function SecurityScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(true);
@@ -54,69 +54,77 @@ export function SecurityScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Güvenlik</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Güvenlik</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Password Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Şifre</Text>
-          <TouchableOpacity style={styles.card} onPress={handleChangePassword} activeOpacity={0.7}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Şifre</Text>
+          <TouchableOpacity style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]} onPress={handleChangePassword} activeOpacity={0.7}>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
                   <Ionicons name="key" size={20} color={colors.brand[400]} />
                 </View>
                 <View>
-                  <Text style={styles.rowTitle}>Şifre Değiştir</Text>
-                  <Text style={styles.rowDescription}>Son değişiklik: 3 ay önce</Text>
+                  <Text style={[styles.rowTitle, { color: colors.text }]}>Şifre Değiştir</Text>
+                  <Text style={[styles.rowDescription, { color: colors.textMuted }]}>Son değişiklik: 3 ay önce</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </View>
           </TouchableOpacity>
         </View>
 
         {/* Two-Factor Authentication */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>İki Faktörlü Doğrulama</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>İki Faktörlü Doğrulama</Text>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={styles.toggleRow}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                   <Ionicons name="shield-checkmark" size={20} color={colors.success} />
                 </View>
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>2FA Etkinleştir</Text>
-                  <Text style={styles.rowDescription}>SMS veya uygulama ile doğrulama</Text>
+                  <Text style={[styles.rowTitle, { color: colors.text }]}>2FA Etkinleştir</Text>
+                  <Text style={[styles.rowDescription, { color: colors.textMuted }]}>SMS veya uygulama ile doğrulama</Text>
                 </View>
               </View>
               <Switch
                 value={twoFactorEnabled}
                 onValueChange={setTwoFactorEnabled}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={twoFactorEnabled ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={twoFactorEnabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
 
             {twoFactorEnabled && (
               <>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
                 <TouchableOpacity style={styles.subRow} activeOpacity={0.7}>
-                  <Text style={styles.subRowText}>Yedek Kodları Göster</Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
+                  <Text style={[styles.subRowText, { color: colors.textMuted }]}>Yedek Kodları Göster</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
-                <View style={styles.divider} />
+                <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
                 <TouchableOpacity style={styles.subRow} activeOpacity={0.7}>
-                  <Text style={styles.subRowText}>Doğrulama Yöntemini Değiştir</Text>
-                  <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
+                  <Text style={[styles.subRowText, { color: colors.textMuted }]}>Doğrulama Yöntemini Değiştir</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </>
             )}
@@ -125,23 +133,27 @@ export function SecurityScreen() {
 
         {/* Biometric */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Biyometrik Giriş</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Biyometrik Giriş</Text>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={styles.toggleRow}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                   <Ionicons name="finger-print" size={20} color={colors.info} />
                 </View>
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>Face ID / Touch ID</Text>
-                  <Text style={styles.rowDescription}>Biyometrik ile hızlı giriş</Text>
+                  <Text style={[styles.rowTitle, { color: colors.text }]}>Face ID / Touch ID</Text>
+                  <Text style={[styles.rowDescription, { color: colors.textMuted }]}>Biyometrik ile hızlı giriş</Text>
                 </View>
               </View>
               <Switch
                 value={biometricEnabled}
                 onValueChange={setBiometricEnabled}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={biometricEnabled ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={biometricEnabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
           </View>
@@ -149,23 +161,27 @@ export function SecurityScreen() {
 
         {/* Login Alerts */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Giriş Uyarıları</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Giriş Uyarıları</Text>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={styles.toggleRow}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                   <Ionicons name="alert-circle" size={20} color={colors.warning} />
                 </View>
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>Yeni Giriş Bildirimi</Text>
-                  <Text style={styles.rowDescription}>Yeni cihazdan giriş yapıldığında bildir</Text>
+                  <Text style={[styles.rowTitle, { color: colors.text }]}>Yeni Giriş Bildirimi</Text>
+                  <Text style={[styles.rowDescription, { color: colors.textMuted }]}>Yeni cihazdan giriş yapıldığında bildir</Text>
                 </View>
               </View>
               <Switch
                 value={loginAlerts}
                 onValueChange={setLoginAlerts}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={loginAlerts ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={loginAlerts ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
           </View>
@@ -174,12 +190,16 @@ export function SecurityScreen() {
         {/* Active Sessions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Aktif Oturumlar</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Aktif Oturumlar</Text>
             <TouchableOpacity onPress={handleEndAllSessions}>
-              <Text style={styles.endAllText}>Tümünü Sonlandır</Text>
+              <Text style={[styles.endAllText, { color: colors.error }]}>Tümünü Sonlandır</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.card}>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             {sessions.map((session, index) => (
               <View key={session.id}>
                 <View style={styles.sessionRow}>
@@ -194,16 +214,18 @@ export function SecurityScreen() {
                             : 'tablet-portrait'
                         }
                         size={20}
-                        color={session.current ? colors.brand[400] : colors.zinc[500]}
+                        color={session.current ? colors.brand[400] : colors.textMuted}
                       />
-                      <Text style={styles.sessionDevice}>{session.device}</Text>
+                      <Text style={[styles.sessionDevice, { color: colors.text }]}>{session.device}</Text>
                       {session.current && (
-                        <View style={styles.currentBadge}>
-                          <Text style={styles.currentBadgeText}>Bu Cihaz</Text>
+                        <View style={[styles.currentBadge, {
+                          backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                        }]}>
+                          <Text style={[styles.currentBadgeText, { color: colors.brand[400] }]}>Bu Cihaz</Text>
                         </View>
                       )}
                     </View>
-                    <Text style={styles.sessionDetails}>
+                    <Text style={[styles.sessionDetails, { color: colors.textMuted }]}>
                       {session.location} • {session.lastActive}
                     </Text>
                   </View>
@@ -216,7 +238,7 @@ export function SecurityScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {index < sessions.length - 1 && <View style={styles.divider} />}
+                {index < sessions.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />}
               </View>
             ))}
           </View>
@@ -224,16 +246,19 @@ export function SecurityScreen() {
 
         {/* Danger Zone */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tehlikeli Bölge</Text>
-          <View style={styles.dangerCard}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Tehlikeli Bölge</Text>
+          <View style={[styles.dangerCard, {
+            backgroundColor: isDark ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.03)',
+            borderColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.2)'
+          }]}>
             <TouchableOpacity style={styles.dangerRow} activeOpacity={0.7}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
                   <Ionicons name="trash" size={20} color={colors.error} />
                 </View>
                 <View>
-                  <Text style={styles.dangerTitle}>Hesabı Sil</Text>
-                  <Text style={styles.dangerDescription}>Tüm verileriniz kalıcı olarak silinir</Text>
+                  <Text style={[styles.dangerTitle, { color: colors.error }]}>Hesabı Sil</Text>
+                  <Text style={[styles.dangerDescription, { color: colors.textMuted }]}>Tüm verileriniz kalıcı olarak silinir</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.error} />
@@ -250,7 +275,6 @@ export function SecurityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -268,7 +292,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   section: {
     paddingHorizontal: 20,
@@ -283,7 +306,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -291,7 +313,6 @@ const styles = StyleSheet.create({
   endAllText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.error,
   },
   card: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -325,11 +346,9 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
   },
   rowDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   toggleRow: {
@@ -353,7 +372,6 @@ const styles = StyleSheet.create({
   },
   subRowText: {
     fontSize: 14,
-    color: colors.zinc[400],
   },
   sessionRow: {
     flexDirection: 'row',
@@ -372,7 +390,6 @@ const styles = StyleSheet.create({
   sessionDevice: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
   },
   currentBadge: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',
@@ -383,11 +400,9 @@ const styles = StyleSheet.create({
   currentBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   sessionDetails: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 4,
     marginLeft: 30,
   },
@@ -410,11 +425,9 @@ const styles = StyleSheet.create({
   dangerTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.error,
   },
   dangerDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
 });

@@ -3,7 +3,11 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 type MessageTab = 'all' | 'unread' | 'archived';
 
@@ -23,6 +27,7 @@ const conversations = [
 
 export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<MessageTab>('all');
 
   const filteredConversations = useMemo(() => {
@@ -36,19 +41,19 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const archivedCount = conversations.filter(c => c.archived).length;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mesajlar</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Mesajlar</Text>
         <TouchableOpacity style={styles.newMessageButton}>
           <Ionicons name="create-outline" size={22} color={colors.brand[400]} />
         </TouchableOpacity>
       </View>
 
       {/* Search */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={18} color={colors.zinc[500]} />
-        <Text style={styles.searchPlaceholder}>Mesajlarda ara...</Text>
+      <View style={[styles.searchContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.border }]}>
+        <Ionicons name="search" size={18} color={colors.textMuted} />
+        <Text style={[styles.searchPlaceholder, { color: colors.textMuted }]}>Mesajlarda ara...</Text>
       </View>
 
       {/* Tabs */}
@@ -57,7 +62,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
           onPress={() => setActiveTab('all')}
         >
-          <Text style={[styles.tabButtonText, activeTab === 'all' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
             Tümü
           </Text>
         </TouchableOpacity>
@@ -68,14 +73,14 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           <Ionicons
             name="mail-unread"
             size={12}
-            color={activeTab === 'unread' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'unread' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabButtonText, activeTab === 'unread' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>
             Okunmamış
           </Text>
           {unreadCount > 0 && (
             <View style={[styles.tabBadge, activeTab === 'unread' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'unread' && styles.tabBadgeTextActive]}>{unreadCount}</Text>
+              <Text style={[styles.tabBadgeText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>{unreadCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -86,14 +91,14 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           <Ionicons
             name="archive"
             size={12}
-            color={activeTab === 'archived' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'archived' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabButtonText, activeTab === 'archived' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>
             Arşiv
           </Text>
           {archivedCount > 0 && (
             <View style={[styles.tabBadge, activeTab === 'archived' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'archived' && styles.tabBadgeTextActive]}>{archivedCount}</Text>
+              <Text style={[styles.tabBadgeText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>{archivedCount}</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -118,14 +123,14 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
 
               <View style={styles.conversationContent}>
                 <View style={styles.conversationHeader}>
-                  <Text style={[styles.conversationName, chat.unread > 0 && styles.unreadName]}>
+                  <Text style={[styles.conversationName, { color: colors.text }, chat.unread > 0 && styles.unreadName]}>
                     {chat.name}
                   </Text>
-                  <Text style={styles.conversationTime}>{chat.time}</Text>
+                  <Text style={[styles.conversationTime, { color: colors.textMuted }]}>{chat.time}</Text>
                 </View>
                 <View style={styles.conversationFooter}>
                   <Text
-                    style={[styles.conversationMessage, chat.unread > 0 && styles.unreadMessage]}
+                    style={[styles.conversationMessage, { color: colors.textMuted }]}
                     numberOfLines={1}
                   >
                     {chat.message}
@@ -145,13 +150,13 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
               <Ionicons
                 name={activeTab === 'unread' ? 'mail-open-outline' : activeTab === 'archived' ? 'archive-outline' : 'chatbubbles-outline'}
                 size={48}
-                color={colors.zinc[600]}
+                color={colors.textSecondary}
               />
-              <Text style={styles.emptyStateTitle}>
+              <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
                 {activeTab === 'unread' ? 'Okunmamış mesaj yok' :
                  activeTab === 'archived' ? 'Arşivlenmiş mesaj yok' : 'Mesaj yok'}
               </Text>
-              <Text style={styles.emptyStateText}>
+              <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
                 {activeTab === 'unread' ? 'Tüm mesajlarınız okunmuş' :
                  activeTab === 'archived' ? 'Arşive taşınan mesajlar burada görünecek' : 'Yeni mesajlar burada görünecek'}
               </Text>
@@ -181,7 +186,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
   },
   newMessageButton: {
     width: 40,
@@ -204,7 +208,6 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: {
     fontSize: 14,
-    color: colors.zinc[600],
   },
   tabRow: {
     flexDirection: 'row',
@@ -227,10 +230,6 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
-  },
-  tabButtonTextActive: {
-    color: colors.brand[400],
   },
   tabBadge: {
     minWidth: 16,
@@ -247,10 +246,6 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.zinc[500],
-  },
-  tabBadgeTextActive: {
-    color: colors.brand[400],
   },
   conversationsList: {
     paddingHorizontal: 20,
@@ -294,14 +289,12 @@ const styles = StyleSheet.create({
   conversationName: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
   },
   unreadName: {
     fontWeight: '600',
   },
   conversationTime: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   conversationFooter: {
     flexDirection: 'row',
@@ -311,11 +304,7 @@ const styles = StyleSheet.create({
   conversationMessage: {
     flex: 1,
     fontSize: 13,
-    color: colors.zinc[500],
     marginRight: 8,
-  },
-  unreadMessage: {
-    color: colors.zinc[400],
   },
   unreadBadge: {
     minWidth: 20,
@@ -339,12 +328,10 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginTop: 16,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.zinc[500],
     marginTop: 4,
     textAlign: 'center',
   },

@@ -4,7 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 interface FAQItem {
   id: string;
@@ -21,6 +24,7 @@ interface Category {
 
 export function HelpSupportScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
 
@@ -76,23 +80,23 @@ export function HelpSupportScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yardım & Destek</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Yardım & Destek</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Search */}
         <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
+          <View style={[styles.searchContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.inputBorder }]}>
             <Ionicons name="search" size={20} color={colors.zinc[500]} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Nasıl yardımcı olabiliriz?"
@@ -103,7 +107,7 @@ export function HelpSupportScreen() {
 
         {/* Quick Contact */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hızlı İletişim</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Hızlı İletişim</Text>
           <View style={styles.contactRow}>
             <TouchableOpacity
               style={styles.contactButton}
@@ -118,7 +122,7 @@ export function HelpSupportScreen() {
               >
                 <Ionicons name="mail" size={22} color="white" />
               </LinearGradient>
-              <Text style={styles.contactLabel}>E-posta</Text>
+              <Text style={[styles.contactLabel, { color: colors.textMuted }]}>E-posta</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -134,7 +138,7 @@ export function HelpSupportScreen() {
               >
                 <Ionicons name="call" size={22} color="white" />
               </LinearGradient>
-              <Text style={styles.contactLabel}>Telefon</Text>
+              <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Telefon</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -150,25 +154,25 @@ export function HelpSupportScreen() {
               >
                 <Ionicons name="logo-whatsapp" size={22} color="white" />
               </LinearGradient>
-              <Text style={styles.contactLabel}>WhatsApp</Text>
+              <Text style={[styles.contactLabel, { color: colors.textMuted }]}>WhatsApp</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Categories */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Kategoriler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Kategoriler</Text>
           <View style={styles.categoriesGrid}>
             {categories.map((category) => (
               <TouchableOpacity
                 key={category.id}
-                style={styles.categoryCard}
+                style={[styles.categoryCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}
                 activeOpacity={0.7}
               >
                 <View style={[styles.categoryIcon, { backgroundColor: category.color }]}>
                   <Ionicons name={category.icon} size={22} color={colors.brand[400]} />
                 </View>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
+                <Text style={[styles.categoryTitle, { color: colors.text }]}>{category.title}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -176,8 +180,8 @@ export function HelpSupportScreen() {
 
         {/* FAQ */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sık Sorulan Sorular</Text>
-          <View style={styles.faqContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Sık Sorulan Sorular</Text>
+          <View style={[styles.faqContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
             {faqs.map((faq, index) => (
               <View key={faq.id}>
                 <TouchableOpacity
@@ -185,7 +189,7 @@ export function HelpSupportScreen() {
                   onPress={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.faqQuestion}>{faq.question}</Text>
+                  <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
                   <Ionicons
                     name={expandedFAQ === faq.id ? 'chevron-up' : 'chevron-down'}
                     size={20}
@@ -194,10 +198,10 @@ export function HelpSupportScreen() {
                 </TouchableOpacity>
                 {expandedFAQ === faq.id && (
                   <View style={styles.faqAnswer}>
-                    <Text style={styles.faqAnswerText}>{faq.answer}</Text>
+                    <Text style={[styles.faqAnswerText, { color: colors.textMuted }]}>{faq.answer}</Text>
                   </View>
                 )}
-                {index < faqs.length - 1 && <View style={styles.divider} />}
+                {index < faqs.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />}
               </View>
             ))}
           </View>
@@ -233,28 +237,28 @@ export function HelpSupportScreen() {
 
         {/* Resources */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Kaynaklar</Text>
-          <View style={styles.resourcesCard}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Kaynaklar</Text>
+          <View style={[styles.resourcesCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
             <TouchableOpacity style={styles.resourceRow} activeOpacity={0.7}>
               <View style={styles.resourceLeft}>
                 <Ionicons name="book-outline" size={20} color={colors.brand[400]} />
-                <Text style={styles.resourceText}>Kullanım Kılavuzu</Text>
+                <Text style={[styles.resourceText, { color: colors.text }]}>Kullanım Kılavuzu</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
             </TouchableOpacity>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
             <TouchableOpacity style={styles.resourceRow} activeOpacity={0.7}>
               <View style={styles.resourceLeft}>
                 <Ionicons name="play-circle-outline" size={20} color={colors.brand[400]} />
-                <Text style={styles.resourceText}>Video Eğitimler</Text>
+                <Text style={[styles.resourceText, { color: colors.text }]}>Video Eğitimler</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
             </TouchableOpacity>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
             <TouchableOpacity style={styles.resourceRow} activeOpacity={0.7}>
               <View style={styles.resourceLeft}>
                 <Ionicons name="newspaper-outline" size={20} color={colors.brand[400]} />
-                <Text style={styles.resourceText}>Blog Yazıları</Text>
+                <Text style={[styles.resourceText, { color: colors.text }]}>Blog Yazıları</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
             </TouchableOpacity>
@@ -288,7 +292,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   searchSection: {
     paddingHorizontal: 20,
@@ -308,7 +311,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
   },
   section: {
     paddingHorizontal: 20,
@@ -317,7 +319,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 16,
@@ -341,7 +342,6 @@ const styles = StyleSheet.create({
   contactLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   categoriesGrid: {
     flexDirection: 'row',
@@ -368,7 +368,6 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.text,
     textAlign: 'center',
   },
   faqContainer: {
@@ -388,7 +387,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
     marginRight: 12,
   },
   faqAnswer: {
@@ -397,7 +395,6 @@ const styles = StyleSheet.create({
   },
   faqAnswerText: {
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 20,
   },
   divider: {
@@ -480,6 +477,5 @@ const styles = StyleSheet.create({
   resourceText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
 });

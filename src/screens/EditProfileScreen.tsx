@@ -13,10 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 export function EditProfileScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   // Profile state
   const [name, setName] = useState('Ahmet Yılmaz');
@@ -48,14 +52,14 @@ export function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profili Düzenle</Text>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Profili Düzenle</Text>
+        <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.brand[500] }]} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Kaydet</Text>
         </TouchableOpacity>
       </View>
@@ -66,50 +70,56 @@ export function EditProfileScreen() {
           <View style={styles.photoContainer}>
             <Image
               source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop' }}
-              style={styles.profilePhoto}
+              style={[styles.profilePhoto, { borderColor: colors.brand[500] }]}
             />
             <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
               <LinearGradient
                 colors={gradients.primary}
-                style={styles.changePhotoGradient}
+                style={[styles.changePhotoGradient, { borderColor: colors.background }]}
               >
                 <Ionicons name="camera" size={16} color="white" />
               </LinearGradient>
             </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={handleChangePhoto}>
-            <Text style={styles.changePhotoText}>Fotoğrafı Değiştir</Text>
+            <Text style={[styles.changePhotoText, { color: colors.brand[400] }]}>Fotoğrafı Değiştir</Text>
           </TouchableOpacity>
         </View>
 
         {/* Basic Info Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Temel Bilgiler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Temel Bilgiler</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Ad Soyad</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Ad Soyad</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="person-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={name}
                 onChangeText={setName}
                 placeholder="Adınızı girin"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>E-posta</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>E-posta</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="mail-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="E-posta adresiniz"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -117,15 +127,18 @@ export function EditProfileScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Telefon</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="call-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Telefon</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="call-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="Telefon numaranız"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
               />
             </View>
@@ -134,68 +147,80 @@ export function EditProfileScreen() {
 
         {/* Bio Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hakkında</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Hakkında</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Biyografi</Text>
-            <View style={styles.textAreaContainer}>
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Biyografi</Text>
+            <View style={[styles.textAreaContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
               <TextInput
-                style={styles.textArea}
+                style={[styles.textArea, { color: colors.text }]}
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Kendiniz hakkında kısa bir bilgi yazın..."
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
               />
             </View>
-            <Text style={styles.charCount}>{bio.length}/300</Text>
+            <Text style={[styles.charCount, { color: colors.textMuted }]}>{bio.length}/300</Text>
           </View>
         </View>
 
         {/* Work Info Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>İş Bilgileri</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>İş Bilgileri</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Şirket / Organizasyon</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="business-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Şirket / Organizasyon</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="business-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={company}
                 onChangeText={setCompany}
                 placeholder="Şirket adı"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Konum</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Konum</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="location-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={location}
                 onChangeText={setLocation}
                 placeholder="Şehir, Ülke"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Web Sitesi</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="globe-outline" size={18} color={colors.zinc[500]} />
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Web Sitesi</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="globe-outline" size={18} color={colors.textMuted} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { color: colors.text }]}
                 value={website}
                 onChangeText={setWebsite}
                 placeholder="www.example.com"
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
               />
             </View>
@@ -204,54 +229,75 @@ export function EditProfileScreen() {
 
         {/* Social Links Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sosyal Medya</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Sosyal Medya</Text>
 
-          <TouchableOpacity style={styles.socialLinkItem}>
+          <TouchableOpacity style={[styles.socialLinkItem, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={[styles.socialIcon, { backgroundColor: 'rgba(59, 89, 152, 0.15)' }]}>
               <Ionicons name="logo-facebook" size={18} color="#3b5998" />
             </View>
-            <Text style={styles.socialLinkText}>Facebook Bağla</Text>
-            <Ionicons name="add-circle-outline" size={20} color={colors.zinc[500]} />
+            <Text style={[styles.socialLinkText, { color: colors.text }]}>Facebook Bağla</Text>
+            <Ionicons name="add-circle-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.socialLinkItem}>
+          <TouchableOpacity style={[styles.socialLinkItem, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={[styles.socialIcon, { backgroundColor: 'rgba(225, 48, 108, 0.15)' }]}>
               <Ionicons name="logo-instagram" size={18} color="#e1306c" />
             </View>
-            <Text style={styles.socialLinkText}>Instagram Bağla</Text>
-            <Ionicons name="add-circle-outline" size={20} color={colors.zinc[500]} />
+            <Text style={[styles.socialLinkText, { color: colors.text }]}>Instagram Bağla</Text>
+            <Ionicons name="add-circle-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.socialLinkItem}>
+          <TouchableOpacity style={[styles.socialLinkItem, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={[styles.socialIcon, { backgroundColor: 'rgba(29, 161, 242, 0.15)' }]}>
               <Ionicons name="logo-twitter" size={18} color="#1da1f2" />
             </View>
-            <Text style={styles.socialLinkText}>Twitter Bağla</Text>
-            <Ionicons name="add-circle-outline" size={20} color={colors.zinc[500]} />
+            <Text style={[styles.socialLinkText, { color: colors.text }]}>Twitter Bağla</Text>
+            <Ionicons name="add-circle-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.socialLinkItem}>
+          <TouchableOpacity style={[styles.socialLinkItem, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={[styles.socialIcon, { backgroundColor: 'rgba(10, 102, 194, 0.15)' }]}>
               <Ionicons name="logo-linkedin" size={18} color="#0a66c2" />
             </View>
-            <Text style={styles.socialLinkText}>LinkedIn Bağla</Text>
-            <Ionicons name="add-circle-outline" size={20} color={colors.zinc[500]} />
+            <Text style={[styles.socialLinkText, { color: colors.text }]}>LinkedIn Bağla</Text>
+            <Ionicons name="add-circle-outline" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
         {/* Verification Section */}
         <View style={styles.section}>
-          <View style={styles.verificationCard}>
-            <View style={styles.verificationIcon}>
+          <View style={[styles.verificationCard, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.06)',
+            borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)'
+          }]}>
+            <View style={[styles.verificationIcon, {
+              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+            }]}>
               <Ionicons name="shield-checkmark" size={24} color={colors.brand[400]} />
             </View>
             <View style={styles.verificationContent}>
-              <Text style={styles.verificationTitle}>Hesabınızı Doğrulayın</Text>
-              <Text style={styles.verificationText}>
+              <Text style={[styles.verificationTitle, { color: colors.text }]}>Hesabınızı Doğrulayın</Text>
+              <Text style={[styles.verificationText, { color: colors.textMuted }]}>
                 Doğrulanmış hesaplar daha fazla güvenilirlik kazanır
               </Text>
             </View>
-            <TouchableOpacity style={styles.verifyButton}>
+            <TouchableOpacity style={[styles.verifyButton, { backgroundColor: colors.brand[500] }]}>
               <Text style={styles.verifyButtonText}>Doğrula</Text>
             </TouchableOpacity>
           </View>
@@ -286,7 +332,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
   },
   saveButton: {
     paddingHorizontal: 16,
@@ -336,7 +381,6 @@ const styles = StyleSheet.create({
   changePhotoText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   section: {
     paddingHorizontal: 16,
@@ -345,7 +389,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.zinc[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -356,7 +399,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 8,
   },
   inputContainer: {
@@ -373,7 +415,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: colors.text,
   },
   textAreaContainer: {
     paddingHorizontal: 14,
@@ -385,12 +426,10 @@ const styles = StyleSheet.create({
   },
   textArea: {
     fontSize: 14,
-    color: colors.text,
     minHeight: 80,
   },
   charCount: {
     fontSize: 11,
-    color: colors.zinc[600],
     textAlign: 'right',
     marginTop: 4,
   },
@@ -417,7 +456,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   verificationCard: {
     flexDirection: 'row',
@@ -443,11 +481,9 @@ const styles = StyleSheet.create({
   verificationTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   verificationText: {
     fontSize: 12,
-    color: colors.zinc[400],
     marginTop: 2,
   },
   verifyButton: {

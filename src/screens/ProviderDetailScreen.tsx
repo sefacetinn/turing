@@ -14,7 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles
+const colors = defaultColors;
 
 const { width } = Dimensions.get('window');
 
@@ -411,6 +415,7 @@ export function ProviderDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { providerId } = (route.params as { providerId: string }) || { providerId: 't1' };
+  const { colors, isDark, helpers } = useTheme();
 
   const provider = getProviderDetail(providerId);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -459,7 +464,7 @@ export function ProviderDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header - Floating */}
       <View style={styles.floatingHeader}>
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
@@ -502,14 +507,14 @@ export function ProviderDetailScreen() {
         <View style={styles.heroContainer}>
           <Image source={{ uri: provider.coverImage }} style={styles.heroImage} />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.8)', colors.background]}
+            colors={['transparent', isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)', colors.background]}
             style={styles.heroGradient}
           />
           {/* Provider Badge on Hero */}
           <View style={styles.heroBadge}>
-            <Image source={{ uri: provider.image }} style={styles.heroAvatar} />
+            <Image source={{ uri: provider.image }} style={[styles.heroAvatar, { borderColor: colors.background }]} />
             {provider.verified && (
-              <View style={styles.verifiedBadge}>
+              <View style={[styles.verifiedBadge, { backgroundColor: colors.brand[500], borderColor: colors.background }]}>
                 <Ionicons name="checkmark" size={12} color="white" />
               </View>
             )}
@@ -519,19 +524,19 @@ export function ProviderDetailScreen() {
         {/* Provider Info */}
         <View style={styles.infoSection}>
           <View style={styles.nameRow}>
-            <Text style={styles.providerName}>{provider.name}</Text>
+            <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
           </View>
-          <Text style={styles.subcategory}>{provider.subcategory}</Text>
+          <Text style={[styles.subcategory, { color: colors.textMuted }]}>{provider.subcategory}</Text>
 
           <View style={styles.quickInfo}>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={styles.ratingValue}>{provider.rating}</Text>
-              <Text style={styles.ratingCount}>({provider.reviewCount} değerlendirme)</Text>
+              <Text style={[styles.ratingValue, { color: colors.text }]}>{provider.rating}</Text>
+              <Text style={[styles.ratingCount, { color: colors.textSecondary }]}>({provider.reviewCount} değerlendirme)</Text>
             </View>
             <View style={styles.locationBadge}>
-              <Ionicons name="location" size={14} color={colors.zinc[400]} />
-              <Text style={styles.locationText}>{provider.location}</Text>
+              <Ionicons name="location" size={14} color={colors.textMuted} />
+              <Text style={[styles.locationText, { color: colors.textMuted }]}>{provider.location}</Text>
             </View>
           </View>
 
@@ -544,40 +549,40 @@ export function ProviderDetailScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Ionicons name="pricetag" size={18} color={colors.brand[400]} />
-              <Text style={styles.priceText}>{provider.priceRange}</Text>
+              <Text style={[styles.priceText, { color: colors.text }]}>{provider.priceRange}</Text>
             </LinearGradient>
           </View>
         </View>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
             <View style={styles.statIconContainer}>
               <Ionicons name="calendar" size={20} color={colors.brand[400]} />
             </View>
-            <Text style={styles.statValue}>{provider.completedEvents}</Text>
-            <Text style={styles.statLabel}>Etkinlik</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{provider.completedEvents}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Etkinlik</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
             <View style={styles.statIconContainer}>
               <Ionicons name="time" size={20} color={colors.success} />
             </View>
             <Text style={[styles.statValue, { color: colors.success }]}>{provider.responseTime}</Text>
-            <Text style={styles.statLabel}>Yanıt Süresi</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Yanıt Süresi</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
             <View style={styles.statIconContainer}>
               <Ionicons name="trending-up" size={20} color={colors.brand[400]} />
             </View>
-            <Text style={styles.statValue}>{provider.yearsExperience} Yıl</Text>
-            <Text style={styles.statLabel}>Deneyim</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{provider.yearsExperience} Yıl</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Deneyim</Text>
           </View>
         </View>
 
         {/* Highlights */}
         <View style={styles.highlightsSection}>
           {provider.highlights.map((highlight, index) => (
-            <View key={index} style={styles.highlightItem}>
+            <View key={index} style={[styles.highlightItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
               <LinearGradient
                 colors={['rgba(147, 51, 234, 0.2)', 'rgba(147, 51, 234, 0.05)']}
                 style={styles.highlightIconBg}
@@ -585,8 +590,8 @@ export function ProviderDetailScreen() {
                 <Ionicons name={highlight.icon as any} size={18} color={colors.brand[400]} />
               </LinearGradient>
               <View style={styles.highlightText}>
-                <Text style={styles.highlightValue}>{highlight.value}</Text>
-                <Text style={styles.highlightLabel}>{highlight.label}</Text>
+                <Text style={[styles.highlightValue, { color: colors.text }]}>{highlight.value}</Text>
+                <Text style={[styles.highlightLabel, { color: colors.textSecondary }]}>{highlight.label}</Text>
               </View>
             </View>
           ))}
@@ -594,17 +599,17 @@ export function ProviderDetailScreen() {
 
         {/* About */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hakkında</Text>
-          <Text style={styles.aboutText}>{provider.aboutLong}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hakkında</Text>
+          <Text style={[styles.aboutText, { color: colors.textMuted }]}>{provider.aboutLong}</Text>
         </View>
 
         {/* Specialties */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Uzmanlık Alanları</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Uzmanlık Alanları</Text>
           <View style={styles.tagsContainer}>
             {provider.specialties.map((specialty, index) => (
               <View key={index} style={styles.specialtyTag}>
-                <Text style={styles.specialtyText}>{specialty}</Text>
+                <Text style={[styles.specialtyText, { color: colors.brand[400] }]}>{specialty}</Text>
               </View>
             ))}
           </View>
@@ -612,12 +617,12 @@ export function ProviderDetailScreen() {
 
         {/* Services */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hizmetler</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmetler</Text>
           <View style={styles.servicesGrid}>
             {provider.services.map((service, index) => (
-              <View key={index} style={styles.serviceItem}>
+              <View key={index} style={[styles.serviceItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                <Text style={styles.serviceText}>{service}</Text>
+                <Text style={[styles.serviceText, { color: colors.text }]}>{service}</Text>
               </View>
             ))}
           </View>
@@ -627,14 +632,14 @@ export function ProviderDetailScreen() {
         {provider.artists && provider.artists.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Sanatçı Kadrosu</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Sanatçı Kadrosu</Text>
               <TouchableOpacity>
-                <Text style={styles.seeAllText}>Tümünü Gör ({provider.artists.length})</Text>
+                <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör ({provider.artists.length})</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.artistsGrid}>
               {provider.artists.map((artist) => (
-                <TouchableOpacity key={artist.id} style={styles.artistCard}>
+                <TouchableOpacity key={artist.id} style={[styles.artistCard, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                   <Image source={{ uri: artist.image }} style={styles.artistImage} />
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.9)']}
@@ -648,7 +653,7 @@ export function ProviderDetailScreen() {
                         <Ionicons name="star" size={10} color="#fbbf24" />
                         <Text style={styles.artistRatingText}>{artist.rating}</Text>
                       </View>
-                      <Text style={styles.artistPrice}>{artist.priceRange}</Text>
+                      <Text style={[styles.artistPrice, { color: colors.brand[300] }]}>{artist.priceRange}</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -660,9 +665,9 @@ export function ProviderDetailScreen() {
         {/* Portfolio */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Portfolyo</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Portfolyo</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>Tümünü Gör</Text>
+              <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör</Text>
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.portfolioScroll}>
@@ -676,33 +681,33 @@ export function ProviderDetailScreen() {
 
         {/* Contact Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>İletişim</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>İletişim</Text>
           <View style={styles.contactGrid}>
-            <TouchableOpacity style={styles.contactItem} onPress={handleCall}>
+            <TouchableOpacity style={[styles.contactItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={handleCall}>
               <View style={[styles.contactIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                 <Ionicons name="call" size={18} color={colors.success} />
               </View>
               <View style={styles.contactText}>
-                <Text style={styles.contactLabel}>Telefon</Text>
-                <Text style={styles.contactValue}>{provider.phone}</Text>
+                <Text style={[styles.contactLabel, { color: colors.textSecondary }]}>Telefon</Text>
+                <Text style={[styles.contactValue, { color: colors.text }]}>{provider.phone}</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.contactItem} onPress={handleEmail}>
+            <TouchableOpacity style={[styles.contactItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={handleEmail}>
               <View style={[styles.contactIconBg, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
                 <Ionicons name="mail" size={18} color={colors.brand[400]} />
               </View>
               <View style={styles.contactText}>
-                <Text style={styles.contactLabel}>E-posta</Text>
-                <Text style={styles.contactValue}>{provider.email}</Text>
+                <Text style={[styles.contactLabel, { color: colors.textSecondary }]}>E-posta</Text>
+                <Text style={[styles.contactValue, { color: colors.text }]}>{provider.email}</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.contactItem} onPress={handleWebsite}>
+            <TouchableOpacity style={[styles.contactItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={handleWebsite}>
               <View style={[styles.contactIconBg, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                 <Ionicons name="globe" size={18} color="#3b82f6" />
               </View>
               <View style={styles.contactText}>
-                <Text style={styles.contactLabel}>Website</Text>
-                <Text style={styles.contactValue}>{provider.website}</Text>
+                <Text style={[styles.contactLabel, { color: colors.textSecondary }]}>Website</Text>
+                <Text style={[styles.contactValue, { color: colors.text }]}>{provider.website}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -711,20 +716,20 @@ export function ProviderDetailScreen() {
         {/* Reviews */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Değerlendirmeler</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Değerlendirmeler</Text>
             <TouchableOpacity>
-              <Text style={styles.seeAllText}>Tümü ({provider.reviewCount})</Text>
+              <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümü ({provider.reviewCount})</Text>
             </TouchableOpacity>
           </View>
 
           {provider.reviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
+            <View key={review.id} style={[styles.reviewCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
               <View style={styles.reviewHeader}>
                 <View style={styles.reviewAvatar}>
-                  <Text style={styles.reviewAvatarText}>{review.avatar}</Text>
+                  <Text style={[styles.reviewAvatarText, { color: colors.brand[400] }]}>{review.avatar}</Text>
                 </View>
                 <View style={styles.reviewInfo}>
-                  <Text style={styles.reviewerName}>{review.name}</Text>
+                  <Text style={[styles.reviewerName, { color: colors.text }]}>{review.name}</Text>
                   <View style={styles.reviewMeta}>
                     <View style={styles.reviewStars}>
                       {[1, 2, 3, 4, 5].map((star) => (
@@ -737,13 +742,13 @@ export function ProviderDetailScreen() {
                       ))}
                     </View>
                     <View style={styles.eventTypeBadge}>
-                      <Text style={styles.eventTypeText}>{review.eventType}</Text>
+                      <Text style={[styles.eventTypeText, { color: colors.brand[400] }]}>{review.eventType}</Text>
                     </View>
                   </View>
                 </View>
-                <Text style={styles.reviewDate}>{review.date}</Text>
+                <Text style={[styles.reviewDate, { color: colors.textSecondary }]}>{review.date}</Text>
               </View>
-              <Text style={styles.reviewText}>{review.text}</Text>
+              <Text style={[styles.reviewText, { color: colors.textMuted }]}>{review.text}</Text>
             </View>
           ))}
         </View>
@@ -752,12 +757,12 @@ export function ProviderDetailScreen() {
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={styles.bottomAction}>
+      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.98)' : colors.cardBackground, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('lg')])]}>
         <View style={styles.bottomLeft}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleMessage}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={handleMessage}>
             <Ionicons name="chatbubble-outline" size={22} color={colors.brand[400]} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleCall}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={handleCall}>
             <Ionicons name="call-outline" size={22} color={colors.success} />
           </TouchableOpacity>
         </View>
@@ -780,7 +785,6 @@ export function ProviderDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   floatingHeader: {
     position: 'absolute',
@@ -831,7 +835,6 @@ const styles = StyleSheet.create({
     height: 90,
     borderRadius: 24,
     borderWidth: 4,
-    borderColor: colors.background,
   },
   verifiedBadge: {
     position: 'absolute',
@@ -840,11 +843,9 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: colors.brand[500],
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: colors.background,
   },
   infoSection: {
     paddingHorizontal: 20,
@@ -858,11 +859,9 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: colors.text,
   },
   subcategory: {
     fontSize: 15,
-    color: colors.zinc[400],
     marginTop: 4,
   },
   quickInfo: {
@@ -879,11 +878,9 @@ const styles = StyleSheet.create({
   ratingValue: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   ratingCount: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   locationBadge: {
     flexDirection: 'row',
@@ -892,7 +889,6 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 13,
-    color: colors.zinc[400],
   },
   priceContainer: {
     marginTop: 16,
@@ -910,7 +906,6 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -939,11 +934,9 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.text,
   },
   statLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 4,
   },
   highlightsSection: {
@@ -974,11 +967,9 @@ const styles = StyleSheet.create({
   highlightValue: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.text,
   },
   highlightLabel: {
     fontSize: 10,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   section: {
@@ -994,17 +985,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 14,
   },
   seeAllText: {
     fontSize: 13,
-    color: colors.brand[400],
     fontWeight: '500',
   },
   aboutText: {
     fontSize: 14,
-    color: colors.zinc[400],
     lineHeight: 24,
   },
   tagsContainer: {
@@ -1023,7 +1011,6 @@ const styles = StyleSheet.create({
   specialtyText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   servicesGrid: {
     gap: 10,
@@ -1039,7 +1026,6 @@ const styles = StyleSheet.create({
   },
   serviceText: {
     fontSize: 14,
-    color: colors.text,
   },
   artistsGrid: {
     flexDirection: 'row',
@@ -1104,7 +1090,6 @@ const styles = StyleSheet.create({
   artistPrice: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.brand[300],
   },
   portfolioScroll: {
     marginLeft: -20,
@@ -1141,11 +1126,9 @@ const styles = StyleSheet.create({
   },
   contactLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   contactValue: {
     fontSize: 14,
-    color: colors.text,
     fontWeight: '500',
     marginTop: 2,
   },
@@ -1171,7 +1154,6 @@ const styles = StyleSheet.create({
   reviewAvatarText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   reviewInfo: {
     flex: 1,
@@ -1180,7 +1162,6 @@ const styles = StyleSheet.create({
   reviewerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   reviewMeta: {
     flexDirection: 'row',
@@ -1201,15 +1182,12 @@ const styles = StyleSheet.create({
   eventTypeText: {
     fontSize: 10,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   reviewDate: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   reviewText: {
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 21,
   },
   bottomAction: {

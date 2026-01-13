@@ -3,7 +3,10 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 interface NotificationSetting {
   id: string;
@@ -20,6 +23,7 @@ interface NotificationGroup {
 
 export function NotificationSettingsScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const [notificationGroups, setNotificationGroups] = useState<NotificationGroup[]>([
     {
@@ -79,40 +83,44 @@ export function NotificationSettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bildirim Ayarları</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Bildirim Ayarları</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Master Toggles */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bildirim Kanalları</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Bildirim Kanalları</Text>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]}>
             <View style={styles.masterToggleRow}>
               <View style={styles.masterToggleInfo}>
                 <View style={[styles.toggleIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
                   <Ionicons name="notifications" size={20} color={colors.brand[400]} />
                 </View>
                 <View>
-                  <Text style={styles.toggleTitle}>Push Bildirimleri</Text>
-                  <Text style={styles.toggleDescription}>Anlık bildirimler al</Text>
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>Push Bildirimleri</Text>
+                  <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>Anlık bildirimler al</Text>
                 </View>
               </View>
               <Switch
                 value={pushEnabled}
                 onValueChange={setPushEnabled}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={pushEnabled ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={pushEnabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
 
             <View style={styles.masterToggleRow}>
               <View style={styles.masterToggleInfo}>
@@ -120,19 +128,19 @@ export function NotificationSettingsScreen() {
                   <Ionicons name="mail" size={20} color={colors.info} />
                 </View>
                 <View>
-                  <Text style={styles.toggleTitle}>E-posta Bildirimleri</Text>
-                  <Text style={styles.toggleDescription}>E-posta ile bildirim al</Text>
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>E-posta Bildirimleri</Text>
+                  <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>E-posta ile bildirim al</Text>
                 </View>
               </View>
               <Switch
                 value={emailEnabled}
                 onValueChange={setEmailEnabled}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={emailEnabled ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={emailEnabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
 
             <View style={styles.masterToggleRow}>
               <View style={styles.masterToggleInfo}>
@@ -140,15 +148,15 @@ export function NotificationSettingsScreen() {
                   <Ionicons name="chatbox" size={20} color={colors.success} />
                 </View>
                 <View>
-                  <Text style={styles.toggleTitle}>SMS Bildirimleri</Text>
-                  <Text style={styles.toggleDescription}>SMS ile bildirim al</Text>
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>SMS Bildirimleri</Text>
+                  <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>SMS ile bildirim al</Text>
                 </View>
               </View>
               <Switch
                 value={smsEnabled}
                 onValueChange={setSmsEnabled}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={smsEnabled ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={smsEnabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
           </View>
@@ -159,24 +167,28 @@ export function NotificationSettingsScreen() {
           <View key={group.title} style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name={group.icon} size={18} color={colors.brand[400]} />
-              <Text style={styles.sectionTitle}>{group.title}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted, marginBottom: 0 }]}>{group.title}</Text>
             </View>
-            <View style={styles.card}>
+            <View style={[styles.card, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+              ...(isDark ? {} : helpers.getShadow('sm'))
+            }]}>
               {group.settings.map((setting, settingIndex) => (
                 <View key={setting.id}>
                   <View style={styles.settingRow}>
                     <View style={styles.settingInfo}>
-                      <Text style={styles.settingTitle}>{setting.title}</Text>
-                      <Text style={styles.settingDescription}>{setting.description}</Text>
+                      <Text style={[styles.settingTitle, { color: colors.text }]}>{setting.title}</Text>
+                      <Text style={[styles.settingDescription, { color: colors.textMuted }]}>{setting.description}</Text>
                     </View>
                     <Switch
                       value={setting.enabled}
                       onValueChange={() => toggleSetting(groupIndex, setting.id)}
-                      trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                      thumbColor={setting.enabled ? colors.brand[400] : colors.zinc[400]}
+                      trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                      thumbColor={setting.enabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
                     />
                   </View>
-                  {settingIndex < group.settings.length - 1 && <View style={styles.divider} />}
+                  {settingIndex < group.settings.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />}
                 </View>
               ))}
             </View>
@@ -185,19 +197,23 @@ export function NotificationSettingsScreen() {
 
         {/* Quiet Hours */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sessiz Saatler</Text>
-          <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => navigation.navigate('QuietHours')}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Sessiz Saatler</Text>
+          <TouchableOpacity style={[styles.card, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm'))
+          }]} activeOpacity={0.7} onPress={() => navigation.navigate('QuietHours')}>
             <View style={styles.quietHoursRow}>
               <View style={styles.masterToggleInfo}>
                 <View style={[styles.toggleIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                   <Ionicons name="moon" size={20} color={colors.warning} />
                 </View>
                 <View>
-                  <Text style={styles.toggleTitle}>Sessiz Mod</Text>
-                  <Text style={styles.toggleDescription}>22:00 - 08:00 arası bildirim alma</Text>
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>Sessiz Mod</Text>
+                  <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>22:00 - 08:00 arası bildirim alma</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.zinc[600]} />
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </View>
           </TouchableOpacity>
         </View>
@@ -211,7 +227,6 @@ export function NotificationSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -229,7 +244,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   section: {
     paddingHorizontal: 20,
@@ -244,7 +258,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -278,11 +291,9 @@ const styles = StyleSheet.create({
   toggleTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
   },
   toggleDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   divider: {
@@ -303,11 +314,9 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
   },
   settingDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   quietHoursRow: {

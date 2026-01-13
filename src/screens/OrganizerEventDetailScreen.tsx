@@ -14,7 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 import { events as mockEvents, artists } from '../data/mockData';
 import { ReviseEventModal } from '../components/ReviseEventModal';
 import { CancelEventModal } from '../components/CancelEventModal';
@@ -83,6 +86,7 @@ export function OrganizerEventDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { eventId } = route.params || { eventId: '1' };
+  const { colors, isDark, helpers } = useTheme();
 
   const [activeSection, setActiveSection] = useState<'services' | 'timeline' | 'budget'>('services');
   const [showReviseModal, setShowReviseModal] = useState(false);
@@ -95,8 +99,8 @@ export function OrganizerEventDetailScreen() {
 
   if (!event) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>Etkinlik bulunamadı</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>Etkinlik bulunamadı</Text>
       </SafeAreaView>
     );
   }
@@ -141,7 +145,14 @@ export function OrganizerEventDetailScreen() {
     return (
       <TouchableOpacity
         key={service.id}
-        style={styles.serviceCard}
+        style={[
+          styles.serviceCard,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+          },
+          isDark ? {} : helpers.getShadow('sm'),
+        ]}
         activeOpacity={0.8}
         onPress={() => handleServicePress(service)}
       >
@@ -155,8 +166,8 @@ export function OrganizerEventDetailScreen() {
             <Ionicons name={categoryInfo.icon} size={14} color="white" />
           </LinearGradient>
           <View style={styles.serviceInfo}>
-            <Text style={styles.serviceName}>{service.name}</Text>
-            <Text style={styles.serviceCategory}>{categoryInfo.name}</Text>
+            <Text style={[styles.serviceName, { color: colors.text }]}>{service.name}</Text>
+            <Text style={[styles.serviceCategory, { color: colors.textMuted }]}>{categoryInfo.name}</Text>
           </View>
           <View style={[styles.serviceStatusBadge, { backgroundColor: `${statusInfo.color}20` }]}>
             <Ionicons name={statusInfo.icon} size={12} color={statusInfo.color} />
@@ -168,14 +179,14 @@ export function OrganizerEventDetailScreen() {
 
         <View style={styles.serviceDetails}>
           <View style={styles.serviceDetailItem}>
-            <Text style={styles.serviceDetailLabel}>Tedarikçi</Text>
-            <Text style={styles.serviceDetailValue}>
+            <Text style={[styles.serviceDetailLabel, { color: colors.textMuted }]}>Tedarikçi</Text>
+            <Text style={[styles.serviceDetailValue, { color: colors.text }]}>
               {service.provider || 'Atanmadı'}
             </Text>
           </View>
           <View style={styles.serviceDetailItem}>
-            <Text style={styles.serviceDetailLabel}>Tutar</Text>
-            <Text style={styles.serviceDetailValue}>
+            <Text style={[styles.serviceDetailLabel, { color: colors.textMuted }]}>Tutar</Text>
+            <Text style={[styles.serviceDetailValue, { color: colors.text }]}>
               ₺{service.price.toLocaleString('tr-TR')}
             </Text>
           </View>
@@ -244,7 +255,7 @@ export function OrganizerEventDetailScreen() {
         <View style={styles.timelineLeft}>
           <View style={[
             styles.timelineIcon,
-            { backgroundColor: item.completed ? getTypeColor(item.type) : colors.zinc[700] }
+            { backgroundColor: item.completed ? getTypeColor(item.type) : isDark ? colors.zinc[700] : colors.zinc[300] }
           ]}>
             <Ionicons
               name={getTypeIcon(item.type) as keyof typeof Ionicons.glyphMap}
@@ -255,16 +266,16 @@ export function OrganizerEventDetailScreen() {
           {!isLast && (
             <View style={[
               styles.timelineLine,
-              { backgroundColor: item.completed ? getTypeColor(item.type) : colors.zinc[700] }
+              { backgroundColor: item.completed ? getTypeColor(item.type) : isDark ? colors.zinc[700] : colors.zinc[300] }
             ]} />
           )}
         </View>
         <View style={styles.timelineContent}>
-          <Text style={styles.timelineDate}>{item.date}</Text>
-          <Text style={[styles.timelineTitle, !item.completed && styles.timelineTitlePending]}>
+          <Text style={[styles.timelineDate, { color: colors.textMuted }]}>{item.date}</Text>
+          <Text style={[styles.timelineTitle, { color: item.completed ? colors.text : colors.textSecondary }]}>
             {item.title}
           </Text>
-          <Text style={styles.timelineDescription}>{item.description}</Text>
+          <Text style={[styles.timelineDescription, { color: colors.textMuted }]}>{item.description}</Text>
         </View>
         {item.completed && (
           <Ionicons name="checkmark-circle" size={18} color={colors.success} />
@@ -274,7 +285,7 @@ export function OrganizerEventDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header Image */}
         <View style={styles.headerImage}>
@@ -325,12 +336,12 @@ export function OrganizerEventDetailScreen() {
         </View>
 
         {/* Progress Section */}
-        <View style={styles.progressSection}>
+        <View style={[styles.progressSection, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Genel İlerleme</Text>
-            <Text style={styles.progressPercent}>{event.progress}%</Text>
+            <Text style={[styles.progressTitle, { color: colors.text }]}>Genel İlerleme</Text>
+            <Text style={[styles.progressPercent, { color: colors.brand[400] }]}>{event.progress}%</Text>
           </View>
-          <View style={styles.progressBar}>
+          <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border }]}>
             <LinearGradient
               colors={gradients.primary}
               style={[styles.progressFill, { width: `${event.progress}%` }]}
@@ -341,76 +352,136 @@ export function OrganizerEventDetailScreen() {
           <View style={styles.progressStats}>
             <View style={styles.progressStatItem}>
               <View style={[styles.progressStatDot, { backgroundColor: colors.success }]} />
-              <Text style={styles.progressStatText}>{stats.confirmed} Onaylı</Text>
+              <Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.confirmed} Onaylı</Text>
             </View>
             <View style={styles.progressStatItem}>
               <View style={[styles.progressStatDot, { backgroundColor: colors.warning }]} />
-              <Text style={styles.progressStatText}>{stats.pending} Bekliyor</Text>
+              <Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.pending} Bekliyor</Text>
             </View>
             <View style={styles.progressStatItem}>
               <View style={[styles.progressStatDot, { backgroundColor: colors.info }]} />
-              <Text style={styles.progressStatText}>{stats.offered} Teklif</Text>
+              <Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.offered} Teklif</Text>
             </View>
           </View>
         </View>
 
         {/* Quick Info Cards */}
-        <View style={styles.quickInfoContainer}>
-          <View style={styles.quickInfoCard}>
+        <View style={[styles.quickInfoContainer, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+          <View style={[
+            styles.quickInfoCard,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            },
+            isDark ? {} : helpers.getShadow('sm'),
+          ]}>
             <Ionicons name="people" size={20} color={colors.brand[400]} />
-            <Text style={styles.quickInfoValue}>{event.attendees.toLocaleString('tr-TR')}</Text>
-            <Text style={styles.quickInfoLabel}>Katılımcı</Text>
+            <Text style={[styles.quickInfoValue, { color: colors.text }]}>{event.attendees.toLocaleString('tr-TR')}</Text>
+            <Text style={[styles.quickInfoLabel, { color: colors.textMuted }]}>Katılımcı</Text>
           </View>
-          <View style={styles.quickInfoCard}>
+          <View style={[
+            styles.quickInfoCard,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            },
+            isDark ? {} : helpers.getShadow('sm'),
+          ]}>
             <Ionicons name="wallet" size={20} color={colors.success} />
-            <Text style={styles.quickInfoValue}>₺{(event.budget / 1000).toFixed(0)}K</Text>
-            <Text style={styles.quickInfoLabel}>Bütçe</Text>
+            <Text style={[styles.quickInfoValue, { color: colors.text }]}>₺{(event.budget / 1000).toFixed(0)}K</Text>
+            <Text style={[styles.quickInfoLabel, { color: colors.textMuted }]}>Bütçe</Text>
           </View>
-          <View style={styles.quickInfoCard}>
+          <View style={[
+            styles.quickInfoCard,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            },
+            isDark ? {} : helpers.getShadow('sm'),
+          ]}>
             <Ionicons name="time" size={20} color={colors.warning} />
-            <Text style={styles.quickInfoValue}>{event.time.split(' - ')[0]}</Text>
-            <Text style={styles.quickInfoLabel}>Başlangıç</Text>
+            <Text style={[styles.quickInfoValue, { color: colors.text }]}>{event.time.split(' - ')[0]}</Text>
+            <Text style={[styles.quickInfoLabel, { color: colors.textMuted }]}>Başlangıç</Text>
           </View>
         </View>
 
         {/* Section Tabs */}
         <View style={styles.sectionTabs}>
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'services' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: activeSection === 'services'
+                  ? 'rgba(147, 51, 234, 0.15)'
+                  : isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+                borderColor: activeSection === 'services'
+                  ? 'rgba(147, 51, 234, 0.3)'
+                  : isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+            ]}
             onPress={() => setActiveSection('services')}
           >
             <Ionicons
               name={activeSection === 'services' ? 'grid' : 'grid-outline'}
               size={14}
-              color={activeSection === 'services' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'services' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'services' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'services' ? colors.brand[400] : colors.textMuted }
+            ]}>
               Hizmetler
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'timeline' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: activeSection === 'timeline'
+                  ? 'rgba(147, 51, 234, 0.15)'
+                  : isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+                borderColor: activeSection === 'timeline'
+                  ? 'rgba(147, 51, 234, 0.3)'
+                  : isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+            ]}
             onPress={() => setActiveSection('timeline')}
           >
             <Ionicons
               name={activeSection === 'timeline' ? 'time' : 'time-outline'}
               size={14}
-              color={activeSection === 'timeline' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'timeline' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'timeline' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'timeline' ? colors.brand[400] : colors.textMuted }
+            ]}>
               Zaman Çizelgesi
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.sectionTab, activeSection === 'budget' && styles.sectionTabActive]}
+            style={[
+              styles.sectionTab,
+              {
+                backgroundColor: activeSection === 'budget'
+                  ? 'rgba(147, 51, 234, 0.15)'
+                  : isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+                borderColor: activeSection === 'budget'
+                  ? 'rgba(147, 51, 234, 0.3)'
+                  : isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+            ]}
             onPress={() => setActiveSection('budget')}
           >
             <Ionicons
               name={activeSection === 'budget' ? 'wallet' : 'wallet-outline'}
               size={14}
-              color={activeSection === 'budget' ? colors.brand[400] : colors.zinc[500]}
+              color={activeSection === 'budget' ? colors.brand[400] : colors.textMuted}
             />
-            <Text style={[styles.sectionTabText, activeSection === 'budget' && styles.sectionTabTextActive]}>
+            <Text style={[
+              styles.sectionTabText,
+              { color: activeSection === 'budget' ? colors.brand[400] : colors.textMuted }
+            ]}>
               Bütçe
             </Text>
           </TouchableOpacity>
@@ -422,10 +493,10 @@ export function OrganizerEventDetailScreen() {
             {Object.entries(servicesByCategory).map(([category, services]) => (
               <View key={category} style={styles.serviceCategoryGroup}>
                 <View style={styles.serviceCategoryHeader}>
-                  <Text style={styles.serviceCategoryTitle}>
+                  <Text style={[styles.serviceCategoryTitle, { color: colors.text }]}>
                     {getCategoryInfo(category).name}
                   </Text>
-                  <Text style={styles.serviceCategoryCount}>
+                  <Text style={[styles.serviceCategoryCount, { color: colors.textMuted }]}>
                     {services.length} hizmet
                   </Text>
                 </View>
@@ -450,7 +521,7 @@ export function OrganizerEventDetailScreen() {
               }}
             >
               <Ionicons name="add" size={20} color={colors.brand[400]} />
-              <Text style={styles.addServiceText}>Hizmet Ekle</Text>
+              <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -467,23 +538,30 @@ export function OrganizerEventDetailScreen() {
         {/* Budget Section */}
         {activeSection === 'budget' && (
           <View style={styles.budgetSection}>
-            <View style={styles.budgetSummary}>
+            <View style={[
+              styles.budgetSummary,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+              },
+              isDark ? {} : helpers.getShadow('sm'),
+            ]}>
               <View style={styles.budgetSummaryItem}>
-                <Text style={styles.budgetSummaryLabel}>Toplam Bütçe</Text>
-                <Text style={styles.budgetSummaryValue}>
+                <Text style={[styles.budgetSummaryLabel, { color: colors.textMuted }]}>Toplam Bütçe</Text>
+                <Text style={[styles.budgetSummaryValue, { color: colors.text }]}>
                   ₺{event.budget.toLocaleString('tr-TR')}
                 </Text>
               </View>
-              <View style={styles.budgetDivider} />
+              <View style={[styles.budgetDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]} />
               <View style={styles.budgetSummaryItem}>
-                <Text style={styles.budgetSummaryLabel}>Harcanan</Text>
+                <Text style={[styles.budgetSummaryLabel, { color: colors.textMuted }]}>Harcanan</Text>
                 <Text style={[styles.budgetSummaryValue, { color: colors.warning }]}>
                   ₺{event.spent.toLocaleString('tr-TR')}
                 </Text>
               </View>
-              <View style={styles.budgetDivider} />
+              <View style={[styles.budgetDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]} />
               <View style={styles.budgetSummaryItem}>
-                <Text style={styles.budgetSummaryLabel}>Kalan</Text>
+                <Text style={[styles.budgetSummaryLabel, { color: colors.textMuted }]}>Kalan</Text>
                 <Text style={[styles.budgetSummaryValue, { color: colors.success }]}>
                   ₺{(event.budget - event.spent).toLocaleString('tr-TR')}
                 </Text>
@@ -491,7 +569,7 @@ export function OrganizerEventDetailScreen() {
             </View>
 
             {/* Budget by Category */}
-            <Text style={styles.budgetCategoryTitle}>Kategori Bazlı Harcamalar</Text>
+            <Text style={[styles.budgetCategoryTitle, { color: colors.text }]}>Kategori Bazlı Harcamalar</Text>
             {Object.entries(servicesByCategory).map(([category, services]) => {
               const categoryTotal = services.reduce((sum, s) => sum + s.price, 0);
               const categoryPercent = (categoryTotal / event.budget) * 100;
@@ -507,13 +585,13 @@ export function OrganizerEventDetailScreen() {
                       >
                         <Ionicons name={categoryInfo.icon} size={12} color="white" />
                       </LinearGradient>
-                      <Text style={styles.budgetCategoryName}>{categoryInfo.name}</Text>
+                      <Text style={[styles.budgetCategoryName, { color: colors.text }]}>{categoryInfo.name}</Text>
                     </View>
-                    <Text style={styles.budgetCategoryAmount}>
+                    <Text style={[styles.budgetCategoryAmount, { color: colors.text }]}>
                       ₺{categoryTotal.toLocaleString('tr-TR')}
                     </Text>
                   </View>
-                  <View style={styles.budgetCategoryBar}>
+                  <View style={[styles.budgetCategoryBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border }]}>
                     <LinearGradient
                       colors={categoryInfo.gradient}
                       style={[styles.budgetCategoryFill, { width: `${categoryPercent}%` }]}
@@ -521,7 +599,7 @@ export function OrganizerEventDetailScreen() {
                       end={{ x: 1, y: 0 }}
                     />
                   </View>
-                  <Text style={styles.budgetCategoryPercent}>{categoryPercent.toFixed(1)}%</Text>
+                  <Text style={[styles.budgetCategoryPercent, { color: colors.textMuted }]}>{categoryPercent.toFixed(1)}%</Text>
                 </View>
               );
             })}
@@ -534,7 +612,7 @@ export function OrganizerEventDetailScreen() {
               }}
             >
               <Ionicons name="download-outline" size={18} color={colors.brand[400]} />
-              <Text style={styles.exportButtonText}>Bütçe Raporu İndir (PDF)</Text>
+              <Text style={[styles.exportButtonText, { color: colors.brand[400] }]}>Bütçe Raporu İndir (PDF)</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -542,14 +620,28 @@ export function OrganizerEventDetailScreen() {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.actionButtonSecondary}
+            style={[
+              styles.actionButtonSecondary,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+              isDark ? {} : helpers.getShadow('sm'),
+            ]}
             onPress={() => setShowReviseModal(true)}
           >
             <Ionicons name="create-outline" size={18} color={colors.text} />
-            <Text style={styles.actionButtonSecondaryText}>Düzenle</Text>
+            <Text style={[styles.actionButtonSecondaryText, { color: colors.text }]}>Düzenle</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButtonSecondary}
+            style={[
+              styles.actionButtonSecondary,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+              isDark ? {} : helpers.getShadow('sm'),
+            ]}
             onPress={() => setShowCancelModal(true)}
           >
             <Ionicons name="close-circle-outline" size={18} color={colors.error} />
@@ -563,9 +655,22 @@ export function OrganizerEventDetailScreen() {
       </ScrollView>
 
       {/* Fixed Bottom Actions */}
-      <View style={styles.bottomActions}>
+      <View style={[
+        styles.bottomActions,
+        {
+          backgroundColor: colors.background,
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+        },
+      ]}>
         <TouchableOpacity
-          style={styles.messageButton}
+          style={[
+            styles.messageButton,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+            },
+            isDark ? {} : helpers.getShadow('sm'),
+          ]}
           onPress={() => navigation.navigate('MainTabs', { screen: 'Messages' })}
         >
           <Ionicons name="chatbubble-outline" size={20} color={colors.brand[400]} />
@@ -632,10 +737,8 @@ export function OrganizerEventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   errorText: {
-    color: colors.error,
     textAlign: 'center',
     marginTop: 100,
   },
@@ -740,12 +843,10 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   progressPercent: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.brand[400],
   },
   progressBar: {
     height: 8,
@@ -774,7 +875,6 @@ const styles = StyleSheet.create({
   },
   progressStatText: {
     fontSize: 12,
-    color: colors.zinc[400],
   },
   quickInfoContainer: {
     flexDirection: 'row',
@@ -796,12 +896,10 @@ const styles = StyleSheet.create({
   quickInfoValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
     marginTop: 8,
   },
   quickInfoLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   sectionTabs: {
@@ -829,10 +927,9 @@ const styles = StyleSheet.create({
   sectionTabText: {
     fontSize: 11,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   sectionTabTextActive: {
-    color: colors.brand[400],
+    // Dynamic color applied in JSX
   },
   servicesSection: {
     padding: 20,
@@ -849,11 +946,9 @@ const styles = StyleSheet.create({
   serviceCategoryTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   serviceCategoryCount: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   serviceCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -882,11 +977,9 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   serviceCategory: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 1,
   },
   serviceStatusBadge: {
@@ -910,7 +1003,6 @@ const styles = StyleSheet.create({
   serviceDetailItem: {},
   serviceDetailLabel: {
     fontSize: 10,
-    color: colors.zinc[500],
     textTransform: 'uppercase',
     letterSpacing: 0.3,
     marginBottom: 2,
@@ -918,7 +1010,6 @@ const styles = StyleSheet.create({
   serviceDetailValue: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.text,
   },
   serviceActionButton: {
     marginTop: 12,
@@ -951,7 +1042,6 @@ const styles = StyleSheet.create({
   addServiceText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   timelineSection: {
     padding: 20,
@@ -982,21 +1072,18 @@ const styles = StyleSheet.create({
   },
   timelineDate: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginBottom: 4,
   },
   timelineTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 4,
   },
   timelineTitlePending: {
-    color: colors.zinc[400],
+    // Dynamic color applied in JSX
   },
   timelineDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   budgetSection: {
     padding: 20,
@@ -1016,7 +1103,6 @@ const styles = StyleSheet.create({
   },
   budgetSummaryLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -1024,7 +1110,6 @@ const styles = StyleSheet.create({
   budgetSummaryValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
   },
   budgetDivider: {
     width: 1,
@@ -1033,7 +1118,6 @@ const styles = StyleSheet.create({
   budgetCategoryTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 16,
   },
   budgetCategoryItem: {
@@ -1060,12 +1144,10 @@ const styles = StyleSheet.create({
   budgetCategoryName: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.text,
   },
   budgetCategoryAmount: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   budgetCategoryBar: {
     height: 6,
@@ -1080,7 +1162,6 @@ const styles = StyleSheet.create({
   },
   budgetCategoryPercent: {
     fontSize: 11,
-    color: colors.zinc[500],
     textAlign: 'right',
   },
   exportButton: {
@@ -1096,7 +1177,6 @@ const styles = StyleSheet.create({
   exportButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   actionButtons: {
     flexDirection: 'row',
@@ -1118,7 +1198,6 @@ const styles = StyleSheet.create({
   actionButtonSecondaryText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   bottomActions: {
     position: 'absolute',
@@ -1128,7 +1207,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 20,
     paddingBottom: 34,
-    backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
     gap: 12,

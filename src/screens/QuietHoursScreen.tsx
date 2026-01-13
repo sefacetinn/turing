@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 interface TimeSlot {
   hour: number;
@@ -20,6 +20,7 @@ interface TimeSlot {
 
 export function QuietHoursScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const [quietModeEnabled, setQuietModeEnabled] = useState(true);
   const [startTime, setStartTime] = useState<TimeSlot>({ hour: 22, minute: 0 });
@@ -63,13 +64,13 @@ export function QuietHoursScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sessiz Saatler</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Sessiz Saatler</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -86,27 +87,27 @@ export function QuietHoursScreen() {
               <Ionicons name="moon" size={32} color="white" />
             </LinearGradient>
           </View>
-          <Text style={styles.heroTitle}>Rahatsız Etmeyin</Text>
-          <Text style={styles.heroDescription}>
+          <Text style={[styles.heroTitle, { color: colors.text }]}>Rahatsız Etmeyin</Text>
+          <Text style={[styles.heroDescription, { color: colors.textMuted }]}>
             Belirlediğiniz saatler arasında bildirimleri sessize alın
           </Text>
         </View>
 
         {/* Enable Toggle */}
         <View style={styles.section}>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
             <View style={styles.toggleRow}>
               <View style={styles.toggleInfo}>
-                <Text style={styles.toggleTitle}>Sessiz Mod</Text>
-                <Text style={styles.toggleDescription}>
+                <Text style={[styles.toggleTitle, { color: colors.text }]}>Sessiz Mod</Text>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
                   {quietModeEnabled ? 'Aktif' : 'Devre dışı'}
                 </Text>
               </View>
               <Switch
                 value={quietModeEnabled}
                 onValueChange={setQuietModeEnabled}
-                trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                thumbColor={quietModeEnabled ? colors.brand[400] : colors.zinc[400]}
+                trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                thumbColor={quietModeEnabled ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
               />
             </View>
           </View>
@@ -116,41 +117,41 @@ export function QuietHoursScreen() {
           <>
             {/* Time Selection */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Saat Aralığı</Text>
-              <View style={styles.timeCard}>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Saat Aralığı</Text>
+              <View style={[styles.timeCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                 {/* Start Time */}
                 <View style={styles.timeBlock}>
-                  <Text style={styles.timeLabel}>Başlangıç</Text>
+                  <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>Başlangıç</Text>
                   <View style={styles.timePicker}>
                     <View style={styles.timeColumn}>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('start', 'hour', 1)}
                       >
-                        <Ionicons name="chevron-up" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-up" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
-                      <Text style={styles.timeValue}>{startTime.hour.toString().padStart(2, '0')}</Text>
+                      <Text style={[styles.timeValue, { color: colors.text }]}>{startTime.hour.toString().padStart(2, '0')}</Text>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('start', 'hour', -1)}
                       >
-                        <Ionicons name="chevron-down" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
                     </View>
-                    <Text style={styles.timeSeparator}>:</Text>
+                    <Text style={[styles.timeSeparator, { color: colors.textMuted }]}>:</Text>
                     <View style={styles.timeColumn}>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('start', 'minute', 15)}
                       >
-                        <Ionicons name="chevron-up" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-up" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
-                      <Text style={styles.timeValue}>{startTime.minute.toString().padStart(2, '0')}</Text>
+                      <Text style={[styles.timeValue, { color: colors.text }]}>{startTime.minute.toString().padStart(2, '0')}</Text>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('start', 'minute', -15)}
                       >
-                        <Ionicons name="chevron-down" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -158,42 +159,42 @@ export function QuietHoursScreen() {
 
                 {/* Arrow */}
                 <View style={styles.timeArrow}>
-                  <Ionicons name="arrow-forward" size={24} color={colors.zinc[600]} />
+                  <Ionicons name="arrow-forward" size={24} color={colors.textMuted} />
                 </View>
 
                 {/* End Time */}
                 <View style={styles.timeBlock}>
-                  <Text style={styles.timeLabel}>Bitiş</Text>
+                  <Text style={[styles.timeLabel, { color: colors.textSecondary }]}>Bitiş</Text>
                   <View style={styles.timePicker}>
                     <View style={styles.timeColumn}>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('end', 'hour', 1)}
                       >
-                        <Ionicons name="chevron-up" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-up" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
-                      <Text style={styles.timeValue}>{endTime.hour.toString().padStart(2, '0')}</Text>
+                      <Text style={[styles.timeValue, { color: colors.text }]}>{endTime.hour.toString().padStart(2, '0')}</Text>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('end', 'hour', -1)}
                       >
-                        <Ionicons name="chevron-down" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
                     </View>
-                    <Text style={styles.timeSeparator}>:</Text>
+                    <Text style={[styles.timeSeparator, { color: colors.textMuted }]}>:</Text>
                     <View style={styles.timeColumn}>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('end', 'minute', 15)}
                       >
-                        <Ionicons name="chevron-up" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-up" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
-                      <Text style={styles.timeValue}>{endTime.minute.toString().padStart(2, '0')}</Text>
+                      <Text style={[styles.timeValue, { color: colors.text }]}>{endTime.minute.toString().padStart(2, '0')}</Text>
                       <TouchableOpacity
                         style={styles.timeButton}
                         onPress={() => adjustTime('end', 'minute', -15)}
                       >
-                        <Ionicons name="chevron-down" size={20} color={colors.zinc[400]} />
+                        <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -203,16 +204,16 @@ export function QuietHoursScreen() {
 
             {/* Days Selection */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Aktif Günler</Text>
-              <View style={styles.daysCard}>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Aktif Günler</Text>
+              <View style={[styles.daysCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                 {days.map((day) => (
                   <TouchableOpacity
                     key={day.id}
-                    style={[styles.dayButton, selectedDays.includes(day.id) && styles.dayButtonActive]}
+                    style={[styles.dayButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.surfaceHover }, selectedDays.includes(day.id) && { backgroundColor: colors.brand[600] }]}
                     onPress={() => toggleDay(day.id)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.dayText, selectedDays.includes(day.id) && styles.dayTextActive]}>
+                    <Text style={[styles.dayText, { color: colors.textSecondary }, selectedDays.includes(day.id) && styles.dayTextActive]}>
                       {day.label}
                     </Text>
                   </TouchableOpacity>
@@ -222,23 +223,23 @@ export function QuietHoursScreen() {
 
             {/* Allow Critical */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>İstisnalar</Text>
-              <View style={styles.card}>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>İstisnalar</Text>
+              <View style={[styles.card, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                 <View style={styles.toggleRow}>
                   <View style={styles.toggleInfo}>
                     <View style={styles.toggleHeader}>
                       <Ionicons name="alert-circle" size={20} color={colors.error} />
-                      <Text style={styles.toggleTitle}>Kritik Bildirimler</Text>
+                      <Text style={[styles.toggleTitle, { color: colors.text }]}>Kritik Bildirimler</Text>
                     </View>
-                    <Text style={styles.toggleDescription}>
+                    <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
                       Güvenlik uyarıları ve acil mesajlar yine de gösterilsin
                     </Text>
                   </View>
                   <Switch
                     value={allowCritical}
                     onValueChange={setAllowCritical}
-                    trackColor={{ false: colors.zinc[700], true: colors.brand[600] }}
-                    thumbColor={allowCritical ? colors.brand[400] : colors.zinc[400]}
+                    trackColor={{ false: isDark ? colors.zinc[700] : colors.border, true: colors.brand[600] }}
+                    thumbColor={allowCritical ? colors.brand[400] : isDark ? colors.zinc[400] : colors.zinc[300]}
                   />
                 </View>
               </View>
@@ -246,9 +247,9 @@ export function QuietHoursScreen() {
 
             {/* Summary */}
             <View style={styles.section}>
-              <View style={styles.summaryCard}>
+              <View style={[styles.summaryCard, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}>
                 <Ionicons name="information-circle" size={20} color={colors.info} />
-                <Text style={styles.summaryText}>
+                <Text style={[styles.summaryText, { color: colors.textMuted }]}>
                   Sessiz mod {formatTime(startTime)} - {formatTime(endTime)} saatleri arasında{' '}
                   {selectedDays.length === 7 ? 'her gün' : `${selectedDays.length} gün`} aktif olacak.
                 </Text>
@@ -266,7 +267,6 @@ export function QuietHoursScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   heroSection: {
     alignItems: 'center',
@@ -304,12 +303,10 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: colors.text,
     marginBottom: 8,
   },
   heroDescription: {
     fontSize: 14,
-    color: colors.zinc[400],
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -320,16 +317,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
   },
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     overflow: 'hidden',
   },
   toggleRow: {
@@ -350,18 +344,14 @@ const styles = StyleSheet.create({
   toggleTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: colors.text,
   },
   toggleDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   timeCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -372,7 +362,6 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginBottom: 12,
   },
   timePicker: {
@@ -388,24 +377,20 @@ const styles = StyleSheet.create({
   timeValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: colors.text,
     width: 50,
     textAlign: 'center',
   },
   timeSeparator: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: colors.zinc[600],
     marginHorizontal: 4,
   },
   timeArrow: {
     paddingHorizontal: 16,
   },
   daysCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -416,21 +401,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  dayButtonActive: {
-    backgroundColor: colors.brand[600],
   },
   dayText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
   dayTextActive: {
     color: 'white',
   },
   summaryCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     borderRadius: 12,
     padding: 14,
     flexDirection: 'row',
@@ -440,7 +419,6 @@ const styles = StyleSheet.create({
   summaryText: {
     flex: 1,
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 20,
   },
 });

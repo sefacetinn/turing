@@ -11,7 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 // Mock favorites data
 const favoriteArtists = [
@@ -29,45 +32,60 @@ type TabType = 'artists' | 'providers';
 
 export function FavoritesScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('artists');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Favorilerim</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Favorilerim</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'artists' && styles.tabActive]}
+          style={[
+            styles.tab,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+            },
+            activeTab === 'artists' && styles.tabActive,
+          ]}
           onPress={() => setActiveTab('artists')}
         >
           <Ionicons
             name={activeTab === 'artists' ? 'musical-notes' : 'musical-notes-outline'}
             size={14}
-            color={activeTab === 'artists' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'artists' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'artists' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'artists' && { color: colors.brand[400] }]}>
             Sanatçılar ({favoriteArtists.length})
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'providers' && styles.tabActive]}
+          style={[
+            styles.tab,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+            },
+            activeTab === 'providers' && styles.tabActive,
+          ]}
           onPress={() => setActiveTab('providers')}
         >
           <Ionicons
             name={activeTab === 'providers' ? 'briefcase' : 'briefcase-outline'}
             size={14}
-            color={activeTab === 'providers' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'providers' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'providers' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'providers' && { color: colors.brand[400] }]}>
             Sağlayıcılar ({favoriteProviders.length})
           </Text>
         </TouchableOpacity>
@@ -79,7 +97,14 @@ export function FavoritesScreen() {
             {favoriteArtists.map((artist) => (
               <TouchableOpacity
                 key={artist.id}
-                style={styles.artistCard}
+                style={[
+                  styles.artistCard,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                    ...(isDark ? {} : helpers.getShadow('sm')),
+                  },
+                ]}
                 activeOpacity={0.8}
                 onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
               >
@@ -90,11 +115,11 @@ export function FavoritesScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.artistInfo}>
-                  <Text style={styles.artistName} numberOfLines={1}>{artist.name}</Text>
-                  <Text style={styles.artistGenre} numberOfLines={1}>{artist.genre}</Text>
+                  <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
+                  <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
                   <View style={styles.artistRating}>
                     <Ionicons name="star" size={12} color="#fbbf24" />
-                    <Text style={styles.artistRatingText}>{artist.rating}</Text>
+                    <Text style={[styles.artistRatingText, { color: colors.text }]}>{artist.rating}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -105,31 +130,38 @@ export function FavoritesScreen() {
             {favoriteProviders.map((provider) => (
               <TouchableOpacity
                 key={provider.id}
-                style={styles.providerCard}
+                style={[
+                  styles.providerCard,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                    ...(isDark ? {} : helpers.getShadow('sm')),
+                  },
+                ]}
                 activeOpacity={0.8}
                 onPress={() => navigation.navigate('ProviderDetail', { providerId: provider.id })}
               >
                 <View style={styles.providerImageContainer}>
                   <Image source={{ uri: provider.image }} style={styles.providerImage} />
                   {provider.verified && (
-                    <View style={styles.verifiedBadge}>
+                    <View style={[styles.verifiedBadge, { borderColor: colors.background, backgroundColor: colors.brand[500] }]}>
                       <Ionicons name="checkmark" size={10} color="white" />
                     </View>
                   )}
                 </View>
                 <View style={styles.providerInfo}>
-                  <Text style={styles.providerName}>{provider.name}</Text>
+                  <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
                   <View style={styles.providerMeta}>
-                    <Text style={styles.providerCategory}>{provider.category}</Text>
-                    <Text style={styles.providerDot}>•</Text>
-                    <Ionicons name="location" size={10} color={colors.zinc[500]} />
-                    <Text style={styles.providerLocation}>{provider.location}</Text>
+                    <Text style={[styles.providerCategory, { color: colors.brand[400] }]}>{provider.category}</Text>
+                    <Text style={[styles.providerDot, { color: colors.textSecondary }]}>•</Text>
+                    <Ionicons name="location" size={10} color={colors.textMuted} />
+                    <Text style={[styles.providerLocation, { color: colors.textMuted }]}>{provider.location}</Text>
                   </View>
                 </View>
                 <View style={styles.providerRight}>
                   <View style={styles.ratingRow}>
                     <Ionicons name="star" size={12} color="#fbbf24" />
-                    <Text style={styles.ratingText}>{provider.rating}</Text>
+                    <Text style={[styles.ratingText, { color: colors.text }]}>{provider.rating}</Text>
                   </View>
                   <TouchableOpacity style={styles.heartButton}>
                     <Ionicons name="heart" size={18} color={colors.error} />
@@ -144,11 +176,11 @@ export function FavoritesScreen() {
         {((activeTab === 'artists' && favoriteArtists.length === 0) ||
           (activeTab === 'providers' && favoriteProviders.length === 0)) && (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="heart-outline" size={48} color={colors.zinc[600]} />
+            <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
+              <Ionicons name="heart-outline" size={48} color={colors.textMuted} />
             </View>
-            <Text style={styles.emptyTitle}>Henüz favori yok</Text>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz favori yok</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
               Beğendiğiniz sanatçı ve sağlayıcıları favorilerinize ekleyin
             </Text>
             <TouchableOpacity
@@ -174,7 +206,6 @@ export function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -183,7 +214,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   backButton: {
     width: 40,
@@ -194,7 +224,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
   },
   placeholder: {
     width: 40,
@@ -212,10 +241,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     paddingVertical: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   tabActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.1)',
@@ -224,10 +251,9 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
   tabTextActive: {
-    color: colors.brand[400],
+    // color now applied dynamically
   },
   content: {
     flex: 1,
@@ -241,11 +267,9 @@ const styles = StyleSheet.create({
   },
   artistCard: {
     width: '47.5%',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   artistImageContainer: {
     position: 'relative',
@@ -271,11 +295,9 @@ const styles = StyleSheet.create({
   artistName: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   artistGenre: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   artistRating: {
@@ -287,7 +309,6 @@ const styles = StyleSheet.create({
   artistRatingText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.text,
   },
   providersList: {
     gap: 10,
@@ -297,10 +318,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   providerImageContainer: {
     position: 'relative',
@@ -317,11 +336,9 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.brand[500],
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.background,
   },
   providerInfo: {
     flex: 1,
@@ -330,7 +347,6 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   providerMeta: {
     flexDirection: 'row',
@@ -341,15 +357,12 @@ const styles = StyleSheet.create({
   providerCategory: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   providerDot: {
     fontSize: 10,
-    color: colors.zinc[700],
   },
   providerLocation: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   providerRight: {
     alignItems: 'flex-end',
@@ -363,7 +376,6 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   heartButton: {
     width: 32,
@@ -381,7 +393,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -389,12 +400,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: colors.zinc[500],
     textAlign: 'center',
     paddingHorizontal: 40,
     marginBottom: 24,

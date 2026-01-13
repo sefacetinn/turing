@@ -375,3 +375,125 @@ export interface QuoteRequest {
   createdAt: string;
   status: 'pending' | 'offered' | 'accepted' | 'rejected';
 }
+
+// ============================================
+// Navigation Types
+// ============================================
+
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { CompositeNavigationProp, RouteProp } from '@react-navigation/native';
+
+// Root Tab Navigator Params
+export type RootTabParamList = {
+  HomeTab: undefined;
+  EventsTab: undefined;
+  OffersTab: undefined;
+  MessagesTab: undefined;
+  ProfileTab: undefined;
+};
+
+// Home Stack Params
+export type HomeStackParamList = {
+  HomeMain: undefined;
+  ArtistDetail: { artistId: string };
+  ProviderDetail: { providerId: string; category?: ServiceCategory };
+  Search: { initialQuery?: string };
+  Notifications: undefined;
+  CreateEvent: undefined;
+  ServiceProviders: { category: ServiceCategory | OperationSubCategory };
+  OperationSubcategories: undefined;
+  RequestOffer: { providerId: string; category: ServiceCategory };
+  CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string };
+  Chat: { chatId: string; recipientName: string };
+};
+
+// Events Stack Params
+export type EventsStackParamList = {
+  EventsMain: undefined;
+  EventDetail: { eventId: string };
+  OrganizerEventDetail: { eventId: string };
+  ProviderEventDetail: { eventId: string };
+  CalendarView: undefined;
+  ProviderDetail: { providerId: string; category?: ServiceCategory };
+  CreateEvent: undefined;
+  ServiceProviders: { category: ServiceCategory | OperationSubCategory };
+  Chat: { chatId: string; recipientName: string };
+};
+
+// Offers Stack Params
+export type OffersStackParamList = {
+  OffersMain: undefined;
+  OfferDetail: { offerId: string };
+  Contract: { contractId: string };
+  Contracts: undefined;
+};
+
+// Messages Stack Params
+export type MessagesStackParamList = {
+  MessagesMain: undefined;
+  Chat: { chatId: string; recipientName: string };
+};
+
+// Profile Stack Params
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  Settings: undefined;
+  EditProfile: undefined;
+  Favorites: undefined;
+  NotificationSettings: undefined;
+  Security: undefined;
+  PaymentMethods: undefined;
+  HelpSupport: undefined;
+  About: undefined;
+  ArtistDetail: { artistId: string };
+  ProviderDetail: { providerId: string; category?: ServiceCategory };
+  AddCard: undefined;
+  ChangePassword: undefined;
+  QuietHours: undefined;
+  ProviderServices: undefined;
+  Chat: { chatId: string; recipientName: string };
+  Contract: { contractId: string };
+  Contracts: undefined;
+  Language: undefined;
+  Currency: undefined;
+  Terms: undefined;
+  PrivacyPolicy: undefined;
+  ContactSupport: undefined;
+};
+
+// Navigation Props Types
+export type HomeStackNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+export type EventsStackNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<EventsStackParamList>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+export type OffersStackNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<OffersStackParamList>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+export type MessagesStackNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<MessagesStackParamList>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+export type ProfileStackNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<ProfileStackParamList>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+// Route Props Types
+export type ArtistDetailRouteProp = RouteProp<HomeStackParamList, 'ArtistDetail'>;
+export type ProviderDetailRouteProp = RouteProp<HomeStackParamList, 'ProviderDetail'>;
+export type EventDetailRouteProp = RouteProp<EventsStackParamList, 'EventDetail'>;
+export type OfferDetailRouteProp = RouteProp<OffersStackParamList, 'OfferDetail'>;
+export type ChatRouteProp = RouteProp<HomeStackParamList, 'Chat'>;
+export type ServiceProvidersRouteProp = RouteProp<HomeStackParamList, 'ServiceProviders'>;
+export type CategoryRequestRouteProp = RouteProp<HomeStackParamList, 'CategoryRequest'>;
+export type ContractRouteProp = RouteProp<OffersStackParamList, 'Contract'>;

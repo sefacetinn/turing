@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 interface ChatParams {
   conversationId?: string;
@@ -51,6 +51,7 @@ const conversations = [
 export function ChatScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { colors, isDark, helpers } = useTheme();
   const params = (route.params || {}) as ChatParams;
 
   // Support both conversationId and providerId/providerName/providerImage
@@ -114,9 +115,11 @@ export function ChatScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, {
+        borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border
+      }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -124,10 +127,10 @@ export function ChatScreen() {
         <TouchableOpacity style={styles.headerInfo}>
           <Image source={{ uri: conversation.participantImage }} style={styles.headerAvatar} />
           <View>
-            <Text style={styles.headerName}>{conversation.participantName}</Text>
+            <Text style={[styles.headerName, { color: colors.text }]}>{conversation.participantName}</Text>
             <View style={styles.onlineStatus}>
-              <View style={[styles.onlineDot, conversation.online && styles.onlineDotActive]} />
-              <Text style={styles.onlineText}>
+              <View style={[styles.onlineDot, { backgroundColor: colors.textMuted }, conversation.online && { backgroundColor: colors.success }]} />
+              <Text style={[styles.onlineText, { color: colors.textMuted }]}>
                 {conversation.online ? 'Çevrimiçi' : 'Son görülme: 2 saat önce'}
               </Text>
             </View>
@@ -158,7 +161,10 @@ export function ChatScreen() {
         >
           {/* Date Header */}
           <View style={styles.dateHeader}>
-            <Text style={styles.dateHeaderText}>Bugün</Text>
+            <Text style={[styles.dateHeaderText, {
+              color: colors.textMuted,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)'
+            }]}>Bugün</Text>
           </View>
 
           {messages.map((msg, index) => {
@@ -178,11 +184,13 @@ export function ChatScreen() {
                 )}
                 {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
 
-                <View style={[styles.messageBubble, isMe && styles.messageBubbleMe]}>
-                  <Text style={[styles.messageText, isMe && styles.messageTextMe]}>
+                <View style={[styles.messageBubble, {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                }, isMe && { backgroundColor: colors.brand[600] }]}>
+                  <Text style={[styles.messageText, { color: colors.text }, isMe && { color: 'white' }]}>
                     {msg.text}
                   </Text>
-                  <Text style={[styles.messageTime, isMe && styles.messageTimeMe]}>
+                  <Text style={[styles.messageTime, { color: colors.textMuted }, isMe && { color: 'rgba(255, 255, 255, 0.5)' }]}>
                     {msg.time}
                     {isMe && (
                       <Ionicons name="checkmark-done" size={14} color="rgba(255,255,255,0.5)" />
@@ -197,61 +205,78 @@ export function ChatScreen() {
           {conversation.online && (
             <View style={styles.typingIndicator}>
               <View style={styles.typingDots}>
-                <View style={[styles.typingDot, styles.typingDot1]} />
-                <View style={[styles.typingDot, styles.typingDot2]} />
-                <View style={[styles.typingDot, styles.typingDot3]} />
+                <View style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.4 }]} />
+                <View style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.6 }]} />
+                <View style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.8 }]} />
               </View>
-              <Text style={styles.typingText}>yazıyor...</Text>
+              <Text style={[styles.typingText, { color: colors.textMuted }]}>yazıyor...</Text>
             </View>
           )}
         </ScrollView>
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickAction}>
+        <View style={[styles.quickActions, {
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border
+        }]}>
+          <TouchableOpacity style={[styles.quickAction, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+          }]}>
             <Ionicons name="document-text" size={16} color={colors.brand[400]} />
-            <Text style={styles.quickActionText}>Teklif Gönder</Text>
+            <Text style={[styles.quickActionText, { color: colors.brand[400] }]}>Teklif Gönder</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction}>
+          <TouchableOpacity style={[styles.quickAction, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+          }]}>
             <Ionicons name="calendar" size={16} color={colors.brand[400]} />
-            <Text style={styles.quickActionText}>Toplantı Planla</Text>
+            <Text style={[styles.quickActionText, { color: colors.brand[400] }]}>Toplantı Planla</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction}>
+          <TouchableOpacity style={[styles.quickAction, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+          }]}>
             <Ionicons name="attach" size={16} color={colors.brand[400]} />
-            <Text style={styles.quickActionText}>Dosya</Text>
+            <Text style={[styles.quickActionText, { color: colors.brand[400] }]}>Dosya</Text>
           </TouchableOpacity>
         </View>
 
         {/* Input Area */}
-        <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
-            <Ionicons name="add" size={24} color={colors.zinc[400]} />
+        <View style={[styles.inputContainer, {
+          backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background,
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border
+        }]}>
+          <TouchableOpacity style={[styles.attachButton, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+          }]}>
+            <Ionicons name="add" size={24} color={colors.textMuted} />
           </TouchableOpacity>
 
-          <View style={styles.inputWrapper}>
+          <View style={[styles.inputWrapper, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+          }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: colors.text }]}
               placeholder="Mesaj yazın..."
-              placeholderTextColor={colors.zinc[600]}
+              placeholderTextColor={colors.textMuted}
               value={message}
               onChangeText={setMessage}
               multiline
               maxLength={1000}
             />
             <TouchableOpacity style={styles.emojiButton}>
-              <Ionicons name="happy-outline" size={22} color={colors.zinc[500]} />
+              <Ionicons name="happy-outline" size={22} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
-            style={[styles.sendButton, message.trim() && styles.sendButtonActive]}
+            style={[styles.sendButton, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+            }, message.trim() && { backgroundColor: colors.brand[500] }]}
             onPress={sendMessage}
             disabled={!message.trim()}
           >
             <Ionicons
               name="send"
               size={20}
-              color={message.trim() ? 'white' : colors.zinc[600]}
+              color={message.trim() ? 'white' : colors.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -263,7 +288,6 @@ export function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -294,7 +318,6 @@ const styles = StyleSheet.create({
   headerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   onlineStatus: {
     flexDirection: 'row',
@@ -306,14 +329,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.zinc[600],
   },
   onlineDotActive: {
-    backgroundColor: colors.success,
   },
   onlineText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   headerActions: {
     flexDirection: 'row',
@@ -338,8 +358,6 @@ const styles = StyleSheet.create({
   },
   dateHeaderText: {
     fontSize: 12,
-    color: colors.zinc[500],
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -370,26 +388,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   messageBubbleMe: {
-    backgroundColor: colors.brand[600],
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
   },
   messageText: {
     fontSize: 14,
-    color: colors.text,
     lineHeight: 20,
   },
   messageTextMe: {
-    color: 'white',
   },
   messageTime: {
     fontSize: 10,
-    color: colors.zinc[500],
     marginTop: 4,
     alignSelf: 'flex-end',
   },
   messageTimeMe: {
-    color: 'rgba(255, 255, 255, 0.5)',
   },
   typingIndicator: {
     flexDirection: 'row',
@@ -406,7 +419,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.zinc[500],
   },
   typingDot1: {
     opacity: 0.4,
@@ -419,7 +431,6 @@ const styles = StyleSheet.create({
   },
   typingText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   quickActions: {
     flexDirection: 'row',
@@ -441,7 +452,6 @@ const styles = StyleSheet.create({
   quickActionText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   inputContainer: {
     flexDirection: 'row',
@@ -476,7 +486,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-    color: colors.text,
     paddingVertical: 4,
   },
   emojiButton: {
@@ -492,6 +501,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonActive: {
-    backgroundColor: colors.brand[500],
   },
 });

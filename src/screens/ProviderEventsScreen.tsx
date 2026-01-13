@@ -13,7 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 type TabType = 'active' | 'past';
 
@@ -339,35 +343,36 @@ const getServiceTypeInfo = (serviceType: ServiceCategory) => {
 };
 
 // Get status info
-const getStatusInfo = (status: string) => {
+const getStatusInfo = (status: string, themeColors: typeof colors) => {
   switch (status) {
     case 'planned':
-      return { label: 'Planlandı', color: colors.warning, icon: 'calendar' as const };
+      return { label: 'Planlandı', color: themeColors.warning, icon: 'calendar' as const };
     case 'active':
-      return { label: 'Aktif', color: colors.success, icon: 'play-circle' as const };
+      return { label: 'Aktif', color: themeColors.success, icon: 'play-circle' as const };
     case 'past':
-      return { label: 'Geçmiş', color: colors.zinc[500], icon: 'checkmark-circle' as const };
+      return { label: 'Geçmiş', color: themeColors.textMuted, icon: 'checkmark-circle' as const };
     default:
-      return { label: status, color: colors.zinc[500], icon: 'help-circle' as const };
+      return { label: status, color: themeColors.textMuted, icon: 'help-circle' as const };
   }
 };
 
 // Get payment status info
-const getPaymentInfo = (status: string) => {
+const getPaymentInfo = (status: string, themeColors: typeof colors) => {
   switch (status) {
     case 'paid':
-      return { label: 'Ödendi', color: colors.success };
+      return { label: 'Ödendi', color: themeColors.success };
     case 'partial':
-      return { label: 'Kısmi Ödeme', color: colors.warning };
+      return { label: 'Kısmi Ödeme', color: themeColors.warning };
     case 'unpaid':
-      return { label: 'Ödenmedi', color: colors.zinc[500] };
+      return { label: 'Ödenmedi', color: themeColors.textMuted };
     default:
-      return { label: status, color: colors.zinc[500] };
+      return { label: status, color: themeColors.textMuted };
   }
 };
 
 export function ProviderEventsScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -422,15 +427,18 @@ export function ProviderEventsScreen() {
   }, []);
 
   const renderEventCard = (event: ProviderEvent) => {
-    const statusInfo = getStatusInfo(event.status);
-    const paymentInfo = getPaymentInfo(event.paymentStatus);
+    const statusInfo = getStatusInfo(event.status, colors);
+    const paymentInfo = getPaymentInfo(event.paymentStatus, colors);
     const serviceInfo = getServiceTypeInfo(event.serviceType);
     const taskProgress = (event.tasks.completed / event.tasks.total) * 100;
 
     return (
       <TouchableOpacity
         key={event.id}
-        style={styles.eventCard}
+        style={[styles.eventCard, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border
+        }]}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('ProviderEventDetail', { eventId: event.id })}
       >
@@ -473,7 +481,7 @@ export function ProviderEventsScreen() {
             {event.daysUntil > 0 && (
               <View style={styles.daysUntilBadge}>
                 <Ionicons name="time" size={11} color={colors.brand[400]} />
-                <Text style={styles.daysUntilText}>{event.daysUntil} gün</Text>
+                <Text style={[styles.daysUntilText, { color: colors.brand[400] }]}>{event.daysUntil} gün</Text>
               </View>
             )}
           </View>
@@ -491,10 +499,10 @@ export function ProviderEventsScreen() {
             <View style={styles.organizerInfo}>
               <Image source={{ uri: event.organizerImage }} style={styles.organizerImage} />
               <View>
-                <Text style={styles.organizerName}>{event.organizerName}</Text>
+                <Text style={[styles.organizerName, { color: colors.text }]}>{event.organizerName}</Text>
                 <View style={styles.eventDateRow}>
-                  <Ionicons name="calendar-outline" size={12} color={colors.zinc[500]} />
-                  <Text style={styles.eventDateText}>{event.eventDate}</Text>
+                  <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                  <Text style={[styles.eventDateText, { color: colors.textMuted }]}>{event.eventDate}</Text>
                 </View>
               </View>
             </View>
@@ -508,19 +516,19 @@ export function ProviderEventsScreen() {
           {/* Earnings Row */}
           <View style={styles.earningsRow}>
             <View style={styles.earningItem}>
-              <Text style={styles.earningLabel}>Kazanç</Text>
-              <Text style={styles.earningValue}>₺{event.earnings.toLocaleString('tr-TR')}</Text>
+              <Text style={[styles.earningLabel, { color: colors.textMuted }]}>Kazanç</Text>
+              <Text style={[styles.earningValue, { color: colors.text }]}>₺{event.earnings.toLocaleString('tr-TR')}</Text>
             </View>
             <View style={styles.earningDivider} />
             <View style={styles.earningItem}>
-              <Text style={styles.earningLabel}>Ödenen</Text>
+              <Text style={[styles.earningLabel, { color: colors.textMuted }]}>Ödenen</Text>
               <Text style={[styles.earningValue, { color: colors.success }]}>
                 ₺{event.paidAmount.toLocaleString('tr-TR')}
               </Text>
             </View>
             <View style={styles.earningDivider} />
             <View style={styles.earningItem}>
-              <Text style={styles.earningLabel}>Kalan</Text>
+              <Text style={[styles.earningLabel, { color: colors.textMuted }]}>Kalan</Text>
               <Text style={[styles.earningValue, { color: colors.warning }]}>
                 ₺{(event.earnings - event.paidAmount).toLocaleString('tr-TR')}
               </Text>
@@ -530,8 +538,8 @@ export function ProviderEventsScreen() {
           {/* Progress Row */}
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Görev İlerlemesi</Text>
-              <Text style={styles.progressPercent}>{Math.round(taskProgress)}%</Text>
+              <Text style={[styles.progressLabel, { color: colors.textMuted }]}>Görev İlerlemesi</Text>
+              <Text style={[styles.progressPercent, { color: colors.brand[400] }]}>{Math.round(taskProgress)}%</Text>
             </View>
             <View style={styles.progressBar}>
               <LinearGradient
@@ -543,57 +551,57 @@ export function ProviderEventsScreen() {
             </View>
             <View style={styles.progressFooter}>
               <View style={styles.progressInfo}>
-                <Ionicons name="checkbox-outline" size={12} color={colors.zinc[500]} />
-                <Text style={styles.progressText}>
+                <Ionicons name="checkbox-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.progressText, { color: colors.textMuted }]}>
                   {event.tasks.completed}/{event.tasks.total} tamamlandı
                 </Text>
               </View>
               <View style={styles.teamInfo}>
-                <Ionicons name="people-outline" size={12} color={colors.zinc[500]} />
-                <Text style={styles.teamText}>{event.teamSize} kişi</Text>
+                <Ionicons name="people-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.teamText, { color: colors.textMuted }]}>{event.teamSize} kişi</Text>
               </View>
             </View>
           </View>
         </View>
         <View style={styles.arrowContainer}>
-          <Ionicons name="chevron-forward" size={20} color={colors.zinc[500]} />
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>İşlerim</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>İşlerim</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {stats.activeCount} aktif iş
           </Text>
         </View>
-        <TouchableOpacity style={styles.calendarButton}>
+        <TouchableOpacity style={[styles.calendarButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
           <Ionicons name="calendar" size={20} color={colors.text} />
         </TouchableOpacity>
       </View>
 
       {/* Earnings Summary - Minimal */}
-      <View style={styles.earningsSummary}>
+      <View style={[styles.earningsSummary, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
         <View style={styles.summaryRow}>
           <View style={styles.earningsMain}>
-            <Text style={styles.earningsMainValue}>₺{stats.totalEarnings.toLocaleString('tr-TR')}</Text>
-            <Text style={styles.earningsMainLabel}>toplam kazanç</Text>
+            <Text style={[styles.earningsMainValue, { color: colors.text }]}>₺{stats.totalEarnings.toLocaleString('tr-TR')}</Text>
+            <Text style={[styles.earningsMainLabel, { color: colors.textMuted }]}>toplam kazanç</Text>
           </View>
           <View style={styles.earningsDetails}>
             <View style={styles.earningsDetailItem}>
               <View style={[styles.earningsIndicator, { backgroundColor: colors.success }]} />
-              <Text style={styles.earningsDetailValue}>₺{(stats.paidEarnings / 1000).toFixed(0)}K</Text>
-              <Text style={styles.earningsDetailLabel}>ödendi</Text>
+              <Text style={[styles.earningsDetailValue, { color: colors.text }]}>₺{(stats.paidEarnings / 1000).toFixed(0)}K</Text>
+              <Text style={[styles.earningsDetailLabel, { color: colors.textMuted }]}>ödendi</Text>
             </View>
             <View style={styles.earningsDetailItem}>
               <View style={[styles.earningsIndicator, { backgroundColor: colors.warning }]} />
-              <Text style={styles.earningsDetailValue}>₺{(stats.pendingEarnings / 1000).toFixed(0)}K</Text>
-              <Text style={styles.earningsDetailLabel}>bekliyor</Text>
+              <Text style={[styles.earningsDetailValue, { color: colors.text }]}>₺{(stats.pendingEarnings / 1000).toFixed(0)}K</Text>
+              <Text style={[styles.earningsDetailLabel, { color: colors.textMuted }]}>bekliyor</Text>
             </View>
           </View>
         </View>
@@ -601,18 +609,18 @@ export function ProviderEventsScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color={colors.zinc[500]} />
+        <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="İş ara..."
-            placeholderTextColor={colors.zinc[500]}
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.zinc[500]} />
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -627,13 +635,13 @@ export function ProviderEventsScreen() {
           <Ionicons
             name={activeTab === 'active' ? 'play-circle' : 'play-circle-outline'}
             size={14}
-            color={activeTab === 'active' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'active' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: activeTab === 'active' ? colors.brand[400] : colors.textMuted }]}>
             Aktif
           </Text>
           <View style={[styles.tabBadge, activeTab === 'active' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'active' && styles.tabBadgeTextActive]}>
+            <Text style={[styles.tabBadgeText, { color: activeTab === 'active' ? colors.brand[300] : colors.textMuted }]}>
               {stats.activeCount}
             </Text>
           </View>
@@ -645,13 +653,13 @@ export function ProviderEventsScreen() {
           <Ionicons
             name={activeTab === 'past' ? 'time' : 'time-outline'}
             size={14}
-            color={activeTab === 'past' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'past' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: activeTab === 'past' ? colors.brand[400] : colors.textMuted }]}>
             Geçmiş
           </Text>
           <View style={[styles.tabBadge, activeTab === 'past' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'past' && styles.tabBadgeTextActive]}>
+            <Text style={[styles.tabBadgeText, { color: activeTab === 'past' ? colors.brand[300] : colors.textMuted }]}>
               {stats.pastCount}
             </Text>
           </View>
@@ -676,9 +684,9 @@ export function ProviderEventsScreen() {
           filteredEvents.map(event => renderEventCard(event))
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="briefcase-outline" size={48} color={colors.zinc[600]} />
-            <Text style={styles.emptyStateTitle}>İş Bulunamadı</Text>
-            <Text style={styles.emptyStateText}>
+            <Ionicons name="briefcase-outline" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>İş Bulunamadı</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
               {searchQuery
                 ? 'Arama kriterlerinize uygun iş yok.'
                 : 'Bu kategoride henüz iş yok.'}
@@ -694,7 +702,6 @@ export function ProviderEventsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -707,11 +714,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   calendarButton: {
@@ -739,11 +744,9 @@ const styles = StyleSheet.create({
   earningsMainValue: {
     fontSize: 22,
     fontWeight: '700',
-    color: colors.text,
   },
   earningsMainLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   earningsDetails: {
@@ -763,11 +766,9 @@ const styles = StyleSheet.create({
   earningsDetailValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   earningsDetailLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -787,7 +788,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -813,11 +813,8 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
-  tabTextActive: {
-    color: colors.brand[400],
-  },
+  tabTextActive: {},
   tabBadge: {
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -830,11 +827,8 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.zinc[400],
   },
-  tabBadgeTextActive: {
-    color: colors.brand[300],
-  },
+  tabBadgeTextActive: {},
   eventsList: {
     flex: 1,
   },
@@ -934,7 +928,6 @@ const styles = StyleSheet.create({
   daysUntilText: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   eventImageContent: {
     position: 'absolute',
@@ -977,7 +970,6 @@ const styles = StyleSheet.create({
   organizerName: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   eventDateRow: {
     flexDirection: 'row',
@@ -987,7 +979,6 @@ const styles = StyleSheet.create({
   },
   eventDateText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   paymentStatusBadge: {
     paddingHorizontal: 8,
@@ -1012,7 +1003,6 @@ const styles = StyleSheet.create({
   },
   earningLabel: {
     fontSize: 9,
-    color: colors.zinc[500],
     marginBottom: 3,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -1020,7 +1010,6 @@ const styles = StyleSheet.create({
   earningValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.text,
   },
   earningDivider: {
     width: 1,
@@ -1038,12 +1027,10 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   progressPercent: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   progressBar: {
     height: 5,
@@ -1068,7 +1055,6 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 10,
-    color: colors.zinc[500],
   },
   teamInfo: {
     flexDirection: 'row',
@@ -1077,7 +1063,6 @@ const styles = StyleSheet.create({
   },
   teamText: {
     fontSize: 10,
-    color: colors.zinc[500],
   },
   arrowContainer: {
     position: 'absolute',
@@ -1092,13 +1077,11 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.zinc[500],
     textAlign: 'center',
   },
 });

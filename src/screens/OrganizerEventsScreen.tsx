@@ -14,8 +14,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { events as mockEvents, artists } from '../data/mockData';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 const { width } = Dimensions.get('window');
 
@@ -100,6 +104,7 @@ const getServiceCategories = (services: Service[]) => {
 
 export function OrganizerEventsScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
@@ -162,7 +167,10 @@ export function OrganizerEventsScreen() {
     return (
       <TouchableOpacity
         key={event.id}
-        style={styles.eventCard}
+        style={[styles.eventCard, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border
+        }]}
         activeOpacity={0.8}
         onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
       >
@@ -213,16 +221,16 @@ export function OrganizerEventsScreen() {
 
         {/* Event Content */}
         <View style={styles.eventContent}>
-          <Text style={styles.eventTitle} numberOfLines={1}>{event.title}</Text>
+          <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
 
           <View style={styles.eventMeta}>
             <View style={styles.eventMetaItem}>
-              <Ionicons name="location-outline" size={14} color={colors.zinc[500]} />
-              <Text style={styles.eventMetaText}>{event.venue}, {event.district}</Text>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.venue}, {event.district}</Text>
             </View>
             <View style={styles.eventMetaItem}>
-              <Ionicons name="people-outline" size={14} color={colors.zinc[500]} />
-              <Text style={styles.eventMetaText}>{event.attendees.toLocaleString('tr-TR')} kişi</Text>
+              <Ionicons name="people-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.attendees.toLocaleString('tr-TR')} kişi</Text>
             </View>
           </View>
 
@@ -254,8 +262,8 @@ export function OrganizerEventsScreen() {
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <View style={styles.progressInfo}>
-                <Text style={styles.progressLabel}>Hizmet İlerlemesi</Text>
-                <Text style={styles.progressValue}>
+                <Text style={[styles.progressLabel, { color: colors.textMuted }]}>Hizmet İlerlemesi</Text>
+                <Text style={[styles.progressValue, { color: colors.textMuted }]}>
                   {confirmedServices}/{totalServices} onaylı
                 </Text>
               </View>
@@ -274,19 +282,19 @@ export function OrganizerEventsScreen() {
           {/* Budget */}
           <View style={styles.budgetRow}>
             <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Bütçe</Text>
-              <Text style={styles.budgetValue}>₺{event.budget.toLocaleString('tr-TR')}</Text>
+              <Text style={[styles.budgetLabel, { color: colors.textMuted }]}>Bütçe</Text>
+              <Text style={[styles.budgetValue, { color: colors.text }]}>₺{event.budget.toLocaleString('tr-TR')}</Text>
             </View>
             <View style={styles.budgetDivider} />
             <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Harcanan</Text>
+              <Text style={[styles.budgetLabel, { color: colors.textMuted }]}>Harcanan</Text>
               <Text style={[styles.budgetValue, { color: colors.warning }]}>
                 ₺{event.spent.toLocaleString('tr-TR')}
               </Text>
             </View>
             <View style={styles.budgetDivider} />
             <View style={styles.budgetItem}>
-              <Text style={styles.budgetLabel}>Kalan</Text>
+              <Text style={[styles.budgetLabel, { color: colors.textMuted }]}>Kalan</Text>
               <Text style={[styles.budgetValue, { color: colors.success }]}>
                 ₺{(event.budget - event.spent).toLocaleString('tr-TR')}
               </Text>
@@ -296,25 +304,25 @@ export function OrganizerEventsScreen() {
 
         {/* Arrow */}
         <View style={styles.arrowContainer}>
-          <Ionicons name="chevron-forward" size={20} color={colors.zinc[500]} />
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Etkinliklerim</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Etkinliklerim</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {stats.active} aktif etkinlik
           </Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.headerButton}
+            style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
             onPress={() => setShowCalendar(!showCalendar)}
           >
             <Ionicons
@@ -342,17 +350,17 @@ export function OrganizerEventsScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color={colors.zinc[500]} />
+          <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Etkinlik ara..."
-            placeholderTextColor={colors.zinc[500]}
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.zinc[500]} />
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -367,13 +375,13 @@ export function OrganizerEventsScreen() {
           <Ionicons
             name={activeTab === 'active' ? 'calendar' : 'calendar-outline'}
             size={14}
-            color={activeTab === 'active' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'active' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'active' && styles.tabTextActive]}>
             Aktif
           </Text>
           <View style={[styles.tabBadge, activeTab === 'active' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'active' && styles.tabBadgeTextActive]}>
+            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'active' && styles.tabBadgeTextActive]}>
               {stats.active}
             </Text>
           </View>
@@ -385,9 +393,9 @@ export function OrganizerEventsScreen() {
           <Ionicons
             name={activeTab === 'past' ? 'time' : 'time-outline'}
             size={14}
-            color={activeTab === 'past' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'past' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'past' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'past' && styles.tabTextActive]}>
             Geçmiş
           </Text>
         </TouchableOpacity>
@@ -398,13 +406,13 @@ export function OrganizerEventsScreen() {
           <Ionicons
             name={activeTab === 'all' ? 'list' : 'list-outline'}
             size={14}
-            color={activeTab === 'all' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'all' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>
+          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'all' && styles.tabTextActive]}>
             Tümü
           </Text>
           <View style={[styles.tabBadge, activeTab === 'all' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, activeTab === 'all' && styles.tabBadgeTextActive]}>
+            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'all' && styles.tabBadgeTextActive]}>
               {stats.total}
             </Text>
           </View>
@@ -429,9 +437,9 @@ export function OrganizerEventsScreen() {
           filteredEvents.map(event => renderEventCard(event))
         ) : (
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={48} color={colors.zinc[600]} />
-            <Text style={styles.emptyStateTitle}>Etkinlik Bulunamadı</Text>
-            <Text style={styles.emptyStateText}>
+            <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Etkinlik Bulunamadı</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
               {searchQuery
                 ? 'Arama kriterlerinize uygun etkinlik yok.'
                 : 'Henüz etkinlik oluşturmadınız.'}
@@ -476,11 +484,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   headerActions: {
@@ -526,7 +532,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.text,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -552,7 +557,6 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
   tabTextActive: {
     color: colors.brand[400],
@@ -569,7 +573,6 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 9,
     fontWeight: '600',
-    color: colors.zinc[400],
   },
   tabBadgeTextActive: {
     color: colors.brand[300],
@@ -673,7 +676,6 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 8,
   },
   eventMeta: {
@@ -688,7 +690,6 @@ const styles = StyleSheet.create({
   },
   eventMetaText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   serviceTags: {
     flexDirection: 'row',
@@ -724,11 +725,9 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   progressValue: {
     fontSize: 11,
-    color: colors.zinc[400],
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -762,7 +761,6 @@ const styles = StyleSheet.create({
   },
   budgetLabel: {
     fontSize: 10,
-    color: colors.zinc[500],
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -770,7 +768,6 @@ const styles = StyleSheet.create({
   budgetValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   budgetDivider: {
     width: 1,
@@ -790,13 +787,11 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.zinc[500],
     textAlign: 'center',
     marginBottom: 24,
   },

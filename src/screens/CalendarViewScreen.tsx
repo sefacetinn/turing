@@ -11,7 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 const { width } = Dimensions.get('window');
 const DAY_WIDTH = (width - 40 - 6 * 4) / 7; // 7 days with gaps
@@ -145,6 +148,7 @@ const getCategoryColor = (category: string): string => {
 
 export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScreenProps) {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -214,16 +218,17 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
         <View
           style={[
             styles.dayContent,
-            isSelected && styles.dayContentSelected,
-            isToday && !isSelected && styles.dayContentToday,
+            isSelected && { backgroundColor: colors.brand[600] },
+            isToday && !isSelected && { borderWidth: 1, borderColor: colors.brand[400] },
           ]}
         >
           <Text
             style={[
               styles.dayText,
-              !isCurrentMonth && styles.dayTextOtherMonth,
-              isSelected && styles.dayTextSelected,
-              isToday && !isSelected && styles.dayTextToday,
+              { color: colors.text },
+              !isCurrentMonth && { color: colors.textSecondary },
+              isSelected && { color: colors.white, fontWeight: '600' },
+              isToday && !isSelected && { color: colors.brand[400] },
             ]}
           >
             {date.getDate()}
@@ -249,7 +254,7 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -258,22 +263,22 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Takvim</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Takvim</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.todayButton} onPress={goToToday}>
-            <Text style={styles.todayButtonText}>Bugün</Text>
+            <Text style={[styles.todayButtonText, { color: colors.brand[400] }]}>Bugün</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* View Mode Toggle */}
       <View style={styles.viewModeContainer}>
-        <View style={styles.viewModeToggle}>
+        <View style={[styles.viewModeToggle, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]}>
           <TouchableOpacity
             style={[styles.viewModeButton, viewMode === 'month' && styles.viewModeButtonActive]}
             onPress={() => setViewMode('month')}
           >
-            <Text style={[styles.viewModeText, viewMode === 'month' && styles.viewModeTextActive]}>
+            <Text style={[styles.viewModeText, { color: viewMode === 'month' ? colors.white : colors.textMuted }]}>
               Ay
             </Text>
           </TouchableOpacity>
@@ -281,7 +286,7 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
             style={[styles.viewModeButton, viewMode === 'week' && styles.viewModeButtonActive]}
             onPress={() => setViewMode('week')}
           >
-            <Text style={[styles.viewModeText, viewMode === 'week' && styles.viewModeTextActive]}>
+            <Text style={[styles.viewModeText, { color: viewMode === 'week' ? colors.white : colors.textMuted }]}>
               Hafta
             </Text>
           </TouchableOpacity>
@@ -290,13 +295,13 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
 
       {/* Month/Week Navigation */}
       <View style={styles.navigationContainer}>
-        <TouchableOpacity style={styles.navButton} onPress={navigatePrevious}>
+        <TouchableOpacity style={[styles.navButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]} onPress={navigatePrevious}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.monthYearText}>
+        <Text style={[styles.monthYearText, { color: colors.text }]}>
           {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
         </Text>
-        <TouchableOpacity style={styles.navButton} onPress={navigateNext}>
+        <TouchableOpacity style={[styles.navButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]} onPress={navigateNext}>
           <Ionicons name="chevron-forward" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
@@ -307,7 +312,8 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
           <View key={index} style={styles.dayNameCell}>
             <Text style={[
               styles.dayNameText,
-              (index === 5 || index === 6) && styles.dayNameWeekend
+              { color: colors.textMuted },
+              (index === 5 || index === 6) && { color: colors.textSecondary }
             ]}>
               {name}
             </Text>
@@ -323,12 +329,12 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
       {/* Selected Date Events */}
       <View style={styles.eventsSection}>
         <View style={styles.eventsSectionHeader}>
-          <Text style={styles.eventsSectionTitle}>
+          <Text style={[styles.eventsSectionTitle, { color: colors.text }]}>
             {selectedDate
               ? `${selectedDate.getDate()} ${MONTH_NAMES[selectedDate.getMonth()]}`
               : 'Tarih Seçin'}
           </Text>
-          <Text style={styles.eventsSectionCount}>
+          <Text style={[styles.eventsSectionCount, { color: colors.textMuted }]}>
             {selectedDateEvents.length} etkinlik
           </Text>
         </View>
@@ -341,7 +347,13 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
             selectedDateEvents.map((event) => (
               <TouchableOpacity
                 key={event.id}
-                style={styles.eventItem}
+                style={[
+                  styles.eventItem,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                    ...(isDark ? {} : helpers.getShadow('sm')),
+                  },
+                ]}
                 onPress={() => navigation.navigate(
                   isProviderMode ? 'ProviderEventDetail' : 'OrganizerEventDetail',
                   { eventId: event.id }
@@ -355,7 +367,7 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
                 />
                 <View style={styles.eventItemContent}>
                   <View style={styles.eventItemHeader}>
-                    <Text style={styles.eventItemTime}>{event.time}</Text>
+                    <Text style={[styles.eventItemTime, { color: colors.brand[400] }]}>{event.time}</Text>
                     <View style={[
                       styles.eventStatusBadge,
                       { backgroundColor: event.status === 'confirmed' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(147, 51, 234, 0.15)' }
@@ -368,19 +380,19 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.eventItemTitle}>{event.title}</Text>
+                  <Text style={[styles.eventItemTitle, { color: colors.text }]}>{event.title}</Text>
                   <View style={styles.eventItemMeta}>
-                    <Ionicons name="location-outline" size={12} color={colors.zinc[500]} />
-                    <Text style={styles.eventItemVenue}>{event.venue}</Text>
+                    <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                    <Text style={[styles.eventItemVenue, { color: colors.textMuted }]}>{event.venue}</Text>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.zinc[500]} />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             ))
           ) : (
             <View style={styles.noEvents}>
-              <Ionicons name="calendar-outline" size={32} color={colors.zinc[600]} />
-              <Text style={styles.noEventsText}>
+              <Ionicons name="calendar-outline" size={32} color={colors.textSecondary} />
+              <Text style={[styles.noEventsText, { color: colors.textMuted }]}>
                 {selectedDate ? 'Bu tarihte etkinlik yok' : 'Bir tarih seçin'}
               </Text>
             </View>
@@ -389,22 +401,22 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
       </View>
 
       {/* Legend */}
-      <View style={styles.legend}>
+      <View style={[styles.legend, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#9333ea' }]} />
-          <Text style={styles.legendText}>Booking</Text>
+          <Text style={[styles.legendText, { color: colors.textMuted }]}>Booking</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#059669' }]} />
-          <Text style={styles.legendText}>Teknik</Text>
+          <Text style={[styles.legendText, { color: colors.textMuted }]}>Teknik</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
-          <Text style={styles.legendText}>Mekan</Text>
+          <Text style={[styles.legendText, { color: colors.textMuted }]}>Mekan</Text>
         </View>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#d97706' }]} />
-          <Text style={styles.legendText}>Operasyon</Text>
+          <Text style={[styles.legendText, { color: colors.textMuted }]}>Operasyon</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -432,7 +444,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   headerRight: {
     width: 40,
@@ -447,7 +458,6 @@ const styles = StyleSheet.create({
   todayButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   viewModeContainer: {
     paddingHorizontal: 20,
@@ -471,11 +481,8 @@ const styles = StyleSheet.create({
   viewModeText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.zinc[400],
   },
-  viewModeTextActive: {
-    color: colors.white,
-  },
+  viewModeTextActive: {},
   navigationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -494,7 +501,6 @@ const styles = StyleSheet.create({
   monthYearText: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   dayNamesContainer: {
     flexDirection: 'row',
@@ -509,11 +515,8 @@ const styles = StyleSheet.create({
   dayNameText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
-  dayNameWeekend: {
-    color: colors.zinc[600],
-  },
+  dayNameWeekend: {},
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -549,18 +552,12 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
-  dayTextOtherMonth: {
-    color: colors.zinc[700],
-  },
+  dayTextOtherMonth: {},
   dayTextSelected: {
-    color: colors.white,
     fontWeight: '600',
   },
-  dayTextToday: {
-    color: colors.brand[400],
-  },
+  dayTextToday: {},
   eventIndicators: {
     flexDirection: 'row',
     gap: 2,
@@ -585,11 +582,9 @@ const styles = StyleSheet.create({
   eventsSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   eventsSectionCount: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   eventsList: {
     flex: 1,
@@ -619,7 +614,6 @@ const styles = StyleSheet.create({
   eventItemTime: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   eventStatusBadge: {
     paddingHorizontal: 6,
@@ -633,7 +627,6 @@ const styles = StyleSheet.create({
   eventItemTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
     marginBottom: 4,
   },
   eventItemMeta: {
@@ -643,7 +636,6 @@ const styles = StyleSheet.create({
   },
   eventItemVenue: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   noEvents: {
     alignItems: 'center',
@@ -652,7 +644,6 @@ const styles = StyleSheet.create({
   },
   noEventsText: {
     fontSize: 14,
-    color: colors.zinc[500],
     marginTop: 12,
   },
   legend: {
@@ -675,6 +666,5 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
 });

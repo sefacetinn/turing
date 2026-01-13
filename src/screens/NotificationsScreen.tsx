@@ -9,7 +9,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 type NotificationTab = 'all' | 'offers' | 'messages' | 'system';
 
@@ -26,6 +30,7 @@ const localNotifications = [
 
 export function NotificationsScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark } = useTheme();
   const [notificationsList, setNotificationsList] = useState(localNotifications);
   const [activeTab, setActiveTab] = useState<NotificationTab>('all');
 
@@ -44,7 +49,7 @@ export function NotificationsScreen() {
       case 'reminder':
         return { name: 'alarm', color: colors.warning, bg: 'rgba(245, 158, 11, 0.15)' };
       case 'system':
-        return { name: 'information-circle', color: colors.zinc[400], bg: 'rgba(161, 161, 170, 0.15)' };
+        return { name: 'information-circle', color: colors.textMuted, bg: isDark ? 'rgba(161, 161, 170, 0.15)' : 'rgba(113, 113, 122, 0.15)' };
       default:
         return { name: 'notifications', color: colors.brand[400], bg: 'rgba(147, 51, 234, 0.15)' };
     }
@@ -106,16 +111,16 @@ export function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bildirimler</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Bildirimler</Text>
         {unreadCount > 0 && (
           <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-            <Text style={styles.markAllText}>Tümünü Okundu İşaretle</Text>
+            <Text style={[styles.markAllText, { color: colors.brand[400] }]}>Tümünü Okundu İşaretle</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -123,59 +128,59 @@ export function NotificationsScreen() {
       {/* Tabs */}
       <View style={styles.tabRow}>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
+          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'all' && styles.tabButtonActive]}
           onPress={() => setActiveTab('all')}
         >
-          <Text style={[styles.tabButtonText, activeTab === 'all' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'all' && { color: colors.brand[400] }]}>
             Tümü
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'offers' && styles.tabButtonActive]}
+          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'offers' && styles.tabButtonActive]}
           onPress={() => setActiveTab('offers')}
         >
           <Ionicons
             name="document-text"
             size={12}
-            color={activeTab === 'offers' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'offers' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabButtonText, activeTab === 'offers' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'offers' && { color: colors.brand[400] }]}>
             Teklifler
           </Text>
           {offerCount > 0 && (
-            <View style={[styles.tabBadge, activeTab === 'offers' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'offers' && styles.tabBadgeTextActive]}>{offerCount}</Text>
+            <View style={[styles.tabBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }, activeTab === 'offers' && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'offers' && { color: colors.brand[400] }]}>{offerCount}</Text>
             </View>
           )}
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'messages' && styles.tabButtonActive]}
+          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'messages' && styles.tabButtonActive]}
           onPress={() => setActiveTab('messages')}
         >
           <Ionicons
             name="chatbubble"
             size={12}
-            color={activeTab === 'messages' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'messages' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabButtonText, activeTab === 'messages' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'messages' && { color: colors.brand[400] }]}>
             Mesajlar
           </Text>
           {messageCount > 0 && (
-            <View style={[styles.tabBadge, activeTab === 'messages' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, activeTab === 'messages' && styles.tabBadgeTextActive]}>{messageCount}</Text>
+            <View style={[styles.tabBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }, activeTab === 'messages' && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'messages' && { color: colors.brand[400] }]}>{messageCount}</Text>
             </View>
           )}
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'system' && styles.tabButtonActive]}
+          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'system' && styles.tabButtonActive]}
           onPress={() => setActiveTab('system')}
         >
           <Ionicons
             name="information-circle"
             size={12}
-            color={activeTab === 'system' ? colors.brand[400] : colors.zinc[500]}
+            color={activeTab === 'system' ? colors.brand[400] : colors.textMuted}
           />
-          <Text style={[styles.tabButtonText, activeTab === 'system' && styles.tabButtonTextActive]}>
+          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'system' && { color: colors.brand[400] }]}>
             Sistem
           </Text>
         </TouchableOpacity>
@@ -185,13 +190,23 @@ export function NotificationsScreen() {
       <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
         {Object.entries(groupedNotifications).map(([date, notifications]) => (
           <View key={date}>
-            <Text style={styles.dateHeader}>{date}</Text>
+            <Text style={[styles.dateHeader, { color: colors.textMuted }]}>{date}</Text>
             {notifications.map(notification => {
               const icon = getNotificationIcon(notification.type);
               return (
                 <TouchableOpacity
                   key={notification.id}
-                  style={[styles.notificationCard, !notification.read && styles.notificationUnread]}
+                  style={[
+                    styles.notificationCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+                    },
+                    !notification.read && {
+                      backgroundColor: 'rgba(147, 51, 234, 0.05)',
+                      borderColor: 'rgba(147, 51, 234, 0.1)',
+                    }
+                  ]}
                   onPress={() => handleNotificationPress(notification)}
                 >
                   <View style={[styles.iconContainer, { backgroundColor: icon.bg }]}>
@@ -200,22 +215,22 @@ export function NotificationsScreen() {
 
                   <View style={styles.notificationContent}>
                     <View style={styles.notificationHeader}>
-                      <Text style={styles.notificationTitle}>{notification.title}</Text>
-                      <Text style={styles.notificationTime}>{notification.time}</Text>
+                      <Text style={[styles.notificationTitle, { color: colors.text }]}>{notification.title}</Text>
+                      <Text style={[styles.notificationTime, { color: colors.textMuted }]}>{notification.time}</Text>
                     </View>
-                    <Text style={styles.notificationMessage} numberOfLines={2}>
+                    <Text style={[styles.notificationMessage, { color: colors.textSecondary }]} numberOfLines={2}>
                       {notification.message}
                     </Text>
 
                     {notification.action && (
                       <TouchableOpacity style={styles.actionButton}>
-                        <Text style={styles.actionButtonText}>{notification.action}</Text>
+                        <Text style={[styles.actionButtonText, { color: colors.brand[400] }]}>{notification.action}</Text>
                         <Ionicons name="arrow-forward" size={14} color={colors.brand[400]} />
                       </TouchableOpacity>
                     )}
                   </View>
 
-                  {!notification.read && <View style={styles.unreadDot} />}
+                  {!notification.read && <View style={[styles.unreadDot, { backgroundColor: colors.brand[400] }]} />}
                 </TouchableOpacity>
               );
             })}
@@ -224,13 +239,13 @@ export function NotificationsScreen() {
 
         {filteredNotifications.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="notifications-off-outline" size={48} color={colors.zinc[600]} />
-            <Text style={styles.emptyStateTitle}>
+            <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
               {activeTab === 'all' ? 'Bildirim yok' :
                activeTab === 'offers' ? 'Teklif bildirimi yok' :
                activeTab === 'messages' ? 'Mesaj bildirimi yok' : 'Sistem bildirimi yok'}
             </Text>
-            <Text style={styles.emptyStateText}>
+            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
               Yeni bildirimler burada görünecek
             </Text>
           </View>
@@ -245,7 +260,6 @@ export function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -263,7 +277,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
-    color: colors.text,
     marginLeft: 8,
   },
   markAllButton: {
@@ -272,7 +285,6 @@ const styles = StyleSheet.create({
   },
   markAllText: {
     fontSize: 13,
-    color: colors.brand[400],
   },
   tabRow: {
     flexDirection: 'row',
@@ -295,10 +307,8 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
   tabButtonTextActive: {
-    color: colors.brand[400],
   },
   tabBadge: {
     minWidth: 16,
@@ -315,10 +325,8 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.zinc[500],
   },
   tabBadgeTextActive: {
-    color: colors.brand[400],
   },
   notificationsList: {
     flex: 1,
@@ -327,7 +335,6 @@ const styles = StyleSheet.create({
   dateHeader: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.zinc[500],
     marginTop: 20,
     marginBottom: 12,
   },
@@ -363,17 +370,14 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
     flex: 1,
   },
   notificationTime: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginLeft: 8,
   },
   notificationMessage: {
     fontSize: 13,
-    color: colors.zinc[400],
     marginTop: 4,
     lineHeight: 18,
   },
@@ -391,13 +395,11 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.brand[400],
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.brand[400],
     marginLeft: 8,
   },
   emptyState: {
@@ -408,12 +410,10 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginTop: 16,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.zinc[500],
     marginTop: 4,
     textAlign: 'center',
   },

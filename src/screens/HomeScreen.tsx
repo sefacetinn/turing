@@ -1,49 +1,36 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Image,
-  TextInput,
-} from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-
-// Default colors for static styles (dark theme)
-const colors = defaultColors;
-
-// Local artists data
-const artists = [
-  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9 },
-  { id: '2', name: 'DJ Burak Yeter', genre: 'EDM / House', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', rating: 4.8 },
-  { id: '3', name: 'Sezen Aksu', genre: 'Pop / Türk Sanat', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400', rating: 5.0 },
-  { id: '4', name: 'Duman', genre: 'Rock', image: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400', rating: 4.9 },
-];
+import { gradients } from '../theme/colors';
+import {
+  HomeHeader,
+  SearchBar,
+  QuickCreateCard,
+  SectionHeader,
+  CategoryCard,
+  ProviderCard,
+  ArtistCard,
+  StatsCard,
+} from '../components/home';
+import {
+  artists,
+  categories,
+  recentProviders,
+  organizerUser,
+  homeStats,
+  providerStats,
+  upcomingJobs,
+  recentRequests,
+} from '../data/homeData';
+import type { HomeStackNavigationProp } from '../types';
 
 interface HomeScreenProps {
   isProviderMode: boolean;
 }
-
-const categories = [
-  { id: 'booking', name: 'Booking', description: 'Sanatçı & DJ', icon: 'musical-notes', gradient: gradients.booking, popular: true },
-  { id: 'technical', name: 'Teknik', description: 'Ses & Işık & Sahne', icon: 'volume-high', gradient: gradients.technical, popular: true },
-  { id: 'venue', name: 'Mekan', description: 'Etkinlik Alanları', icon: 'business', gradient: gradients.venue, popular: false },
-  { id: 'accommodation', name: 'Konaklama', description: 'Otel & Konut', icon: 'bed', gradient: gradients.accommodation, popular: false },
-  { id: 'transport', name: 'Ulaşım', description: 'VIP Transfer', icon: 'car', gradient: gradients.transport, popular: false },
-  { id: 'flight', name: 'Uçak', description: 'Uçuş Hizmetleri', icon: 'airplane', gradient: gradients.flight, popular: false },
-];
-
-const recentProviders = [
-  { id: '1', name: 'Pro Sound Istanbul', category: 'Teknik', rating: 4.9, reviews: 128, location: 'İstanbul', verified: true, image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200&h=200&fit=crop' },
-  { id: '2', name: 'Elite Transfer', category: 'Ulaşım', rating: 4.8, reviews: 89, location: 'İstanbul', verified: true, image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=200&h=200&fit=crop' },
-  { id: '3', name: 'Grand Hotel', category: 'Konaklama', rating: 4.7, reviews: 256, location: 'Ankara', verified: false, image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=200&h=200&fit=crop' },
-];
 
 export function HomeScreen({ isProviderMode }: HomeScreenProps) {
   if (isProviderMode) {
@@ -52,255 +39,78 @@ export function HomeScreen({ isProviderMode }: HomeScreenProps) {
   return <OrganizerHomeContent />;
 }
 
+// ============================================
+// Organizer Home Content
+// ============================================
 function OrganizerHomeContent() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<HomeStackNavigationProp>();
   const { colors, isDark, helpers } = useTheme();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header with Profile */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.profileSection} activeOpacity={0.8}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200' }}
-              style={[styles.profileAvatar, { borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.4)' }]}
-            />
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.text }]}>Ahmet Yılmaz</Text>
-              <View style={styles.profileBadge}>
-                <View style={[styles.profileBadgeDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.profileBadgeText, { color: colors.textMuted }]}>Organizatör</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.notificationButton, {
-              backgroundColor: colors.glass,
-              borderColor: colors.glassBorder
-            }]}
-            onPress={() => navigation.navigate('Notifications')}
-          >
-            <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
-            <View style={[styles.notificationBadge, { borderColor: colors.background }]}>
-              <Text style={styles.notificationBadgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        <HomeHeader
+          userName={organizerUser.name}
+          userRole={organizerUser.role}
+          userImage={organizerUser.image}
+          notificationCount={3}
+          onNotificationPress={() => navigation.navigate('Notifications')}
+        />
 
-        {/* Search Bar */}
-        <TouchableOpacity
-          style={[styles.searchContainer, {
-            backgroundColor: colors.glass,
-            borderColor: colors.glassBorder
-          }]}
+        <SearchBar
+          placeholder="Sanatçı, mekan veya hizmet ara..."
           onPress={() => navigation.navigate('Search')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
-          <Text style={[styles.searchPlaceholder, { color: colors.textMuted }]}>Sanatçı, mekan veya hizmet ara...</Text>
-        </TouchableOpacity>
+        />
 
-        {/* Feature Card */}
-        <TouchableOpacity
-          style={[styles.featureCard, {
-            borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.3)',
-            ...(isDark ? {} : helpers.getShadow('md'))
-          }]}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('CreateEvent')}
-        >
-          <LinearGradient
-            colors={isDark ? ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.1)'] : ['rgba(147, 51, 234, 0.08)', 'rgba(99, 102, 241, 0.05)']}
-            style={styles.featureCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.featureCardContent}>
-              <View style={styles.featureCardLeft}>
-                <View style={styles.featureCardBadge}>
-                  <Ionicons name="sparkles" size={12} color={colors.brand[400]} />
-                  <Text style={[styles.featureCardBadgeText, { color: colors.brand[400] }]}>Hızlı Başla</Text>
-                </View>
-                <Text style={[styles.featureCardTitle, { color: colors.text }]}>Etkinlik Oluştur</Text>
-                <Text style={[styles.featureCardSubtitle, { color: colors.textSecondary }]}>Tüm hizmetleri tek yerden yönet</Text>
-              </View>
-              <LinearGradient
-                colors={gradients.primary}
-                style={styles.featureCardIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="add" size={24} color="white" />
-              </LinearGradient>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+        <QuickCreateCard onPress={() => navigation.navigate('CreateEvent')} />
 
-        {/* Categories Header */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmetler</Text>
-          <TouchableOpacity style={styles.sectionLink}>
-            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
-          </TouchableOpacity>
-        </View>
+        <SectionHeader title="Hizmetler" onViewAll={() => {}} />
 
-        {/* Categories Grid */}
         <View style={styles.categoriesGrid}>
           {categories.map((category) => (
-            <TouchableOpacity
+            <CategoryCard
               key={category.id}
-              style={styles.categoryCard}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('ServiceProviders', { category: category.id })}
-            >
-              <LinearGradient
-                colors={category.gradient}
-                style={styles.categoryCardGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                {category.popular && (
-                  <View style={styles.categoryPopular}>
-                    <Ionicons name="trending-up" size={12} color="rgba(255,255,255,0.7)" />
-                  </View>
-                )}
-                <View style={styles.categoryIconBox}>
-                  <Ionicons name={category.icon as any} size={20} color="white" />
-                </View>
-                <Text style={styles.categoryName}>{category.name}</Text>
-                <Text style={styles.categoryDescription}>{category.description}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              {...category}
+              onPress={() => navigation.navigate('ServiceProviders', { category: category.id as any })}
+            />
           ))}
         </View>
 
         {/* Operation Category */}
-        <TouchableOpacity
-          style={styles.operationCard}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('OperationSubcategories')}
-        >
-          <LinearGradient
-            colors={gradients.operation}
-            style={styles.operationCardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.operationIconBox}>
-              <Ionicons name="settings" size={24} color="white" />
-            </View>
-            <View style={styles.operationContent}>
-              <Text style={styles.operationTitle}>Operasyon</Text>
-              <Text style={styles.operationSubtitle}>Güvenlik, Catering, Jeneratör ve 9 hizmet daha</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
-          </LinearGradient>
-        </TouchableOpacity>
+        <OperationCard onPress={() => navigation.navigate('OperationSubcategories')} />
 
-        {/* Recent Providers */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Son Görüntülenenler</Text>
-          <TouchableOpacity style={styles.sectionLink}>
-            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
-          </TouchableOpacity>
-        </View>
+        <SectionHeader title="Son Görüntülenenler" onViewAll={() => {}} />
 
-        <View style={styles.providersList}>
+        <View>
           {recentProviders.map((provider) => (
-            <TouchableOpacity
+            <ProviderCard
               key={provider.id}
-              style={[styles.providerCard, {
-                backgroundColor: colors.cardBackground,
-                borderColor: colors.border,
-                ...(isDark ? {} : helpers.getShadow('sm'))
-              }]}
-              activeOpacity={0.8}
+              {...provider}
               onPress={() => navigation.navigate('ProviderDetail', { providerId: provider.id })}
-            >
-              <View style={styles.providerImageContainer}>
-                <Image source={{ uri: provider.image }} style={styles.providerImage} />
-                {provider.verified && (
-                  <View style={[styles.verifiedBadge, { borderColor: colors.background, backgroundColor: colors.brand[500] }]}>
-                    <Ionicons name="checkmark" size={10} color="white" />
-                  </View>
-                )}
-              </View>
-              <View style={styles.providerInfo}>
-                <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
-                <View style={styles.providerMeta}>
-                  <Text style={[styles.providerCategory, { color: colors.brand[400] }]}>{provider.category}</Text>
-                  <Text style={[styles.providerDot, { color: colors.textMuted }]}>•</Text>
-                  <Ionicons name="location" size={10} color={colors.textMuted} />
-                  <Text style={[styles.providerLocation, { color: colors.textMuted }]}>{provider.location}</Text>
-                </View>
-              </View>
-              <View style={styles.providerRating}>
-                <View style={styles.ratingRow}>
-                  <Ionicons name="star" size={12} color="#fbbf24" />
-                  <Text style={[styles.ratingText, { color: colors.text }]}>{provider.rating}</Text>
-                </View>
-                <Text style={[styles.reviewCount, { color: colors.textMuted }]}>{provider.reviews} yorum</Text>
-              </View>
-            </TouchableOpacity>
+            />
           ))}
         </View>
 
-        {/* Featured Artists */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Popüler Sanatçılar</Text>
-          <TouchableOpacity style={styles.sectionLink} onPress={() => navigation.navigate('Search')}>
-            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
-          </TouchableOpacity>
-        </View>
+        <SectionHeader
+          title="Popüler Sanatçılar"
+          onViewAll={() => navigation.navigate('Search')}
+        />
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.artistsScroll}>
-          {(artists || []).slice(0, 4).map((artist) => (
-            <TouchableOpacity
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.artistsScroll}
+        >
+          {artists.slice(0, 4).map((artist) => (
+            <ArtistCard
               key={artist.id}
-              style={[styles.artistCard, {
-                backgroundColor: colors.cardBackground,
-                borderColor: colors.border,
-                ...(isDark ? {} : helpers.getShadow('sm'))
-              }]}
-              activeOpacity={0.8}
+              {...artist}
               onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
-            >
-              <Image source={{ uri: artist.image }} style={styles.artistImage} />
-              <View style={styles.artistInfo}>
-                <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
-                <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
-                <View style={styles.artistRating}>
-                  <Ionicons name="star" size={12} color="#fbbf24" />
-                  <Text style={[styles.artistRatingText, { color: colors.text }]}>{artist.rating}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
+            />
           ))}
         </ScrollView>
 
-        {/* Quick Stats */}
-        <View style={[styles.statsCard, {
-          backgroundColor: colors.cardBackground,
-          borderColor: colors.border,
-          ...(isDark ? {} : helpers.getShadow('sm'))
-        }]}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.text }]}>270+</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sanatçı</Text>
-          </View>
-          <View style={[styles.statItem, styles.statItemBorder, { borderColor: colors.border }]}>
-            <Text style={[styles.statNumber, { color: colors.text }]}>150+</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Mekan</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, { color: colors.text }]}>500+</Text>
-            <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sağlayıcı</Text>
-          </View>
-        </View>
+        <StatsCard stats={homeStats} />
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -308,11 +118,13 @@ function OrganizerHomeContent() {
   );
 }
 
+// ============================================
+// Provider Home Content
+// ============================================
 function ProviderHomeContent() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<HomeStackNavigationProp>();
   const { colors, isDark, helpers } = useTheme();
 
-  // Get time-based greeting
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Günaydın';
@@ -320,578 +132,63 @@ function ProviderHomeContent() {
     return 'İyi akşamlar';
   };
 
-  // EventPro 360 - Full-service provider stats
-  const providerStats = {
-    monthlyEarnings: 1285000,
-    pendingPayments: 485000,
-    completedJobs: 156,
-    upcomingJobs: 8,
-    pendingOffers: 23,
-    rating: 4.9,
-    responseRate: 98,
-    reviewCount: 312,
-    profileViews: 1847,
-    conversionRate: 34,
-  };
-
-  // Upcoming jobs for EventPro 360
-  const upcomingJobs = [
-    {
-      id: '1',
-      title: 'Zeytinli Rock Festivali 2025',
-      date: '18-20 Temmuz',
-      location: 'Edremit, Balıkesir',
-      role: 'Ana Sahne Ses',
-      earnings: 245000,
-      daysUntil: 8,
-      status: 'confirmed',
-      image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
-    },
-    {
-      id: '2',
-      title: 'MegaFon Arena - Tarkan',
-      date: '25 Temmuz',
-      location: 'İstanbul',
-      role: 'Etkinlik Güvenliği',
-      earnings: 185000,
-      daysUntil: 15,
-      status: 'confirmed',
-      image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
-    },
-    {
-      id: '3',
-      title: 'Koç Holding Yıllık Toplantısı',
-      date: '5 Ağustos',
-      location: 'İstanbul',
-      role: 'Premium Catering',
-      earnings: 320000,
-      daysUntil: 25,
-      status: 'pending',
-      image: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=400',
-    },
-  ];
-
-  // Recent requests for full-service provider
-  const recentRequests = [
-    {
-      id: '1',
-      title: 'Istanbul Fashion Week After Party',
-      category: 'Komple Organizasyon',
-      organizer: 'Fashion Week TR',
-      organizerImage: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=100',
-      location: 'İstanbul',
-      date: '15-22 Eylül 2025',
-      budget: '450.000 - 600.000 ₺',
-      isNew: true,
-      isHot: true,
-      timeAgo: '1 saat önce',
-      matchScore: 95,
-    },
-    {
-      id: '2',
-      title: 'Formula 1 VIP Hospitality',
-      category: 'Catering & Konaklama',
-      organizer: 'Intercity',
-      organizerImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=100',
-      location: 'İstanbul Park',
-      date: '28 Eylül 2025',
-      budget: '280.000 - 350.000 ₺',
-      isNew: true,
-      isHot: false,
-      timeAgo: '3 saat önce',
-      matchScore: 88,
-    },
-    {
-      id: '3',
-      title: 'Büyük Ankara Festivali',
-      category: 'Teknik & Güvenlik',
-      organizer: 'Ankara BB',
-      organizerImage: 'https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?w=100',
-      location: 'Ankara',
-      date: '29-30 Ekim 2025',
-      budget: '520.000 - 680.000 ₺',
-      isNew: false,
-      isHot: false,
-      timeAgo: '1 gün önce',
-      matchScore: 82,
-    },
-  ];
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Enhanced Header */}
-        <View style={providerStyles.headerContainer}>
-          <View style={providerStyles.headerTop}>
-            <View style={providerStyles.greetingSection}>
-              <Text style={[providerStyles.greetingText, { color: colors.textMuted }]}>{getGreeting()}</Text>
-              <Text style={[providerStyles.companyName, { color: colors.text }]}>EventPro 360</Text>
-            </View>
-            <View style={providerStyles.headerActions}>
-              <TouchableOpacity
-                style={[providerStyles.headerIconButton, {
-                  backgroundColor: colors.glass,
-                  borderColor: colors.glassBorder
-                }]}
-                onPress={() => navigation.navigate('MessagesTab')}
-              >
-                <Ionicons name="chatbubble-outline" size={20} color={colors.textMuted} />
-                <View style={[providerStyles.headerBadge, { borderColor: colors.background }]}>
-                  <Text style={providerStyles.headerBadgeText}>5</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[providerStyles.headerIconButton, {
-                  backgroundColor: colors.glass,
-                  borderColor: colors.glassBorder
-                }]}
-                onPress={() => navigation.navigate('Notifications')}
-              >
-                <Ionicons name="notifications-outline" size={20} color={colors.textMuted} />
-                <View style={[providerStyles.headerBadge, { borderColor: colors.background }]}>
-                  <Text style={providerStyles.headerBadgeText}>12</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
+        {/* Provider Header */}
+        <ProviderHeader
+          greeting={getGreeting()}
+          companyName="EventPro 360"
+          messageCount={5}
+          notificationCount={12}
+          onMessagesPress={() => navigation.navigate('MessagesTab' as any)}
+          onNotificationsPress={() => navigation.navigate('Notifications')}
+        />
 
-          {/* Status Bar */}
-          <View style={[providerStyles.statusBar, {
-            backgroundColor: colors.glass,
-            borderColor: colors.glassBorder
-          }]}>
-            <View style={providerStyles.statusItem}>
-              <View style={[providerStyles.statusDot, { backgroundColor: colors.success }]} />
-              <Text style={[providerStyles.statusText, { color: colors.textSecondary }]}>Çevrimiçi</Text>
-            </View>
-            <View style={[providerStyles.statusDivider, { backgroundColor: colors.border }]} />
-            <View style={providerStyles.statusItem}>
-              <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
-              <Text style={[providerStyles.statusText, { color: colors.textSecondary }]}>{providerStats.profileViews} görüntülenme</Text>
-            </View>
-            <View style={[providerStyles.statusDivider, { backgroundColor: colors.border }]} />
-            <View style={providerStyles.statusItem}>
-              <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={[providerStyles.statusText, { color: colors.textSecondary }]}>{providerStats.rating} ({providerStats.reviewCount})</Text>
-            </View>
-          </View>
-        </View>
+        {/* Status Bar */}
+        <ProviderStatusBar
+          profileViews={providerStats.profileViews}
+          rating={providerStats.rating}
+          reviewCount={providerStats.reviewCount}
+        />
 
-        {/* Modern Earnings Card with Glassmorphism */}
-        <View style={providerStyles.earningsSection}>
-          <LinearGradient
-            colors={isDark ? ['rgba(147, 51, 234, 0.15)', 'rgba(99, 102, 241, 0.1)'] : ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.05)']}
-            style={[providerStyles.earningsBackground, {
-              borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.25)',
-              ...(isDark ? {} : helpers.getShadow('md'))
-            }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={providerStyles.earningsHeader}>
-              <View style={providerStyles.earningsMainInfo}>
-                <View style={providerStyles.earningsLabelRow}>
-                  <Ionicons name="wallet-outline" size={16} color={colors.brand[400]} />
-                  <Text style={[providerStyles.earningsLabel, { color: colors.textSecondary }]}>Bu Ay Kazanç</Text>
-                </View>
-                <Text style={[providerStyles.earningsValue, { color: colors.text }]}>₺{providerStats.monthlyEarnings.toLocaleString('tr-TR')}</Text>
-                <View style={providerStyles.earningsChange}>
-                  <LinearGradient
-                    colors={['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.1)']}
-                    style={providerStyles.earningsChangeBadge}
-                  >
-                    <Ionicons name="trending-up" size={12} color={colors.success} />
-                    <Text style={[providerStyles.earningsChangeText, { color: colors.success }]}>+24% geçen aya göre</Text>
-                  </LinearGradient>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={[providerStyles.earningsDetailButton, {
-                  backgroundColor: colors.glassStrong
-                }]}
-                onPress={() => navigation.navigate('ProfileTab', { screen: 'ProfileMain' })}
-              >
-                <Ionicons name="arrow-forward" size={20} color={colors.brand[400]} />
-              </TouchableOpacity>
-            </View>
+        {/* Earnings Card */}
+        <EarningsCard
+          monthlyEarnings={providerStats.monthlyEarnings}
+          pendingPayments={providerStats.pendingPayments}
+          completedJobs={providerStats.completedJobs}
+        />
 
-            <View style={[providerStyles.earningsStatsRow, {
-              borderTopColor: colors.glassBorder
-            }]}>
-              <View style={providerStyles.earningsStatItem}>
-                <View style={[providerStyles.earningsStatIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                  <Ionicons name="time-outline" size={16} color={colors.warning} />
-                </View>
-                <View>
-                  <Text style={[providerStyles.earningsStatValue, { color: colors.text }]}>₺{(providerStats.pendingPayments / 1000).toFixed(0)}K</Text>
-                  <Text style={[providerStyles.earningsStatLabel, { color: colors.textMuted }]}>Bekleyen</Text>
-                </View>
-              </View>
-              <View style={[providerStyles.earningsStatDivider, { backgroundColor: colors.glassBorder }]} />
-              <View style={providerStyles.earningsStatItem}>
-                <View style={[providerStyles.earningsStatIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
-                </View>
-                <View>
-                  <Text style={[providerStyles.earningsStatValue, { color: colors.text }]}>{providerStats.completedJobs}</Text>
-                  <Text style={[providerStyles.earningsStatLabel, { color: colors.textMuted }]}>Tamamlanan</Text>
-                </View>
-              </View>
-              <View style={[providerStyles.earningsStatDivider, { backgroundColor: colors.glassBorder }]} />
-              <View style={providerStyles.earningsStatItem}>
-                <View style={[providerStyles.earningsStatIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-                  <Ionicons name="pulse-outline" size={16} color={colors.brand[400]} />
-                </View>
-                <View>
-                  <Text style={[providerStyles.earningsStatValue, { color: colors.text }]}>%{providerStats.conversionRate}</Text>
-                  <Text style={[providerStyles.earningsStatLabel, { color: colors.textMuted }]}>Dönüşüm</Text>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
+        {/* Quick Stats */}
+        <QuickStatsRow
+          upcomingJobs={providerStats.upcomingJobs}
+          pendingOffers={providerStats.pendingOffers}
+          onOffersPress={() => navigation.navigate('OffersTab' as any)}
+          onJobsPress={() => navigation.navigate('EventsTab' as any)}
+        />
 
-        {/* Action Stats Cards */}
-        <View style={providerStyles.actionStatsRow}>
-          <TouchableOpacity
-            style={providerStyles.actionStatCard}
-            onPress={() => navigation.navigate('OffersTab')}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['rgba(239, 68, 68, 0.15)', 'rgba(239, 68, 68, 0.05)']}
-              style={providerStyles.actionStatGradient}
-            >
-              <View style={providerStyles.actionStatBadge}>
-                <Text style={providerStyles.actionStatBadgeText}>{providerStats.pendingOffers}</Text>
-              </View>
-              <Ionicons name="flash" size={24} color="#ef4444" />
-              <Text style={providerStyles.actionStatLabel}>Yeni Teklif</Text>
-              <Text style={providerStyles.actionStatHint}>Bekliyor</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+        <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />
 
-          <TouchableOpacity
-            style={providerStyles.actionStatCard}
-            onPress={() => navigation.navigate('EventsTab')}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['rgba(16, 185, 129, 0.15)', 'rgba(16, 185, 129, 0.05)']}
-              style={providerStyles.actionStatGradient}
-            >
-              <View style={[providerStyles.actionStatBadge, { backgroundColor: colors.success }]}>
-                <Text style={providerStyles.actionStatBadgeText}>{providerStats.upcomingJobs}</Text>
-              </View>
-              <Ionicons name="calendar" size={24} color={colors.success} />
-              <Text style={providerStyles.actionStatLabel}>Yaklaşan İş</Text>
-              <Text style={providerStyles.actionStatHint}>Bu ay</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+        {upcomingJobs.map((job) => (
+          <UpcomingJobCard
+            key={job.id}
+            {...job}
+            onPress={() => navigation.navigate('ProviderEventDetail' as any, { eventId: job.id })}
+          />
+        ))}
 
-          <TouchableOpacity
-            style={providerStyles.actionStatCard}
-            onPress={() => navigation.navigate('ProfileTab')}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['rgba(245, 158, 11, 0.15)', 'rgba(245, 158, 11, 0.05)']}
-              style={providerStyles.actionStatGradient}
-            >
-              <Ionicons name="star" size={24} color={colors.warning} />
-              <Text style={providerStyles.actionStatValue}>{providerStats.rating}</Text>
-              <Text style={providerStyles.actionStatLabel}>Puan</Text>
-              <Text style={providerStyles.actionStatHint}>{providerStats.reviewCount} yorum</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader title="Yeni Talepler" onViewAll={() => navigation.navigate('OffersTab' as any)} />
 
-        {/* Quick Actions - Redesigned */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hızlı İşlemler</Text>
-        </View>
+        {recentRequests.map((request) => (
+          <RequestCard
+            key={request.id}
+            {...request}
+            onPress={() => navigation.navigate('OfferDetail' as any, { offerId: request.id })}
+          />
+        ))}
 
-        <View style={providerStyles.quickActionsGrid}>
-          <TouchableOpacity
-            style={[providerStyles.quickActionItem, {
-              backgroundColor: colors.cardBackground,
-              borderColor: colors.border,
-              ...(isDark ? {} : helpers.getShadow('sm'))
-            }]}
-            onPress={() => navigation.navigate('OffersTab')}
-          >
-            <LinearGradient
-              colors={gradients.primary}
-              style={providerStyles.quickActionIconBox}
-            >
-              <Ionicons name="send" size={20} color="white" />
-            </LinearGradient>
-            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Teklif Gönder</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[providerStyles.quickActionItem, {
-              backgroundColor: colors.cardBackground,
-              borderColor: colors.border,
-              ...(isDark ? {} : helpers.getShadow('sm'))
-            }]}
-            onPress={() => navigation.navigate('EventsTab', { screen: 'CalendarView' })}
-          >
-            <View style={[providerStyles.quickActionIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-              <Ionicons name="calendar-outline" size={20} color={colors.info} />
-            </View>
-            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Müsaitlik</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[providerStyles.quickActionItem, {
-              backgroundColor: colors.cardBackground,
-              borderColor: colors.border,
-              ...(isDark ? {} : helpers.getShadow('sm'))
-            }]}
-            onPress={() => navigation.navigate('ProfileTab', { screen: 'ProviderServices' })}
-          >
-            <View style={[providerStyles.quickActionIconBox, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-              <Ionicons name="images-outline" size={20} color={colors.warning} />
-            </View>
-            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Portföy</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[providerStyles.quickActionItem, {
-              backgroundColor: colors.cardBackground,
-              borderColor: colors.border,
-              ...(isDark ? {} : helpers.getShadow('sm'))
-            }]}
-            onPress={() => navigation.navigate('ProfileTab', { screen: 'ProfileMain' })}
-          >
-            <View style={[providerStyles.quickActionIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-              <Ionicons name="bar-chart-outline" size={20} color={colors.success} />
-            </View>
-            <Text style={[providerStyles.quickActionLabel, { color: colors.textSecondary }]}>Raporlar</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Upcoming Jobs - Enhanced Design */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Yaklaşan İşler</Text>
-          <TouchableOpacity
-            style={styles.sectionLink}
-            onPress={() => navigation.navigate('EventsTab')}
-          >
-            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={providerStyles.jobsScrollContent}
-        >
-          {upcomingJobs.map((job, index) => (
-            <TouchableOpacity
-              key={job.id}
-              style={[
-                providerStyles.jobCard,
-                index === 0 && providerStyles.jobCardFirst
-              ]}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate('EventsTab', {
-                screen: 'ProviderEventDetail',
-                params: { eventId: job.id }
-              })}
-            >
-              <Image source={{ uri: job.image }} style={providerStyles.jobImage} />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.85)']}
-                style={providerStyles.jobGradient}
-              />
-
-              {/* Countdown Badge */}
-              <View style={[
-                providerStyles.jobCountdown,
-                job.daysUntil <= 7 && providerStyles.jobCountdownUrgent
-              ]}>
-                {job.daysUntil <= 7 && (
-                  <Ionicons name="alert-circle" size={12} color={job.daysUntil <= 3 ? '#ef4444' : colors.warning} />
-                )}
-                <Text style={[
-                  providerStyles.jobCountdownText,
-                  job.daysUntil <= 3 && { color: '#ef4444' },
-                  job.daysUntil <= 7 && job.daysUntil > 3 && { color: colors.warning }
-                ]}>
-                  {job.daysUntil} gün
-                </Text>
-              </View>
-
-              {/* Status Badge */}
-              <View style={[
-                providerStyles.jobStatusBadge,
-                job.status === 'confirmed' ? providerStyles.jobStatusConfirmed : providerStyles.jobStatusPending
-              ]}>
-                <Text style={providerStyles.jobStatusText}>
-                  {job.status === 'confirmed' ? 'Onaylı' : 'Beklemede'}
-                </Text>
-              </View>
-
-              <View style={providerStyles.jobContent}>
-                <View style={providerStyles.jobRoleBadge}>
-                  <Text style={providerStyles.jobRoleText}>{job.role}</Text>
-                </View>
-                <Text style={providerStyles.jobTitle} numberOfLines={2}>{job.title}</Text>
-                <View style={providerStyles.jobMetaRow}>
-                  <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
-                  <Text style={providerStyles.jobMetaText}>{job.location}</Text>
-                </View>
-                <View style={providerStyles.jobMetaRow}>
-                  <Ionicons name="calendar-outline" size={12} color="rgba(255,255,255,0.7)" />
-                  <Text style={providerStyles.jobMetaText}>{job.date}</Text>
-                </View>
-                <View style={providerStyles.jobEarningsRow}>
-                  <Text style={providerStyles.jobEarningsValue}>₺{job.earnings.toLocaleString('tr-TR')}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* New Requests - Enhanced Design */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Yeni Talepler</Text>
-          <TouchableOpacity
-            style={styles.sectionLink}
-            onPress={() => navigation.navigate('OffersTab')}
-          >
-            <Text style={[styles.sectionLinkText, { color: colors.brand[400] }]}>Tümü ({recentRequests.length})</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={providerStyles.requestsContainer}>
-          {recentRequests.map((request, index) => (
-            <TouchableOpacity
-              key={request.id}
-              style={[
-                providerStyles.requestCard,
-                request.isHot && providerStyles.requestCardHot
-              ]}
-              activeOpacity={0.8}
-              onPress={() => navigation.navigate('OffersTab', {
-                screen: 'OfferDetail',
-                params: { offerId: request.id }
-              })}
-            >
-              {/* Request Header */}
-              <View style={providerStyles.requestHeader}>
-                <View style={providerStyles.requestBadges}>
-                  {request.isNew && (
-                    <View style={providerStyles.requestNewBadge}>
-                      <Text style={providerStyles.requestNewBadgeText}>YENİ</Text>
-                    </View>
-                  )}
-                  {request.isHot && (
-                    <View style={providerStyles.requestHotBadge}>
-                      <Ionicons name="flame" size={10} color="#ef4444" />
-                      <Text style={providerStyles.requestHotBadgeText}>SICAK</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={providerStyles.requestMatchBadge}>
-                  <Ionicons name="checkmark-circle" size={12} color={colors.success} />
-                  <Text style={providerStyles.requestMatchText}>%{request.matchScore} Uyum</Text>
-                </View>
-              </View>
-
-              {/* Request Content */}
-              <Text style={providerStyles.requestTitle}>{request.title}</Text>
-              <Text style={providerStyles.requestCategory}>{request.category}</Text>
-
-              {/* Organizer Info */}
-              <View style={providerStyles.requestOrganizerRow}>
-                <Image source={{ uri: request.organizerImage }} style={providerStyles.requestOrganizerImage} />
-                <Text style={providerStyles.requestOrganizerName}>{request.organizer}</Text>
-                <Text style={providerStyles.requestTime}>{request.timeAgo}</Text>
-              </View>
-
-              {/* Request Details */}
-              <View style={providerStyles.requestDetailsRow}>
-                <View style={providerStyles.requestDetailChip}>
-                  <Ionicons name="location-outline" size={12} color={colors.zinc[400]} />
-                  <Text style={providerStyles.requestDetailChipText}>{request.location}</Text>
-                </View>
-                <View style={providerStyles.requestDetailChip}>
-                  <Ionicons name="calendar-outline" size={12} color={colors.zinc[400]} />
-                  <Text style={providerStyles.requestDetailChipText}>{request.date}</Text>
-                </View>
-              </View>
-
-              {/* Budget & Action */}
-              <View style={providerStyles.requestFooter}>
-                <View style={providerStyles.requestBudgetSection}>
-                  <Text style={providerStyles.requestBudgetLabel}>Bütçe</Text>
-                  <Text style={providerStyles.requestBudgetValue}>{request.budget}</Text>
-                </View>
-                <TouchableOpacity style={providerStyles.requestActionButton}>
-                  <Text style={providerStyles.requestActionButtonText}>Teklif Ver</Text>
-                  <Ionicons name="arrow-forward" size={14} color="white" />
-                </TouchableOpacity>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Performance Overview - Circular Design */}
-        <View style={providerStyles.performanceSection}>
-          <View style={providerStyles.performanceSectionHeader}>
-            <View style={providerStyles.performanceTitleRow}>
-              <LinearGradient
-                colors={['rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.1)']}
-                style={providerStyles.performanceIconBox}
-              >
-                <Ionicons name="trophy" size={18} color={colors.warning} />
-              </LinearGradient>
-              <Text style={providerStyles.performanceSectionTitle}>Performans Özeti</Text>
-            </View>
-            <TouchableOpacity>
-              <Ionicons name="information-circle-outline" size={20} color={colors.zinc[500]} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={providerStyles.performanceCirclesRow}>
-            <View style={providerStyles.performanceCircleItem}>
-              <View style={providerStyles.performanceCircle}>
-                <View style={[providerStyles.performanceCircleProgress, { borderColor: colors.success }]}>
-                  <Text style={providerStyles.performanceCircleValue}>98%</Text>
-                </View>
-              </View>
-              <Text style={providerStyles.performanceCircleLabel}>Yanıt Oranı</Text>
-            </View>
-
-            <View style={providerStyles.performanceCircleItem}>
-              <View style={providerStyles.performanceCircle}>
-                <View style={[providerStyles.performanceCircleProgress, { borderColor: colors.brand[500] }]}>
-                  <Text style={providerStyles.performanceCircleValue}>96%</Text>
-                </View>
-              </View>
-              <Text style={providerStyles.performanceCircleLabel}>Tamamlama</Text>
-            </View>
-
-            <View style={providerStyles.performanceCircleItem}>
-              <View style={providerStyles.performanceCircle}>
-                <View style={[providerStyles.performanceCircleProgress, { borderColor: colors.warning }]}>
-                  <Text style={providerStyles.performanceCircleValue}>99%</Text>
-                </View>
-              </View>
-              <Text style={providerStyles.performanceCircleLabel}>Memnuniyet</Text>
-            </View>
-          </View>
-
-          <View style={providerStyles.performanceHint}>
-            <Ionicons name="sparkles" size={14} color={colors.brand[400]} />
-            <Text style={providerStyles.performanceHintText}>Harika gidiyorsunuz! Üst düzey sağlayıcı statüsündesiniz.</Text>
-          </View>
-        </View>
+        {/* Performance Card */}
+        <PerformanceCard responseRate={providerStats.responseRate} />
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -899,46 +196,545 @@ function ProviderHomeContent() {
   );
 }
 
-// Provider-specific styles
-const providerStyles = StyleSheet.create({
-  // Header
-  headerContainer: {
+// ============================================
+// Shared Components
+// ============================================
+
+function OperationCard({ onPress }: { onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.operationCard} activeOpacity={0.8} onPress={onPress}>
+      <LinearGradient
+        colors={gradients.operation}
+        style={styles.operationGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.operationIconBox}>
+          <Ionicons name="settings" size={24} color="white" />
+        </View>
+        <View style={styles.operationContent}>
+          <Text style={styles.operationTitle}>Operasyon</Text>
+          <Text style={styles.operationSubtitle}>Güvenlik, Catering, Jeneratör ve 9 hizmet daha</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+// ============================================
+// Provider-specific Components
+// ============================================
+
+interface ProviderHeaderProps {
+  greeting: string;
+  companyName: string;
+  messageCount: number;
+  notificationCount: number;
+  onMessagesPress: () => void;
+  onNotificationsPress: () => void;
+}
+
+function ProviderHeader({
+  greeting,
+  companyName,
+  messageCount,
+  notificationCount,
+  onMessagesPress,
+  onNotificationsPress,
+}: ProviderHeaderProps) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={styles.providerHeader}>
+      <View style={styles.providerHeaderTop}>
+        <View>
+          <Text style={[styles.greetingText, { color: colors.textMuted }]}>{greeting}</Text>
+          <Text style={[styles.companyName, { color: colors.text }]}>{companyName}</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <IconButton icon="chatbubble-outline" count={messageCount} onPress={onMessagesPress} />
+          <IconButton icon="notifications-outline" count={notificationCount} onPress={onNotificationsPress} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function IconButton({ icon, count, onPress }: { icon: string; count: number; onPress: () => void }) {
+  const { colors } = useTheme();
+
+  return (
+    <TouchableOpacity
+      style={[styles.iconButton, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}
+      onPress={onPress}
+    >
+      <Ionicons name={icon as any} size={20} color={colors.textMuted} />
+      {count > 0 && (
+        <View style={[styles.iconBadge, { borderColor: colors.background }]}>
+          <Text style={styles.iconBadgeText}>{count}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+function ProviderStatusBar({
+  profileViews,
+  rating,
+  reviewCount,
+}: {
+  profileViews: number;
+  rating: number;
+  reviewCount: number;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.statusBar, { backgroundColor: colors.glass, borderColor: colors.glassBorder }]}>
+      <View style={styles.statusItem}>
+        <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+        <Text style={[styles.statusText, { color: colors.textSecondary }]}>Çevrimiçi</Text>
+      </View>
+      <View style={[styles.statusDivider, { backgroundColor: colors.border }]} />
+      <View style={styles.statusItem}>
+        <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
+        <Text style={[styles.statusText, { color: colors.textSecondary }]}>{profileViews} görüntülenme</Text>
+      </View>
+      <View style={[styles.statusDivider, { backgroundColor: colors.border }]} />
+      <View style={styles.statusItem}>
+        <Ionicons name="star" size={14} color="#fbbf24" />
+        <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+          {rating} ({reviewCount})
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function EarningsCard({
+  monthlyEarnings,
+  pendingPayments,
+  completedJobs,
+}: {
+  monthlyEarnings: number;
+  pendingPayments: number;
+  completedJobs: number;
+}) {
+  const { colors, isDark, helpers } = useTheme();
+
+  return (
+    <View style={styles.earningsSection}>
+      <LinearGradient
+        colors={
+          isDark
+            ? ['rgba(147, 51, 234, 0.15)', 'rgba(99, 102, 241, 0.1)']
+            : ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.05)']
+        }
+        style={[
+          styles.earningsCard,
+          {
+            borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.25)',
+            ...(isDark ? {} : helpers.getShadow('md')),
+          },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.earningsHeader}>
+          <View>
+            <View style={styles.earningsLabelRow}>
+              <Ionicons name="wallet-outline" size={16} color={colors.brand[400]} />
+              <Text style={[styles.earningsLabel, { color: colors.textSecondary }]}>Bu Ay Kazanç</Text>
+            </View>
+            <Text style={[styles.earningsValue, { color: colors.text }]}>
+              ₺{monthlyEarnings.toLocaleString('tr-TR')}
+            </Text>
+            <View style={styles.earningsChange}>
+              <LinearGradient
+                colors={['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.1)']}
+                style={styles.earningsChangeBadge}
+              >
+                <Ionicons name="trending-up" size={12} color={colors.success} />
+                <Text style={[styles.earningsChangeText, { color: colors.success }]}>+23% geçen aya göre</Text>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+
+        <View style={[styles.earningsStatsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+          <View style={styles.earningsStatItem}>
+            <Text style={[styles.earningsStatValue, { color: colors.text }]}>
+              ₺{pendingPayments.toLocaleString('tr-TR')}
+            </Text>
+            <Text style={[styles.earningsStatLabel, { color: colors.textMuted }]}>Bekleyen Ödeme</Text>
+          </View>
+          <View style={[styles.earningsStatDivider, { backgroundColor: colors.border }]} />
+          <View style={styles.earningsStatItem}>
+            <Text style={[styles.earningsStatValue, { color: colors.text }]}>{completedJobs}</Text>
+            <Text style={[styles.earningsStatLabel, { color: colors.textMuted }]}>Tamamlanan İş</Text>
+          </View>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function QuickStatsRow({
+  upcomingJobs,
+  pendingOffers,
+  onOffersPress,
+  onJobsPress,
+}: {
+  upcomingJobs: number;
+  pendingOffers: number;
+  onOffersPress: () => void;
+  onJobsPress: () => void;
+}) {
+  const { colors, isDark, helpers } = useTheme();
+
+  return (
+    <View style={styles.quickStatsRow}>
+      <TouchableOpacity
+        style={[
+          styles.quickStatCard,
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm')),
+          },
+        ]}
+        onPress={onJobsPress}
+      >
+        <View style={[styles.quickStatIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+          <Ionicons name="calendar" size={20} color={colors.info} />
+        </View>
+        <View>
+          <Text style={[styles.quickStatValue, { color: colors.text }]}>{upcomingJobs}</Text>
+          <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Yaklaşan İş</Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.quickStatCard,
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm')),
+          },
+        ]}
+        onPress={onOffersPress}
+      >
+        <View style={[styles.quickStatIcon, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+          <Ionicons name="pricetag" size={20} color={colors.warning} />
+        </View>
+        <View>
+          <Text style={[styles.quickStatValue, { color: colors.text }]}>{pendingOffers}</Text>
+          <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Bekleyen Teklif</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function UpcomingJobCard({
+  title,
+  date,
+  location,
+  role,
+  earnings,
+  daysUntil,
+  status,
+  image,
+  onPress,
+}: {
+  title: string;
+  date: string;
+  location: string;
+  role: string;
+  earnings: number;
+  daysUntil: number;
+  status: string;
+  image: string;
+  onPress: () => void;
+}) {
+  const { colors, isDark, helpers } = useTheme();
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.jobCard,
+        {
+          backgroundColor: colors.cardBackground,
+          borderColor: colors.border,
+          ...(isDark ? {} : helpers.getShadow('sm')),
+        },
+      ]}
+      onPress={onPress}
+    >
+      <Image source={{ uri: image }} style={styles.jobImage} />
+      <View style={styles.jobContent}>
+        <View style={styles.jobHeader}>
+          <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+          <View
+            style={[
+              styles.daysUntilBadge,
+              { backgroundColor: daysUntil <= 7 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)' },
+            ]}
+          >
+            <Text style={[styles.daysUntilText, { color: daysUntil <= 7 ? colors.error : colors.info }]}>
+              {daysUntil} gün
+            </Text>
+          </View>
+        </View>
+        <Text style={[styles.jobDate, { color: colors.textMuted }]}>
+          {date} • {location}
+        </Text>
+        <View style={styles.jobFooter}>
+          <View style={[styles.roleBadge, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
+            <Text style={[styles.roleText, { color: colors.brand[400] }]}>{role}</Text>
+          </View>
+          <Text style={[styles.earningsText, { color: colors.success }]}>₺{earnings.toLocaleString('tr-TR')}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function RequestCard({
+  title,
+  category,
+  organizer,
+  organizerImage,
+  location,
+  date,
+  budget,
+  isNew,
+  isHot,
+  timeAgo,
+  matchScore,
+  onPress,
+}: {
+  title: string;
+  category: string;
+  organizer: string;
+  organizerImage: string;
+  location: string;
+  date: string;
+  budget: string;
+  isNew: boolean;
+  isHot: boolean;
+  timeAgo: string;
+  matchScore: number;
+  onPress: () => void;
+}) {
+  const { colors, isDark, helpers } = useTheme();
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.requestCard,
+        {
+          backgroundColor: colors.cardBackground,
+          borderColor: isHot ? 'rgba(239, 68, 68, 0.3)' : colors.border,
+          ...(isDark ? {} : helpers.getShadow('sm')),
+        },
+      ]}
+      onPress={onPress}
+    >
+      <View style={styles.requestHeader}>
+        <View style={styles.requestBadges}>
+          {isNew && (
+            <View style={[styles.newBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <Text style={[styles.newBadgeText, { color: colors.success }]}>Yeni</Text>
+            </View>
+          )}
+          {isHot && (
+            <View style={[styles.hotBadge, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="flame" size={12} color={colors.error} />
+              <Text style={[styles.hotBadgeText, { color: colors.error }]}>Acil</Text>
+            </View>
+          )}
+        </View>
+        <Text style={[styles.timeAgo, { color: colors.textMuted }]}>{timeAgo}</Text>
+      </View>
+
+      <Text style={[styles.requestTitle, { color: colors.text }]}>{title}</Text>
+
+      <View style={styles.requestMeta}>
+        <Image source={{ uri: organizerImage }} style={styles.organizerImage} />
+        <Text style={[styles.organizerName, { color: colors.textSecondary }]}>{organizer}</Text>
+        <Text style={[styles.requestDot, { color: colors.textMuted }]}>•</Text>
+        <Ionicons name="location" size={12} color={colors.textMuted} />
+        <Text style={[styles.requestLocation, { color: colors.textMuted }]}>{location}</Text>
+      </View>
+
+      <View style={styles.requestFooter}>
+        <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
+          <Text style={[styles.categoryText, { color: colors.brand[400] }]}>{category}</Text>
+        </View>
+        <Text style={[styles.budgetText, { color: colors.text }]}>{budget}</Text>
+      </View>
+
+      <View style={[styles.matchRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]}>
+        <View style={styles.matchInfo}>
+          <Text style={[styles.matchLabel, { color: colors.textMuted }]}>Eşleşme Skoru</Text>
+          <View style={[styles.matchBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)' }]}>
+            <View style={[styles.matchProgress, { width: `${matchScore}%`, backgroundColor: colors.brand[400] }]} />
+          </View>
+        </View>
+        <Text style={[styles.matchScore, { color: colors.brand[400] }]}>{matchScore}%</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function PerformanceCard({ responseRate }: { responseRate: number }) {
+  const { colors, isDark, helpers } = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.performanceCard,
+        {
+          backgroundColor: colors.cardBackground,
+          borderColor: colors.border,
+          ...(isDark ? {} : helpers.getShadow('sm')),
+        },
+      ]}
+    >
+      <View style={styles.performanceHeader}>
+        <Ionicons name="analytics-outline" size={20} color={colors.brand[400]} />
+        <Text style={[styles.performanceTitle, { color: colors.text }]}>Performans</Text>
+      </View>
+
+      <View style={styles.performanceCircles}>
+        <PerformanceCircle value={responseRate} label="Yanıt Oranı" color={colors.success} />
+        <PerformanceCircle value={96} label="Tamamlama" color={colors.brand[500]} />
+        <PerformanceCircle value={99} label="Memnuniyet" color={colors.warning} />
+      </View>
+
+      <View style={[styles.performanceHint, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.06)' }]}>
+        <Ionicons name="sparkles" size={14} color={colors.brand[400]} />
+        <Text style={[styles.performanceHintText, { color: colors.brand[400] }]}>
+          Harika gidiyorsunuz! Üst düzey sağlayıcı statüsündesiniz.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function PerformanceCircle({ value, label, color }: { value: number; label: string; color: string }) {
+  const { colors, isDark } = useTheme();
+
+  return (
+    <View style={styles.circleItem}>
+      <View style={[styles.circle, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }]}>
+        <View
+          style={[
+            styles.circleProgress,
+            {
+              borderColor: color,
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)',
+            },
+          ]}
+        >
+          <Text style={[styles.circleValue, { color: colors.text }]}>{value}%</Text>
+        </View>
+      </View>
+      <Text style={[styles.circleLabel, { color: colors.textMuted }]}>{label}</Text>
+    </View>
+  );
+}
+
+// ============================================
+// Styles
+// ============================================
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+  },
+  artistsScroll: {
+    paddingHorizontal: 20,
+    paddingBottom: 4,
+  },
+
+  // Operation Card
+  operationCard: {
+    marginHorizontal: 20,
+    marginTop: 6,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  operationGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  operationIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  operationContent: {
+    flex: 1,
+  },
+  operationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  operationSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 2,
+  },
+
+  // Provider Header
+  providerHeader: {
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
   },
-  headerTop: {
+  providerHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  greetingSection: {
-    gap: 2,
-  },
   greetingText: {
     fontSize: 14,
-    color: colors.zinc[500],
   },
   companyName: {
     fontSize: 22,
     fontWeight: '700',
-    color: colors.text,
+    marginTop: 2,
   },
   headerActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  headerIconButton: {
+  iconButton: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerBadge: {
+  iconBadge: {
     position: 'absolute',
     top: -4,
     right: -4,
@@ -949,23 +745,22 @@ const providerStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: colors.background,
   },
-  headerBadgeText: {
+  iconBadgeText: {
     fontSize: 10,
     fontWeight: 'bold',
     color: 'white',
   },
+
+  // Status Bar
   statusBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    marginHorizontal: 20,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   statusItem: {
     flexDirection: 'row',
@@ -979,34 +774,25 @@ const providerStyles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: colors.zinc[400],
   },
   statusDivider: {
     width: 1,
     height: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     marginHorizontal: 12,
   },
 
-  // Earnings Section
+  // Earnings Card
   earningsSection: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 16,
   },
-  earningsBackground: {
+  earningsCard: {
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
   },
   earningsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 20,
-  },
-  earningsMainInfo: {
-    gap: 4,
   },
   earningsLabelRow: {
     flexDirection: 'row',
@@ -1015,14 +801,12 @@ const providerStyles = StyleSheet.create({
   },
   earningsLabel: {
     fontSize: 12,
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   earningsValue: {
     fontSize: 32,
     fontWeight: '700',
-    color: colors.text,
     marginTop: 4,
   },
   earningsChange: {
@@ -1040,1259 +824,295 @@ const providerStyles = StyleSheet.create({
   earningsChangeText: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.success,
-  },
-  earningsDetailButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   earningsStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   earningsStatItem: {
-    flexDirection: 'row',
+    flex: 1,
     alignItems: 'center',
-    gap: 10,
-  },
-  earningsStatIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   earningsStatValue: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
   },
   earningsStatLabel: {
-    fontSize: 10,
-    color: colors.zinc[500],
-    marginTop: 1,
+    fontSize: 11,
+    marginTop: 2,
   },
   earningsStatDivider: {
     width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    height: 30,
   },
 
-  // Action Stats
-  actionStatsRow: {
+  // Quick Stats
+  quickStatsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 8,
-  },
-  actionStatCard: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  actionStatGradient: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    position: 'relative',
-  },
-  actionStatBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionStatBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  actionStatValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 4,
-  },
-  actionStatLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    marginTop: 8,
-  },
-  actionStatHint: {
-    fontSize: 10,
-    color: colors.zinc[500],
-    marginTop: 2,
-  },
-
-  // Quick Actions Grid
-  quickActionsGrid: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
     gap: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
   },
-  quickActionItem: {
+  quickStatCard: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
-  quickActionIconBox: {
+  quickStatIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
   },
-  quickActionLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.zinc[400],
-    textAlign: 'center',
+  quickStatValue: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  quickStatLabel: {
+    fontSize: 12,
   },
 
-  // Jobs Section
-  jobsScrollContent: {
-    paddingHorizontal: 20,
-    gap: 14,
-  },
+  // Job Card
   jobCard: {
-    width: 200,
-    height: 260,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-  },
-  jobCardFirst: {
-    width: 220,
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 12,
   },
   jobImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  jobGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 180,
-  },
-  jobCountdown: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    gap: 4,
-  },
-  jobCountdownUrgent: {
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-  },
-  jobCountdownText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.brand[400],
-  },
-  jobStatusBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  jobStatusConfirmed: {
-    backgroundColor: 'rgba(16, 185, 129, 0.9)',
-  },
-  jobStatusPending: {
-    backgroundColor: 'rgba(245, 158, 11, 0.9)',
-  },
-  jobStatusText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: 'white',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    width: 72,
+    height: 72,
+    borderRadius: 12,
   },
   jobContent: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
+    flex: 1,
+    justifyContent: 'center',
   },
-  jobRoleBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(147, 51, 234, 0.8)',
-    borderRadius: 6,
-    marginBottom: 8,
-  },
-  jobRoleText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: 'white',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  jobHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   jobTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'white',
-    marginBottom: 8,
+    flex: 1,
   },
-  jobMetaRow: {
+  daysUntilBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  daysUntilText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  jobDate: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  jobFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  jobMetaText: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  jobEarningsRow: {
+    justifyContent: 'space-between',
     marginTop: 8,
   },
-  jobEarningsValue: {
-    fontSize: 16,
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  earningsText: {
+    fontSize: 14,
     fontWeight: '700',
-    color: colors.success,
   },
 
-  // Requests Section
-  requestsContainer: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
+  // Request Card
   requestCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  requestCardHot: {
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    backgroundColor: 'rgba(239, 68, 68, 0.03)',
   },
   requestHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   requestBadges: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
-  requestNewBadge: {
+  newBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
     borderRadius: 6,
   },
-  requestNewBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.brand[400],
-    letterSpacing: 0.5,
+  newBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
-  requestHotBadge: {
+  hotBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderRadius: 6,
   },
-  requestHotBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#ef4444',
-    letterSpacing: 0.5,
+  hotBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
-  requestMatchBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  requestMatchText: {
+  timeAgo: {
     fontSize: 11,
-    fontWeight: '500',
-    color: colors.success,
   },
   requestTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  requestCategory: {
-    fontSize: 12,
-    color: colors.zinc[500],
-    marginBottom: 12,
-  },
-  requestOrganizerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  requestOrganizerImage: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  requestOrganizerName: {
-    flex: 1,
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.zinc[400],
-  },
-  requestTime: {
-    fontSize: 11,
-    color: colors.zinc[600],
-  },
-  requestDetailsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  requestDetailChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 8,
-  },
-  requestDetailChipText: {
-    fontSize: 11,
-    color: colors.zinc[400],
-  },
-  requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  requestBudgetSection: {
-    gap: 2,
-  },
-  requestBudgetLabel: {
-    fontSize: 10,
-    color: colors.zinc[600],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  requestBudgetValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.success,
-  },
-  requestActionButton: {
+  requestMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.brand[500],
+    marginBottom: 12,
+  },
+  organizerImage: {
+    width: 20,
+    height: 20,
     borderRadius: 10,
   },
-  requestActionButtonText: {
+  organizerName: {
     fontSize: 12,
+  },
+  requestDot: {
+    fontSize: 10,
+  },
+  requestLocation: {
+    fontSize: 12,
+  },
+  requestFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  categoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  budgetText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: 'white',
+  },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  matchInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  matchLabel: {
+    fontSize: 11,
+    marginBottom: 6,
+  },
+  matchBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  matchProgress: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  matchScore: {
+    fontSize: 16,
+    fontWeight: '700',
   },
 
-  // Performance Section
-  performanceSection: {
+  // Performance Card
+  performanceCard: {
     marginHorizontal: 20,
-    marginTop: 24,
+    marginTop: 16,
     padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
-  performanceSectionHeader: {
+  performanceHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 20,
   },
-  performanceTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  performanceIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  performanceSectionTitle: {
+  performanceTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
-  performanceCirclesRow: {
+  performanceCircles: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  performanceCircleItem: {
+  circleItem: {
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  performanceCircle: {
+  circle: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    padding: 6,
+  },
+  circleProgress: {
+    flex: 1,
+    borderRadius: 30,
+    borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  performanceCircleProgress: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  performanceCircleValue: {
-    fontSize: 16,
+  circleValue: {
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
   },
-  performanceCircleLabel: {
+  circleLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   performanceHint: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
   },
   performanceHintText: {
-    flex: 1,
     fontSize: 12,
-    color: colors.brand[300],
-  },
-});
-
-const styles = StyleSheet.create({
-  container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  profileAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
-  },
-  profileInfo: {
-    gap: 2,
-  },
-  profileName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  profileBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  profileBadgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.success,
-  },
-  profileBadgeText: {
-    fontSize: 12,
-    color: colors.zinc[500],
-  },
-  notificationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  notificationBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginVertical: 12,
-    paddingHorizontal: 16,
-    height: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.text,
-  },
-  featureCard: {
-    marginHorizontal: 20,
-    marginVertical: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
-  },
-  featureCardGradient: {
-    padding: 20,
-  },
-  featureCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  featureCardLeft: {
-    flex: 1,
-  },
-  featureCardBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
-  },
-  featureCardBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.brand[400],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  featureCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  featureCardSubtitle: {
-    fontSize: 12,
-    color: colors.zinc[400],
-    marginTop: 2,
-  },
-  featureCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  sectionLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sectionLinkText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.brand[400],
-  },
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  categoryCard: {
-    width: '31%',
-    aspectRatio: 0.9,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  categoryCardGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-  },
-  categoryPopular: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  categoryIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  categoryName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'white',
-    textAlign: 'center',
-  },
-  categoryDescription: {
-    fontSize: 9,
-    color: 'rgba(255, 255, 255, 0.6)',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  operationCard: {
-    marginHorizontal: 20,
-    marginTop: 10,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  operationCardGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  operationIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  operationContent: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  operationTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: 'white',
-  },
-  operationSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 2,
-  },
-  providersList: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  providerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  providerImageContainer: {
-    position: 'relative',
-  },
-  providerImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-  },
-  verifiedBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.brand[500],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  providerInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  providerName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  providerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  providerCategory: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.brand[400],
-  },
-  providerDot: {
-    fontSize: 10,
-    color: colors.zinc[700],
-  },
-  providerLocation: {
-    fontSize: 11,
-    color: colors.zinc[500],
-  },
-  providerRating: {
-    alignItems: 'flex-end',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  reviewCount: {
-    fontSize: 9,
-    color: colors.zinc[500],
-    marginTop: 2,
-  },
-  statsCard: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statItemBorder: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: colors.zinc[800],
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: colors.zinc[500],
-    marginTop: 2,
-  },
-  // Provider specific styles
-  providerStatsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 12,
-    marginTop: 8,
-  },
-  providerStatCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  providerStatIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  providerStatNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  providerStatLabel: {
-    fontSize: 10,
-    color: colors.zinc[500],
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  quickActionItem: {
-    width: '47%',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  quickActionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  requestsList: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  requestCard: {
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  requestBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 6,
-  },
-  requestBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#fbbf24',
-    letterSpacing: 0.5,
-  },
-  requestTime: {
-    fontSize: 11,
-    color: colors.zinc[500],
-  },
-  requestTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  requestSubtitle: {
-    fontSize: 12,
-    color: colors.zinc[400],
-    marginTop: 2,
-  },
-  requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  requestLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  requestLocationText: {
-    fontSize: 11,
-    color: colors.zinc[500],
-  },
-  requestDate: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.brand[400],
-  },
-  searchPlaceholder: {
-    flex: 1,
-    fontSize: 15,
-    color: colors.zinc[600],
-  },
-  artistsScroll: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  artistCard: {
-    width: 140,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  artistImage: {
-    width: '100%',
-    height: 140,
-  },
-  artistInfo: {
-    padding: 12,
-  },
-  artistName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  artistGenre: {
-    fontSize: 11,
-    color: colors.zinc[500],
-    marginTop: 2,
-  },
-  artistRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-  },
-  artistRatingText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  // Enhanced Provider Styles
-  earningsCard: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  earningsCardGradient: {
-    padding: 20,
-  },
-  earningsCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  earningsCardLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  earningsCardValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    marginTop: 4,
-  },
-  earningsCardBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
-  },
-  earningsCardBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.success,
-  },
-  earningsCardDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    marginVertical: 16,
-  },
-  earningsCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  earningsCardStat: {
-    alignItems: 'center',
-  },
-  earningsCardStatLabel: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 4,
-  },
-  earningsCardStatValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: 'white',
-  },
-  quickActionsScroll: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  quickActionCard: {
-    alignItems: 'center',
-    padding: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-    width: 90,
-  },
-  quickActionCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  quickActionCardText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.zinc[400],
-    textAlign: 'center',
-  },
-  upcomingJobsScroll: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  upcomingJobCard: {
-    width: 180,
-    height: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-  },
-  upcomingJobImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  upcomingJobGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 140,
-  },
-  upcomingJobDaysBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  upcomingJobDaysText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.brand[400],
-  },
-  upcomingJobContent: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    right: 12,
-  },
-  upcomingJobRole: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.brand[400],
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  upcomingJobTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'white',
-  },
-  upcomingJobMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  upcomingJobMetaText: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  upcomingJobEarnings: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.success,
-    marginTop: 6,
-  },
-  requestDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginVertical: 12,
-  },
-  requestDetails: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 8,
-  },
-  requestDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  requestDetailText: {
-    fontSize: 11,
-    color: colors.zinc[500],
-  },
-  requestDateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  requestDateText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.brand[400],
-  },
-  requestBudget: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.success,
-  },
-  performanceCard: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  performanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  performanceTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  performanceStats: {
-    gap: 12,
-  },
-  performanceStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  performanceStatBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  performanceStatFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  performanceStatLabel: {
-    fontSize: 11,
-    color: colors.zinc[500],
-    width: 80,
-  },
-  performanceStatValue: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.text,
-    width: 35,
-    textAlign: 'right',
   },
 });

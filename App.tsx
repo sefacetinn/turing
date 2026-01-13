@@ -50,7 +50,6 @@ import { CurrencyScreen } from './src/screens/CurrencyScreen';
 import { TermsScreen } from './src/screens/TermsScreen';
 import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
 import { ContactSupportScreen } from './src/screens/ContactSupportScreen';
-import { colors } from './src/theme/colors';
 
 // App Context
 interface AppContextType {
@@ -246,7 +245,9 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
               width: 36,
               height: 24,
               borderRadius: 12,
-              backgroundColor: focused ? 'rgba(147, 51, 234, 0.15)' : 'transparent',
+              backgroundColor: focused
+                ? (isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(109, 40, 217, 0.12)')
+                : 'transparent',
             }}>
               <Ionicons name={iconName} size={20} color={color} />
             </View>

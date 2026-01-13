@@ -4,10 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 export function AboutScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
 
   const handleOpenLink = (url: string) => {
     Linking.openURL(url);
@@ -28,13 +32,13 @@ export function AboutScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hakkında</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Hakkında</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -42,7 +46,7 @@ export function AboutScreen() {
         {/* Logo & App Info */}
         <View style={styles.appInfoSection}>
           <View style={styles.logoContainer}>
-            <View style={styles.logoGlow} />
+            <View style={[styles.logoGlow, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.25)' : 'rgba(147, 51, 234, 0.15)' }]} />
             <LinearGradient
               colors={['#9333ea', '#7c3aed', '#6366f1']}
               style={styles.logoBox}
@@ -52,17 +56,17 @@ export function AboutScreen() {
               <Ionicons name="musical-notes" size={40} color="white" />
             </LinearGradient>
           </View>
-          <Text style={styles.appName}>TURING</Text>
-          <Text style={styles.appTagline}>Etkinlik & Müzik Sektörü Platformu</Text>
-          <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>Versiyon 1.0.0</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>TURING</Text>
+          <Text style={[styles.appTagline, { color: colors.textMuted }]}>Etkinlik & Müzik Sektörü Platformu</Text>
+          <View style={[styles.versionBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]}>
+            <Text style={[styles.versionText, { color: colors.textMuted }]}>Versiyon 1.0.0</Text>
           </View>
         </View>
 
         {/* Description */}
         <View style={styles.section}>
-          <View style={styles.descriptionCard}>
-            <Text style={styles.descriptionText}>
+          <View style={[styles.descriptionCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
+            <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
               Turing, etkinlik organizatörlerini ve hizmet sağlayıcılarını bir araya getiren yenilikçi bir platformdur.
               Konserler, festivaller, düğünler ve kurumsal etkinlikler için ihtiyacınız olan tüm hizmetleri tek bir yerden bulun.
             </Text>
@@ -72,39 +76,39 @@ export function AboutScreen() {
         {/* Stats */}
         <View style={styles.section}>
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
               <Text style={styles.statNumber}>10K+</Text>
-              <Text style={styles.statLabel}>Aktif Kullanıcı</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Aktif Kullanıcı</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
               <Text style={styles.statNumber}>5K+</Text>
-              <Text style={styles.statLabel}>Hizmet Sağlayıcı</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Hizmet Sağlayıcı</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
               <Text style={styles.statNumber}>15K+</Text>
-              <Text style={styles.statLabel}>Etkinlik</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Etkinlik</Text>
             </View>
           </View>
         </View>
 
         {/* Team */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ekibimiz</Text>
-          <View style={styles.teamCard}>
-            <Text style={styles.teamText}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Ekibimiz</Text>
+          <View style={[styles.teamCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
+            <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
               Turing, müzik ve etkinlik sektöründe deneyimli bir ekip tarafından İstanbul'da geliştirilmektedir.
               Amacımız, sektörün dijital dönüşümüne öncülük etmek ve en iyi kullanıcı deneyimini sunmaktır.
             </Text>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={16} color={colors.brand[400]} />
-              <Text style={styles.locationText}>İstanbul, Türkiye</Text>
+              <Text style={[styles.locationText, { color: colors.textMuted }]}>İstanbul, Türkiye</Text>
             </View>
           </View>
         </View>
 
         {/* Social Links */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bizi Takip Edin</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Bizi Takip Edin</Text>
           <View style={styles.socialRow}>
             {socialLinks.map((social) => (
               <TouchableOpacity
@@ -123,18 +127,18 @@ export function AboutScreen() {
 
         {/* Legal Links */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Yasal</Text>
-          <View style={styles.legalCard}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Yasal</Text>
+          <View style={[styles.legalCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
             {legalLinks.map((link, index) => (
               <View key={link.id}>
                 <TouchableOpacity style={styles.legalRow} activeOpacity={0.7}>
                   <View style={styles.legalLeft}>
-                    <Ionicons name={link.icon as any} size={20} color={colors.zinc[500]} />
-                    <Text style={styles.legalText}>{link.title}</Text>
+                    <Ionicons name={link.icon as any} size={20} color={colors.textMuted} />
+                    <Text style={[styles.legalText, { color: colors.text }]}>{link.title}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
-                {index < legalLinks.length - 1 && <View style={styles.divider} />}
+                {index < legalLinks.length - 1 && <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />}
               </View>
             ))}
           </View>
@@ -142,32 +146,32 @@ export function AboutScreen() {
 
         {/* Contact */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>İletişim</Text>
-          <View style={styles.contactCard}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>İletişim</Text>
+          <View style={[styles.contactCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
             <TouchableOpacity style={styles.contactRow} activeOpacity={0.7}>
               <View style={styles.contactLeft}>
                 <View style={[styles.contactIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
                   <Ionicons name="globe-outline" size={20} color={colors.brand[400]} />
                 </View>
                 <View>
-                  <Text style={styles.contactLabel}>Web Sitesi</Text>
-                  <Text style={styles.contactValue}>www.turing.app</Text>
+                  <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Web Sitesi</Text>
+                  <Text style={[styles.contactValue, { color: colors.text }]}>www.turing.app</Text>
                 </View>
               </View>
-              <Ionicons name="open-outline" size={18} color={colors.zinc[600]} />
+              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
             </TouchableOpacity>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
             <TouchableOpacity style={styles.contactRow} activeOpacity={0.7}>
               <View style={styles.contactLeft}>
                 <View style={[styles.contactIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                   <Ionicons name="mail-outline" size={20} color={colors.info} />
                 </View>
                 <View>
-                  <Text style={styles.contactLabel}>E-posta</Text>
-                  <Text style={styles.contactValue}>info@turing.app</Text>
+                  <Text style={[styles.contactLabel, { color: colors.textMuted }]}>E-posta</Text>
+                  <Text style={[styles.contactValue, { color: colors.text }]}>info@turing.app</Text>
                 </View>
               </View>
-              <Ionicons name="open-outline" size={18} color={colors.zinc[600]} />
+              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         </View>
@@ -184,8 +188,8 @@ export function AboutScreen() {
               <View style={styles.rateContent}>
                 <Ionicons name="star" size={28} color="#fbbf24" />
                 <View style={styles.rateInfo}>
-                  <Text style={styles.rateTitle}>Uygulamayı Değerlendir</Text>
-                  <Text style={styles.rateDescription}>Fikirleriniz bizim için önemli</Text>
+                  <Text style={[styles.rateTitle, { color: colors.text }]}>Uygulamayı Değerlendir</Text>
+                  <Text style={[styles.rateDescription, { color: colors.textMuted }]}>Fikirleriniz bizim için önemli</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.brand[400]} />
@@ -195,11 +199,11 @@ export function AboutScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.textMuted }]}>
             © 2025 Turing. Tüm hakları saklıdır.
           </Text>
-          <Text style={styles.footerSubtext}>
-            Made with ❤️ in Istanbul
+          <Text style={[styles.footerSubtext, { color: colors.textMuted }]}>
+            Made with love in Istanbul
           </Text>
         </View>
 
@@ -230,7 +234,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   appInfoSection: {
     alignItems: 'center',
@@ -259,12 +262,10 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.text,
     letterSpacing: 2,
   },
   appTagline: {
     fontSize: 14,
-    color: colors.zinc[400],
     marginTop: 4,
   },
   versionBadge: {
@@ -278,7 +279,6 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: colors.zinc[400],
   },
   section: {
     paddingHorizontal: 20,
@@ -287,7 +287,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 16,
@@ -301,7 +300,6 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     fontSize: 14,
-    color: colors.zinc[300],
     lineHeight: 22,
     textAlign: 'center',
   },
@@ -325,7 +323,6 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 4,
     textAlign: 'center',
   },
@@ -338,7 +335,6 @@ const styles = StyleSheet.create({
   },
   teamText: {
     fontSize: 14,
-    color: colors.zinc[400],
     lineHeight: 22,
     marginBottom: 16,
   },
@@ -349,7 +345,6 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   socialRow: {
     flexDirection: 'row',
@@ -384,7 +379,6 @@ const styles = StyleSheet.create({
   },
   legalText: {
     fontSize: 14,
-    color: colors.text,
   },
   divider: {
     height: 1,
@@ -418,12 +412,10 @@ const styles = StyleSheet.create({
   },
   contactLabel: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   contactValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
     marginTop: 2,
   },
   rateCard: {
@@ -448,11 +440,9 @@ const styles = StyleSheet.create({
   rateTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   rateDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   footer: {
@@ -461,11 +451,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: colors.zinc[600],
   },
   footerSubtext: {
     fontSize: 12,
-    color: colors.zinc[600],
     marginTop: 4,
   },
 });

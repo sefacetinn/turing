@@ -14,7 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { ServiceRequirementsDisplay } from '../components';
 import { getQuoteRequestForOffer } from '../data/mockData';
 import { CategoryRequirements } from '../types';
@@ -63,6 +64,7 @@ const offers = [
 export function OfferDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { colors, isDark, helpers } = useTheme();
   const { offerId } = (route.params as { offerId: string }) || { offerId: 'o1' };
 
   const offerData = offers.find(o => o.id === offerId) || offers[0];
@@ -152,13 +154,13 @@ export function OfferDetailScreen() {
   const statusInfo = getStatusInfo(offer.status);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Teklif Detayı</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Teklif Detayı</Text>
         <TouchableOpacity style={styles.moreButton}>
           <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -174,11 +176,11 @@ export function OfferDetailScreen() {
         </View>
 
         {/* Provider Info */}
-        <View style={styles.providerCard}>
+        <View style={[styles.providerCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
           <Image source={{ uri: offer.providerImage }} style={styles.providerImage} />
           <View style={styles.providerInfo}>
-            <Text style={styles.providerName}>{offer.providerName}</Text>
-            <Text style={styles.providerService}>{offer.service}</Text>
+            <Text style={[styles.providerName, { color: colors.text }]}>{offer.providerName}</Text>
+            <Text style={[styles.providerService, { color: colors.textSecondary }]}>{offer.service}</Text>
           </View>
           <TouchableOpacity style={styles.chatButton}>
             <Ionicons name="chatbubble-outline" size={18} color={colors.brand[400]} />
@@ -186,15 +188,15 @@ export function OfferDetailScreen() {
         </View>
 
         {/* Event Info */}
-        <View style={styles.eventCard}>
-          <View style={styles.eventIcon}>
-            <Ionicons name="calendar" size={18} color={colors.zinc[400]} />
+        <View style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+          <View style={[styles.eventIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surface }]}>
+            <Ionicons name="calendar" size={18} color={colors.textSecondary} />
           </View>
           <View>
-            <Text style={styles.eventTitle}>{offer.eventTitle}</Text>
-            <Text style={styles.eventDate}>15 Temmuz 2024</Text>
+            <Text style={[styles.eventTitle, { color: colors.text }]}>{offer.eventTitle}</Text>
+            <Text style={[styles.eventDate, { color: colors.textSecondary }]}>15 Temmuz 2024</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.zinc[600]} />
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </View>
 
         {/* Service Requirements Section */}
@@ -206,12 +208,12 @@ export function OfferDetailScreen() {
               budget={quoteRequest.budget}
             />
             {quoteRequest.notes && (
-              <View style={styles.requestNotesCard}>
+              <View style={[styles.requestNotesCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
                 <View style={styles.requestNotesHeader}>
-                  <Ionicons name="chatbubble-outline" size={14} color={colors.zinc[500]} />
-                  <Text style={styles.requestNotesLabel}>Organizatör Notu</Text>
+                  <Ionicons name="chatbubble-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.requestNotesLabel, { color: colors.textSecondary }]}>Organizatör Notu</Text>
                 </View>
-                <Text style={styles.requestNotesText}>{quoteRequest.notes}</Text>
+                <Text style={[styles.requestNotesText, { color: colors.textMuted }]}>{quoteRequest.notes}</Text>
               </View>
             )}
           </View>
@@ -219,37 +221,38 @@ export function OfferDetailScreen() {
 
         {/* Price Section */}
         <View style={styles.priceSection}>
-          <Text style={styles.sectionTitle}>Fiyatlandırma</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Fiyatlandırma</Text>
 
-          <View style={styles.priceCard}>
+          <View style={[styles.priceCard, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+
             {offer.discount > 0 && (
               <View style={styles.discountBadge}>
-                <Text style={styles.discountText}>%{offer.discount} İndirim</Text>
+                <Text style={[styles.discountText, { color: colors.success }]}>%{offer.discount} İndirim</Text>
               </View>
             )}
 
             <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Teklif Tutarı</Text>
+              <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Teklif Tutarı</Text>
               {offer.discount > 0 && (
-                <Text style={styles.originalPrice}>₺{offer.originalAmount.toLocaleString()}</Text>
+                <Text style={[styles.originalPrice, { color: colors.textSecondary }]}>₺{offer.originalAmount.toLocaleString()}</Text>
               )}
-              <Text style={styles.finalPrice}>₺{offer.amount.toLocaleString()}</Text>
+              <Text style={[styles.finalPrice, { color: colors.text }]}>₺{offer.amount.toLocaleString()}</Text>
             </View>
           </View>
 
           {/* Price Breakdown */}
           {offer.items.length > 0 && (
-            <View style={styles.breakdown}>
-              <Text style={styles.breakdownTitle}>Detay</Text>
+            <View style={[styles.breakdown, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+              <Text style={[styles.breakdownTitle, { color: colors.textMuted }]}>Detay</Text>
               {offer.items.map((item, index) => (
-                <View key={index} style={styles.breakdownItem}>
+                <View key={index} style={[styles.breakdownItem, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
                   <View style={styles.breakdownLeft}>
-                    <Text style={styles.breakdownName}>{item.name}</Text>
+                    <Text style={[styles.breakdownName, { color: colors.text }]}>{item.name}</Text>
                     {item.quantity > 1 && (
-                      <Text style={styles.breakdownQty}>x{item.quantity}</Text>
+                      <Text style={[styles.breakdownQty, { color: colors.textSecondary, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surface }]}>x{item.quantity}</Text>
                     )}
                   </View>
-                  <Text style={styles.breakdownPrice}>₺{item.price.toLocaleString()}</Text>
+                  <Text style={[styles.breakdownPrice, { color: colors.text }]}>₺{item.price.toLocaleString()}</Text>
                 </View>
               ))}
             </View>
@@ -259,17 +262,17 @@ export function OfferDetailScreen() {
         {/* Notes */}
         {offer.notes && (
           <View style={styles.notesSection}>
-            <Text style={styles.sectionTitle}>Notlar</Text>
-            <View style={styles.notesCard}>
-              <Text style={styles.notesText}>{offer.notes}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Notlar</Text>
+            <View style={[styles.notesCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+              <Text style={[styles.notesText, { color: colors.textMuted }]}>{offer.notes}</Text>
             </View>
           </View>
         )}
 
         {/* Validity */}
         <View style={styles.validitySection}>
-          <Ionicons name="time-outline" size={16} color={colors.zinc[500]} />
-          <Text style={styles.validityText}>
+          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+          <Text style={[styles.validityText, { color: colors.textSecondary }]}>
             Geçerlilik: {offer.validUntil}
           </Text>
         </View>
@@ -277,19 +280,19 @@ export function OfferDetailScreen() {
         {/* Comparison (for pending offers) */}
         {offer.status === 'pending' && (
           <View style={styles.comparisonSection}>
-            <Text style={styles.sectionTitle}>Diğer Teklifler</Text>
-            <View style={styles.comparisonCard}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Diğer Teklifler</Text>
+            <View style={[styles.comparisonCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
               <View style={styles.comparisonItem}>
-                <Text style={styles.comparisonProvider}>LightShow Pro</Text>
-                <Text style={styles.comparisonPrice}>₺92.000</Text>
+                <Text style={[styles.comparisonProvider, { color: colors.textMuted }]}>LightShow Pro</Text>
+                <Text style={[styles.comparisonPrice, { color: colors.text }]}>₺92.000</Text>
               </View>
-              <View style={styles.comparisonDivider} />
+              <View style={[styles.comparisonDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
               <View style={styles.comparisonItem}>
-                <Text style={styles.comparisonProvider}>SoundTech</Text>
-                <Text style={styles.comparisonPrice}>₺88.000</Text>
+                <Text style={[styles.comparisonProvider, { color: colors.textMuted }]}>SoundTech</Text>
+                <Text style={[styles.comparisonPrice, { color: colors.text }]}>₺88.000</Text>
               </View>
             </View>
-            <Text style={styles.comparisonNote}>
+            <Text style={[styles.comparisonNote, { color: colors.success }]}>
               Bu teklif ortalama piyasa fiyatının %5 altında
             </Text>
           </View>
@@ -300,21 +303,21 @@ export function OfferDetailScreen() {
 
       {/* Bottom Actions */}
       {offer.status === 'pending' && (
-        <View style={styles.bottomActions}>
+        <View style={[styles.bottomActions, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
           <TouchableOpacity
             style={styles.rejectButton}
             onPress={handleRejectOffer}
           >
             <Ionicons name="close" size={20} color={colors.error} />
-            <Text style={styles.rejectButtonText}>Reddet</Text>
+            <Text style={[styles.rejectButtonText, { color: colors.error }]}>Reddet</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.negotiateButton}
+            style={[styles.negotiateButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface }]}
             onPress={() => setShowNegotiate(true)}
           >
             <Ionicons name="chatbubbles-outline" size={18} color={colors.text} />
-            <Text style={styles.negotiateButtonText}>Pazarlık</Text>
+            <Text style={[styles.negotiateButtonText, { color: colors.text }]}>Pazarlık</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptOffer}>
@@ -333,7 +336,7 @@ export function OfferDetailScreen() {
 
       {/* Accepted/Rejected Actions */}
       {offer.status !== 'pending' && (
-        <View style={styles.bottomActions}>
+        <View style={[styles.bottomActions, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
           <TouchableOpacity style={styles.fullWidthButton} onPress={handleNavigateToChat}>
             <LinearGradient
               colors={offer.status === 'accepted' ? ['#059669', '#34d399'] : gradients.primary}
@@ -362,36 +365,36 @@ export function OfferDetailScreen() {
         onRequestClose={() => setShowNegotiate(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Karşı Teklif</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Karşı Teklif</Text>
               <TouchableOpacity onPress={() => setShowNegotiate(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={styles.modalLabel}>Mevcut Teklif</Text>
-              <Text style={styles.modalCurrentPrice}>₺{offer.amount.toLocaleString()}</Text>
+              <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Mevcut Teklif</Text>
+              <Text style={[styles.modalCurrentPrice, { color: colors.text }]}>₺{offer.amount.toLocaleString()}</Text>
 
-              <Text style={styles.modalLabel}>Önerdiğiniz Tutar</Text>
-              <View style={styles.modalInputContainer}>
-                <Text style={styles.modalCurrency}>₺</Text>
+              <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Önerdiğiniz Tutar</Text>
+              <View style={[styles.modalInputContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.surface, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                <Text style={[styles.modalCurrency, { color: colors.textMuted }]}>₺</Text>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[styles.modalInput, { color: colors.text }]}
                   placeholder="Tutar girin"
-                  placeholderTextColor={colors.zinc[600]}
+                  placeholderTextColor={colors.textMuted}
                   value={counterOfferAmount}
                   onChangeText={setCounterOfferAmount}
                   keyboardType="number-pad"
                 />
               </View>
 
-              <Text style={styles.modalLabel}>Not (Opsiyonel)</Text>
+              <Text style={[styles.modalLabel, { color: colors.textMuted }]}>Not (Opsiyonel)</Text>
               <TextInput
-                style={styles.modalTextArea}
+                style={[styles.modalTextArea, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.surface, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, color: colors.text }]}
                 placeholder="Teklifinizle ilgili açıklama ekleyin..."
-                placeholderTextColor={colors.zinc[600]}
+                placeholderTextColor={colors.textMuted}
                 value={counterOfferNote}
                 onChangeText={setCounterOfferNote}
                 multiline
@@ -402,10 +405,10 @@ export function OfferDetailScreen() {
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={styles.modalCancelButton}
+                style={[styles.modalCancelButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface }]}
                 onPress={() => setShowNegotiate(false)}
               >
-                <Text style={styles.modalCancelText}>İptal</Text>
+                <Text style={[styles.modalCancelText, { color: colors.text }]}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSubmitButton} onPress={handleSendCounterOffer}>
                 <LinearGradient
@@ -426,7 +429,6 @@ export function OfferDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -444,7 +446,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: colors.text,
   },
   moreButton: {
     width: 40,
@@ -488,11 +489,9 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   providerService: {
     fontSize: 13,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   chatButton: {
@@ -524,11 +523,9 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: colors.text,
   },
   eventDate: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   requirementsSection: {
@@ -552,11 +549,9 @@ const styles = StyleSheet.create({
   requestNotesLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: colors.zinc[500],
   },
   requestNotesText: {
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 18,
   },
   priceSection: {
@@ -566,7 +561,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 12,
   },
   priceCard: {
@@ -587,7 +581,6 @@ const styles = StyleSheet.create({
   discountText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.success,
   },
   priceRow: {
     flexDirection: 'row',
@@ -596,18 +589,15 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 14,
-    color: colors.zinc[400],
   },
   originalPrice: {
     fontSize: 14,
-    color: colors.zinc[500],
     textDecorationLine: 'line-through',
     marginRight: 8,
   },
   finalPrice: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.text,
   },
   breakdown: {
     marginTop: 16,
@@ -618,7 +608,6 @@ const styles = StyleSheet.create({
   breakdownTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.zinc[400],
     marginBottom: 12,
   },
   breakdownItem: {
@@ -637,12 +626,9 @@ const styles = StyleSheet.create({
   },
   breakdownName: {
     fontSize: 13,
-    color: colors.text,
   },
   breakdownQty: {
     fontSize: 11,
-    color: colors.zinc[500],
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -650,7 +636,6 @@ const styles = StyleSheet.create({
   breakdownPrice: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.text,
   },
   notesSection: {
     paddingHorizontal: 20,
@@ -663,7 +648,6 @@ const styles = StyleSheet.create({
   },
   notesText: {
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 20,
   },
   validitySection: {
@@ -675,7 +659,6 @@ const styles = StyleSheet.create({
   },
   validityText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   comparisonSection: {
     paddingHorizontal: 20,
@@ -693,12 +676,10 @@ const styles = StyleSheet.create({
   },
   comparisonProvider: {
     fontSize: 13,
-    color: colors.zinc[400],
   },
   comparisonPrice: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.text,
   },
   comparisonDivider: {
     height: 1,
@@ -706,7 +687,6 @@ const styles = StyleSheet.create({
   },
   comparisonNote: {
     fontSize: 12,
-    color: colors.success,
     textAlign: 'center',
     marginTop: 12,
   },
@@ -739,7 +719,6 @@ const styles = StyleSheet.create({
   rejectButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.error,
   },
   negotiateButton: {
     flexDirection: 'row',
@@ -754,7 +733,6 @@ const styles = StyleSheet.create({
   negotiateButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   acceptButton: {
     flex: 1,
@@ -797,7 +775,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 8,
@@ -815,7 +792,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   modalBody: {
     padding: 20,
@@ -823,14 +799,12 @@ const styles = StyleSheet.create({
   modalLabel: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.zinc[400],
     marginBottom: 8,
     marginTop: 16,
   },
   modalCurrentPrice: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.text,
   },
   modalInputContainer: {
     flexDirection: 'row',
@@ -845,24 +819,19 @@ const styles = StyleSheet.create({
   modalCurrency: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.zinc[400],
     marginRight: 8,
   },
   modalInput: {
     flex: 1,
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   modalTextArea: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
     fontSize: 14,
-    color: colors.text,
     minHeight: 80,
   },
   modalActions: {
@@ -881,7 +850,6 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
   },
   modalSubmitButton: {
     flex: 1,

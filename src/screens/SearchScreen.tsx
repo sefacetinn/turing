@@ -13,7 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../theme/colors';
+import { darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles
+const colors = defaultColors;
 
 // Local data
 const artists = [
@@ -40,6 +44,7 @@ type SortType = 'relevance' | 'rating' | 'price_low' | 'price_high';
 
 export function SearchScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState<SortType>('relevance');
@@ -121,7 +126,11 @@ export function SearchScreen() {
 
   const renderResultItem = ({ item }: { item: any }) => (
     <TouchableOpacity
-      style={styles.resultCard}
+      style={[styles.resultCard, {
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+        ...(isDark ? {} : helpers.getShadow('sm'))
+      }]}
       onPress={() => {
         if (item.type === 'artist') {
           navigation.navigate('ArtistDetail', { artistId: item.id });
@@ -134,40 +143,44 @@ export function SearchScreen() {
       <View style={styles.resultInfo}>
         <View style={styles.resultHeader}>
           <View style={styles.resultNameRow}>
-            <Text style={styles.resultName}>{item.name}</Text>
+            <Text style={[styles.resultName, { color: colors.text }]}>{item.name}</Text>
             {item.verified && (
               <Ionicons name="checkmark-circle" size={16} color={colors.brand[400]} />
             )}
           </View>
-          <View style={styles.typeBadge}>
-            <Text style={styles.typeBadgeText}>
+          <View style={[styles.typeBadge, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+          }]}>
+            <Text style={[styles.typeBadgeText, { color: colors.brand[400] }]}>
               {item.type === 'artist' ? 'Sanatçı' : 'Hizmet'}
             </Text>
           </View>
         </View>
 
-        <Text style={styles.resultCategory}>
+        <Text style={[styles.resultCategory, { color: colors.textMuted }]}>
           {item.genre || item.subcategory || item.category}
         </Text>
 
         <View style={styles.resultMeta}>
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={14} color="#fbbf24" />
-            <Text style={styles.ratingText}>{item.rating}</Text>
-            <Text style={styles.reviewCount}>({item.reviews})</Text>
+            <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}</Text>
+            <Text style={[styles.reviewCount, { color: colors.textMuted }]}>({item.reviews})</Text>
           </View>
 
           {item.location && (
             <View style={styles.locationContainer}>
-              <Ionicons name="location-outline" size={14} color={colors.zinc[500]} />
-              <Text style={styles.locationText}>{item.location}</Text>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.locationText, { color: colors.textMuted }]}>{item.location}</Text>
             </View>
           )}
         </View>
 
         <View style={styles.resultFooter}>
-          <Text style={styles.priceText}>{item.price}</Text>
-          <TouchableOpacity style={styles.contactButton}>
+          <Text style={[styles.priceText, { color: colors.brand[400] }]}>{item.price}</Text>
+          <TouchableOpacity style={[styles.contactButton, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+          }]}>
             <Ionicons name="chatbubble-outline" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
         </View>
@@ -176,7 +189,7 @@ export function SearchScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Search Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -186,25 +199,31 @@ export function SearchScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={colors.zinc[500]} />
+        <View style={[styles.searchContainer, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+        }]}>
+          <Ionicons name="search" size={20} color={colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Sanatçı, hizmet veya mekan ara..."
-            placeholderTextColor={colors.zinc[600]}
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={colors.zinc[500]} />
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
 
         <TouchableOpacity
-          style={[styles.filterButton, showFilters && styles.filterButtonActive]}
+          style={[styles.filterButton, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+          }, showFilters && {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+          }]}
           onPress={() => setShowFilters(!showFilters)}
         >
           <Ionicons
@@ -220,18 +239,23 @@ export function SearchScreen() {
         {filters.map(filter => (
           <TouchableOpacity
             key={filter.key}
-            style={[styles.filterTab, activeFilter === filter.key && styles.filterTabActive]}
+            style={[styles.filterTab, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
+            }, activeFilter === filter.key && {
+              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+            }]}
             onPress={() => setActiveFilter(filter.key)}
           >
             <Ionicons
               name={filter.icon as any}
               size={14}
-              color={activeFilter === filter.key ? colors.brand[400] : colors.zinc[500]}
+              color={activeFilter === filter.key ? colors.brand[400] : colors.textMuted}
             />
             <Text
               style={[
                 styles.filterTabText,
-                activeFilter === filter.key && styles.filterTabTextActive,
+                { color: colors.textMuted },
+                activeFilter === filter.key && { color: colors.brand[400], fontWeight: '500' },
               ]}
             >
               {filter.label}
@@ -242,22 +266,30 @@ export function SearchScreen() {
 
       {/* Advanced Filters Panel */}
       {showFilters && (
-        <View style={styles.filtersPanel}>
+        <View style={[styles.filtersPanel, {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.surface,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border
+        }]}>
           {/* Sort By */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterSectionTitle}>Sıralama</Text>
+            <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Sıralama</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.sortOptions}>
                 {sortOptions.map(option => (
                   <TouchableOpacity
                     key={option.key}
-                    style={[styles.sortOption, sortBy === option.key && styles.sortOptionActive]}
+                    style={[styles.sortOption, {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
+                    }, sortBy === option.key && {
+                      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                    }]}
                     onPress={() => setSortBy(option.key)}
                   >
                     <Text
                       style={[
                         styles.sortOptionText,
-                        sortBy === option.key && styles.sortOptionTextActive,
+                        { color: colors.textMuted },
+                        sortBy === option.key && { color: colors.brand[400], fontWeight: '500' },
                       ]}
                     >
                       {option.label}
@@ -270,19 +302,24 @@ export function SearchScreen() {
 
           {/* Rating Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterSectionTitle}>Minimum Puan</Text>
+            <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Minimum Puan</Text>
             <View style={styles.ratingOptions}>
               {[0, 3, 4, 4.5].map(rating => (
                 <TouchableOpacity
                   key={rating}
-                  style={[styles.ratingOption, minRating === rating && styles.ratingOptionActive]}
+                  style={[styles.ratingOption, {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
+                  }, minRating === rating && {
+                    backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                  }]}
                   onPress={() => setMinRating(rating)}
                 >
                   {rating > 0 && <Ionicons name="star" size={14} color="#fbbf24" />}
                   <Text
                     style={[
                       styles.ratingOptionText,
-                      minRating === rating && styles.ratingOptionTextActive,
+                      { color: colors.textMuted },
+                      minRating === rating && { color: colors.brand[400], fontWeight: '500' },
                     ]}
                   >
                     {rating === 0 ? 'Tümü' : `${rating}+`}
@@ -294,21 +331,27 @@ export function SearchScreen() {
 
           {/* Categories */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterSectionTitle}>Kategoriler</Text>
+            <Text style={[styles.filterSectionTitle, { color: colors.textSecondary }]}>Kategoriler</Text>
             <View style={styles.categoriesGrid}>
               {(categories || []).slice(0, 6).map(category => (
                 <TouchableOpacity
                   key={category.id}
                   style={[
                     styles.categoryChip,
-                    selectedCategories.includes(category.id) && styles.categoryChipActive,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
+                    },
+                    selectedCategories.includes(category.id) && {
+                      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                    },
                   ]}
                   onPress={() => toggleCategory(category.id)}
                 >
                   <Text
                     style={[
                       styles.categoryChipText,
-                      selectedCategories.includes(category.id) && styles.categoryChipTextActive,
+                      { color: colors.textMuted },
+                      selectedCategories.includes(category.id) && { color: colors.brand[400], fontWeight: '500' },
                     ]}
                   >
                     {category.name}
@@ -321,17 +364,19 @@ export function SearchScreen() {
           {/* Clear Filters */}
           <TouchableOpacity style={styles.clearFiltersButton} onPress={clearFilters}>
             <Ionicons name="refresh" size={16} color={colors.brand[400]} />
-            <Text style={styles.clearFiltersText}>Filtreleri Temizle</Text>
+            <Text style={[styles.clearFiltersText, { color: colors.brand[400] }]}>Filtreleri Temizle</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Results Count */}
       <View style={styles.resultsHeader}>
-        <Text style={styles.resultsCount}>{results.length} sonuç bulundu</Text>
+        <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>{results.length} sonuç bulundu</Text>
         {selectedCategories.length > 0 && (
-          <View style={styles.activeFiltersCount}>
-            <Text style={styles.activeFiltersText}>
+          <View style={[styles.activeFiltersCount, {
+            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+          }]}>
+            <Text style={[styles.activeFiltersText, { color: colors.brand[400] }]}>
               {selectedCategories.length} filtre aktif
             </Text>
           </View>
@@ -347,9 +392,9 @@ export function SearchScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={48} color={colors.zinc[600]} />
-            <Text style={styles.emptyStateTitle}>Sonuç bulunamadı</Text>
-            <Text style={styles.emptyStateText}>
+            <Ionicons name="search-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Sonuç bulunamadı</Text>
+            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
               Farklı anahtar kelimeler veya filtreler deneyin
             </Text>
           </View>
@@ -362,7 +407,6 @@ export function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -390,7 +434,6 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: colors.text,
   },
   filterButton: {
     width: 44,
@@ -423,10 +466,8 @@ const styles = StyleSheet.create({
   },
   filterTabText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   filterTabTextActive: {
-    color: colors.brand[400],
     fontWeight: '500',
   },
   filtersPanel: {
@@ -443,7 +484,6 @@ const styles = StyleSheet.create({
   filterSectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.zinc[400],
     marginBottom: 10,
   },
   sortOptions: {
@@ -461,10 +501,8 @@ const styles = StyleSheet.create({
   },
   sortOptionText: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   sortOptionTextActive: {
-    color: colors.brand[400],
     fontWeight: '500',
   },
   ratingOptions: {
@@ -485,10 +523,8 @@ const styles = StyleSheet.create({
   },
   ratingOptionText: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   ratingOptionTextActive: {
-    color: colors.brand[400],
     fontWeight: '500',
   },
   categoriesGrid: {
@@ -507,10 +543,8 @@ const styles = StyleSheet.create({
   },
   categoryChipText: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   categoryChipTextActive: {
-    color: colors.brand[400],
     fontWeight: '500',
   },
   clearFiltersButton: {
@@ -523,7 +557,6 @@ const styles = StyleSheet.create({
   },
   clearFiltersText: {
     fontSize: 13,
-    color: colors.brand[400],
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -534,7 +567,6 @@ const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: 14,
-    color: colors.zinc[400],
   },
   activeFiltersCount: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',
@@ -544,7 +576,6 @@ const styles = StyleSheet.create({
   },
   activeFiltersText: {
     fontSize: 12,
-    color: colors.brand[400],
   },
   resultsList: {
     paddingHorizontal: 16,
@@ -582,7 +613,6 @@ const styles = StyleSheet.create({
   resultName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   typeBadge: {
     backgroundColor: 'rgba(147, 51, 234, 0.15)',
@@ -592,12 +622,10 @@ const styles = StyleSheet.create({
   },
   typeBadgeText: {
     fontSize: 10,
-    color: colors.brand[400],
     fontWeight: '500',
   },
   resultCategory: {
     fontSize: 13,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   resultMeta: {
@@ -614,11 +642,9 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.text,
   },
   reviewCount: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   locationContainer: {
     flexDirection: 'row',
@@ -627,7 +653,6 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   resultFooter: {
     flexDirection: 'row',
@@ -638,7 +663,6 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   contactButton: {
     width: 32,
@@ -656,12 +680,10 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginTop: 16,
   },
   emptyStateText: {
     fontSize: 14,
-    color: colors.zinc[500],
     marginTop: 4,
     textAlign: 'center',
   },

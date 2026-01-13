@@ -11,7 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+const colors = defaultColors;
 
 interface ServiceCategory {
   id: string;
@@ -101,6 +104,7 @@ const initialSelectedServices = [
 
 export function ProviderServicesScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDark, helpers } = useTheme();
   const [selectedServices, setSelectedServices] = useState<string[]>(initialSelectedServices);
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['operation']);
 
@@ -142,40 +146,40 @@ export function ProviderServicesScreen() {
   const operationSubsSelected = getSelectedSubcategoryCount(serviceCategories.find(c => c.id === 'operation')!);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verdiğim Hizmetler</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Verdiğim Hizmetler</Text>
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Kaydet</Text>
+          <Text style={[styles.saveButtonText, { color: colors.brand[400] }]}>Kaydet</Text>
         </TouchableOpacity>
       </View>
 
       {/* Stats */}
-      <View style={styles.statsContainer}>
+      <View style={[styles.statsContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{selectedServices.length}</Text>
-          <Text style={styles.statLabel}>Toplam Hizmet</Text>
+          <Text style={[styles.statNumber, { color: colors.brand[400] }]}>{selectedServices.length}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Toplam Hizmet</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{mainCategoriesSelected + (operationSelected ? 1 : 0)}</Text>
-          <Text style={styles.statLabel}>Ana Kategori</Text>
+          <Text style={[styles.statNumber, { color: colors.brand[400] }]}>{mainCategoriesSelected + (operationSelected ? 1 : 0)}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Ana Kategori</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{operationSubsSelected}</Text>
-          <Text style={styles.statLabel}>Operasyon</Text>
+          <Text style={[styles.statNumber, { color: colors.brand[400] }]}>{operationSubsSelected}</Text>
+          <Text style={[styles.statLabel, { color: colors.textMuted }]}>Operasyon</Text>
         </View>
       </View>
 
       {/* Info Box */}
-      <View style={styles.infoBox}>
+      <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.05)', borderColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
         <Ionicons name="information-circle" size={20} color={colors.brand[400]} />
-        <Text style={styles.infoText}>
+        <Text style={[styles.infoText, { color: colors.textMuted }]}>
           Seçtiğiniz hizmet türlerine göre organizatörlerden teklif talepleri alırsınız.
         </Text>
       </View>
@@ -187,6 +191,7 @@ export function ProviderServicesScreen() {
             <TouchableOpacity
               style={[
                 styles.categoryCard,
+                { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border },
                 isServiceSelected(category.id) && styles.categoryCardSelected
               ]}
               activeOpacity={0.8}
@@ -202,10 +207,10 @@ export function ProviderServicesScreen() {
               </LinearGradient>
 
               <View style={styles.categoryInfo}>
-                <Text style={styles.categoryName}>{category.name}</Text>
-                <Text style={styles.categoryDescription}>{category.description}</Text>
+                <Text style={[styles.categoryName, { color: colors.text }]}>{category.name}</Text>
+                <Text style={[styles.categoryDescription, { color: colors.textMuted }]}>{category.description}</Text>
                 {category.subcategories && isServiceSelected(category.id) && (
-                  <Text style={styles.subcategoryCount}>
+                  <Text style={[styles.subcategoryCount, { color: colors.brand[400] }]}>
                     {getSelectedSubcategoryCount(category)}/{category.subcategories.length} alt hizmet seçili
                   </Text>
                 )}
@@ -220,12 +225,13 @@ export function ProviderServicesScreen() {
                     <Ionicons
                       name={expandedCategories.includes(category.id) ? 'chevron-up' : 'chevron-down'}
                       size={20}
-                      color={colors.zinc[400]}
+                      color={colors.textMuted}
                     />
                   </TouchableOpacity>
                 )}
                 <View style={[
                   styles.checkbox,
+                  { borderColor: isDark ? colors.zinc[600] : colors.border },
                   isServiceSelected(category.id) && styles.checkboxSelected
                 ]}>
                   {isServiceSelected(category.id) && (
@@ -245,6 +251,7 @@ export function ProviderServicesScreen() {
                     key={sub.id}
                     style={[
                       styles.subcategoryCard,
+                      { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border },
                       isServiceSelected(sub.id) && styles.subcategoryCardSelected,
                       index === category.subcategories!.length - 1 && { marginBottom: 0 }
                     ]}
@@ -253,22 +260,25 @@ export function ProviderServicesScreen() {
                   >
                     <View style={[
                       styles.subcategoryIcon,
+                      { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground },
                       isServiceSelected(sub.id) && styles.subcategoryIconSelected
                     ]}>
                       <Ionicons
                         name={sub.icon}
                         size={16}
-                        color={isServiceSelected(sub.id) ? colors.brand[400] : colors.zinc[500]}
+                        color={isServiceSelected(sub.id) ? colors.brand[400] : colors.textMuted}
                       />
                     </View>
                     <Text style={[
                       styles.subcategoryName,
+                      { color: isServiceSelected(sub.id) ? colors.text : colors.textMuted },
                       isServiceSelected(sub.id) && styles.subcategoryNameSelected
                     ]}>
                       {sub.name}
                     </Text>
                     <View style={[
                       styles.subCheckbox,
+                      { borderColor: isDark ? colors.zinc[600] : colors.border },
                       isServiceSelected(sub.id) && styles.subCheckboxSelected
                     ]}>
                       {isServiceSelected(sub.id) && (
@@ -291,7 +301,6 @@ export function ProviderServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -309,7 +318,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
   },
   saveButton: {
     paddingHorizontal: 16,
@@ -320,7 +328,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   statsContainer: {
     flexDirection: 'row',
@@ -341,11 +348,9 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.brand[400],
   },
   statLabel: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   statDivider: {
@@ -368,7 +373,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: colors.zinc[400],
     lineHeight: 18,
   },
   servicesList: {
@@ -405,16 +409,13 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
   },
   categoryDescription: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   subcategoryCount: {
     fontSize: 11,
-    color: colors.brand[400],
     marginTop: 4,
   },
   categoryRight: {
@@ -433,7 +434,6 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: colors.zinc[600],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,11 +476,9 @@ const styles = StyleSheet.create({
   subcategoryName: {
     flex: 1,
     fontSize: 14,
-    color: colors.zinc[400],
     marginLeft: 12,
   },
   subcategoryNameSelected: {
-    color: colors.text,
     fontWeight: '500',
   },
   subCheckbox: {
@@ -488,7 +486,6 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.zinc[600],
     alignItems: 'center',
     justifyContent: 'center',
   },

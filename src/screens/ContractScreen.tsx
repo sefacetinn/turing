@@ -14,7 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { colors, gradients } from '../theme/colors';
+import { gradients, darkTheme as defaultColors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+
+// Default colors for static styles (dark theme)
+const colors = defaultColors;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -257,6 +261,7 @@ const mockContract = {
 export function ContractScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
+  const { colors, isDark } = useTheme();
   const params = (route.params || {}) as ContractParams;
 
   const [contract, setContract] = useState(mockContract);
@@ -283,7 +288,7 @@ export function ContractScreen() {
   const getStatusInfo = () => {
     switch (contract.status) {
       case 'draft':
-        return { label: 'Taslak', color: colors.zinc[500], icon: 'document-outline' as const };
+        return { label: 'Taslak', color: colors.textMuted, icon: 'document-outline' as const };
       case 'pending_organizer':
         return { label: 'Organizatör İmzası Bekleniyor', color: colors.warning, icon: 'hourglass-outline' as const };
       case 'pending_provider':
@@ -295,7 +300,7 @@ export function ContractScreen() {
       case 'cancelled':
         return { label: 'İptal Edildi', color: colors.error, icon: 'close-circle' as const };
       default:
-        return { label: 'Bilinmiyor', color: colors.zinc[500], icon: 'help-circle' as const };
+        return { label: 'Bilinmiyor', color: colors.textMuted, icon: 'help-circle' as const };
     }
   };
 
@@ -347,29 +352,29 @@ export function ContractScreen() {
   const canSign = contract.status === 'pending_provider' && !contract.providerSignature.signed;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleSection}>
-          <Text style={styles.headerTitle}>Sözleşme</Text>
-          <Text style={styles.headerSubtitle}>#{contract.id.toUpperCase()}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Sözleşme</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>#{contract.id.toUpperCase()}</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={20} color={colors.zinc[400]} />
+          <TouchableOpacity style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]} onPress={handleShare}>
+            <Ionicons name="share-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.headerButton}
+            style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
             onPress={handleDownloadPDF}
             disabled={isDownloading}
           >
             <Ionicons
               name={isDownloading ? 'hourglass-outline' : 'download-outline'}
               size={20}
-              color={colors.zinc[400]}
+              color={colors.textSecondary}
             />
           </TouchableOpacity>
         </View>
@@ -391,9 +396,9 @@ export function ContractScreen() {
             style={styles.contractHeaderGradient}
           >
             <Ionicons name="document-text" size={32} color={colors.brand[400]} />
-            <Text style={styles.contractTitle}>{contractTemplate.title}</Text>
-            <Text style={styles.contractNumber}>Sözleşme No: {contract.id.toUpperCase()}</Text>
-            <Text style={styles.contractDate}>Düzenlenme Tarihi: {contract.createdAt}</Text>
+            <Text style={[styles.contractTitle, { color: colors.text }]}>{contractTemplate.title}</Text>
+            <Text style={[styles.contractNumber, { color: colors.textMuted }]}>Sözleşme No: {contract.id.toUpperCase()}</Text>
+            <Text style={[styles.contractDate, { color: colors.textMuted }]}>Düzenlenme Tarihi: {contract.createdAt}</Text>
           </LinearGradient>
         </View>
 
@@ -404,31 +409,31 @@ export function ContractScreen() {
               <View style={[styles.partyIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
                 <Ionicons name="business" size={18} color={colors.info} />
               </View>
-              <Text style={styles.partyLabel}>ORGANİZATÖR</Text>
+              <Text style={[styles.partyLabel, { color: colors.textMuted }]}>ORGANİZATÖR</Text>
             </View>
-            <Text style={styles.partyName}>{contract.organizer.name}</Text>
-            <Text style={styles.partyRep}>{contract.organizer.representative} - {contract.organizer.title}</Text>
+            <Text style={[styles.partyName, { color: colors.text }]}>{contract.organizer.name}</Text>
+            <Text style={[styles.partyRep, { color: colors.textMuted }]}>{contract.organizer.representative} - {contract.organizer.title}</Text>
             <View style={styles.partyContact}>
               <View style={styles.partyContactItem}>
-                <Ionicons name="mail-outline" size={12} color={colors.zinc[500]} />
-                <Text style={styles.partyContactText}>{contract.organizer.email}</Text>
+                <Ionicons name="mail-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.partyContactText, { color: colors.textMuted }]}>{contract.organizer.email}</Text>
               </View>
               <View style={styles.partyContactItem}>
-                <Ionicons name="call-outline" size={12} color={colors.zinc[500]} />
-                <Text style={styles.partyContactText}>{contract.organizer.phone}</Text>
+                <Ionicons name="call-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.partyContactText, { color: colors.textMuted }]}>{contract.organizer.phone}</Text>
               </View>
             </View>
             {contract.organizerSignature.signed && (
               <View style={styles.signatureStatus}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={styles.signatureStatusText}>İmzalandı - {contract.organizerSignature.signedAt}</Text>
+                <Text style={[styles.signatureStatusText, { color: colors.success }]}>İmzalandı - {contract.organizerSignature.signedAt}</Text>
               </View>
             )}
           </View>
 
           <View style={styles.partyDivider}>
             <View style={styles.partyDividerLine} />
-            <Ionicons name="swap-horizontal" size={20} color={colors.zinc[600]} />
+            <Ionicons name="swap-horizontal" size={20} color={colors.textSecondary} />
             <View style={styles.partyDividerLine} />
           </View>
 
@@ -437,24 +442,24 @@ export function ContractScreen() {
               <View style={[styles.partyIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
                 <Ionicons name="briefcase" size={18} color={colors.brand[400]} />
               </View>
-              <Text style={styles.partyLabel}>HİZMET SAĞLAYICI</Text>
+              <Text style={[styles.partyLabel, { color: colors.textMuted }]}>HİZMET SAĞLAYICI</Text>
             </View>
-            <Text style={styles.partyName}>{contract.provider.name}</Text>
-            <Text style={styles.partyRep}>{contract.provider.representative} - {contract.provider.title}</Text>
+            <Text style={[styles.partyName, { color: colors.text }]}>{contract.provider.name}</Text>
+            <Text style={[styles.partyRep, { color: colors.textMuted }]}>{contract.provider.representative} - {contract.provider.title}</Text>
             <View style={styles.partyContact}>
               <View style={styles.partyContactItem}>
-                <Ionicons name="mail-outline" size={12} color={colors.zinc[500]} />
-                <Text style={styles.partyContactText}>{contract.provider.email}</Text>
+                <Ionicons name="mail-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.partyContactText, { color: colors.textMuted }]}>{contract.provider.email}</Text>
               </View>
               <View style={styles.partyContactItem}>
-                <Ionicons name="call-outline" size={12} color={colors.zinc[500]} />
-                <Text style={styles.partyContactText}>{contract.provider.phone}</Text>
+                <Ionicons name="call-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.partyContactText, { color: colors.textMuted }]}>{contract.provider.phone}</Text>
               </View>
             </View>
             {contract.providerSignature.signed ? (
               <View style={styles.signatureStatus}>
                 <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                <Text style={styles.signatureStatusText}>İmzalandı - {contract.providerSignature.signedAt}</Text>
+                <Text style={[styles.signatureStatusText, { color: colors.success }]}>İmzalandı - {contract.providerSignature.signedAt}</Text>
               </View>
             ) : (
               <View style={[styles.signatureStatus, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
@@ -469,50 +474,50 @@ export function ContractScreen() {
         <View style={styles.serviceSummary}>
           <View style={styles.serviceSummaryHeader}>
             <Ionicons name="receipt-outline" size={18} color={colors.brand[400]} />
-            <Text style={styles.serviceSummaryTitle}>Hizmet Özeti</Text>
+            <Text style={[styles.serviceSummaryTitle, { color: colors.text }]}>Hizmet Özeti</Text>
           </View>
           <View style={styles.serviceSummaryContent}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Etkinlik</Text>
-              <Text style={styles.summaryValue}>{contract.eventName}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Etkinlik</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{contract.eventName}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Tarih</Text>
-              <Text style={styles.summaryValue}>{contract.eventDate}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Tarih</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{contract.eventDate}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Konum</Text>
-              <Text style={styles.summaryValue}>{contract.eventLocation}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Konum</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{contract.eventLocation}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Hizmet</Text>
-              <Text style={styles.summaryValue}>{contract.serviceName}</Text>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Hizmet</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{contract.serviceName}</Text>
             </View>
             <View style={[styles.summaryRow, styles.summaryRowTotal]}>
-              <Text style={styles.summaryLabelTotal}>Toplam Tutar</Text>
-              <Text style={styles.summaryValueTotal}>₺{contract.amount.toLocaleString('tr-TR')}</Text>
+              <Text style={[styles.summaryLabelTotal, { color: colors.text }]}>Toplam Tutar</Text>
+              <Text style={[styles.summaryValueTotal, { color: colors.success }]}>₺{contract.amount.toLocaleString('tr-TR')}</Text>
             </View>
           </View>
         </View>
 
         {/* Contract Sections */}
         <View style={styles.contractSections}>
-          <Text style={styles.sectionsTitle}>Sözleşme Maddeleri</Text>
+          <Text style={[styles.sectionsTitle, { color: colors.text }]}>Sözleşme Maddeleri</Text>
           {contractTemplate.sections.map((section, index) => (
             <View key={index} style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              <Text style={styles.sectionContent}>{fillTemplate(section.content)}</Text>
+              <Text style={[styles.sectionTitle, { color: colors.brand[400] }]}>{section.title}</Text>
+              <Text style={[styles.sectionContent, { color: colors.textMuted }]}>{fillTemplate(section.content)}</Text>
             </View>
           ))}
         </View>
 
         {/* Signature Section */}
         <View style={styles.signatureSection}>
-          <Text style={styles.signatureSectionTitle}>İmza Bölümü</Text>
+          <Text style={[styles.signatureSectionTitle, { color: colors.text }]}>İmza Bölümü</Text>
 
           <View style={styles.signatureBoxes}>
             <View style={styles.signatureBox}>
-              <Text style={styles.signatureBoxLabel}>Organizatör İmzası</Text>
+              <Text style={[styles.signatureBoxLabel, { color: colors.textMuted }]}>Organizatör İmzası</Text>
               <View style={[
                 styles.signatureArea,
                 contract.organizerSignature.signed && styles.signatureAreaSigned
@@ -520,17 +525,17 @@ export function ContractScreen() {
                 {contract.organizerSignature.signed ? (
                   <>
                     <Ionicons name="checkmark-circle" size={32} color={colors.success} />
-                    <Text style={styles.signedText}>İmzalandı</Text>
-                    <Text style={styles.signedDate}>{contract.organizerSignature.signedAt}</Text>
+                    <Text style={[styles.signedText, { color: colors.success }]}>İmzalandı</Text>
+                    <Text style={[styles.signedDate, { color: colors.textMuted }]}>{contract.organizerSignature.signedAt}</Text>
                   </>
                 ) : (
-                  <Text style={styles.pendingSignature}>İmza Bekleniyor</Text>
+                  <Text style={[styles.pendingSignature, { color: colors.textMuted }]}>İmza Bekleniyor</Text>
                 )}
               </View>
             </View>
 
             <View style={styles.signatureBox}>
-              <Text style={styles.signatureBoxLabel}>Hizmet Sağlayıcı İmzası</Text>
+              <Text style={[styles.signatureBoxLabel, { color: colors.textMuted }]}>Hizmet Sağlayıcı İmzası</Text>
               <View style={[
                 styles.signatureArea,
                 contract.providerSignature.signed && styles.signatureAreaSigned
@@ -538,16 +543,16 @@ export function ContractScreen() {
                 {contract.providerSignature.signed ? (
                   <>
                     <Ionicons name="checkmark-circle" size={32} color={colors.success} />
-                    <Text style={styles.signedText}>İmzalandı</Text>
-                    <Text style={styles.signedDate}>{contract.providerSignature.signedAt}</Text>
+                    <Text style={[styles.signedText, { color: colors.success }]}>İmzalandı</Text>
+                    <Text style={[styles.signedDate, { color: colors.textMuted }]}>{contract.providerSignature.signedAt}</Text>
                   </>
                 ) : canSign ? (
                   <TouchableOpacity style={styles.signButton} onPress={handleSign}>
                     <Ionicons name="finger-print" size={24} color={colors.brand[400]} />
-                    <Text style={styles.signButtonText}>İmzala</Text>
+                    <Text style={[styles.signButtonText, { color: colors.brand[400] }]}>İmzala</Text>
                   </TouchableOpacity>
                 ) : (
-                  <Text style={styles.pendingSignature}>İmza Bekleniyor</Text>
+                  <Text style={[styles.pendingSignature, { color: colors.textMuted }]}>İmza Bekleniyor</Text>
                 )}
               </View>
             </View>
@@ -559,7 +564,7 @@ export function ContractScreen() {
 
       {/* Bottom Action Button */}
       {canSign && (
-        <View style={styles.bottomActions}>
+        <View style={[styles.bottomActions, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
           <TouchableOpacity style={styles.signContractButton} onPress={handleSign}>
             <LinearGradient
               colors={gradients.primary}
@@ -582,36 +587,36 @@ export function ContractScreen() {
         onRequestClose={() => setShowSignatureModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.signatureModal}>
+          <View style={[styles.signatureModal, { backgroundColor: colors.background }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Mobil İmza</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Mobil İmza</Text>
               <TouchableOpacity onPress={() => setShowSignatureModal(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>
+            <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
               Sözleşmeyi onaylamak için aşağıdaki alana imzanızı atın
             </Text>
 
             {/* Signature Pad */}
             <View style={styles.signaturePad}>
-              <View style={styles.signaturePadInner}>
-                <Text style={styles.signaturePadPlaceholder}>İmzanızı buraya atın</Text>
+              <View style={[styles.signaturePadInner, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }]}>
+                <Text style={[styles.signaturePadPlaceholder, { color: colors.textMuted }]}>İmzanızı buraya atın</Text>
               </View>
               <TouchableOpacity
                 style={styles.clearSignatureButton}
                 onPress={() => setSignaturePoints([])}
               >
-                <Ionicons name="trash-outline" size={18} color={colors.zinc[400]} />
-                <Text style={styles.clearSignatureText}>Temizle</Text>
+                <Ionicons name="trash-outline" size={18} color={colors.textSecondary} />
+                <Text style={[styles.clearSignatureText, { color: colors.textSecondary }]}>Temizle</Text>
               </TouchableOpacity>
             </View>
 
             {/* Agreement Text */}
             <View style={styles.agreementSection}>
               <Ionicons name="shield-checkmark" size={20} color={colors.success} />
-              <Text style={styles.agreementText}>
+              <Text style={[styles.agreementText, { color: colors.textSecondary }]}>
                 İmzalayarak, yukarıdaki sözleşme şartlarını okuduğumu, anladığımı ve kabul ettiğimi onaylıyorum.
               </Text>
             </View>
@@ -619,10 +624,10 @@ export function ContractScreen() {
             {/* Action Buttons */}
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={styles.modalCancelButton}
+                style={[styles.modalCancelButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
                 onPress={() => setShowSignatureModal(false)}
               >
-                <Text style={styles.modalCancelText}>İptal</Text>
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.modalConfirmButton}
@@ -672,11 +677,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   headerActions: {
@@ -721,18 +724,15 @@ const styles = StyleSheet.create({
   contractTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
     marginTop: 12,
     textAlign: 'center',
   },
   contractNumber: {
     fontSize: 12,
-    color: colors.zinc[400],
     marginTop: 8,
   },
   contractDate: {
     fontSize: 11,
-    color: colors.zinc[500],
     marginTop: 4,
   },
   partiesSection: {
@@ -762,18 +762,15 @@ const styles = StyleSheet.create({
   partyLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.zinc[500],
     letterSpacing: 0.5,
   },
   partyName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 4,
   },
   partyRep: {
     fontSize: 12,
-    color: colors.zinc[400],
     marginBottom: 10,
   },
   partyContact: {
@@ -786,7 +783,6 @@ const styles = StyleSheet.create({
   },
   partyContactText: {
     fontSize: 11,
-    color: colors.zinc[500],
   },
   signatureStatus: {
     flexDirection: 'row',
@@ -800,7 +796,6 @@ const styles = StyleSheet.create({
   },
   signatureStatusText: {
     fontSize: 11,
-    color: colors.success,
     fontWeight: '500',
   },
   partyDivider: {
@@ -835,7 +830,6 @@ const styles = StyleSheet.create({
   serviceSummaryTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   serviceSummaryContent: {
     padding: 16,
@@ -855,22 +849,18 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 13,
-    color: colors.zinc[500],
   },
   summaryValue: {
     fontSize: 13,
     fontWeight: '500',
-    color: colors.text,
   },
   summaryLabelTotal: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.text,
   },
   summaryValueTotal: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.success,
   },
   contractSections: {
     marginHorizontal: 16,
@@ -879,7 +869,6 @@ const styles = StyleSheet.create({
   sectionsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 12,
   },
   sectionCard: {
@@ -893,12 +882,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.brand[400],
     marginBottom: 10,
   },
   sectionContent: {
     fontSize: 12,
-    color: colors.zinc[400],
     lineHeight: 20,
   },
   signatureSection: {
@@ -908,7 +895,6 @@ const styles = StyleSheet.create({
   signatureSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 12,
   },
   signatureBoxes: {
@@ -921,7 +907,6 @@ const styles = StyleSheet.create({
   signatureBoxLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.zinc[500],
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -943,17 +928,14 @@ const styles = StyleSheet.create({
   signedText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.success,
     marginTop: 6,
   },
   signedDate: {
     fontSize: 10,
-    color: colors.zinc[500],
     marginTop: 2,
   },
   pendingSignature: {
     fontSize: 12,
-    color: colors.zinc[500],
   },
   signButton: {
     alignItems: 'center',
@@ -962,7 +944,6 @@ const styles = StyleSheet.create({
   signButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.brand[400],
   },
   bottomActions: {
     position: 'absolute',
@@ -1013,11 +994,9 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.text,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: colors.zinc[500],
     marginBottom: 20,
   },
   signaturePad: {
@@ -1035,7 +1014,6 @@ const styles = StyleSheet.create({
   },
   signaturePadPlaceholder: {
     fontSize: 14,
-    color: colors.zinc[600],
   },
   clearSignatureButton: {
     flexDirection: 'row',
@@ -1046,7 +1024,6 @@ const styles = StyleSheet.create({
   },
   clearSignatureText: {
     fontSize: 12,
-    color: colors.zinc[400],
   },
   agreementSection: {
     flexDirection: 'row',
@@ -1060,7 +1037,6 @@ const styles = StyleSheet.create({
   agreementText: {
     flex: 1,
     fontSize: 12,
-    color: colors.zinc[400],
     lineHeight: 18,
   },
   modalActions: {
@@ -1077,7 +1053,6 @@ const styles = StyleSheet.create({
   modalCancelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.zinc[400],
   },
   modalConfirmButton: {
     flex: 2,
