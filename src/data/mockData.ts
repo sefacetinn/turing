@@ -80,14 +80,14 @@ export const events = [
     image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
     attendees: 15000,
     services: [
-      { id: 's1', category: 'booking', name: 'Ana Sahne Sanatçısı', status: 'confirmed', provider: 'Mabel Matiz', price: 200000 },
-      { id: 's2', category: 'booking', name: 'DJ Set', status: 'confirmed', provider: 'DJ Burak Yeter', price: 120000 },
-      { id: 's3', category: 'technical', name: 'Ses Sistemi', status: 'confirmed', provider: 'Pro Sound Istanbul', price: 85000 },
+      { id: 's1', category: 'booking', name: 'Ana Sahne Sanatçısı', status: 'confirmed', provider: 'Mabel Matiz', providerId: 'artist1', providerPhone: '+90 532 111 2233', price: 200000 },
+      { id: 's2', category: 'booking', name: 'DJ Set', status: 'confirmed', provider: 'DJ Burak Yeter', providerId: 'artist2', providerPhone: '+90 533 222 3344', price: 120000 },
+      { id: 's3', category: 'technical', name: 'Ses Sistemi', status: 'confirmed', provider: 'Pro Sound Istanbul', providerId: 'p1', providerPhone: '+90 212 555 1234', price: 85000 },
       { id: 's4', category: 'technical', name: 'Işık Sistemi', status: 'pending', provider: null, price: 65000 },
-      { id: 's5', category: 'venue', name: 'Mekan Kiralama', status: 'confirmed', provider: 'KüsümPark', price: 150000 },
+      { id: 's5', category: 'venue', name: 'Mekan Kiralama', status: 'confirmed', provider: 'KüsümPark', providerId: 'venue1', providerPhone: '+90 216 333 4455', price: 150000 },
       { id: 's6', category: 'accommodation', name: 'Sanatçı Oteli', status: 'offered', provider: 'Hilton', price: 45000 },
       { id: 's7', category: 'transport', name: 'VIP Transfer', status: 'pending', provider: null, price: 25000 },
-      { id: 's8', category: 'operation', name: 'Güvenlik', status: 'confirmed', provider: 'SecurePro', price: 120000 },
+      { id: 's8', category: 'operation', name: 'Güvenlik', status: 'confirmed', provider: 'SecurePro', providerId: 'sec1', providerPhone: '+90 212 666 7788', price: 120000 },
       { id: 's9', category: 'operation', name: 'Catering', status: 'offered', provider: 'GourmetEvents', price: 180000 },
     ],
   },
@@ -246,6 +246,7 @@ export const offers = [
     id: 'o1',
     eventId: '1',
     eventTitle: 'Yaz Festivali 2024',
+    serviceId: 's3',
     providerId: 'p1',
     providerName: 'Pro Sound Istanbul',
     providerImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200',
@@ -270,6 +271,7 @@ export const offers = [
     id: 'o2',
     eventId: '1',
     eventTitle: 'Yaz Festivali 2024',
+    serviceId: 's8',
     providerId: 'p4',
     providerName: 'SecurePro Güvenlik',
     providerImage: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=200',
@@ -333,7 +335,65 @@ export const offers = [
     notes: 'Müşteri farklı tedarikçi tercih etti.',
     rejectionReason: 'Bütçe uyumsuzluğu',
   },
+  {
+    id: 'o5',
+    eventId: '1',
+    eventTitle: 'Yaz Festivali 2024',
+    serviceId: 's9',
+    providerId: 'p6',
+    providerName: 'GourmetEvents',
+    providerImage: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=200',
+    category: 'operation',
+    service: 'Catering',
+    status: 'pending',
+    amount: 180000,
+    originalAmount: 195000,
+    discount: 8,
+    description: '3 günlük festival için yiyecek-içecek hizmeti.',
+    validUntil: '2024-06-25',
+    createdAt: '2024-06-14',
+    items: [
+      { name: 'VIP Catering (500 kişi x 3 gün)', quantity: 1, price: 85000 },
+      { name: 'Backstage Catering', quantity: 1, price: 45000 },
+      { name: 'Staff Yemek Hizmeti', quantity: 1, price: 35000 },
+      { name: 'İçecek İstasyonları', quantity: 5, price: 15000 },
+    ],
+    notes: 'Tüm diyet seçenekleri mevcut. 24 saat hizmet.',
+  },
+  {
+    id: 'o6',
+    eventId: '1',
+    eventTitle: 'Yaz Festivali 2024',
+    serviceId: 's6',
+    providerId: 'p3',
+    providerName: 'Hilton Istanbul',
+    providerImage: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=200',
+    category: 'accommodation',
+    service: 'Sanatçı Oteli',
+    status: 'pending',
+    amount: 45000,
+    originalAmount: 52000,
+    discount: 13,
+    description: 'Sanatçı ve ekip konaklaması için özel paket.',
+    validUntil: '2024-06-22',
+    createdAt: '2024-06-12',
+    items: [
+      { name: 'Suite Oda (3 gece)', quantity: 5, price: 25000 },
+      { name: 'Standart Oda (3 gece)', quantity: 10, price: 15000 },
+      { name: 'VIP Transfer', quantity: 1, price: 5000 },
+    ],
+    notes: 'Kahvaltı dahil. Late check-out ücretsiz.',
+  },
 ];
+
+// Helper function to find offer by service
+export const getOfferByServiceId = (serviceId: string) => {
+  return offers.find(o => o.serviceId === serviceId);
+};
+
+export const getOfferByEventAndProvider = (eventId: string, providerName: string) => {
+  return offers.find(o => o.eventId === eventId && o.providerName === providerName);
+};
 
 // Messages / Conversations
 export const conversations = [

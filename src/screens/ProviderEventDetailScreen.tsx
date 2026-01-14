@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,123 +8,434 @@ import {
   Image,
   Dimensions,
   Linking,
+  Alert,
+  Modal,
+  TextInput,
+  RefreshControl,
+  ActivityIndicator,
+  Share,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import {
+  TeamMember,
+  Task,
+  ScheduleItem,
+  PaymentItem,
+  EventDocument,
+  EventDetail,
+  mockSchedule,
+  getProviderEventById,
+  getTeamByEventId,
+  getTasksByEventId,
+  getPaymentsByEventId,
+  getDocumentsByEventId,
+  getStatusColor,
+  getPriorityColor,
+  getPaymentStatusInfo,
+  getDocumentIcon,
+  formatFileSize,
+} from '../data/providerEventData';
+import {
+  CheckInStatus,
+  getCheckInStatus,
+  performCheckIn,
+  performCheckOut,
+  startBreak,
+  endBreak,
+  formatWorkingTime,
+  calculateWorkingMinutes,
+  formatTime,
+} from '../services/checkInService';
+import { RatingModal } from '../components/rating';
 
-const colors = defaultColors;
-
-const { width } = Dimensions.get('window');
-
-interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  phone: string;
-  image: string;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  dueDate: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-}
-
-interface ScheduleItem {
-  id: string;
-  time: string;
-  title: string;
-  stage: string;
-  duration: string;
-}
-
-interface PaymentItem {
-  id: string;
-  title: string;
-  amount: number;
-  dueDate: string;
-  status: 'paid' | 'pending' | 'overdue';
-  paidDate?: string;
-}
-
-// Mock data
-const mockEventDetail = {
-  id: 'pe1',
-  eventTitle: 'Yaz Festivali 2024',
-  eventDate: '15-17 Temmuz 2024',
-  eventTime: '16:00 - 04:00',
-  venue: 'KüsümPark Açık Hava',
-  location: 'İstanbul, Kadıköy',
-  image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-  organizerName: 'Event Masters',
-  organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-  organizerPhone: '+90 532 123 4567',
-  role: 'Ses Sistemi Sağlayıcı',
-  category: 'technical',
-  status: 'confirmed',
-  earnings: 85000,
-  description: 'İstanbulun en büyük açık hava festivali için komple ses sistemi kurulumu ve operasyonu. 3 gün boyunca 50+ sanatçı performansı.',
+// Route params type
+type RootStackParamList = {
+  ProviderEventDetail: { eventId: string };
+  Chat: { chatId: string; recipientName: string };
 };
 
-const mockTeam: TeamMember[] = [
-  { id: 't1', name: 'Ahmet Yılmaz', role: 'Ses Mühendisi', phone: '+90 532 111 2233', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200' },
-  { id: 't2', name: 'Mehmet Kaya', role: 'Teknik Asistan', phone: '+90 533 222 3344', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200' },
-  { id: 't3', name: 'Ayşe Demir', role: 'Sahne Koordinatörü', phone: '+90 534 333 4455', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' },
-];
+type ProviderEventDetailRouteProp = RouteProp<RootStackParamList, 'ProviderEventDetail'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const mockTasks: Task[] = [
-  { id: 'task1', title: 'Ekipman Listesi Hazırla', description: 'Festival için gerekli tüm ses ekipmanlarını listele', dueDate: '10 Temmuz', status: 'completed', priority: 'high' },
-  { id: 'task2', title: 'Araç Kiralama', description: 'Ekipman taşıma için TIR kiralama', dueDate: '12 Temmuz', status: 'completed', priority: 'high' },
-  { id: 'task3', title: 'Sahne Planı İnceleme', description: 'Organizatörden gelen sahne planını incele', dueDate: '13 Temmuz', status: 'in_progress', priority: 'medium' },
-  { id: 'task4', title: 'Ekip Briefing', description: 'Tüm ekip ile toplantı yapma', dueDate: '14 Temmuz', status: 'pending', priority: 'medium' },
-  { id: 'task5', title: 'Kurulum', description: 'Ses sistemi kurulumu', dueDate: '14-15 Temmuz', status: 'pending', priority: 'high' },
-];
-
-const mockSchedule: ScheduleItem[] = [
-  { id: 's1', time: '16:00', title: 'Açılış DJ Seti', stage: 'Ana Sahne', duration: '2 saat' },
-  { id: 's2', time: '18:00', title: 'Local Band Performance', stage: 'Ana Sahne', duration: '1.5 saat' },
-  { id: 's3', time: '20:00', title: 'DJ Burak Yeter', stage: 'Ana Sahne', duration: '2 saat' },
-  { id: 's4', time: '22:30', title: 'Mabel Matiz', stage: 'Ana Sahne', duration: '2 saat' },
-  { id: 's5', time: '00:30', title: 'Closing DJ Set', stage: 'Ana Sahne', duration: '3 saat' },
-];
-
-const mockPayments: PaymentItem[] = [
-  { id: 'p1', title: 'Ön Ödeme (%50)', amount: 42500, dueDate: '1 Temmuz', status: 'paid', paidDate: '28 Haziran' },
-  { id: 'p2', title: 'Kalan Ödeme (%50)', amount: 42500, dueDate: '18 Temmuz', status: 'pending' },
-];
+const colors = defaultColors;
+const { width } = Dimensions.get('window');
 
 export function ProviderEventDetailScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const [activeSection, setActiveSection] = useState<'overview' | 'tasks' | 'schedule' | 'payments'>('overview');
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<ProviderEventDetailRouteProp>();
   const { colors, isDark, helpers } = useTheme();
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 80;
 
-  const event = mockEventDetail;
+  // Get eventId from route params
+  const eventId = route.params?.eventId || 'pe1';
 
-  // Calculate task stats
+  // State
+  const [activeSection, setActiveSection] = useState<'overview' | 'tasks' | 'team' | 'schedule' | 'payments' | 'documents'>('overview');
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [event, setEvent] = useState<EventDetail | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [documents, setDocuments] = useState<EventDocument[]>([]);
+
+  // Modal states
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDescription, setNewTaskDescription] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
+
+  // Check-in states
+  const [checkInStatus, setCheckInStatus] = useState<CheckInStatus | null>(null);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [currentWorkingMinutes, setCurrentWorkingMinutes] = useState(0);
+
+  // Rating Modal State
+  const [showRatingModal, setShowRatingModal] = useState(false);
+
+  // Load event data
+  const loadEventData = useCallback(async () => {
+    const eventData = getProviderEventById(eventId);
+    if (eventData) {
+      setEvent(eventData);
+      setTasks(getTasksByEventId(eventId));
+      setTeam(getTeamByEventId(eventId));
+      setPayments(getPaymentsByEventId(eventId));
+      setDocuments(getDocumentsByEventId(eventId));
+    }
+
+    // Load check-in status
+    const status = await getCheckInStatus(eventId);
+    setCheckInStatus(status);
+
+    setIsLoading(false);
+    setRefreshing(false);
+  }, [eventId]);
+
+  useEffect(() => {
+    loadEventData();
+  }, [loadEventData]);
+
+  // Update working minutes timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (checkInStatus?.isCheckedIn && checkInStatus.checkInTime) {
+      // Check if on break
+      const isOnBreak = checkInStatus.breaks.some(b => !b.endTime);
+
+      if (!isOnBreak) {
+        interval = setInterval(() => {
+          const minutes = calculateWorkingMinutes(
+            checkInStatus.checkInTime!,
+            null,
+            checkInStatus.breaks
+          );
+          setCurrentWorkingMinutes(minutes);
+        }, 60000); // Update every minute
+
+        // Initial calculation
+        const minutes = calculateWorkingMinutes(
+          checkInStatus.checkInTime,
+          null,
+          checkInStatus.breaks
+        );
+        setCurrentWorkingMinutes(minutes);
+      }
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [checkInStatus]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadEventData();
+  }, [loadEventData]);
+
+  // Hooks must be called before any early returns
   const taskStats = useMemo(() => {
-    const completed = mockTasks.filter(t => t.status === 'completed').length;
-    const inProgress = mockTasks.filter(t => t.status === 'in_progress').length;
-    const pending = mockTasks.filter(t => t.status === 'pending').length;
-    return { completed, inProgress, pending, total: mockTasks.length };
-  }, []);
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+    const pending = tasks.filter(t => t.status === 'pending').length;
+    return { completed, inProgress, pending, total: tasks.length };
+  }, [tasks]);
 
-  // Calculate payment stats
   const paymentStats = useMemo(() => {
-    const paid = mockPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
-    const pending = mockPayments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
-    return { paid, pending, total: event.earnings };
-  }, [event.earnings]);
+    const paid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
+    const pending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
+    return { paid, pending, total: event?.earnings || 0 };
+  }, [payments, event?.earnings]);
 
+  // If event not found
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brand[500]} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!event) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.text }]}>Etkinlik bulunamadı</Text>
+          <TouchableOpacity
+            style={[styles.backToListButton, { backgroundColor: colors.brand[500] }]}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backToListText}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleCompleteTask = (taskId: string) => {
+    setTasks(prev => prev.map(task =>
+      task.id === taskId
+        ? { ...task, status: 'completed' as const }
+        : task
+    ));
+  };
+
+  const handleStartTask = (taskId: string) => {
+    setTasks(prev => prev.map(task =>
+      task.id === taskId && task.status === 'pending'
+        ? { ...task, status: 'in_progress' as const }
+        : task
+    ));
+  };
+
+  // Handler functions
   const handleCall = (phone: string) => {
     Linking.openURL(`tel:${phone}`);
+  };
+
+  const handleAddTask = () => {
+    if (!newTaskTitle.trim()) {
+      Alert.alert('Hata', 'Görev başlığı gereklidir');
+      return;
+    }
+
+    const newTask: Task = {
+      id: `task_${Date.now()}`,
+      title: newTaskTitle.trim(),
+      description: newTaskDescription.trim(),
+      dueDate: new Date().toLocaleDateString('tr-TR'),
+      status: 'pending',
+      priority: newTaskPriority,
+      createdAt: new Date().toLocaleDateString('tr-TR'),
+    };
+
+    setTasks(prev => [...prev, newTask]);
+    setNewTaskTitle('');
+    setNewTaskDescription('');
+    setNewTaskPriority('medium');
+    setShowAddTaskModal(false);
+    Alert.alert('Başarılı', 'Görev eklendi');
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    Alert.alert(
+      'Görevi Sil',
+      'Bu görevi silmek istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => {
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            Alert.alert('Başarılı', 'Görev silindi');
+          },
+        },
+      ]
+    );
+  };
+
+  // Check-in handler
+  const handleCheckIn = async () => {
+    if (!event) return;
+
+    setIsCheckingIn(true);
+
+    // Mock event location (in real app, this would come from event data)
+    const eventLocation = {
+      latitude: 41.0082, // Istanbul coordinates
+      longitude: 28.9784,
+      venueName: event.venue,
+      address: event.venue,
+    };
+
+    // For demo purposes, skip location check (set to false for production)
+    const result = await performCheckIn(eventId, eventLocation, true);
+
+    setIsCheckingIn(false);
+
+    if (result.success) {
+      setCheckInStatus(result.status || null);
+      Alert.alert('Check-in Başarılı', result.message);
+    } else {
+      Alert.alert('Check-in Hatası', result.message);
+    }
+  };
+
+  // Check-out handler
+  const handleCheckOut = async () => {
+    Alert.alert(
+      'Check-out',
+      'Çalışmanızı bitirmek istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Check-out Yap',
+          style: 'destructive',
+          onPress: async () => {
+            setIsCheckingIn(true);
+            const result = await performCheckOut(eventId);
+            setIsCheckingIn(false);
+
+            if (result.success) {
+              setCheckInStatus(result.status || null);
+              Alert.alert('Check-out Başarılı', result.message);
+            } else {
+              Alert.alert('Check-out Hatası', result.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Break handler
+  const handleBreak = async () => {
+    const isOnBreak = checkInStatus?.breaks.some(b => !b.endTime);
+
+    if (isOnBreak) {
+      // End break
+      setIsCheckingIn(true);
+      const result = await endBreak(eventId);
+      setIsCheckingIn(false);
+
+      if (result.success) {
+        setCheckInStatus(result.status || null);
+        Alert.alert('Mola Bitti', result.message);
+      } else {
+        Alert.alert('Hata', result.message);
+      }
+    } else {
+      // Start break
+      Alert.alert(
+        'Mola',
+        'Mola vermek istediğinizden emin misiniz?',
+        [
+          { text: 'İptal', style: 'cancel' },
+          {
+            text: 'Mola Başlat',
+            onPress: async () => {
+              setIsCheckingIn(true);
+              const result = await startBreak(eventId);
+              setIsCheckingIn(false);
+
+              if (result.success) {
+                setCheckInStatus(result.status || null);
+                Alert.alert('Mola Başladı', result.message);
+              } else {
+                Alert.alert('Hata', result.message);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleSupport = () => {
+    Alert.alert(
+      'Destek',
+      'Nasıl yardımcı olabiliriz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Organizatöre Sor',
+          onPress: () => navigation.navigate('Chat', { chatId: `org_${event.organizerId}`, recipientName: event.organizerName }),
+        },
+        {
+          text: 'Destek Hattını Ara',
+          onPress: () => Linking.openURL('tel:+908501234567'),
+        },
+      ]
+    );
+  };
+
+  const handleInvoice = () => {
+    Alert.alert(
+      'Fatura Oluştur',
+      'Fatura oluşturmak istediğiniz ödemeyi seçin:',
+      [
+        { text: 'İptal', style: 'cancel' },
+        ...payments.filter(p => p.status === 'paid').map(p => ({
+          text: `${p.title} - ₺${p.amount.toLocaleString('tr-TR')}`,
+          onPress: () => Alert.alert('Başarılı', `${p.title} için fatura oluşturuldu`),
+        })),
+      ]
+    );
+  };
+
+  const handleDocumentDownload = (doc: EventDocument) => {
+    Alert.alert(
+      'Döküman İndir',
+      `${doc.name} indirilsin mi?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'İndir',
+          onPress: () => Alert.alert('Başarılı', `${doc.name} indiriliyor...`),
+        },
+      ]
+    );
+  };
+
+  // Handle share
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `${event.eventTitle}\n📅 ${event.eventDate}\n📍 ${event.venue}\n🎯 Rolüm: ${event.role}\n\nTuring ile yönetiyorum.`,
+        title: event.eventTitle,
+      });
+    } catch (error) {
+      Alert.alert('Hata', 'Paylaşım sırasında bir hata oluştu');
+    }
+  };
+
+  // Handle menu
+  const handleMenu = () => {
+    Alert.alert(
+      'İş Seçenekleri',
+      'Ne yapmak istiyorsunuz?',
+      [
+        { text: 'Takvime Ekle', onPress: () => Alert.alert('Eklendi', 'Etkinlik takviminize eklendi.') },
+        { text: 'Hatırlatıcı Kur', onPress: () => Alert.alert('Ayarlandı', 'Etkinlikten 1 gün önce hatırlatılacak.') },
+        { text: 'Sorun Bildir', onPress: () => navigation.navigate('Chat', { chatId: `org_${event.organizerId}`, recipientName: event.organizerName }) },
+        { text: 'Sözleşmeyi Görüntüle', onPress: () => Alert.alert('Sözleşme', 'Sözleşme dökümanı açılıyor...') },
+        { text: 'İptal', style: 'cancel' },
+      ]
+    );
   };
 
   const renderTeamMember = (member: TeamMember) => (
@@ -151,41 +462,32 @@ export function ProviderEventDetailScreen() {
   );
 
   const renderTask = (task: Task) => {
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'completed': return colors.success;
-        case 'in_progress': return colors.warning;
-        case 'pending': return colors.textMuted;
-        default: return colors.textMuted;
-      }
-    };
-
-    const getPriorityColor = (priority: string) => {
-      switch (priority) {
-        case 'high': return colors.error;
-        case 'medium': return colors.warning;
-        case 'low': return colors.success;
-        default: return colors.textMuted;
-      }
+    const statusColor = getStatusColor(task.status, colors);
+    const priorityColor = getPriorityColor(task.priority, colors);
+    const statusLabels: Record<string, string> = {
+      pending: 'Bekliyor',
+      in_progress: 'Devam Ediyor',
+      completed: 'Tamamlandı',
     };
 
     return (
-      <TouchableOpacity key={task.id} style={[
+      <View key={task.id} style={[
         styles.taskCard,
         {
           backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
           borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
         },
         ...(isDark ? [] : [helpers.getShadow('sm')]),
+        task.status === 'completed' && { opacity: 0.7 },
       ]}>
         <View style={styles.taskHeader}>
-          <View style={[styles.taskStatusDot, { backgroundColor: getStatusColor(task.status) }]} />
+          <View style={[styles.taskStatusDot, { backgroundColor: statusColor }]} />
           <View style={styles.taskInfo}>
-            <Text style={[styles.taskTitle, { color: colors.text }]}>{task.title}</Text>
+            <Text style={[styles.taskTitle, { color: colors.text }, task.status === 'completed' && { textDecorationLine: 'line-through' }]}>{task.title}</Text>
             <Text style={[styles.taskDescription, { color: colors.textMuted }]}>{task.description}</Text>
           </View>
-          <View style={[styles.priorityBadge, { backgroundColor: `${getPriorityColor(task.priority)}20` }]}>
-            <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
+          <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
+            <Text style={[styles.priorityText, { color: priorityColor }]}>
               {task.priority === 'high' ? 'Yüksek' : task.priority === 'medium' ? 'Orta' : 'Düşük'}
             </Text>
           </View>
@@ -195,14 +497,38 @@ export function ProviderEventDetailScreen() {
             <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
             <Text style={[styles.taskDueDateText, { color: colors.textMuted }]}>{task.dueDate}</Text>
           </View>
-          {task.status !== 'completed' && (
-            <TouchableOpacity style={styles.completeButton}>
-              <Ionicons name="checkmark" size={14} color={colors.success} />
-              <Text style={[styles.completeButtonText, { color: colors.success }]}>Tamamla</Text>
+          <View style={styles.taskStatusLabel}>
+            <Text style={[styles.taskStatusLabelText, { color: statusColor }]}>{statusLabels[task.status]}</Text>
+          </View>
+        </View>
+        <View style={styles.taskActions}>
+          {task.status === 'pending' && (
+            <TouchableOpacity
+              style={[styles.taskActionButton, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}
+              onPress={() => handleStartTask(task.id)}
+            >
+              <Ionicons name="play" size={14} color={colors.info} />
+              <Text style={[styles.taskActionText, { color: colors.info }]}>Başla</Text>
             </TouchableOpacity>
           )}
+          {task.status === 'in_progress' && (
+            <TouchableOpacity
+              style={[styles.taskActionButton, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}
+              onPress={() => handleCompleteTask(task.id)}
+            >
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={[styles.taskActionText, { color: colors.success }]}>Tamamla</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.taskActionButton, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}
+            onPress={() => handleDeleteTask(task.id)}
+          >
+            <Ionicons name="trash-outline" size={14} color={colors.error} />
+            <Text style={[styles.taskActionText, { color: colors.error }]}>Sil</Text>
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -227,16 +553,7 @@ export function ProviderEventDetailScreen() {
   );
 
   const renderPayment = (payment: PaymentItem) => {
-    const getStatusInfo = (status: string) => {
-      switch (status) {
-        case 'paid': return { label: 'Ödendi', color: colors.success, icon: 'checkmark-circle' as const };
-        case 'pending': return { label: 'Bekliyor', color: colors.warning, icon: 'time' as const };
-        case 'overdue': return { label: 'Gecikmiş', color: colors.error, icon: 'alert-circle' as const };
-        default: return { label: status, color: colors.textMuted, icon: 'help-circle' as const };
-      }
-    };
-
-    const statusInfo = getStatusInfo(payment.status);
+    const statusInfo = getPaymentStatusInfo(payment.status, colors);
 
     return (
       <View key={payment.id} style={[
@@ -266,9 +583,113 @@ export function ProviderEventDetailScreen() {
     );
   };
 
+  // Render document item
+  const renderDocument = (doc: EventDocument) => {
+    const iconName = getDocumentIcon(doc.fileType);
+    const iconColor = doc.type === 'contract' ? colors.brand[400] :
+                      doc.type === 'plan' ? colors.success :
+                      doc.type === 'rider' ? colors.info : colors.warning;
+
+    return (
+      <TouchableOpacity
+        key={doc.id}
+        style={[
+          styles.documentItem,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+          },
+          ...(isDark ? [] : [helpers.getShadow('sm')]),
+        ]}
+        onPress={() => handleDocumentDownload(doc)}
+      >
+        <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
+          <Ionicons name={iconName as any} size={20} color={iconColor} />
+        </View>
+        <View style={styles.documentInfo}>
+          <Text style={[styles.documentName, { color: colors.text }]}>{doc.name}</Text>
+          <Text style={[styles.documentSize, { color: colors.textMuted }]}>
+            {formatFileSize(doc.size)} • {doc.uploadedAt}
+          </Text>
+        </View>
+        <Ionicons name="download-outline" size={20} color={colors.textMuted} />
+      </TouchableOpacity>
+    );
+  };
+
+  // Render team member for Team tab (extended view)
+  const renderTeamMemberExtended = (member: TeamMember) => {
+    const statusColor = member.status === 'available' ? colors.success :
+                        member.status === 'busy' ? colors.warning : colors.textMuted;
+    const statusLabel = member.status === 'available' ? 'Müsait' :
+                        member.status === 'busy' ? 'Meşgul' : 'İzinli';
+
+    return (
+      <View key={member.id} style={[
+        styles.teamMemberExtended,
+        {
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+        },
+        ...(isDark ? [] : [helpers.getShadow('sm')]),
+      ]}>
+        <View style={styles.teamMemberHeader}>
+          <Image source={{ uri: member.image }} style={styles.teamMemberImageLarge} />
+          <View style={styles.teamMemberMainInfo}>
+            <Text style={[styles.teamMemberName, { color: colors.text }]}>{member.name}</Text>
+            <Text style={[styles.teamMemberRole, { color: colors.textMuted }]}>{member.role}</Text>
+            <View style={styles.teamMemberStatusRow}>
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
+            </View>
+          </View>
+          <View style={styles.teamMemberActions}>
+            <TouchableOpacity
+              style={[styles.teamActionButton, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.1)' }]}
+              onPress={() => handleCall(member.phone)}
+            >
+              <Ionicons name="call" size={16} color={colors.success} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.teamActionButton, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.1)' }]}
+              onPress={() => Linking.openURL(`mailto:${member.email}`)}
+            >
+              <Ionicons name="mail" size={16} color={colors.brand[400]} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        {member.assignedTasks.length > 0 && (
+          <View style={styles.assignedTasksInfo}>
+            <Ionicons name="checkbox-outline" size={14} color={colors.textMuted} />
+            <Text style={[styles.assignedTasksText, { color: colors.textMuted }]}>
+              {member.assignedTasks.length} atanmış görev
+            </Text>
+          </View>
+        )}
+        {member.checkInStatus?.checkedIn && (
+          <View style={styles.checkInInfo}>
+            <Ionicons name="location" size={14} color={colors.success} />
+            <Text style={[styles.checkInText, { color: colors.success }]}>
+              Check-in: {member.checkInStatus.time}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+          />
+        }
+      >
         {/* Header Image */}
         <View style={styles.headerImage}>
           <Image source={{ uri: event.image }} style={styles.eventImage} />
@@ -284,6 +705,16 @@ export function ProviderEventDetailScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
+
+          {/* Header Actions */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleShare}>
+              <Ionicons name="share-outline" size={20} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerActionButton} onPress={handleMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
 
           {/* Event Info */}
           <View style={styles.headerContent}>
@@ -333,7 +764,10 @@ export function ProviderEventDetailScreen() {
             >
               <Ionicons name="call" size={18} color={colors.success} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.organizerActionButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
+            <TouchableOpacity
+              style={[styles.organizerActionButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}
+              onPress={() => navigation.navigate('Chat', { chatId: `org_${event.organizerId || '1'}`, recipientName: event.organizerName })}
+            >
               <Ionicons name="chatbubble" size={18} color={colors.brand[400]} />
             </TouchableOpacity>
           </View>
@@ -367,119 +801,68 @@ export function ProviderEventDetailScreen() {
         </View>
 
         {/* Section Tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sectionTabs}
-        >
-          <TouchableOpacity
-            style={[
-              styles.sectionTab,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-              },
-              activeSection === 'overview' && {
-                backgroundColor: 'rgba(147, 51, 234, 0.15)',
-                borderColor: 'rgba(147, 51, 234, 0.3)',
-              },
-            ]}
-            onPress={() => setActiveSection('overview')}
+        <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabContent}
           >
-            <Ionicons
-              name={activeSection === 'overview' ? 'information-circle' : 'information-circle-outline'}
-              size={14}
-              color={activeSection === 'overview' ? colors.brand[400] : colors.textMuted}
-            />
-            <Text style={[
-              styles.sectionTabText,
-              { color: activeSection === 'overview' ? colors.brand[400] : colors.textSecondary },
-            ]}>
-              Genel
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.sectionTab,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-              },
-              activeSection === 'tasks' && {
-                backgroundColor: 'rgba(147, 51, 234, 0.15)',
-                borderColor: 'rgba(147, 51, 234, 0.3)',
-              },
-            ]}
-            onPress={() => setActiveSection('tasks')}
-          >
-            <Ionicons
-              name={activeSection === 'tasks' ? 'checkbox' : 'checkbox-outline'}
-              size={14}
-              color={activeSection === 'tasks' ? colors.brand[400] : colors.textMuted}
-            />
-            <Text style={[
-              styles.sectionTabText,
-              { color: activeSection === 'tasks' ? colors.brand[400] : colors.textSecondary },
-            ]}>
-              Görevler
-            </Text>
-            <View style={styles.sectionTabBadge}>
-              <Text style={styles.sectionTabBadgeText}>{taskStats.pending}</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.sectionTab,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-              },
-              activeSection === 'schedule' && {
-                backgroundColor: 'rgba(147, 51, 234, 0.15)',
-                borderColor: 'rgba(147, 51, 234, 0.3)',
-              },
-            ]}
-            onPress={() => setActiveSection('schedule')}
-          >
-            <Ionicons
-              name={activeSection === 'schedule' ? 'calendar' : 'calendar-outline'}
-              size={14}
-              color={activeSection === 'schedule' ? colors.brand[400] : colors.textMuted}
-            />
-            <Text style={[
-              styles.sectionTabText,
-              { color: activeSection === 'schedule' ? colors.brand[400] : colors.textSecondary },
-            ]}>
-              Program
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.sectionTab,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-              },
-              activeSection === 'payments' && {
-                backgroundColor: 'rgba(147, 51, 234, 0.15)',
-                borderColor: 'rgba(147, 51, 234, 0.3)',
-              },
-            ]}
-            onPress={() => setActiveSection('payments')}
-          >
-            <Ionicons
-              name={activeSection === 'payments' ? 'wallet' : 'wallet-outline'}
-              size={14}
-              color={activeSection === 'payments' ? colors.brand[400] : colors.textMuted}
-            />
-            <Text style={[
-              styles.sectionTabText,
-              { color: activeSection === 'payments' ? colors.brand[400] : colors.textSecondary },
-            ]}>
-              Ödemeler
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveSection('overview')}
+            >
+              <Text style={[styles.tabText, { color: activeSection === 'overview' ? colors.brand[400] : colors.textMuted }]}>
+                Genel
+              </Text>
+              {activeSection === 'overview' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveSection('tasks')}
+            >
+              <Text style={[styles.tabText, { color: activeSection === 'tasks' ? colors.brand[400] : colors.textMuted }]}>
+                Görevler {taskStats.pending > 0 && `(${taskStats.pending})`}
+              </Text>
+              {activeSection === 'tasks' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveSection('schedule')}
+            >
+              <Text style={[styles.tabText, { color: activeSection === 'schedule' ? colors.brand[400] : colors.textMuted }]}>
+                Program
+              </Text>
+              {activeSection === 'schedule' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveSection('team')}
+            >
+              <Text style={[styles.tabText, { color: activeSection === 'team' ? colors.brand[400] : colors.textMuted }]}>
+                Ekip ({team.length})
+              </Text>
+              {activeSection === 'team' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveSection('payments')}
+            >
+              <Text style={[styles.tabText, { color: activeSection === 'payments' ? colors.brand[400] : colors.textMuted }]}>
+                Ödemeler
+              </Text>
+              {activeSection === 'payments' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveSection('documents')}
+            >
+              <Text style={[styles.tabText, { color: activeSection === 'documents' ? colors.brand[400] : colors.textMuted }]}>
+                Dökümanlar ({documents.length})
+              </Text>
+              {activeSection === 'documents' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
 
         {/* Overview Section */}
         {activeSection === 'overview' && (
@@ -510,64 +893,38 @@ export function ProviderEventDetailScreen() {
 
             {/* Team */}
             <View style={styles.sectionBlock}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Ekip ({mockTeam.length} kişi)</Text>
-              {mockTeam.map(member => renderTeamMember(member))}
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Ekip</Text>
+                <TouchableOpacity onPress={() => setActiveSection('team')}>
+                  <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör</Text>
+                </TouchableOpacity>
+              </View>
+              {team.length > 0 ? (
+                team.slice(0, 3).map(member => renderTeamMember(member))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="people-outline" size={32} color={colors.textMuted} />
+                  <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz ekip üyesi yok</Text>
+                </View>
+              )}
             </View>
 
             {/* Documents */}
             <View style={styles.sectionBlock}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Dökümanlar</Text>
-              <TouchableOpacity style={[
-                styles.documentItem,
-                {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
-                },
-                ...(isDark ? [] : [helpers.getShadow('sm')]),
-              ]}>
-                <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
-                  <Ionicons name="document-text" size={20} color={colors.brand[400]} />
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Dökümanlar</Text>
+                <TouchableOpacity onPress={() => setActiveSection('documents')}>
+                  <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör</Text>
+                </TouchableOpacity>
+              </View>
+              {documents.length > 0 ? (
+                documents.slice(0, 3).map(doc => renderDocument(doc))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="folder-outline" size={32} color={colors.textMuted} />
+                  <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz döküman yok</Text>
                 </View>
-                <View style={styles.documentInfo}>
-                  <Text style={[styles.documentName, { color: colors.text }]}>Sözleşme.pdf</Text>
-                  <Text style={[styles.documentSize, { color: colors.textMuted }]}>2.4 MB</Text>
-                </View>
-                <Ionicons name="download-outline" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[
-                styles.documentItem,
-                {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
-                },
-                ...(isDark ? [] : [helpers.getShadow('sm')]),
-              ]}>
-                <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
-                  <Ionicons name="document-text" size={20} color={colors.success} />
-                </View>
-                <View style={styles.documentInfo}>
-                  <Text style={[styles.documentName, { color: colors.text }]}>Sahne_Plani.pdf</Text>
-                  <Text style={[styles.documentSize, { color: colors.textMuted }]}>5.1 MB</Text>
-                </View>
-                <Ionicons name="download-outline" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity style={[
-                styles.documentItem,
-                {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
-                },
-                ...(isDark ? [] : [helpers.getShadow('sm')]),
-              ]}>
-                <View style={[styles.documentIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}>
-                  <Ionicons name="image" size={20} color={colors.warning} />
-                </View>
-                <View style={styles.documentInfo}>
-                  <Text style={[styles.documentName, { color: colors.text }]}>Ekipman_Listesi.xlsx</Text>
-                  <Text style={[styles.documentSize, { color: colors.textMuted }]}>156 KB</Text>
-                </View>
-                <Ionicons name="download-outline" size={20} color={colors.textMuted} />
-              </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -589,7 +946,62 @@ export function ProviderEventDetailScreen() {
                 <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.pending} Bekliyor</Text>
               </View>
             </View>
-            {mockTasks.map(task => renderTask(task))}
+            {tasks.length > 0 ? (
+              tasks.map(task => renderTask(task))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkbox-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz görev yok</Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textMuted }]}>
+                  Yeni görev ekleyerek başlayın
+                </Text>
+              </View>
+            )}
+            {/* Add Task Button */}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}
+              onPress={() => setShowAddTaskModal(true)}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
+              <Text style={[styles.addButtonText, { color: colors.brand[400] }]}>Görev Ekle</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Team Section */}
+        {activeSection === 'team' && (
+          <View style={styles.teamSection}>
+            <View style={styles.teamStats}>
+              <View style={styles.teamStatItem}>
+                <View style={[styles.teamStatDot, { backgroundColor: colors.success }]} />
+                <Text style={[styles.teamStatText, { color: colors.textSecondary }]}>
+                  {team.filter(t => t.status === 'available').length} Müsait
+                </Text>
+              </View>
+              <View style={styles.teamStatItem}>
+                <View style={[styles.teamStatDot, { backgroundColor: colors.warning }]} />
+                <Text style={[styles.teamStatText, { color: colors.textSecondary }]}>
+                  {team.filter(t => t.status === 'busy').length} Meşgul
+                </Text>
+              </View>
+              <View style={styles.teamStatItem}>
+                <View style={[styles.teamStatDot, { backgroundColor: colors.textMuted }]} />
+                <Text style={[styles.teamStatText, { color: colors.textSecondary }]}>
+                  {team.filter(t => t.status === 'off').length} İzinli
+                </Text>
+              </View>
+            </View>
+            {team.length > 0 ? (
+              team.map(member => renderTeamMemberExtended(member))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz ekip üyesi yok</Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textMuted }]}>
+                  Ekip üyeleri organizatör tarafından atanır
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -606,17 +1018,70 @@ export function ProviderEventDetailScreen() {
         {/* Payments Section */}
         {activeSection === 'payments' && (
           <View style={styles.paymentsSection}>
-            {mockPayments.map(payment => renderPayment(payment))}
+            {payments.length > 0 ? (
+              payments.map(payment => renderPayment(payment))
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="wallet-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz ödeme yok</Text>
+              </View>
+            )}
 
             {/* Invoice Button */}
-            <TouchableOpacity style={[styles.invoiceButton, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
+            <TouchableOpacity
+              style={[styles.invoiceButton, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}
+              onPress={handleInvoice}
+            >
               <Ionicons name="document-text-outline" size={18} color={colors.brand[400]} />
               <Text style={[styles.invoiceButtonText, { color: colors.brand[400] }]}>Fatura Oluştur</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <View style={{ height: 120 }} />
+        {/* Documents Section */}
+        {activeSection === 'documents' && (
+          <View style={styles.documentsSection}>
+            {documents.length > 0 ? (
+              <>
+                {/* Group by type */}
+                {documents.filter(d => d.type === 'contract').length > 0 && (
+                  <View style={styles.documentGroup}>
+                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Sözleşmeler</Text>
+                    {documents.filter(d => d.type === 'contract').map(doc => renderDocument(doc))}
+                  </View>
+                )}
+                {documents.filter(d => d.type === 'plan').length > 0 && (
+                  <View style={styles.documentGroup}>
+                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Planlar</Text>
+                    {documents.filter(d => d.type === 'plan').map(doc => renderDocument(doc))}
+                  </View>
+                )}
+                {documents.filter(d => d.type === 'rider').length > 0 && (
+                  <View style={styles.documentGroup}>
+                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Teknik Rider</Text>
+                    {documents.filter(d => d.type === 'rider').map(doc => renderDocument(doc))}
+                  </View>
+                )}
+                {documents.filter(d => !['contract', 'plan', 'rider'].includes(d.type)).length > 0 && (
+                  <View style={styles.documentGroup}>
+                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Diğer</Text>
+                    {documents.filter(d => !['contract', 'plan', 'rider'].includes(d.type)).map(doc => renderDocument(doc))}
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="folder-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz döküman yok</Text>
+                <Text style={[styles.emptyStateSubtext, { color: colors.textMuted }]}>
+                  Dökümanlar organizatör tarafından paylaşılır
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        <View style={{ height: 180 }} />
       </ScrollView>
 
       {/* Bottom Actions */}
@@ -625,30 +1090,320 @@ export function ProviderEventDetailScreen() {
         {
           backgroundColor: colors.background,
           borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+          paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
         },
       ]}>
-        <TouchableOpacity style={[
-          styles.supportButton,
-          {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-          },
-        ]}>
-          <Ionicons name="help-circle-outline" size={20} color={colors.text} />
-          <Text style={[styles.supportButtonText, { color: colors.text }]}>Destek</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.checkInButton}>
-          <LinearGradient
-            colors={gradients.primary}
-            style={styles.checkInGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="location" size={18} color="white" />
-            <Text style={styles.checkInText}>Check-in Yap</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Check-in Status Card */}
+        {checkInStatus?.isCheckedIn && (
+          <View style={[
+            styles.checkInStatusCard,
+            {
+              backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)',
+              borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+            }
+          ]}>
+            <View style={styles.checkInStatusHeader}>
+              <View style={styles.checkInStatusLeft}>
+                <View style={[styles.checkInStatusDot, { backgroundColor: checkInStatus.breaks.some(b => !b.endTime) ? colors.warning : colors.success }]} />
+                <Text style={[styles.checkInStatusText, { color: colors.text }]}>
+                  {checkInStatus.breaks.some(b => !b.endTime) ? 'Molada' : 'Çalışıyor'}
+                </Text>
+              </View>
+              <View style={styles.checkInStatusRight}>
+                <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+                <Text style={[styles.checkInStatusTime, { color: colors.text }]}>
+                  {formatWorkingTime(currentWorkingMinutes)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.checkInStatusDetails}>
+              <Text style={[styles.checkInStatusDetail, { color: colors.textMuted }]}>
+                Giriş: {checkInStatus.checkInTime ? formatTime(new Date(checkInStatus.checkInTime)) : '-'}
+              </Text>
+              {checkInStatus.breaks.length > 0 && (
+                <Text style={[styles.checkInStatusDetail, { color: colors.textMuted }]}>
+                  Mola: {checkInStatus.breaks.length}x
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Action Buttons */}
+        <View style={styles.checkInActions}>
+          {checkInStatus?.isCheckedIn ? (
+            <>
+              {/* Break Button */}
+              <TouchableOpacity
+                style={[
+                  styles.breakButton,
+                  {
+                    backgroundColor: checkInStatus.breaks.some(b => !b.endTime)
+                      ? 'rgba(16, 185, 129, 0.15)'
+                      : isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
+                    borderColor: checkInStatus.breaks.some(b => !b.endTime)
+                      ? 'rgba(16, 185, 129, 0.3)'
+                      : isDark ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)',
+                  },
+                ]}
+                onPress={handleBreak}
+                disabled={isCheckingIn}
+              >
+                <Ionicons
+                  name={checkInStatus.breaks.some(b => !b.endTime) ? 'play' : 'pause'}
+                  size={18}
+                  color={checkInStatus.breaks.some(b => !b.endTime) ? colors.success : colors.warning}
+                />
+                <Text style={[
+                  styles.breakButtonText,
+                  { color: checkInStatus.breaks.some(b => !b.endTime) ? colors.success : colors.warning }
+                ]}>
+                  {checkInStatus.breaks.some(b => !b.endTime) ? 'Devam Et' : 'Mola'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Check-out Button */}
+              <TouchableOpacity
+                style={styles.checkOutButton}
+                onPress={handleCheckOut}
+                disabled={isCheckingIn}
+              >
+                <LinearGradient
+                  colors={['#ef4444', '#dc2626']}
+                  style={styles.checkOutGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {isCheckingIn ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Ionicons name="log-out-outline" size={18} color="white" />
+                      <Text style={styles.checkOutText}>Check-out</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          ) : event?.status === 'completed' ? (
+            <>
+              {/* Support Button */}
+              <TouchableOpacity
+                style={[
+                  styles.supportButton,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+                  },
+                ]}
+                onPress={handleSupport}
+              >
+                <Ionicons name="help-circle-outline" size={20} color={colors.text} />
+                <Text style={[styles.supportButtonText, { color: colors.text }]}>Destek</Text>
+              </TouchableOpacity>
+
+              {/* Review Organizer Button */}
+              <TouchableOpacity
+                style={styles.checkInButton}
+                onPress={() => setShowRatingModal(true)}
+              >
+                <LinearGradient
+                  colors={['#F59E0B', '#FBBF24']}
+                  style={styles.checkInGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="star" size={18} color="white" />
+                  <Text style={styles.checkInButtonText}>Organizatoru Degerlendir</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              {/* Support Button */}
+              <TouchableOpacity
+                style={[
+                  styles.supportButton,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+                  },
+                ]}
+                onPress={handleSupport}
+              >
+                <Ionicons name="help-circle-outline" size={20} color={colors.text} />
+                <Text style={[styles.supportButtonText, { color: colors.text }]}>Destek</Text>
+              </TouchableOpacity>
+
+              {/* Check-in Button */}
+              <TouchableOpacity
+                style={styles.checkInButton}
+                onPress={handleCheckIn}
+                disabled={isCheckingIn}
+              >
+                <LinearGradient
+                  colors={gradients.primary}
+                  style={styles.checkInGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {isCheckingIn ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Ionicons name="location" size={18} color="white" />
+                      <Text style={styles.checkInButtonText}>Check-in Yap</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
+
+      {/* Add Task Modal */}
+      <Modal
+        visible={showAddTaskModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddTaskModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.modalContent,
+            {
+              backgroundColor: colors.background,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+            },
+          ]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Yeni Görev Ekle</Text>
+              <TouchableOpacity onPress={() => setShowAddTaskModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Görev Başlığı *</Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                    color: colors.text,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+                  },
+                ]}
+                placeholder="Görev başlığını girin"
+                placeholderTextColor={colors.textMuted}
+                value={newTaskTitle}
+                onChangeText={setNewTaskTitle}
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Açıklama</Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  styles.textArea,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                    color: colors.text,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+                  },
+                ]}
+                placeholder="Görev açıklamasını girin"
+                placeholderTextColor={colors.textMuted}
+                value={newTaskDescription}
+                onChangeText={setNewTaskDescription}
+                multiline
+                numberOfLines={3}
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Öncelik</Text>
+              <View style={styles.priorityOptions}>
+                {(['low', 'medium', 'high'] as const).map(priority => (
+                  <TouchableOpacity
+                    key={priority}
+                    style={[
+                      styles.priorityOption,
+                      {
+                        backgroundColor: newTaskPriority === priority
+                          ? (priority === 'high' ? 'rgba(239, 68, 68, 0.15)' :
+                             priority === 'medium' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)')
+                          : isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                        borderColor: newTaskPriority === priority
+                          ? (priority === 'high' ? colors.error :
+                             priority === 'medium' ? colors.warning : colors.success)
+                          : isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+                      },
+                    ]}
+                    onPress={() => setNewTaskPriority(priority)}
+                  >
+                    <Text style={[
+                      styles.priorityOptionText,
+                      {
+                        color: newTaskPriority === priority
+                          ? (priority === 'high' ? colors.error :
+                             priority === 'medium' ? colors.warning : colors.success)
+                          : colors.textSecondary,
+                      },
+                    ]}>
+                      {priority === 'high' ? 'Yüksek' : priority === 'medium' ? 'Orta' : 'Düşük'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[
+                  styles.modalCancelButton,
+                  {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+                  },
+                ]}
+                onPress={() => setShowAddTaskModal(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.text }]}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitButton, { backgroundColor: colors.brand[500] }]}
+                onPress={handleAddTask}
+              >
+                <Text style={styles.modalSubmitText}>Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Rating Modal */}
+      {event && (
+        <RatingModal
+          visible={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          target={{
+            id: event.organizerId,
+            name: event.organizerName,
+            image: event.organizerImage,
+            type: 'organizer',
+          }}
+          event={{
+            id: event.id,
+            title: event.eventTitle,
+            date: event.eventDate,
+          }}
+          reviewerType="provider"
+          onSubmit={(review) => {
+            console.log('Review submitted:', review);
+            setShowRatingModal(false);
+            Alert.alert('Basarili', 'Degerlendirmeniz gonderildi!');
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -677,6 +1432,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActions: {
+    position: 'absolute',
+    top: 12,
+    right: 16,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerActionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -797,43 +1567,31 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  sectionTabs: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 6,
+  tabContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderBottomWidth: 1,
   },
-  sectionTab: {
+  tabContent: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginRight: 6,
-    gap: 4,
+    gap: 8,
   },
-  sectionTabActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+  tab: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    position: 'relative',
   },
-  sectionTabText: {
-    fontSize: 12,
+  tabText: {
+    fontSize: 14,
     fontWeight: '500',
   },
-  sectionTabTextActive: {
-  },
-  sectionTabBadge: {
-    backgroundColor: colors.error,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  sectionTabBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.white,
+  tabIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    left: 12,
+    right: 12,
+    height: 2,
+    borderRadius: 1,
   },
   overviewSection: {
     padding: 20,
@@ -1023,6 +1781,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  taskStatusLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  taskStatusLabelText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  taskActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+    gap: 8,
+  },
+  taskActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  taskActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   scheduleSection: {
     padding: 20,
   },
@@ -1173,6 +1960,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  // Check-in Status Card
+  checkInStatusCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+  },
+  checkInStatusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  checkInStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkInStatusRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  checkInStatusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  checkInStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  checkInStatusTime: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  checkInStatusDetails: {
+    flexDirection: 'row',
+    marginTop: 8,
+    gap: 16,
+  },
+  checkInStatusDetail: {
+    fontSize: 12,
+  },
+  // Check-in Actions
+  checkInActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   checkInButton: {
     flex: 1,
     borderRadius: 16,
@@ -1185,8 +2020,298 @@ const styles = StyleSheet.create({
     height: 52,
     gap: 8,
   },
-  checkInText: {
+  checkInButtonText: {
     fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Break Button
+  breakButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  breakButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Check-out Button
+  checkOutButton: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  checkOutGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    gap: 8,
+  },
+  checkOutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Loading & Error states
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  backToListButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  backToListText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  // Empty states
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginTop: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  // See all text
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  // Add button
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Team section
+  teamSection: {
+    padding: 20,
+  },
+  teamStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  teamStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  teamStatDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  teamStatText: {
+    fontSize: 12,
+  },
+  teamMemberExtended: {
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  teamMemberHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  teamMemberImageLarge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  teamMemberMainInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  teamMemberStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  teamMemberActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  teamActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  assignedTasksInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+    gap: 6,
+  },
+  assignedTasksText: {
+    fontSize: 12,
+  },
+  checkInInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  checkInText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  // Documents section
+  documentsSection: {
+    padding: 20,
+  },
+  documentGroup: {
+    marginBottom: 20,
+  },
+  documentGroupTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    marginBottom: 16,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  priorityOptions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  priorityOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  priorityOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    paddingTop: 0,
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalSubmitText: {
+    fontSize: 14,
     fontWeight: '600',
     color: 'white',
   },

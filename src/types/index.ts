@@ -28,7 +28,8 @@ export type ServiceCategory =
   | 'venue'
   | 'flight'
   | 'transport'
-  | 'operation';
+  | 'operation'
+  | 'catering';
 
 // Operation Sub-categories
 export type OperationSubCategory =
@@ -170,6 +171,78 @@ export interface Notification {
   timestamp: string;
   read: boolean;
   actionUrl?: string;
+}
+
+// ============================================
+// Review/Rating Types
+// ============================================
+
+// Review Interface
+export interface Review {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+
+  // Reviewer (who is writing the review)
+  reviewerId: string;
+  reviewerName: string;
+  reviewerImage: string;
+  reviewerType: 'organizer' | 'provider';
+
+  // Reviewee (who is being reviewed)
+  revieweeId: string;
+  revieweeName: string;
+  revieweeType: 'organizer' | 'provider';
+
+  // Ratings
+  overallRating: number; // 1-5
+  detailedRatings?: {
+    communication?: number;
+    professionalism?: number;
+    quality?: number;
+    punctuality?: number;
+    valueForMoney?: number;
+    organization?: number;
+    paymentReliability?: number;
+    workingConditions?: number;
+  };
+
+  // Tags and Comment
+  tags: string[];
+  comment?: string;
+  wouldWorkAgain: boolean;
+
+  // Meta
+  createdAt: string;
+  serviceCategory?: string;
+  isPublic: boolean;
+}
+
+// Pending Review Interface
+export interface PendingReview {
+  id: string;
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+  eventImage: string;
+  targets: {
+    id: string;
+    name: string;
+    image: string;
+    type: 'provider' | 'organizer';
+    serviceCategory?: string;
+  }[];
+  dueDate: string;
+}
+
+// Review Target (person/company being reviewed)
+export interface ReviewTarget {
+  id: string;
+  name: string;
+  image: string;
+  type: 'provider' | 'organizer';
+  serviceCategory?: string;
 }
 
 // Category Config
@@ -324,6 +397,57 @@ export interface TicketingRequirements {
   ticketTech: string[];
 }
 
+// ============================================
+// Ticketing Management Types
+// ============================================
+
+// Platform for ticket sales
+export interface TicketPlatform {
+  id: string;
+  name: string;
+  logo?: string;
+  ticketsSold: number;
+  revenue: number;
+  commission: number;
+  email: string;
+  isActive: boolean;
+}
+
+// Ticket category/price tier
+export interface TicketCategory {
+  id: string;
+  name: string;
+  price: number;
+  newPrice?: number;
+  capacity: number;
+  sold: number;
+  remaining: number;
+}
+
+// Event ticketing data
+export interface EventTicketing {
+  isEnabled: boolean;
+  capacity: number;
+  totalSold: number;
+  totalRevenue: number;
+  occupancyRate: number;
+  platforms: TicketPlatform[];
+  categories: TicketCategory[];
+}
+
+// Scanned ticket for check-in
+export interface ScannedTicket {
+  id: string;
+  ticketNumber: string;
+  platform: string;
+  platformLogo?: string;
+  category: string;
+  price: number;
+  holderName: string;
+  scannedAt: string;
+  status: 'valid' | 'used' | 'invalid';
+}
+
 // Decoration (Dekorasyon) Requirements
 export interface DecorationRequirements {
   decorTheme: string;
@@ -360,20 +484,29 @@ export type CategoryRequirements =
   | DecorationRequirements
   | ProductionRequirements;
 
-// Quote Request Interface
+// Quote Request Interface (Enhanced for multi-offer system)
 export interface QuoteRequest {
   id: string;
   eventId: string;
   eventTitle: string;
+  serviceId: string;
+  serviceName: string;
   category: ServiceCategory | OperationSubCategory;
+  type: 'open' | 'invited';           // Request type
+  invitedProviders: string[];         // Provider IDs for invited type
   eventDate: string;
+  deadline: string;                   // Response deadline
   budget: string;
+  budgetMin?: number;
+  budgetMax?: number;
   notes: string;
   requirements: CategoryRequirements;
   organizerName: string;
   organizerImage: string;
   createdAt: string;
-  status: 'pending' | 'offered' | 'accepted' | 'rejected';
+  status: 'open' | 'closed' | 'awarded';
+  offerCount: number;
+  selectedOfferId?: string;
 }
 
 // ============================================
@@ -425,6 +558,7 @@ export type EventsStackParamList = {
 export type OffersStackParamList = {
   OffersMain: undefined;
   OfferDetail: { offerId: string };
+  CompareOffers: { quoteRequestId: string; serviceId?: string };
   Contract: { contractId: string };
   Contracts: undefined;
 };
@@ -460,6 +594,13 @@ export type ProfileStackParamList = {
   Terms: undefined;
   PrivacyPolicy: undefined;
   ContactSupport: undefined;
+  // Team/RBAC Screens
+  Team: undefined;
+  InviteMember: undefined;
+  MemberDetail: { memberId: string };
+  RolePermissions: { roleId: string };
+  // Reviews
+  MyReviews: undefined;
 };
 
 // Navigation Props Types
@@ -497,3 +638,31 @@ export type ChatRouteProp = RouteProp<HomeStackParamList, 'Chat'>;
 export type ServiceProvidersRouteProp = RouteProp<HomeStackParamList, 'ServiceProviders'>;
 export type CategoryRequestRouteProp = RouteProp<HomeStackParamList, 'CategoryRequest'>;
 export type ContractRouteProp = RouteProp<OffersStackParamList, 'Contract'>;
+export type CompareOffersRouteProp = RouteProp<OffersStackParamList, 'CompareOffers'>;
+
+// Re-export comparison types
+export * from './comparison';
+
+// Re-export RBAC types
+export * from './rbac';
+
+// Re-export Auth types
+export * from './auth';
+
+// Team/RBAC Navigation Types
+export type TeamStackParamList = {
+  TeamMain: undefined;
+  InviteMember: undefined;
+  MemberDetail: { memberId: string };
+  RolePermissions: { roleId: string };
+};
+
+// Team Navigation Props
+export type TeamStackNavigationProp = CompositeNavigationProp<
+  NativeStackNavigationProp<TeamStackParamList>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
+
+// Team Route Props
+export type MemberDetailRouteProp = RouteProp<TeamStackParamList, 'MemberDetail'>;
+export type RolePermissionsRouteProp = RouteProp<TeamStackParamList, 'RolePermissions'>;

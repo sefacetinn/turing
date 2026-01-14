@@ -61,8 +61,8 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
       style={[
         styles.card,
         {
-          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : '#f8f9fa',
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#e5e7eb',
         },
         showActions && {
           borderColor: 'rgba(147, 51, 234, 0.3)',

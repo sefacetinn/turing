@@ -75,11 +75,11 @@ export const categories = [
     popular: false,
   },
   {
-    id: 'flight',
-    name: 'Uçak',
-    description: 'Uçuş Hizmetleri',
-    icon: 'airplane',
-    gradient: gradients.flight,
+    id: 'operation',
+    name: 'Operasyon',
+    description: 'Güvenlik, Catering & Daha',
+    icon: 'settings',
+    gradient: gradients.operation,
     popular: false,
   },
 ];
@@ -132,10 +132,10 @@ export const providerStats = {
   conversionRate: 34,
 };
 
-// Upcoming jobs for provider
+// Upcoming jobs for provider - IDs match providerEventsData
 export const upcomingJobs = [
   {
-    id: '1',
+    id: 'pe1',
     title: 'Zeytinli Rock Festivali 2025',
     date: '18-20 Temmuz',
     location: 'Edremit, Balıkesir',
@@ -146,7 +146,7 @@ export const upcomingJobs = [
     image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
   },
   {
-    id: '2',
+    id: 'pe2',
     title: 'MegaFon Arena - Tarkan',
     date: '25 Temmuz',
     location: 'İstanbul',
@@ -157,7 +157,7 @@ export const upcomingJobs = [
     image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
   },
   {
-    id: '3',
+    id: 'pe3',
     title: 'Koç Holding Yıllık Toplantısı',
     date: '5 Ağustos',
     location: 'İstanbul',
@@ -233,4 +233,154 @@ export const homeStats = [
   { label: 'Sanatçı', value: '270+' },
   { label: 'Mekan', value: '150+' },
   { label: 'Sağlayıcı', value: '500+' },
+];
+
+// Organizer dashboard data
+export const organizerDashboard = {
+  // Summary stats
+  activeEvents: 3,
+  upcomingEvents: 5,
+  pendingOffers: 4,
+  pendingServices: 7,
+  totalBudget: 2850000,
+  totalSpent: 1625000,
+
+  // Next upcoming event
+  nextEvent: {
+    id: '1',
+    title: 'Yaz Festivali 2024',
+    date: '15-17 Temmuz 2024',
+    daysUntil: 12,
+    venue: 'KüçükÇiftlik Park',
+    location: 'İstanbul',
+    progress: 65,
+    servicesConfirmed: 5,
+    servicesTotal: 9,
+    image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
+  },
+
+  // Active events list
+  activeEventsList: [
+    {
+      id: '1',
+      title: 'Yaz Festivali 2024',
+      date: '15-17 Temmuz',
+      status: 'planning',
+      progress: 65,
+      image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
+    },
+    {
+      id: '2',
+      title: 'Kurumsal Gala',
+      date: '22 Ağustos',
+      status: 'confirmed',
+      progress: 85,
+      image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400',
+    },
+    {
+      id: '3',
+      title: 'Düğün - Ayşe & Mehmet',
+      date: '10 Eylül',
+      status: 'planning',
+      progress: 45,
+      image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=400',
+    },
+  ],
+
+  // Pending actions
+  pendingActions: [
+    {
+      id: 'pa1',
+      type: 'offer',
+      title: 'Hilton - Konaklama Teklifi',
+      subtitle: 'Yaz Festivali 2024',
+      amount: 45000,
+      timeAgo: '2 saat önce',
+      urgent: false,
+    },
+    {
+      id: 'pa2',
+      type: 'offer',
+      title: 'GourmetEvents - Catering',
+      subtitle: 'Yaz Festivali 2024',
+      amount: 180000,
+      timeAgo: '5 saat önce',
+      urgent: true,
+    },
+    {
+      id: 'pa3',
+      type: 'service',
+      title: 'Işık Sistemi',
+      subtitle: 'Tedarikçi seçimi bekliyor',
+      amount: 65000,
+      timeAgo: null,
+      urgent: false,
+    },
+  ],
+
+  // Recent activity
+  recentActivity: [
+    {
+      id: 'ra1',
+      type: 'offer_received',
+      message: 'LightShow Pro yeni teklif gönderdi',
+      time: '10 dk önce',
+      icon: 'pricetag',
+    },
+    {
+      id: 'ra2',
+      type: 'message',
+      message: 'Pro Sound Istanbul mesaj gönderdi',
+      time: '1 saat önce',
+      icon: 'chatbubble',
+    },
+    {
+      id: 'ra3',
+      type: 'contract_signed',
+      message: 'SecurePro sözleşmeyi onayladı',
+      time: '3 saat önce',
+      icon: 'checkmark-circle',
+    },
+    {
+      id: 'ra4',
+      type: 'payment',
+      message: 'Pro Sound Istanbul ödemesi tamamlandı',
+      time: 'Dün',
+      icon: 'wallet',
+    },
+  ],
+};
+
+// Quick action buttons for organizer
+export const organizerQuickActions = [
+  {
+    id: 'create',
+    label: 'Etkinlik Oluştur',
+    icon: 'add-circle',
+    gradient: ['#9333ea', '#7c3aed'] as const,
+    route: 'CreateEvent',
+  },
+  {
+    id: 'offers',
+    label: 'Teklifler',
+    icon: 'pricetags',
+    gradient: ['#f59e0b', '#d97706'] as const,
+    route: 'OffersTab',
+    badge: 4,
+  },
+  {
+    id: 'calendar',
+    label: 'Takvim',
+    icon: 'calendar',
+    gradient: ['#3b82f6', '#2563eb'] as const,
+    route: 'CalendarView',
+  },
+  {
+    id: 'messages',
+    label: 'Mesajlar',
+    icon: 'chatbubbles',
+    gradient: ['#10b981', '#059669'] as const,
+    route: 'MessagesTab',
+    badge: 2,
+  },
 ];

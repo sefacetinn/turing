@@ -147,11 +147,13 @@ export function OrganizerEventsScreen() {
   const stats = useMemo(() => {
     const allEvents = mockEvents as Event[];
     const activeEvents = allEvents.filter(e => ['planning', 'confirmed'].includes(e.status));
+    const pastEvents = allEvents.filter(e => ['completed', 'cancelled'].includes(e.status));
     const totalBudget = allEvents.reduce((sum, e) => sum + e.budget, 0);
     const totalSpent = allEvents.reduce((sum, e) => sum + e.spent, 0);
     return {
       total: allEvents.length,
       active: activeEvents.length,
+      past: pastEvents.length,
       totalBudget,
       totalSpent,
     };
@@ -349,7 +351,13 @@ export function OrganizerEventsScreen() {
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
+        <View style={[
+          styles.searchBar,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+          }
+        ]}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
@@ -367,59 +375,29 @@ export function OrganizerEventsScreen() {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'active' && styles.tabActive]}
-          onPress={() => setActiveTab('active')}
-        >
-          <Ionicons
-            name={activeTab === 'active' ? 'calendar' : 'calendar-outline'}
-            size={14}
-            color={activeTab === 'active' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'active' && styles.tabTextActive]}>
-            Aktif
-          </Text>
-          <View style={[styles.tabBadge, activeTab === 'active' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'active' && styles.tabBadgeTextActive]}>
-              {stats.active}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'past' && styles.tabActive]}
-          onPress={() => setActiveTab('past')}
-        >
-          <Ionicons
-            name={activeTab === 'past' ? 'time' : 'time-outline'}
-            size={14}
-            color={activeTab === 'past' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'past' && styles.tabTextActive]}>
-            Geçmiş
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'all' && styles.tabActive]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Ionicons
-            name={activeTab === 'all' ? 'list' : 'list-outline'}
-            size={14}
-            color={activeTab === 'all' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === 'all' && styles.tabTextActive]}>
-            Tümü
-          </Text>
-          <View style={[styles.tabBadge, activeTab === 'all' && styles.tabBadgeActive]}>
-            <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'all' && styles.tabBadgeTextActive]}>
-              {stats.total}
-            </Text>
-          </View>
-        </TouchableOpacity>
+      <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
+          {[
+            { key: 'active', label: 'Aktif', count: stats.active },
+            { key: 'past', label: 'Geçmiş', count: stats.past },
+            { key: 'all', label: 'Tümü', count: stats.total },
+          ].map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.tab}
+              onPress={() => setActiveTab(tab.key as any)}
+            >
+              <Text style={[styles.tabText, { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted }]}>
+                {tab.label}
+                {tab.count !== undefined && ` (${tab.count})`}
+              </Text>
+              {activeTab === tab.key && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
-      {/* Events List */}
+      {/* Events List or Calendar View */}
       <ScrollView
         style={styles.eventsList}
         showsVerticalScrollIndicator={false}
@@ -433,7 +411,93 @@ export function OrganizerEventsScreen() {
           />
         }
       >
-        {filteredEvents.length > 0 ? (
+        {showCalendar ? (
+          /* Calendar View */
+          <View style={styles.calendarView}>
+            {/* Calendar Header */}
+            <View style={[styles.calendarHeader, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
+              <Text style={[styles.calendarMonth, { color: colors.text }]}>Ocak 2024</Text>
+              <View style={styles.calendarNav}>
+                <TouchableOpacity style={[styles.calendarNavButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                  <Ionicons name="chevron-back" size={18} color={colors.text} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.calendarNavButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Calendar Grid */}
+            <View style={[styles.calendarGrid, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
+              {/* Week Days */}
+              <View style={styles.weekDays}>
+                {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day, i) => (
+                  <Text key={i} style={[styles.weekDay, { color: colors.textMuted }]}>{day}</Text>
+                ))}
+              </View>
+
+              {/* Days Grid */}
+              <View style={styles.daysGrid}>
+                {Array.from({ length: 35 }, (_, i) => {
+                  const dayNum = i - 1; // Offset for month start
+                  const isCurrentMonth = dayNum >= 0 && dayNum < 31;
+                  const day = isCurrentMonth ? dayNum + 1 : '';
+                  const hasEvent = [15, 17, 20, 25, 28].includes(dayNum + 1);
+                  const isToday = dayNum + 1 === 14;
+
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        styles.dayCell,
+                        isToday && { backgroundColor: colors.brand[500], borderRadius: 12 },
+                      ]}
+                    >
+                      <Text style={[
+                        styles.dayText,
+                        { color: isCurrentMonth ? (isToday ? 'white' : colors.text) : colors.textMuted },
+                      ]}>
+                        {day}
+                      </Text>
+                      {hasEvent && isCurrentMonth && (
+                        <View style={[styles.eventDot, { backgroundColor: isToday ? 'white' : colors.brand[400] }]} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Events for Selected Date */}
+            <Text style={[styles.calendarEventsTitle, { color: colors.text }]}>Bu Ayki Etkinlikler</Text>
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map(event => (
+                <TouchableOpacity
+                  key={event.id}
+                  style={[styles.calendarEventItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}
+                  onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
+                >
+                  <View style={[styles.calendarEventDate, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
+                    <Text style={[styles.calendarEventDay, { color: colors.brand[400] }]}>{event.date.split(' ')[0]}</Text>
+                    <Text style={[styles.calendarEventMonth, { color: colors.brand[400] }]}>{event.date.split(' ')[1]?.substring(0, 3)}</Text>
+                  </View>
+                  <View style={styles.calendarEventInfo}>
+                    <Text style={[styles.calendarEventTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
+                    <View style={styles.calendarEventMeta}>
+                      <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                      <Text style={[styles.calendarEventLocation, { color: colors.textMuted }]}>{event.venue}</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Bu ay etkinlik yok</Text>
+              </View>
+            )}
+          </View>
+        ) : filteredEvents.length > 0 ? (
           filteredEvents.map(event => renderEventCard(event))
         ) : (
           <View style={styles.emptyState}>
@@ -534,39 +598,32 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   tabContainer: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+  },
+  tabContent: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 16,
     gap: 8,
   },
   tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: 4,
-  },
-  tabActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    position: 'relative',
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '500',
   },
-  tabTextActive: {
-    color: colors.brand[400],
+  tabIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    left: 12,
+    right: 12,
+    height: 2,
+    borderRadius: 1,
   },
-  tabBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
+  // Removed old tab styles - now using underline indicator
   tabBadgeActive: {
     backgroundColor: 'rgba(147, 51, 234, 0.3)',
   },
@@ -810,5 +867,116 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.white,
+  },
+  // Calendar View Styles
+  calendarView: {
+    flex: 1,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  calendarMonth: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  calendarNav: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  calendarNavButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarGrid: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 20,
+  },
+  weekDays: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  weekDay: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  dayCell: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  dayText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  eventDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 2,
+  },
+  calendarEventsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  calendarEventItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  calendarEventDate: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarEventDay: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  calendarEventMonth: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  calendarEventInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  calendarEventTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  calendarEventMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  calendarEventLocation: {
+    fontSize: 12,
   },
 });

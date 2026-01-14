@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { userProfile } from '../data/mockData';
+import { useApp } from '../../App';
 
 interface ProfileScreenProps {
   isProviderMode: boolean;
@@ -16,7 +17,9 @@ interface ProfileScreenProps {
 
 const organizerMenuItems = [
   { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
+  { id: 'team', icon: 'people-outline', label: 'Ekip Yönetimi', chevron: true },
   { id: 'contracts', icon: 'document-text-outline', label: 'Sözleşmelerim', chevron: true },
+  { id: 'reviews', icon: 'star-outline', label: 'Değerlendirmelerim', chevron: true },
   { id: 'favorites', icon: 'heart-outline', label: 'Favorilerim', chevron: true },
   { id: 'notifications', icon: 'notifications-outline', label: 'Bildirim Ayarları', chevron: true },
   { id: 'security', icon: 'shield-outline', label: 'Güvenlik', chevron: true },
@@ -27,8 +30,10 @@ const organizerMenuItems = [
 
 const providerMenuItems = [
   { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
+  { id: 'team', icon: 'people-outline', label: 'Ekip Yönetimi', chevron: true },
   { id: 'services', icon: 'construct-outline', label: 'Verdiğim Hizmetler', chevron: true },
   { id: 'contracts', icon: 'document-text-outline', label: 'Sözleşmelerim', chevron: true },
+  { id: 'reviews', icon: 'star-outline', label: 'Değerlendirmelerim', chevron: true },
   { id: 'favorites', icon: 'heart-outline', label: 'Favorilerim', chevron: true },
   { id: 'notifications', icon: 'notifications-outline', label: 'Bildirim Ayarları', chevron: true },
   { id: 'security', icon: 'shield-outline', label: 'Güvenlik', chevron: true },
@@ -37,9 +42,19 @@ const providerMenuItems = [
   { id: 'about', icon: 'information-circle-outline', label: 'Hakkında', chevron: true },
 ];
 
+// Business management items for different provider types
+const businessManagementItems = [
+  { id: 'artistRoster', icon: 'musical-notes', label: 'Sanatçı Kadrosu', description: 'Booking sağlayıcıları için', gradient: ['#9333EA', '#C084FC'] },
+  { id: 'equipment', icon: 'hardware-chip', label: 'Ekipman Envanteri', description: 'Teknik firmalar için', gradient: ['#3B82F6', '#60A5FA'] },
+  { id: 'menu', icon: 'restaurant', label: 'Menü Yönetimi', description: 'Catering firmaları için', gradient: ['#F59E0B', '#FBBF24'] },
+  { id: 'fleet', icon: 'car', label: 'Filo Yönetimi', description: 'Ulaşım firmaları için', gradient: ['#10B981', '#34D399'] },
+  { id: 'personnel', icon: 'shield-checkmark', label: 'Personel Yönetimi', description: 'Güvenlik firmaları için', gradient: ['#EF4444', '#F87171'] },
+];
+
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const { canSwitchMode } = useApp();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
 
   const handleMenuPress = (itemId: string) => {
@@ -47,11 +62,17 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
       case 'account':
         navigation.navigate('EditProfile');
         break;
+      case 'team':
+        navigation.navigate('Team');
+        break;
       case 'services':
         navigation.navigate('ProviderServices');
         break;
       case 'contracts':
         navigation.navigate('Contracts');
+        break;
+      case 'reviews':
+        navigation.navigate('MyReviews');
         break;
       case 'favorites':
         navigation.navigate('Favorites');
@@ -70,6 +91,26 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         break;
       case 'about':
         navigation.navigate('About');
+        break;
+    }
+  };
+
+  const handleBusinessManagementPress = (itemId: string) => {
+    switch (itemId) {
+      case 'artistRoster':
+        navigation.navigate('ArtistRoster');
+        break;
+      case 'equipment':
+        navigation.navigate('EquipmentInventory');
+        break;
+      case 'menu':
+        navigation.navigate('MenuManagement');
+        break;
+      case 'fleet':
+        navigation.navigate('FleetManagement');
+        break;
+      case 'personnel':
+        navigation.navigate('PersonnelManagement');
         break;
     }
   };
@@ -278,37 +319,41 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           </View>
         </TouchableOpacity>
 
-        {/* Mode Switch */}
-        <View style={dynamicStyles.modeCard}>
-          <View style={styles.modeInfo}>
-            <View style={[
-              styles.modeIcon,
-              isProviderMode
-                ? { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(16, 185, 129, 0.25)' }
-                : { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(147, 51, 234, 0.25)' }
-            ]}>
-              <Ionicons
-                name={isProviderMode ? 'musical-notes' : 'people'}
-                size={20}
-                color={isProviderMode ? colors.success : colors.brand[400]}
-              />
+        {/* Mode Switch - Only show if user has dual access */}
+        {/* Debug: Always show for now, canSwitchMode = {canSwitchMode} */}
+        {true && (
+          <View style={dynamicStyles.modeCard}>
+            <View style={styles.modeInfo}>
+              <View style={[
+                styles.modeIcon,
+                isProviderMode
+                  ? { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(16, 185, 129, 0.25)' }
+                  : { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(147, 51, 234, 0.25)' }
+              ]}>
+                <Ionicons
+                  name={isProviderMode ? 'musical-notes' : 'people'}
+                  size={20}
+                  color={isProviderMode ? colors.success : colors.brand[400]}
+                />
+              </View>
+              <View>
+                <Text style={dynamicStyles.modeLabel}>
+                  {isProviderMode ? 'Sağlayıcı Modu' : 'Organizatör Modu'}
+                </Text>
+                <Text style={dynamicStyles.modeDescription}>
+                  {isProviderMode ? 'Hizmet sunuyorsunuz' : 'Etkinlik düzenliyorsunuz'}
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text style={dynamicStyles.modeLabel}>
-                {isProviderMode ? 'Sağlayıcı Modu' : 'Organizatör Modu'}
-              </Text>
-              <Text style={dynamicStyles.modeDescription}>
-                {isProviderMode ? 'Hizmet sunuyorsunuz' : 'Etkinlik düzenliyorsunuz'}
-              </Text>
-            </View>
+            <Switch
+              value={isProviderMode}
+              onValueChange={onToggleMode}
+              trackColor={{ false: isDark ? colors.zinc[700] : '#a1a1aa', true: colors.brand[600] }}
+              thumbColor={isProviderMode ? '#ffffff' : isDark ? colors.zinc[400] : '#ffffff'}
+              ios_backgroundColor={isDark ? colors.zinc[700] : '#d4d4d8'}
+            />
           </View>
-          <Switch
-            value={isProviderMode}
-            onValueChange={onToggleMode}
-            trackColor={{ false: isDark ? colors.zinc[700] : '#d4d4d8', true: colors.brand[600] }}
-            thumbColor={isProviderMode ? colors.brand[400] : isDark ? colors.zinc[400] : '#fafafa'}
-          />
-        </View>
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -328,6 +373,46 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
             <Text style={dynamicStyles.statLabel}>Puan</Text>
           </View>
         </View>
+
+        {/* Business Management Section - Only for providers */}
+        {isProviderMode && (
+          <View style={styles.businessSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>İşletme Yönetimi</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.businessScrollContent}
+            >
+              {businessManagementItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.businessCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => handleBusinessManagementPress(item.id)}
+                >
+                  <LinearGradient
+                    colors={item.gradient as [string, string]}
+                    style={styles.businessIconContainer}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Ionicons name={item.icon as any} size={22} color="white" />
+                  </LinearGradient>
+                  <Text style={[styles.businessCardLabel, { color: colors.text }]}>{item.label}</Text>
+                  <Text style={[styles.businessCardDesc, { color: colors.textMuted }]} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Menu Items */}
         <View style={dynamicStyles.menuSection}>
@@ -364,7 +449,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         {/* Version */}
         <Text style={dynamicStyles.versionText}>Turing v1.0.0</Text>
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -457,5 +542,43 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  businessSection: {
+    marginTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  businessScrollContent: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  businessCard: {
+    width: 130,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  businessIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  businessCardLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  businessCardDesc: {
+    fontSize: 10,
+    textAlign: 'center',
   },
 });

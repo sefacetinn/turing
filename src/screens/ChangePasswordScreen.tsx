@@ -212,7 +212,7 @@ export function ChangePasswordScreen() {
             </View>
           </View>
 
-          <View style={{ height: 24 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* Submit Button */}

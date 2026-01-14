@@ -7,17 +7,21 @@ import {
   StyleSheet,
   TextInput,
   Modal,
+  Image,
+  Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import {
   StepProgress,
   SelectModal,
   DatePickerModal,
+  CalendarPickerModal,
   OperationModal,
 } from '../components/createEvent';
 import {
@@ -44,6 +48,8 @@ import {
 export function CreateEventScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
+  const insets = useSafeAreaInsets();
+  const TAB_BAR_HEIGHT = 80;
   const [currentStep, setCurrentStep] = useState<Step>('type');
   const [activeDropdown, setActiveDropdown] = useState<DropdownType>(null);
   const [showAddVenue, setShowAddVenue] = useState(false);
@@ -58,19 +64,74 @@ export function CreateEventScreen() {
     () => getAvailableVenues(eventData.city, eventData.district, customVenues),
     [eventData.city, eventData.district, customVenues]
   );
+
+  // Format selected dates for display
+  const formattedDates = useMemo(() => {
+    if (eventData.selectedDates.length === 0) return '';
+    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    if (eventData.selectedDates.length === 1) {
+      const [year, month, day] = eventData.selectedDates[0].split('-');
+      return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+    }
+    const sorted = [...eventData.selectedDates].sort();
+    const [year1, month1, day1] = sorted[0].split('-');
+    const [year2, month2, day2] = sorted[sorted.length - 1].split('-');
+    if (year1 === year2 && month1 === month2) {
+      return `${parseInt(day1)}-${parseInt(day2)} ${months[parseInt(month1) - 1]} ${year1}`;
+    }
+    return `${parseInt(day1)} ${months[parseInt(month1) - 1]} - ${parseInt(day2)} ${months[parseInt(month2) - 1]} ${year2}`;
+  }, [eventData.selectedDates]);
+
   const formattedDate = useMemo(
-    () => getFormattedDate(eventData.day, eventData.month, eventData.year),
-    [eventData.day, eventData.month, eventData.year]
+    () => formattedDates || getFormattedDate(eventData.day, eventData.month, eventData.year),
+    [formattedDates, eventData.day, eventData.month, eventData.year]
   );
   const formattedLocation = useMemo(
     () => getFormattedLocation(eventData.city, eventData.district, eventData.venue),
     [eventData.city, eventData.district, eventData.venue]
   );
 
+  // Image picker function
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('İzin Gerekli', 'Galeri erişimi için izin vermeniz gerekmektedir.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setEventData(prev => ({ ...prev, image: result.assets[0].uri }));
+    }
+  };
+
+  // Handle venue selection with auto-fill capacity
+  const handleVenueSelect = (venueName: string) => {
+    const selectedVenue = availableVenues.find(v => v.name === venueName);
+    if (selectedVenue) {
+      // Parse capacity (e.g., "15.000" -> "15000")
+      const capacityStr = selectedVenue.capacity.replace(/\./g, '');
+      setEventData(prev => ({
+        ...prev,
+        venue: venueName,
+        venueCapacity: selectedVenue.capacity,
+        guestCount: prev.guestCount || capacityStr, // Only auto-fill if empty
+      }));
+    } else {
+      setEventData(prev => ({ ...prev, venue: venueName }));
+    }
+  };
+
   const canProceed = () => {
     switch (currentStep) {
       case 'type': return eventData.type !== '';
-      case 'details': return eventData.name !== '' && formattedDate !== '' && eventData.city !== '';
+      case 'details': return eventData.name !== '' && (eventData.selectedDates.length > 0 || formattedDate !== '') && eventData.city !== '';
       case 'services': return eventData.services.length > 0;
       case 'budget': return eventData.budget !== '' || eventData.customBudget !== '';
       default: return true;
@@ -192,6 +253,50 @@ export function CreateEventScreen() {
             <Text style={[styles.stepSubtitle, { color: colors.textMuted }]}>
               Etkinliğiniz hakkında temel bilgileri girin
             </Text>
+
+            {/* Event Image Upload */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Görseli</Text>
+              <TouchableOpacity
+                style={[styles.imageUploadArea, {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                  borderColor: eventData.image ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border),
+                }]}
+                onPress={pickImage}
+              >
+                {eventData.image ? (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image source={{ uri: eventData.image }} style={styles.imagePreview} />
+                    <View style={styles.imageOverlay}>
+                      <TouchableOpacity
+                        style={styles.changeImageBtn}
+                        onPress={pickImage}
+                      >
+                        <Ionicons name="camera" size={18} color="white" />
+                        <Text style={styles.changeImageText}>Değiştir</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.removeImageBtn}
+                        onPress={() => setEventData(prev => ({ ...prev, image: null }))}
+                      >
+                        <Ionicons name="trash" size={18} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.imageUploadContent}>
+                    <View style={[styles.imageUploadIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                      <Ionicons name="image-outline" size={28} color={colors.brand[400]} />
+                    </View>
+                    <Text style={[styles.imageUploadText, { color: colors.text }]}>Görsel Ekle</Text>
+                    <Text style={[styles.imageUploadHint, { color: colors.textMuted }]}>
+                      Etkinlik kartında başlık görseli olarak kullanılacak
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Adı *</Text>
               <TextInput
@@ -205,13 +310,23 @@ export function CreateEventScreen() {
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textMuted }]}>Tarih *</Text>
               <TouchableOpacity
-                style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]}
+                style={[styles.dropdownButton, {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: eventData.selectedDates.length > 0 ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border),
+                }]}
                 onPress={() => setActiveDropdown('date')}
               >
-                <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
-                <Text style={[styles.dropdownButtonText, { color: colors.textMuted }, formattedDate && { color: colors.text }]}>
-                  {formattedDate || 'Tarih seçin'}
-                </Text>
+                <Ionicons name="calendar-outline" size={20} color={eventData.selectedDates.length > 0 ? colors.brand[400] : colors.textMuted} />
+                <View style={styles.dateButtonContent}>
+                  <Text style={[styles.dropdownButtonText, { color: colors.textMuted }, formattedDate && { color: colors.text }]}>
+                    {formattedDate || 'Tarih seçin'}
+                  </Text>
+                  {eventData.selectedDates.length > 1 && (
+                    <Text style={[styles.multiDateHint, { color: colors.brand[400] }]}>
+                      {eventData.selectedDates.length} gün seçildi
+                    </Text>
+                  )}
+                </View>
                 <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -281,6 +396,14 @@ export function CreateEventScreen() {
                 value={eventData.guestCount}
                 onChangeText={text => setEventData(prev => ({ ...prev, guestCount: text }))}
               />
+              {eventData.venueCapacity && (
+                <View style={styles.capacityHint}>
+                  <Ionicons name="information-circle-outline" size={14} color={colors.brand[400]} />
+                  <Text style={[styles.capacityHintText, { color: colors.textMuted }]}>
+                    Mekan kapasitesi: {eventData.venueCapacity} kişi
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textMuted }]}>Açıklama</Text>
@@ -451,10 +574,10 @@ export function CreateEventScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderStepContent()}
-        <View style={{ height: 120 }} />
+        <View style={{ height: 180 }} />
       </ScrollView>
 
-      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
         {currentStep !== 'review' ? (
           <TouchableOpacity style={[styles.nextButton, !canProceed() && styles.nextButtonDisabled]} onPress={nextStep} disabled={!canProceed()}>
             <LinearGradient colors={canProceed() ? gradients.primary : (isDark ? ['#3f3f46', '#3f3f46'] : ['#d4d4d8', '#d4d4d8'])} style={styles.nextButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -473,15 +596,12 @@ export function CreateEventScreen() {
       </View>
 
       {/* Modals */}
-      <DatePickerModal
+      <CalendarPickerModal
         visible={activeDropdown === 'date'}
-        day={eventData.day}
-        month={eventData.month}
-        year={eventData.year}
-        onDayChange={day => setEventData(prev => ({ ...prev, day }))}
-        onMonthChange={month => setEventData(prev => ({ ...prev, month }))}
-        onYearChange={year => setEventData(prev => ({ ...prev, year }))}
+        selectedDates={eventData.selectedDates}
+        onDatesChange={dates => setEventData(prev => ({ ...prev, selectedDates: dates }))}
         onClose={() => setActiveDropdown(null)}
+        multiSelect={true}
       />
 
       <SelectModal
@@ -516,7 +636,7 @@ export function CreateEventScreen() {
         title="Mekan Seçin"
         options={availableVenues.map(v => ({ value: v.name, label: v.name, subtitle: `Kapasite: ${v.capacity}` }))}
         selectedValue={eventData.venue}
-        onSelect={venue => setEventData(prev => ({ ...prev, venue }))}
+        onSelect={handleVenueSelect}
         onClose={() => setActiveDropdown(null)}
       />
 
@@ -606,4 +726,22 @@ const styles = StyleSheet.create({
   nextButtonDisabled: { opacity: 0.6 },
   nextButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
   nextButtonText: { fontSize: 16, fontWeight: '600', color: 'white' },
+  // Image Upload Styles
+  imageUploadArea: { borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', overflow: 'hidden' },
+  imageUploadContent: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+  imageUploadIcon: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  imageUploadText: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  imageUploadHint: { fontSize: 13, textAlign: 'center' },
+  imagePreviewContainer: { position: 'relative' },
+  imagePreview: { width: '100%', aspectRatio: 16 / 9, borderRadius: 14 },
+  imageOverlay: { position: 'absolute', bottom: 12, right: 12, flexDirection: 'row', gap: 8 },
+  changeImageBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0, 0, 0, 0.6)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  changeImageText: { color: 'white', fontSize: 13, fontWeight: '500' },
+  removeImageBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(239, 68, 68, 0.8)', alignItems: 'center', justifyContent: 'center' },
+  // Date Button Styles
+  dateButtonContent: { flex: 1 },
+  multiDateHint: { fontSize: 11, marginTop: 2 },
+  // Capacity Hint
+  capacityHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  capacityHintText: { fontSize: 12 },
 });

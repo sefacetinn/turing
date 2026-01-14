@@ -12,19 +12,17 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
 // Default colors for static styles
 const colors = defaultColors;
 
-interface ForgotPasswordScreenProps {
-  onNavigateBack: () => void;
-}
-
 type Step = 'email' | 'code' | 'newPassword' | 'success';
 
-export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenProps) {
+export function ForgotPasswordScreen() {
+  const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -301,7 +299,7 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
         Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
       </Text>
 
-      <TouchableOpacity onPress={onNavigateBack} activeOpacity={0.8}>
+      <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.8}>
         <LinearGradient
           colors={gradients.primary}
           style={styles.submitButton}
@@ -339,7 +337,7 @@ export function ForgotPasswordScreen({ onNavigateBack }: ForgotPasswordScreenPro
               style={[styles.backButton, {
                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
               }]}
-              onPress={step === 'email' ? onNavigateBack : () => setStep('email')}
+              onPress={step === 'email' ? () => navigation.goBack() : () => setStep('email')}
             >
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>

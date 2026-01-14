@@ -28,6 +28,9 @@ export function EditProfileScreen() {
   const [phone, setPhone] = useState('+90 555 123 4567');
   const [bio, setBio] = useState('Etkinlik organizatörü ve müzik tutkunu. 10 yıldır organizasyon sektöründe çalışıyorum.');
   const [company, setCompany] = useState('Yılmaz Organizasyon');
+  const [taxId, setTaxId] = useState('1234567890');
+  const [companyAddress, setCompanyAddress] = useState('Levent Mah. Büyükdere Cad. No:123 Beşiktaş/İstanbul');
+  const [iban, setIban] = useState('TR33 0006 1005 1978 6457 8413 26');
   const [location, setLocation] = useState('İstanbul, Türkiye');
   const [website, setWebsite] = useState('www.yilmazorg.com');
 
@@ -172,10 +175,10 @@ export function EditProfileScreen() {
 
         {/* Work Info Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>İş Bilgileri</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Firma Bilgileri</Text>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Şirket / Organizasyon</Text>
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Firma / Şirket Adı</Text>
             <View style={[styles.inputContainer, {
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
               borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
@@ -189,6 +192,65 @@ export function EditProfileScreen() {
                 placeholderTextColor={colors.textMuted}
               />
             </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Vergi Numarası</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="receipt-outline" size={18} color={colors.textMuted} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={taxId}
+                onChangeText={setTaxId}
+                placeholder="10 haneli vergi numarası"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Firma Adresi</Text>
+            <View style={[styles.textAreaContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <TextInput
+                style={[styles.textArea, { color: colors.text }]}
+                value={companyAddress}
+                onChangeText={setCompanyAddress}
+                placeholder="Tam adres bilgisi"
+                placeholderTextColor={colors.textMuted}
+                multiline
+                numberOfLines={2}
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>IBAN</Text>
+            <View style={[styles.inputContainer, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.inputBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.inputBorder
+            }]}>
+              <Ionicons name="card-outline" size={18} color={colors.textMuted} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                value={iban}
+                onChangeText={setIban}
+                placeholder="TR00 0000 0000 0000 0000 0000 00"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="characters"
+              />
+            </View>
+            <Text style={[styles.helperText, { color: colors.textMuted }]}>
+              Ödemeleriniz bu hesaba aktarılacaktır
+            </Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -303,7 +365,7 @@ export function EditProfileScreen() {
           </View>
         </View>
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -432,6 +494,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'right',
     marginTop: 4,
+  },
+  helperText: {
+    fontSize: 11,
+    marginTop: 6,
+    marginLeft: 2,
   },
   socialLinkItem: {
     flexDirection: 'row',

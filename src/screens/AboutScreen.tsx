@@ -47,14 +47,11 @@ export function AboutScreen() {
         <View style={styles.appInfoSection}>
           <View style={styles.logoContainer}>
             <View style={[styles.logoGlow, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.25)' : 'rgba(147, 51, 234, 0.15)' }]} />
-            <LinearGradient
-              colors={['#9333ea', '#7c3aed', '#6366f1']}
-              style={styles.logoBox}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="musical-notes" size={40} color="white" />
-            </LinearGradient>
+            <Image
+              source={require('../../assets/turing-icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={[styles.appName, { color: colors.text }]}>TURING</Text>
           <Text style={[styles.appTagline, { color: colors.textMuted }]}>Etkinlik & Müzik Sektörü Platformu</Text>
@@ -258,6 +255,10 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoImage: {
+    width: 88,
+    height: 88,
   },
   appName: {
     fontSize: 28,

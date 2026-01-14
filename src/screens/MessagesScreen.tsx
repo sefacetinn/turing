@@ -57,51 +57,36 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'all' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Text style={[styles.tabButtonText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
-            Tümü
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'unread' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('unread')}
-        >
-          <Ionicons
-            name="mail-unread"
-            size={12}
-            color={activeTab === 'unread' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>
-            Okunmamış
-          </Text>
-          {unreadCount > 0 && (
-            <View style={[styles.tabBadge, activeTab === 'unread' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>{unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'archived' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('archived')}
-        >
-          <Ionicons
-            name="archive"
-            size={12}
-            color={activeTab === 'archived' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>
-            Arşiv
-          </Text>
-          {archivedCount > 0 && (
-            <View style={[styles.tabBadge, activeTab === 'archived' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>{archivedCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+      <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
+          <TouchableOpacity
+            style={styles.tab}
+            onPress={() => setActiveTab('all')}
+          >
+            <Text style={[styles.tabText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
+              Tümü
+            </Text>
+            {activeTab === 'all' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.tab}
+            onPress={() => setActiveTab('unread')}
+          >
+            <Text style={[styles.tabText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>
+              Okunmamış {unreadCount > 0 && `(${unreadCount})`}
+            </Text>
+            {activeTab === 'unread' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.tab}
+            onPress={() => setActiveTab('archived')}
+          >
+            <Text style={[styles.tabText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>
+              Arşiv {archivedCount > 0 && `(${archivedCount})`}
+            </Text>
+            {activeTab === 'archived' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+          </TouchableOpacity>
+        </ScrollView>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -164,7 +149,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           )}
         </View>
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -209,43 +194,31 @@ const styles = StyleSheet.create({
   searchPlaceholder: {
     fontSize: 14,
   },
-  tabRow: {
+  tabContainer: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+  },
+  tabContent: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 12,
     gap: 8,
   },
-  tabButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  tab: {
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    position: 'relative',
   },
-  tabButtonActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
-  },
-  tabButtonText: {
-    fontSize: 12,
+  tabText: {
+    fontSize: 14,
     fontWeight: '500',
   },
-  tabBadge: {
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  tabBadgeActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
-  },
-  tabBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
+  tabIndicator: {
+    position: 'absolute',
+    bottom: -1,
+    left: 12,
+    right: 12,
+    height: 2,
+    borderRadius: 1,
   },
   conversationsList: {
     paddingHorizontal: 20,

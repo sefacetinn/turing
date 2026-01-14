@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,24 +9,26 @@ import { gradients } from '../theme/colors';
 import {
   HomeHeader,
   SearchBar,
-  QuickCreateCard,
   SectionHeader,
   CategoryCard,
   ProviderCard,
   ArtistCard,
-  StatsCard,
 } from '../components/home';
 import {
   artists,
   categories,
   recentProviders,
   organizerUser,
-  homeStats,
   providerStats,
   upcomingJobs,
   recentRequests,
+  organizerDashboard,
+  organizerQuickActions,
 } from '../data/homeData';
+import { operationSubcategories } from '../data/createEventData';
 import type { HomeStackNavigationProp } from '../types';
+
+const { width } = Dimensions.get('window');
 
 interface HomeScreenProps {
   isProviderMode: boolean;
@@ -40,80 +42,287 @@ export function HomeScreen({ isProviderMode }: HomeScreenProps) {
 }
 
 // ============================================
-// Organizer Home Content
+// Organizer Home Content - Clean & Minimal Design
 // ============================================
 function OrganizerHomeContent() {
   const navigation = useNavigation<HomeStackNavigationProp>();
-  const { colors, isDark, helpers } = useTheme();
+  const { colors, isDark } = useTheme();
+  const [showOperationModal, setShowOperationModal] = useState(false);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Günaydın';
+    if (hour < 18) return 'İyi günler';
+    return 'İyi akşamlar';
+  };
+
+  const dashboard = organizerDashboard;
+
+  // Unified accent color
+  const accentColor = '#6366f1';
+  const accentBg = isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <HomeHeader
-          userName={organizerUser.name}
-          userRole={organizerUser.role}
-          userImage={organizerUser.image}
-          notificationCount={3}
-          onNotificationPress={() => navigation.navigate('Notifications')}
-        />
-
-        <SearchBar
-          placeholder="Sanatçı, mekan veya hizmet ara..."
-          onPress={() => navigation.navigate('Search')}
-        />
-
-        <QuickCreateCard onPress={() => navigation.navigate('CreateEvent')} />
-
-        <SectionHeader title="Hizmetler" onViewAll={() => {}} />
-
-        <View style={styles.categoriesGrid}>
-          {categories.map((category) => (
-            <CategoryCard
-              key={category.id}
-              {...category}
-              onPress={() => navigation.navigate('ServiceProviders', { category: category.id as any })}
-            />
-          ))}
+        {/* Clean Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()}</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>{organizerUser.name}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={[styles.headerIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+              <View style={[styles.notificationDot, { backgroundColor: accentColor }]} />
+            </TouchableOpacity>
+            <Image source={{ uri: organizerUser.image }} style={styles.avatar} />
+          </View>
         </View>
 
-        {/* Operation Category */}
-        <OperationCard onPress={() => navigation.navigate('OperationSubcategories')} />
-
-        <SectionHeader title="Son Görüntülenenler" onViewAll={() => {}} />
-
-        <View>
-          {recentProviders.map((provider) => (
-            <ProviderCard
-              key={provider.id}
-              {...provider}
-              onPress={() => navigation.navigate('ProviderDetail', { providerId: provider.id })}
-            />
-          ))}
-        </View>
-
-        <SectionHeader
-          title="Popüler Sanatçılar"
-          onViewAll={() => navigation.navigate('Search')}
-        />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.artistsScroll}
+        {/* Create Event Card */}
+        <TouchableOpacity
+          style={[styles.createEventCard, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.08)' }]}
+          onPress={() => navigation.navigate('CreateEvent')}
+          activeOpacity={0.7}
         >
-          {artists.slice(0, 4).map((artist) => (
-            <ArtistCard
-              key={artist.id}
-              {...artist}
-              onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
-            />
-          ))}
-        </ScrollView>
+          <View style={[styles.createEventIcon, { backgroundColor: accentColor }]}>
+            <Ionicons name="add" size={24} color="white" />
+          </View>
+          <View style={styles.createEventContent}>
+            <Text style={[styles.createEventTitle, { color: colors.text }]}>Yeni Etkinlik Oluştur</Text>
+            <Text style={[styles.createEventSubtitle, { color: colors.textMuted }]}>Sanatçı, mekan ve hizmet seçin</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </TouchableOpacity>
 
-        <StatsCard stats={homeStats} />
+        {/* Next Event Card - Minimal */}
+        {dashboard.nextEvent && (
+          <TouchableOpacity
+            style={[styles.nextEventCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('OrganizerEventDetail' as any, { eventId: dashboard.nextEvent.id })}
+          >
+            <Image source={{ uri: dashboard.nextEvent.image }} style={styles.nextEventImage} />
+            <View style={styles.nextEventContent}>
+              <View style={styles.nextEventTop}>
+                <View style={[styles.countdownBadge, { backgroundColor: accentBg }]}>
+                  <Text style={[styles.countdownText, { color: accentColor }]}>{dashboard.nextEvent.daysUntil} gün</Text>
+                </View>
+              </View>
+              <Text style={[styles.nextEventTitle, { color: colors.text }]} numberOfLines={1}>{dashboard.nextEvent.title}</Text>
+              <Text style={[styles.nextEventMeta, { color: colors.textMuted }]}>
+                {dashboard.nextEvent.date} • {dashboard.nextEvent.venue}
+              </Text>
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={[styles.progressFill, { width: `${dashboard.nextEvent.progress}%`, backgroundColor: accentColor }]} />
+                </View>
+                <Text style={[styles.progressText, { color: colors.textMuted }]}>{dashboard.nextEvent.progress}%</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
 
-        <View style={{ height: 24 }} />
+        {/* Pending Actions - Simple List */}
+        {dashboard.pendingActions.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Bekleyen İşlemler</Text>
+            <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+              {dashboard.pendingActions.slice(0, 3).map((action, index) => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={[
+                    styles.listItem,
+                    index !== Math.min(dashboard.pendingActions.length, 3) - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
+                  ]}
+                  onPress={() => {
+                    if (action.type === 'offer') {
+                      navigation.navigate('OfferDetail' as any, { offerId: action.id });
+                    } else {
+                      navigation.navigate('ServiceProviders' as any, { category: 'technical' });
+                    }
+                  }}
+                >
+                  <View style={[styles.listIconBg, { backgroundColor: accentBg }]}>
+                    <Ionicons name={action.type === 'offer' ? 'document-text-outline' : 'construct-outline'} size={16} color={accentColor} />
+                  </View>
+                  <View style={styles.listContent}>
+                    <Text style={[styles.listTitle, { color: colors.text }]} numberOfLines={1}>{action.title}</Text>
+                    <Text style={[styles.listSubtitle, { color: colors.textMuted }]}>{action.subtitle}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Active Events - Horizontal Scroll */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Etkinliklerim</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('EventsTab' as any)}>
+              <Text style={[styles.seeAllText, { color: accentColor }]}>Tümü</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.eventsScroll}>
+            {dashboard.activeEventsList.map((event) => (
+              <TouchableOpacity
+                key={event.id}
+                style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
+                onPress={() => navigation.navigate('OrganizerEventDetail' as any, { eventId: event.id })}
+              >
+                <Image source={{ uri: event.image }} style={styles.eventCardImage} />
+                <View style={styles.eventCardBody}>
+                  <Text style={[styles.eventCardTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
+                  <Text style={[styles.eventCardDate, { color: colors.textMuted }]}>{event.date}</Text>
+                  <View style={styles.eventCardFooter}>
+                    <View style={[styles.miniProgressBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
+                      <View style={[styles.miniProgressFill, { width: `${event.progress}%`, backgroundColor: accentColor }]} />
+                    </View>
+                    <Text style={[styles.miniProgressText, { color: colors.textMuted }]}>{event.progress}%</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.addEventCard, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]}
+              onPress={() => navigation.navigate('CreateEvent')}
+            >
+              <Ionicons name="add" size={24} color={accentColor} />
+              <Text style={[styles.addEventText, { color: colors.textMuted }]}>Yeni</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* Services - Simple Grid */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmetler</Text>
+          <View style={styles.servicesGrid}>
+            {categories.slice(0, 6).map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[styles.serviceItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
+                onPress={() => {
+                  if (category.id === 'operation') {
+                    setShowOperationModal(true);
+                  } else {
+                    navigation.navigate('ServiceProviders', { category: category.id as any });
+                  }
+                }}
+              >
+                <View style={[styles.serviceIcon, { backgroundColor: accentBg }]}>
+                  <Ionicons name={category.icon as any} size={20} color={accentColor} />
+                </View>
+                <Text style={[styles.serviceName, { color: colors.text }]}>{category.name}</Text>
+                {category.id === 'operation' && (
+                  <View style={[styles.subcategoryBadge, { backgroundColor: accentBg }]}>
+                    <Text style={[styles.subcategoryBadgeText, { color: accentColor }]}>13</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Recent Activity */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Son Aktiviteler</Text>
+          <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+            {dashboard.recentActivity.slice(0, 3).map((activity, index) => (
+              <View
+                key={activity.id}
+                style={[
+                  styles.activityRow,
+                  index !== Math.min(dashboard.recentActivity.length, 3) - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
+                ]}
+              >
+                <View style={[styles.activityDot, { backgroundColor: accentColor }]} />
+                <View style={styles.activityContent}>
+                  <Text style={[styles.activityText, { color: colors.text }]}>{activity.message}</Text>
+                  <Text style={[styles.activityTime, { color: colors.textMuted }]}>{activity.time}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Popular Artists - Simple */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Popüler Sanatçılar</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Search', { initialQuery: '' })}>
+              <Text style={[styles.seeAllText, { color: accentColor }]}>Tümü</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.artistsScroll}>
+            {artists.slice(0, 4).map((artist) => (
+              <TouchableOpacity
+                key={artist.id}
+                style={styles.artistItem}
+                onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
+              >
+                <Image source={{ uri: artist.image }} style={styles.artistImage} />
+                <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
+                <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Operation Subcategory Modal */}
+      <Modal
+        visible={showOperationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowOperationModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Operasyon Hizmetleri</Text>
+              <TouchableOpacity onPress={() => setShowOperationModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>
+                Bir alt kategori seçin
+              </Text>
+              <View style={styles.subcategoryGrid}>
+                {operationSubcategories.map((sub) => (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[styles.subcategoryItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
+                    onPress={() => {
+                      setShowOperationModal(false);
+                      navigation.navigate('ServiceProviders', { category: sub.id as any });
+                    }}
+                  >
+                    <LinearGradient
+                      colors={gradients.operation}
+                      style={styles.subcategoryIcon}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Ionicons name={sub.icon as any} size={20} color="white" />
+                    </LinearGradient>
+                    <Text style={[styles.subcategoryName, { color: colors.text }]}>{sub.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -190,7 +399,7 @@ function ProviderHomeContent() {
         {/* Performance Card */}
         <PerformanceCard responseRate={providerStats.responseRate} />
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -657,15 +866,331 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+
+  // Header - Clean
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  headerLeft: {},
+  greeting: {
+    fontSize: 13,
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+
+  // Create Event Card
+  createEventCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 14,
+    gap: 14,
+  },
+  createEventIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createEventContent: {
+    flex: 1,
+  },
+  createEventTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  createEventSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Next Event Card - Minimal
+  nextEventCard: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  nextEventImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+  },
+  nextEventContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  nextEventTop: {
+    marginBottom: 4,
+  },
+  countdownBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  countdownText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  nextEventTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  nextEventMeta: {
+    fontSize: 12,
+    marginBottom: 8,
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  progressBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Section
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // List Card
+  listCard: {
+    marginHorizontal: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  listIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listContent: {
+    flex: 1,
+  },
+  listTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  listSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Events Scroll
+  eventsScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  eventCard: {
+    width: 150,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  eventCardImage: {
+    width: '100%',
+    height: 90,
+  },
+  eventCardBody: {
+    padding: 10,
+  },
+  eventCardTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  eventCardDate: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  eventCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  miniProgressBar: {
+    flex: 1,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  miniProgressFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  miniProgressText: {
+    fontSize: 10,
+  },
+  addEventCard: {
+    width: 80,
+    height: 140,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  addEventText: {
+    fontSize: 11,
+  },
+
+  // Services Grid
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  serviceItem: {
+    width: (width - 60) / 3,
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  serviceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  serviceName: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Activity
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    gap: 12,
+  },
+  activityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 5,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityText: {
+    fontSize: 13,
+  },
+  activityTime: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  // Artists
+  artistsScroll: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  artistItem: {
+    alignItems: 'center',
+    width: 80,
+  },
+  artistImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 8,
+  },
+  artistName: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  artistGenre: {
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+
+  // Kept for compatibility
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 20,
     justifyContent: 'space-between',
-  },
-  artistsScroll: {
-    paddingHorizontal: 20,
-    paddingBottom: 4,
   },
 
   // Operation Card
@@ -701,6 +1226,76 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 2,
+  },
+
+  // Subcategory Badge
+  subcategoryBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subcategoryBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+
+  // Operation Subcategory Modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalScroll: {
+    padding: 20,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  subcategoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  subcategoryItem: {
+    width: (width - 64) / 3,
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+  },
+  subcategoryIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  subcategoryName: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 
   // Provider Header

@@ -44,6 +44,8 @@ export interface BudgetRange {
 export interface EventData {
   type: string;
   name: string;
+  image: string | null;
+  selectedDates: string[]; // Array of date strings in 'YYYY-MM-DD' format
   day: string;
   month: string;
   year: string;
@@ -51,6 +53,7 @@ export interface EventData {
   city: string;
   district: string;
   venue: string;
+  venueCapacity: string;
   guestCount: string;
   description: string;
   services: string[];
@@ -230,7 +233,6 @@ export const serviceCategories: ServiceCategory[] = [
   { id: 'transport', name: 'Ulaşım', icon: 'car', selected: false },
   { id: 'accommodation', name: 'Konaklama', icon: 'bed', selected: false },
   { id: 'venue', name: 'Mekan', icon: 'location', selected: false },
-  { id: 'flight', name: 'Uçak', icon: 'airplane', selected: false },
   { id: 'operation', name: 'Operasyon', icon: 'settings', selected: false, hasSubcategories: true },
 ];
 
@@ -247,6 +249,7 @@ export const operationSubcategories: OperationSubcategory[] = [
   { id: 'ticketing', name: 'Ticketing', icon: 'ticket' },
   { id: 'decoration', name: 'Dekorasyon', icon: 'color-palette' },
   { id: 'production', name: 'Prodüksiyon', icon: 'film' },
+  { id: 'flight', name: 'Uçak Hizmetleri', icon: 'airplane' },
 ];
 
 export const budgetRanges: BudgetRange[] = [
@@ -294,6 +297,8 @@ export const getAvailableVenues = (city: string, district: string, customVenues:
 export const initialEventData: EventData = {
   type: '',
   name: '',
+  image: null,
+  selectedDates: [],
   day: '',
   month: '',
   year: '',
@@ -301,6 +306,7 @@ export const initialEventData: EventData = {
   city: '',
   district: '',
   venue: '',
+  venueCapacity: '',
   guestCount: '',
   description: '',
   services: [],

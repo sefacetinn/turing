@@ -1,12 +1,15 @@
-import React, { useState, useCallback, createContext, useContext } from 'react';
-import { View } from 'react-native';
+import React, { useState, useCallback, createContext, useContext, useEffect, useRef } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, CommonActions, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { CustomTabBar } from './src/components/navigation';
+import { RBACProvider } from './src/context/RBACContext';
+import { hasCompletedOnboarding, setOnboardingCompleted } from './src/utils/storage';
 
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
@@ -45,21 +48,45 @@ import { QuietHoursScreen } from './src/screens/QuietHoursScreen';
 import { ProviderServicesScreen } from './src/screens/ProviderServicesScreen';
 import { ContractScreen } from './src/screens/ContractScreen';
 import { ContractsListScreen } from './src/screens/ContractsListScreen';
+import { CompareOffersScreen } from './src/screens/CompareOffersScreen';
 import { LanguageScreen } from './src/screens/LanguageScreen';
 import { CurrencyScreen } from './src/screens/CurrencyScreen';
 import { TermsScreen } from './src/screens/TermsScreen';
 import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
 import { ContactSupportScreen } from './src/screens/ContactSupportScreen';
+import TeamScreen from './src/screens/TeamScreen';
+import InviteMemberScreen from './src/screens/InviteMemberScreen';
+import MemberDetailScreen from './src/screens/MemberDetailScreen';
+import { MyReviewsScreen } from './src/screens/MyReviewsScreen';
+
+// Provider-specific screens
+import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
+import { EquipmentInventoryScreen } from './src/screens/provider/technical/EquipmentInventoryScreen';
+import { MenuManagementScreen } from './src/screens/provider/catering/MenuManagementScreen';
+import { FleetManagementScreen } from './src/screens/provider/transport/FleetManagementScreen';
+import { PersonnelManagementScreen } from './src/screens/provider/security/PersonnelManagementScreen';
+
+// Auth Screens
+import {
+  OnboardingScreen,
+  RoleSelectionScreen,
+  OrganizerRegistrationScreen,
+  ProviderRegistrationScreen,
+  RegistrationSuccessScreen,
+  AccountPendingScreen,
+} from './src/screens/auth';
 
 // App Context
 interface AppContextType {
   isProviderMode: boolean;
   toggleMode: () => void;
+  canSwitchMode: boolean; // Only users with dual access can switch
 }
 
 export const AppContext = createContext<AppContextType>({
   isProviderMode: false,
   toggleMode: () => {},
+  canSwitchMode: true, // Default to true for demo
 });
 
 export const useApp = () => useContext(AppContext);
@@ -85,6 +112,10 @@ function HomeStack() {
       <Stack.Screen name="RequestOffer" component={RequestOfferScreen} />
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
+      <Stack.Screen name="Contract" component={ContractScreen} />
+      <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
+      <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -107,6 +138,8 @@ function EventsStack() {
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       <Stack.Screen name="ServiceProviders" component={ServiceProvidersScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
+      <Stack.Screen name="Contract" component={ContractScreen} />
     </Stack.Navigator>
   );
 }
@@ -120,10 +153,14 @@ function OffersStack() {
         {() => <OffersScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
+      <Stack.Screen name="CompareOffers" component={CompareOffersScreen} />
       <Stack.Screen name="Contract" component={ContractScreen} />
       <Stack.Screen name="Contracts">
         {() => <ContractsListScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
+      <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
+      <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
     </Stack.Navigator>
   );
 }
@@ -181,6 +218,16 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="Terms" component={TermsScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="ContactSupport" component={ContactSupportScreen} />
+      <Stack.Screen name="Team" component={TeamScreen} />
+      <Stack.Screen name="InviteMember" component={InviteMemberScreen} />
+      <Stack.Screen name="MemberDetail" component={MemberDetailScreen} />
+      <Stack.Screen name="MyReviews" component={MyReviewsScreen} />
+      {/* Provider-specific management screens */}
+      <Stack.Screen name="ArtistRoster" component={ArtistRosterScreen} />
+      <Stack.Screen name="EquipmentInventory" component={EquipmentInventoryScreen} />
+      <Stack.Screen name="MenuManagement" component={MenuManagementScreen} />
+      <Stack.Screen name="FleetManagement" component={FleetManagementScreen} />
+      <Stack.Screen name="PersonnelManagement" component={PersonnelManagementScreen} />
     </Stack.Navigator>
   );
 }
@@ -188,77 +235,18 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
 // Main Tab Navigator
 function MainTabs({ onLogout }: { onLogout: () => void }) {
   const { isProviderMode } = useApp();
-  const { colors: themeColors, isDark } = useTheme();
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: themeColors.tabBar,
-          borderTopColor: themeColors.tabBarBorder,
-          borderTopWidth: 1,
-          paddingTop: 4,
-          paddingBottom: 4,
-          height: 52,
-          elevation: isDark ? 0 : 8,
-          shadowOpacity: isDark ? 0 : 0.1,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowRadius: 8,
-        },
-        tabBarActiveTintColor: themeColors.tabActive,
-        tabBarInactiveTintColor: themeColors.tabInactive,
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '500',
-          marginTop: 2,
-        },
-        tabBarIconStyle: {
-          marginTop: 0,
-        },
-        tabBarIcon: ({ focused, color }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home';
-
-          switch (route.name) {
-            case 'HomeTab':
-              iconName = focused ? 'compass' : 'compass-outline';
-              break;
-            case 'EventsTab':
-              iconName = focused ? 'calendar' : 'calendar-outline';
-              break;
-            case 'OffersTab':
-              iconName = focused ? 'pricetags' : 'pricetags-outline';
-              break;
-            case 'MessagesTab':
-              iconName = focused ? 'chatbubble-ellipses' : 'chatbubble-ellipses-outline';
-              break;
-            case 'ProfileTab':
-              iconName = focused ? 'person-circle' : 'person-circle-outline';
-              break;
-          }
-
-          return (
-            <View style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 36,
-              height: 24,
-              borderRadius: 12,
-              backgroundColor: focused
-                ? (isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(109, 40, 217, 0.12)')
-                : 'transparent',
-            }}>
-              <Ionicons name={iconName} size={20} color={color} />
-            </View>
-          );
-        },
-      })}
+      }}
     >
       <Tab.Screen
         name="HomeTab"
         component={HomeStack}
-        options={{ tabBarLabel: 'Keşfet' }}
+        options={{ tabBarLabel: 'Ana Sayfa' }}
       />
       <Tab.Screen
         name="EventsTab"
@@ -268,34 +256,12 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
       <Tab.Screen
         name="OffersTab"
         component={OffersStack}
-        options={{
-          tabBarLabel: 'Teklifler',
-          tabBarBadge: 3,
-          tabBarBadgeStyle: {
-            backgroundColor: themeColors.brand[500],
-            fontSize: 10,
-            fontWeight: '700',
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-          },
-        }}
+        options={{ tabBarLabel: 'Teklifler' }}
       />
       <Tab.Screen
         name="MessagesTab"
         component={MessagesStack}
-        options={{
-          tabBarLabel: 'Mesajlar',
-          tabBarBadge: 2,
-          tabBarBadgeStyle: {
-            backgroundColor: themeColors.error,
-            fontSize: 10,
-            fontWeight: '700',
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-          },
-        }}
+        options={{ tabBarLabel: 'Mesajlar' }}
       />
       <Tab.Screen
         name="ProfileTab"
@@ -304,6 +270,25 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
         {() => <ProfileStack onLogout={onLogout} />}
       </Tab.Screen>
     </Tab.Navigator>
+  );
+}
+
+// Auth Stack Navigator
+function AuthStack({ onLogin }: { onLogin: (asProvider: boolean) => void }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login">
+        {() => <LoginScreen onLogin={onLogin} />}
+      </Stack.Screen>
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
+      <Stack.Screen name="OrganizerRegistration" component={OrganizerRegistrationScreen} />
+      <Stack.Screen name="ProviderRegistration" component={ProviderRegistrationScreen} />
+      <Stack.Screen name="RegistrationSuccess" component={RegistrationSuccessScreen} />
+      <Stack.Screen name="AccountPending">
+        {() => <AccountPendingScreen onLogout={() => {}} />}
+      </Stack.Screen>
+    </Stack.Navigator>
   );
 }
 
@@ -335,39 +320,108 @@ const CustomLightTheme = {
 // App Content with Theme
 function AppContent() {
   const { colors: themeColors, isDark } = useTheme();
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasOnboarded, setHasOnboarded] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProviderMode, setIsProviderMode] = useState(false);
+  const [accountStatus, setAccountStatus] = useState<'pending' | 'approved'>('approved');
+  const [navigationKey, setNavigationKey] = useState(0); // Key to force navigation reset
+  const [canSwitchMode, setCanSwitchMode] = useState(true); // Demo: allow switching for all users
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+
+  // Check onboarding status on mount
+  useEffect(() => {
+    checkOnboardingStatus();
+  }, []);
+
+  const checkOnboardingStatus = async () => {
+    const completed = await hasCompletedOnboarding();
+    setHasOnboarded(completed);
+    setIsLoading(false);
+  };
+
+  const handleOnboardingComplete = useCallback(() => {
+    setHasOnboarded(true);
+  }, []);
 
   const handleLogin = useCallback((asProvider: boolean) => {
     setIsLoggedIn(true);
     setIsProviderMode(asProvider);
+    // In a real app, check account status from API
+    setAccountStatus('approved');
+    // In a real app, this would come from the user's profile
+    // setCanSwitchMode(user.hasProviderAccess && user.hasOrganizerAccess);
+    setCanSwitchMode(true); // Demo: allow for all
   }, []);
 
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
     setIsProviderMode(false);
+    setAccountStatus('approved');
+    setNavigationKey(prev => prev + 1); // Reset navigation on logout
   }, []);
 
   const toggleMode = useCallback(() => {
     setIsProviderMode(prev => !prev);
+    // Increment key to force NavigationContainer to remount and reset all stacks
+    setNavigationKey(prev => prev + 1);
   }, []);
 
-  if (!isLoggedIn) {
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#09090b' : '#ffffff' }}>
+        <ActivityIndicator size="large" color={isDark ? '#9333ea' : '#7c3aed'} />
+      </View>
+    );
+  }
+
+  // Onboarding (first time users)
+  if (!hasOnboarded) {
     return (
       <>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <LoginScreen onLogin={handleLogin} />
+        <StatusBar style="light" />
+        <OnboardingScreen onComplete={handleOnboardingComplete} />
       </>
     );
   }
 
+  // Not logged in - show auth screens
+  if (!isLoggedIn) {
+    return (
+      <>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <NavigationContainer theme={isDark ? CustomDarkTheme : CustomLightTheme}>
+          <AuthStack onLogin={handleLogin} />
+        </NavigationContainer>
+      </>
+    );
+  }
+
+  // Provider with pending account
+  if (isProviderMode && accountStatus === 'pending') {
+    return (
+      <>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AccountPendingScreen onLogout={handleLogout} />
+      </>
+    );
+  }
+
+  // Logged in - show main app
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AppContext.Provider value={{ isProviderMode, toggleMode }}>
-        <NavigationContainer theme={isDark ? CustomDarkTheme : CustomLightTheme}>
-          <MainTabs onLogout={handleLogout} />
-        </NavigationContainer>
+      <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode }}>
+        <RBACProvider isProvider={isProviderMode}>
+          <NavigationContainer
+            ref={navigationRef}
+            key={navigationKey}
+            theme={isDark ? CustomDarkTheme : CustomLightTheme}
+          >
+            <MainTabs onLogout={handleLogout} />
+          </NavigationContainer>
+        </RBACProvider>
       </AppContext.Provider>
     </>
   );

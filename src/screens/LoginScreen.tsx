@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,27 +8,84 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
+  Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import {
+  getRememberedEmail,
+  saveRememberedEmail,
+  clearRememberedEmail,
+} from '../utils/storage';
+import { validateEmail } from '../utils/validation';
 
 interface LoginScreenProps {
   onLogin: (asProvider: boolean) => void;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
+  const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
-  const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [selectedMode, setSelectedMode] = useState<'organizer' | 'provider'>('organizer');
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  const handleSubmit = () => {
+  // Load remembered email on mount
+  useEffect(() => {
+    loadRememberedEmail();
+  }, []);
+
+  const loadRememberedEmail = async () => {
+    const savedEmail = await getRememberedEmail();
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  };
+
+  const handleSubmit = async () => {
+    // Validate
+    const newErrors: { email?: string; password?: string } = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email gerekli';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Geçerli bir email girin';
+    }
+
+    if (!password.trim()) {
+      newErrors.password = 'Şifre gerekli';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // Handle remember me
+    if (rememberMe) {
+      await saveRememberedEmail(email);
+    } else {
+      await clearRememberedEmail();
+    }
+
     onLogin(selectedMode === 'provider');
+  };
+
+  const handleForgotPassword = () => {
+    navigation.navigate('ForgotPassword');
+  };
+
+  const handleRegister = () => {
+    navigation.navigate('RoleSelection');
   };
 
   return (
@@ -45,22 +102,17 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <View style={[styles.logoGlow, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)' }]} />
-              <LinearGradient
-                colors={['#9333ea', '#7c3aed', '#6366f1']}
-                style={styles.logoBox}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Ionicons name="musical-notes" size={38} color="white" />
-              </LinearGradient>
-              <View style={styles.sparkle}>
-                <Ionicons name="sparkles" size={20} color={colors.brand[400]} />
-              </View>
+              <Image
+                source={require('../../assets/turing-icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
 
             <Text style={[styles.brandName, { color: colors.text }]}>TURING</Text>
@@ -134,19 +186,26 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>E-posta</Text>
               <View style={[styles.inputContainer, {
                 backgroundColor: colors.inputBackground,
-                borderColor: colors.inputBorder
+                borderColor: errors.email ? colors.error : colors.inputBorder
               }]}>
                 <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { color: colors.text }]}
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                  }}
                   placeholder="ornek@email.com"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
+              {errors.email && (
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.email}</Text>
+              )}
             </View>
 
             {/* Password Input */}
@@ -154,13 +213,16 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Şifre</Text>
               <View style={[styles.inputContainer, {
                 backgroundColor: colors.inputBackground,
-                borderColor: colors.inputBorder
+                borderColor: errors.password ? colors.error : colors.inputBorder
               }]}>
                 <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
                 <TextInput
                   style={[styles.input, { paddingRight: 48, color: colors.text }]}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
                   placeholder="••••••••"
                   placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
@@ -176,14 +238,48 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   />
                 </TouchableOpacity>
               </View>
+              {errors.password && (
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.password}</Text>
+              )}
             </View>
 
-            {/* Forgot Password */}
-            {isLogin && (
-              <TouchableOpacity style={styles.forgotButton}>
-                <Text style={[styles.forgotText, { color: colors.brand[400] }]}>Şifremi Unuttum</Text>
+            {/* Remember Me & Forgot Password Row */}
+            <View style={styles.optionsRow}>
+              <TouchableOpacity
+                style={styles.rememberMeContainer}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    {
+                      backgroundColor: rememberMe
+                        ? colors.brand[500]
+                        : isDark
+                        ? colors.zinc[700]
+                        : colors.zinc[200],
+                      borderColor: rememberMe
+                        ? colors.brand[500]
+                        : isDark
+                        ? colors.zinc[600]
+                        : colors.zinc[300],
+                    },
+                  ]}
+                >
+                  {rememberMe && <Ionicons name="checkmark" size={14} color="white" />}
+                </View>
+                <Text style={[styles.rememberMeText, { color: colors.textSecondary }]}>
+                  Beni Hatırla
+                </Text>
               </TouchableOpacity>
-            )}
+
+              <TouchableOpacity onPress={handleForgotPassword}>
+                <Text style={[styles.forgotText, { color: colors.brand[400] }]}>
+                  Şifremi Unuttum
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {/* Submit Button */}
             <TouchableOpacity onPress={handleSubmit} activeOpacity={0.8}>
@@ -193,7 +289,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.submitText}>{isLogin ? 'Giriş Yap' : 'Kayıt Ol'}</Text>
+                <Text style={styles.submitText}>Giriş Yap</Text>
                 <Ionicons name="arrow-forward" size={18} color="white" />
               </LinearGradient>
             </TouchableOpacity>
@@ -204,6 +300,19 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               <Text style={[styles.dividerText, { color: colors.textMuted }]}>veya</Text>
               <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
+
+            {/* Demo Login Button */}
+            <TouchableOpacity
+              style={[styles.demoButton, {
+                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                borderColor: 'rgba(16, 185, 129, 0.3)',
+              }]}
+              onPress={() => onLogin(selectedMode === 'provider')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="flash" size={18} color="#10b981" />
+              <Text style={styles.demoButtonText}>Demo Giriş</Text>
+            </TouchableOpacity>
 
             {/* Social Login */}
             <View style={styles.socialRow}>
@@ -224,15 +333,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             </View>
           </View>
 
-          {/* Toggle Login/Register */}
+          {/* Register Link */}
           <View style={styles.toggleRow}>
             <Text style={[styles.toggleText, { color: colors.textMuted }]}>
-              {isLogin ? 'Hesabınız yok mu?' : 'Zaten hesabınız var mı?'}
+              Hesabınız yok mu?
             </Text>
-            <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-              <Text style={[styles.toggleLink, { color: colors.brand[400] }]}>
-                {isLogin ? 'Kayıt Ol' : 'Giriş Yap'}
-              </Text>
+            <TouchableOpacity onPress={handleRegister}>
+              <Text style={[styles.toggleLink, { color: colors.brand[400] }]}>Kayıt Ol</Text>
             </TouchableOpacity>
           </View>
 
@@ -302,24 +409,16 @@ const styles = StyleSheet.create({
   },
   logoGlow: {
     position: 'absolute',
-    top: -10,
-    left: -10,
-    right: -10,
-    bottom: -10,
-    borderRadius: 40,
+    top: -15,
+    left: -15,
+    right: -15,
+    bottom: -15,
+    borderRadius: 50,
     backgroundColor: 'rgba(147, 51, 234, 0.3)',
   },
-  logoBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sparkle: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
+  logoImage: {
+    width: 100,
+    height: 100,
   },
   brandName: {
     fontSize: 28,
@@ -376,7 +475,7 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   inputLabel: {
     fontSize: 14,
@@ -404,12 +503,37 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 14,
   },
-  forgotButton: {
-    alignSelf: 'flex-end',
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rememberMeText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
   forgotText: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '600',
   },
   submitButton: {
     flexDirection: 'row',
@@ -459,6 +583,21 @@ const styles = StyleSheet.create({
   socialText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  demoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10b981',
   },
   toggleRow: {
     flexDirection: 'row',

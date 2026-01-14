@@ -13,6 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { useRBAC } from '../context/RBACContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 interface SettingsScreenProps {
   onLogout?: () => void;
@@ -21,6 +23,8 @@ interface SettingsScreenProps {
 export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark, toggleTheme } = useTheme();
+  const { currentOrganization } = useRBAC();
+  const { canManageTeam } = usePermissions();
 
   // Notification settings
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -203,8 +207,9 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
     <Switch
       value={value}
       onValueChange={onValueChange}
-      trackColor={{ false: isDark ? colors.zinc[700] : '#d4d4d8', true: colors.brand[500] }}
-      thumbColor="white"
+      trackColor={{ false: isDark ? colors.zinc[700] : '#a1a1aa', true: colors.brand[500] }}
+      thumbColor="#ffffff"
+      ios_backgroundColor={isDark ? colors.zinc[700] : '#d4d4d8'}
     />
   );
 
@@ -231,6 +236,27 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
             isDark ? 'Koyu tema aktif' : 'Acik tema aktif',
             undefined,
             renderSwitch(isDark, toggleTheme)
+          )}
+        </View>
+
+        {/* Team Section */}
+        <View style={styles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Ekip</Text>
+          {renderSettingItem(
+            'people',
+            'rgba(99, 102, 241, 0.15)',
+            '#6366f1',
+            'Ekip Yönetimi',
+            currentOrganization ? `${currentOrganization.members.length} üye` : 'Ekibinizi yönetin',
+            () => navigation.navigate('Team')
+          )}
+          {canManageTeam && renderSettingItem(
+            'person-add',
+            'rgba(16, 185, 129, 0.15)',
+            colors.success,
+            'Üye Davet Et',
+            'Yeni ekip üyesi ekleyin',
+            () => navigation.navigate('InviteMember')
           )}
         </View>
 
@@ -410,7 +436,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
           <Text style={dynamicStyles.versionSubtext}>Build 2024.1</Text>
         </View>
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );

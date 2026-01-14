@@ -201,7 +201,7 @@ export function AddCardScreen() {
             </View>
           </View>
 
-          <View style={{ height: 24 }} />
+          <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* Save Button */}
