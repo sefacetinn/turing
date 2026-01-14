@@ -207,8 +207,19 @@ export function CreateEventScreen() {
   };
 
   const createEvent = () => {
-    console.log('Creating event:', eventData);
-    navigation.goBack();
+    if (!eventData.name.trim()) {
+      Alert.alert('Uyari', 'Lutfen etkinlik adi girin.');
+      return;
+    }
+    if (eventData.selectedDates.length === 0) {
+      Alert.alert('Uyari', 'Lutfen etkinlik tarihi secin.');
+      return;
+    }
+    Alert.alert(
+      'Basarili',
+      'Etkinlik olusturuldu! Simdi hizmet saglayicilardan teklif alabilirsiniz.',
+      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+    );
   };
 
   const renderStepContent = () => {

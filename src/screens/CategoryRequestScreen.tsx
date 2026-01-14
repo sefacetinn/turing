@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,13 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { SelectionChips, SwitchRow, FormSection, InputLabel } from '../components/categoryRequest';
 import { categoryConfig, userEvents, categoryOptions } from '../data/categoryRequestData';
+import {
+  mockArtists,
+  getArtistById,
+  getArtistRiderStatus,
+  riderTypeLabels,
+  RiderDocument,
+} from '../data/provider/artistData';
 
 export function CategoryRequestScreen() {
   const navigation = useNavigation<any>();
@@ -35,6 +42,40 @@ export function CategoryRequestScreen() {
 
   // Category-specific state (consolidated)
   const [formState, setFormState] = useState<Record<string, any>>({});
+
+  // Artist and Rider state (for booking/technical/transport/accommodation categories)
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
+  const [selectedRiderDocs, setSelectedRiderDocs] = useState<string[]>([]);
+
+  const selectedArtist = useMemo(
+    () => (selectedArtistId ? getArtistById(selectedArtistId) : null),
+    [selectedArtistId]
+  );
+
+  const riderStatus = useMemo(
+    () => (selectedArtist ? getArtistRiderStatus(selectedArtist) : null),
+    [selectedArtist]
+  );
+
+  // Get relevant rider type for current category
+  const getRiderTypeForCategory = () => {
+    switch (category) {
+      case 'technical':
+        return 'technical';
+      case 'transport':
+        return 'transport';
+      case 'accommodation':
+        return 'accommodation';
+      default:
+        return null;
+    }
+  };
+
+  const toggleRiderDoc = (docId: string) => {
+    setSelectedRiderDocs((prev) =>
+      prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
+    );
+  };
 
   const updateForm = (key: string, value: any) => {
     setFormState(prev => ({ ...prev, [key]: value }));
@@ -82,6 +123,151 @@ export function CategoryRequestScreen() {
       case 'production': return renderProductionFields();
       default: return null;
     }
+  };
+
+  // Render artist selection and rider attachment for relevant categories
+  const renderArtistRiderSection = () => {
+    const relevantCategories = ['technical', 'transport', 'accommodation', 'booking'];
+    if (!relevantCategories.includes(category)) return null;
+
+    const riderType = getRiderTypeForCategory();
+
+    return (
+      <>
+        {/* Artist Selection */}
+        <FormSection title="Sanatci Secimi" subtitle="Etkinlikteki sanatcinin rider bilgilerini ekleyin">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.artistScrollList}>
+            {mockArtists.slice(0, 5).map((artist) => {
+              const isSelected = selectedArtistId === artist.id;
+              const artistRiderStatus = getArtistRiderStatus(artist);
+              return (
+                <TouchableOpacity
+                  key={artist.id}
+                  style={[
+                    styles.artistSelectCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                      borderColor: isSelected ? colors.brand[500] : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
+                    },
+                    isSelected && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' },
+                  ]}
+                  onPress={() => {
+                    setSelectedArtistId(isSelected ? null : artist.id);
+                    setSelectedRiderDocs([]);
+                  }}
+                >
+                  <Image source={{ uri: artist.image }} style={styles.artistSelectImage} />
+                  <Text style={[styles.artistSelectName, { color: colors.text }]} numberOfLines={1}>
+                    {artist.stageName || artist.name}
+                  </Text>
+                  <View style={styles.artistSelectRiderBadge}>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={12}
+                      color={artistRiderStatus.completionRate > 50 ? '#10B981' : colors.textMuted}
+                    />
+                    <Text style={[styles.artistSelectRiderText, { color: colors.textMuted }]}>
+                      {artistRiderStatus.completionRate}%
+                    </Text>
+                  </View>
+                  {isSelected && (
+                    <View style={styles.artistSelectCheck}>
+                      <Ionicons name="checkmark-circle" size={20} color={colors.brand[500]} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </FormSection>
+
+        {/* Rider Documents Attachment */}
+        {selectedArtist && selectedArtist.riderDocuments.length > 0 && (
+          <FormSection
+            title="Sanatci Rider Dokumanlari"
+            subtitle="Teklif talebine eklenecek rider dokumanlarini secin"
+          >
+            <View style={styles.riderDocsList}>
+              {selectedArtist.riderDocuments
+                .filter((doc) => !riderType || doc.type === riderType || doc.type === 'general')
+                .map((doc) => {
+                  const isDocSelected = selectedRiderDocs.includes(doc.id);
+                  const typeLabel = riderTypeLabels[doc.type] || doc.type;
+                  return (
+                    <TouchableOpacity
+                      key={doc.id}
+                      style={[
+                        styles.riderDocCard,
+                        {
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                          borderColor: isDocSelected ? '#10B981' : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
+                        },
+                        isDocSelected && { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+                      ]}
+                      onPress={() => toggleRiderDoc(doc.id)}
+                    >
+                      <View style={styles.riderDocCheckbox}>
+                        {isDocSelected ? (
+                          <View style={styles.riderDocChecked}>
+                            <Ionicons name="checkmark" size={14} color="white" />
+                          </View>
+                        ) : (
+                          <View style={[styles.riderDocUnchecked, { borderColor: colors.textMuted }]} />
+                        )}
+                      </View>
+                      <View style={styles.riderDocInfo}>
+                        <View style={styles.riderDocHeader}>
+                          <Ionicons name="document-text" size={16} color={colors.brand[400]} />
+                          <Text style={[styles.riderDocType, { color: colors.brand[400] }]}>{typeLabel}</Text>
+                        </View>
+                        <Text style={[styles.riderDocName, { color: colors.text }]} numberOfLines={1}>
+                          {doc.fileName}
+                        </Text>
+                        <Text style={[styles.riderDocMeta, { color: colors.textMuted }]}>
+                          {(doc.fileSize / 1024 / 1024).toFixed(1)} MB • v{doc.version}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+            </View>
+            {selectedRiderDocs.length > 0 && (
+              <View style={[styles.riderAttachmentNote, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={[styles.riderAttachmentNoteText, { color: '#10B981' }]}>
+                  {selectedRiderDocs.length} dokuaman teklif talebine eklenecek
+                </Text>
+              </View>
+            )}
+          </FormSection>
+        )}
+
+        {/* Show rider requirements summary if available */}
+        {selectedArtist && riderType && selectedArtist.riders[riderType as keyof typeof selectedArtist.riders] && (
+          <FormSection title="Sanatci Gereksinimleri" subtitle="Secilen sanatcinin rider bilgileri otomatik eklendi">
+            <View style={[styles.riderSummaryCard, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.2)' }]}>
+              <View style={styles.riderSummaryHeader}>
+                <Ionicons name="information-circle" size={20} color="#6366F1" />
+                <Text style={[styles.riderSummaryTitle, { color: '#6366F1' }]}>
+                  {selectedArtist.stageName || selectedArtist.name} - {riderTypeLabels[riderType as keyof typeof riderTypeLabels]}
+                </Text>
+              </View>
+              <Text style={[styles.riderSummaryText, { color: colors.textSecondary }]}>
+                {riderType === 'technical' && selectedArtist.riders.technical && (
+                  `Sahne: ${selectedArtist.riders.technical.stage.minWidth}x${selectedArtist.riders.technical.stage.minDepth}m • Ses: ${(selectedArtist.riders.technical.sound.minPower / 1000).toFixed(0)}kW • Isik: ${selectedArtist.riders.technical.lighting.movingHeadCount} MH`
+                )}
+                {riderType === 'transport' && selectedArtist.riders.transport && (
+                  `Transfer: ${selectedArtist.riders.transport.airportTransfer.passengerCount} kisi • Arac: ${selectedArtist.riders.transport.airportTransfer.vehicleType}`
+                )}
+                {riderType === 'accommodation' && selectedArtist.riders.accommodation && (
+                  `${selectedArtist.riders.accommodation.artistRooms.minStarRating}★ • ${selectedArtist.riders.accommodation.artistRooms.count} Sanatci + ${selectedArtist.riders.accommodation.crewRooms.count} Ekip odasi`
+                )}
+              </Text>
+            </View>
+          </FormSection>
+        )}
+      </>
+    );
   };
 
   const renderBookingFields = () => {
@@ -471,6 +657,8 @@ export function CategoryRequestScreen() {
           <SimpleInput placeholder="GG/AA/YYYY" value={eventDate} onChangeText={setEventDate} colors={colors} isDark={isDark} icon="calendar-outline" />
         </FormSection>
 
+        {renderArtistRiderSection()}
+
         {renderCategoryFields()}
 
         <FormSection title="Bütçe Aralığı">
@@ -549,4 +737,30 @@ const styles = StyleSheet.create({
   submitButton: { borderRadius: 14, overflow: 'hidden' },
   submitButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
   submitButtonText: { fontSize: 15, fontWeight: '600', color: 'white' },
+  // Artist Selection Styles
+  artistScrollList: { marginTop: 8 },
+  artistSelectCard: { width: 100, padding: 12, borderRadius: 12, borderWidth: 1, marginRight: 10, alignItems: 'center', position: 'relative' },
+  artistSelectImage: { width: 50, height: 50, borderRadius: 25, marginBottom: 8 },
+  artistSelectName: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
+  artistSelectRiderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  artistSelectRiderText: { fontSize: 10 },
+  artistSelectCheck: { position: 'absolute', top: 6, right: 6 },
+  // Rider Docs Styles
+  riderDocsList: { gap: 10 },
+  riderDocCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1 },
+  riderDocCheckbox: { marginRight: 12 },
+  riderDocChecked: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
+  riderDocUnchecked: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
+  riderDocInfo: { flex: 1 },
+  riderDocHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  riderDocType: { fontSize: 11, fontWeight: '600' },
+  riderDocName: { fontSize: 14, fontWeight: '500' },
+  riderDocMeta: { fontSize: 11, marginTop: 2 },
+  riderAttachmentNote: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, marginTop: 12 },
+  riderAttachmentNoteText: { fontSize: 13, fontWeight: '500' },
+  // Rider Summary Styles
+  riderSummaryCard: { padding: 14, borderRadius: 12, borderWidth: 1 },
+  riderSummaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  riderSummaryTitle: { fontSize: 14, fontWeight: '600' },
+  riderSummaryText: { fontSize: 13, lineHeight: 20 },
 });

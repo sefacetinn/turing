@@ -110,7 +110,7 @@ export function ArtistRosterScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
+        onPress={() => navigation.navigate('ArtistDetailManage', { artistId: artist.id })}
       >
         <View style={styles.cardImageContainer}>
           <Image source={{ uri: artist.coverImage }} style={styles.cardCoverImage} />
@@ -222,11 +222,19 @@ export function ArtistRosterScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Sanatci Kadrosu</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-            {stats.totalArtists} sanatci, {stats.upcomingShows} yaklasan gosteriler
-          </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Sanatci Kadrosu</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
+              {stats.totalArtists} sanatci, {stats.upcomingShows} yaklasan gosteriler
+            </Text>
+          </View>
         </View>
         <TouchableOpacity
           style={[
@@ -236,7 +244,7 @@ export function ArtistRosterScreen() {
               borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
             },
           ]}
-          onPress={() => {}}
+          onPress={() => navigation.navigate('AddEditArtist')}
         >
           <Ionicons name="add" size={22} color={colors.brand[400]} />
         </TouchableOpacity>
@@ -373,6 +381,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   headerSubtitle: { fontSize: 13, marginTop: 2 },

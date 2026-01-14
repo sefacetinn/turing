@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useApp } from '../../App';
 
 const colors = defaultColors;
 
@@ -105,7 +106,11 @@ const initialSelectedServices = [
 export function ProviderServicesScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
-  const [selectedServices, setSelectedServices] = useState<string[]>(initialSelectedServices);
+  const { providerServices = [], setProviderServices } = useApp();
+  // Initialize from context, fallback to initial if context is empty
+  const [selectedServices, setSelectedServices] = useState<string[]>(
+    providerServices && providerServices.length > 0 ? providerServices : initialSelectedServices
+  );
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['operation']);
 
   const toggleService = (serviceId: string) => {
@@ -136,6 +141,10 @@ export function ProviderServicesScreen() {
       Alert.alert('Uyarı', 'En az bir hizmet türü seçmelisiniz.');
       return;
     }
+    // Update context with selected services (if available)
+    if (setProviderServices && typeof setProviderServices === 'function') {
+      setProviderServices(selectedServices);
+    }
     Alert.alert('Başarılı', 'Hizmet türleriniz güncellendi.', [
       { text: 'Tamam', onPress: () => navigation.goBack() }
     ]);
@@ -143,7 +152,8 @@ export function ProviderServicesScreen() {
 
   const mainCategoriesSelected = serviceCategories.filter(c => !c.subcategories && selectedServices.includes(c.id)).length;
   const operationSelected = selectedServices.includes('operation');
-  const operationSubsSelected = getSelectedSubcategoryCount(serviceCategories.find(c => c.id === 'operation')!);
+  const operationCategory = serviceCategories.find(c => c.id === 'operation');
+  const operationSubsSelected = operationCategory ? getSelectedSubcategoryCount(operationCategory) : 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>

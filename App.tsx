@@ -61,6 +61,10 @@ import { MyReviewsScreen } from './src/screens/MyReviewsScreen';
 
 // Provider-specific screens
 import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
+import { ArtistDetailManageScreen } from './src/screens/provider/booking/ArtistDetailManageScreen';
+import { AddEditArtistScreen } from './src/screens/provider/booking/AddEditArtistScreen';
+import { EditRiderScreen } from './src/screens/provider/booking/EditRiderScreen';
+import { CrewManagementScreen } from './src/screens/provider/booking/CrewManagementScreen';
 import { EquipmentInventoryScreen } from './src/screens/provider/technical/EquipmentInventoryScreen';
 import { MenuManagementScreen } from './src/screens/provider/catering/MenuManagementScreen';
 import { FleetManagementScreen } from './src/screens/provider/transport/FleetManagementScreen';
@@ -81,12 +85,16 @@ interface AppContextType {
   isProviderMode: boolean;
   toggleMode: () => void;
   canSwitchMode: boolean; // Only users with dual access can switch
+  providerServices: string[];
+  setProviderServices: (services: string[]) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
   isProviderMode: false,
   toggleMode: () => {},
   canSwitchMode: true, // Default to true for demo
+  providerServices: [],
+  setProviderServices: () => {},
 });
 
 export const useApp = () => useContext(AppContext);
@@ -224,6 +232,10 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="MyReviews" component={MyReviewsScreen} />
       {/* Provider-specific management screens */}
       <Stack.Screen name="ArtistRoster" component={ArtistRosterScreen} />
+      <Stack.Screen name="ArtistDetailManage" component={ArtistDetailManageScreen} />
+      <Stack.Screen name="AddEditArtist" component={AddEditArtistScreen} />
+      <Stack.Screen name="EditRider" component={EditRiderScreen} />
+      <Stack.Screen name="CrewManagement" component={CrewManagementScreen} />
       <Stack.Screen name="EquipmentInventory" component={EquipmentInventoryScreen} />
       <Stack.Screen name="MenuManagement" component={MenuManagementScreen} />
       <Stack.Screen name="FleetManagement" component={FleetManagementScreen} />
@@ -327,6 +339,9 @@ function AppContent() {
   const [accountStatus, setAccountStatus] = useState<'pending' | 'approved'>('approved');
   const [navigationKey, setNavigationKey] = useState(0); // Key to force navigation reset
   const [canSwitchMode, setCanSwitchMode] = useState(true); // Demo: allow switching for all users
+  const [providerServices, setProviderServices] = useState<string[]>([
+    'booking', 'technical', 'transport', 'catering', 'security'
+  ]); // Default: all services enabled
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   // Check onboarding status on mount
@@ -412,7 +427,7 @@ function AppContent() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode }}>
+      <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode, providerServices, setProviderServices }}>
         <RBACProvider isProvider={isProviderMode}>
           <NavigationContainer
             ref={navigationRef}

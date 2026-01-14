@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   Switch,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -316,17 +317,23 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {/* Social Login */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={[styles.socialButton, {
-                backgroundColor: colors.glass,
-                borderColor: colors.glassBorder
-              }]}>
+              <TouchableOpacity
+                style={[styles.socialButton, {
+                  backgroundColor: colors.glass,
+                  borderColor: colors.glassBorder
+                }]}
+                onPress={() => Alert.alert('Google ile Giris', 'Google ile giris yaklnda aktif olacak.')}
+              >
                 <Ionicons name="logo-google" size={20} color={colors.text} />
                 <Text style={[styles.socialText, { color: colors.text }]}>Google</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.socialButton, {
-                backgroundColor: colors.glass,
-                borderColor: colors.glassBorder
-              }]}>
+              <TouchableOpacity
+                style={[styles.socialButton, {
+                  backgroundColor: colors.glass,
+                  borderColor: colors.glassBorder
+                }]}
+                onPress={() => Alert.alert('Apple ile Giris', 'Apple ile giris yaklnda aktif olacak.')}
+              >
                 <Ionicons name="logo-apple" size={20} color={colors.text} />
                 <Text style={[styles.socialText, { color: colors.text }]}>Apple</Text>
               </TouchableOpacity>

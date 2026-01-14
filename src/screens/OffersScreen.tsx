@@ -120,13 +120,15 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const handleReject = (offerId: string) => {
     Alert.alert('Teklifi Reddet', 'Bu teklifi reddetmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
-      { text: 'Reddet', style: 'destructive', onPress: () => console.log('Rejected:', offerId) },
+      { text: 'Reddet', style: 'destructive', onPress: () => {
+        Alert.alert('Basarili', 'Teklif reddedildi.');
+      }},
     ]);
   };
 
   const handleCounterOffer = (offerId: string) => {
-    Alert.alert('Karşı Teklif', 'Karşı teklif ekranı açılacak', [
-      { text: 'Tamam', onPress: () => console.log('Counter offer:', offerId) },
+    Alert.alert('Karsi Teklif', 'Bu ozellik yakinda aktif olacak.', [
+      { text: 'Tamam' },
     ]);
   };
 
@@ -155,8 +157,9 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   };
 
   const handleFilterPress = () => {
-    // Filter functionality
-    console.log('Filter pressed');
+    Alert.alert('Filtrele', 'Filtreleme ozelligi yakinda aktif olacak.', [
+      { text: 'Tamam' },
+    ]);
   };
 
   const renderOfferCard = (offer: OrganizerOffer | ProviderOffer) => {

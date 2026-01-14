@@ -1398,7 +1398,6 @@ export function ProviderEventDetailScreen() {
           }}
           reviewerType="provider"
           onSubmit={(review) => {
-            console.log('Review submitted:', review);
             setShowRatingModal(false);
             Alert.alert('Basarili', 'Degerlendirmeniz gonderildi!');
           }}

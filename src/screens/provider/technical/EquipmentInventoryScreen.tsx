@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -139,7 +140,7 @@ export function EquipmentInventoryScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => {}}
+        onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardImageContainer}>
@@ -239,11 +240,19 @@ export function EquipmentInventoryScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Ekipman Envanteri</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-            {stats.totalItems} ekipman, {(stats.totalValue / 1000000).toFixed(1)}M TL deger
-          </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Ekipman Envanteri</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
+              {stats.totalItems} ekipman, {(stats.totalValue / 1000000).toFixed(1)}M TL deger
+            </Text>
+          </View>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -254,7 +263,7 @@ export function EquipmentInventoryScreen() {
                 borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
               },
             ]}
-            onPress={() => {}}
+            onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
           >
             <Ionicons name="qr-code-outline" size={20} color={colors.text} />
           </TouchableOpacity>
@@ -266,7 +275,7 @@ export function EquipmentInventoryScreen() {
                 borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
               },
             ]}
-            onPress={() => {}}
+            onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
           >
             <Ionicons name="add" size={22} color={colors.brand[400]} />
           </TouchableOpacity>
@@ -410,6 +419,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   headerSubtitle: { fontSize: 13, marginTop: 2 },

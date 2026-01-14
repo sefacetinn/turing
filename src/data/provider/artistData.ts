@@ -1,5 +1,141 @@
 // Artist Roster Data for Booking Providers
 
+// Ekip Üyesi Arayüzü
+export interface CrewMember {
+  id: string;
+  name: string;
+  role: 'manager' | 'sound_engineer' | 'lighting_designer' | 'tour_manager' |
+        'stage_manager' | 'musician' | 'backup_vocal' | 'technician' | 'security' | 'other';
+  phone?: string;
+  email?: string;
+  image?: string;
+  notes?: string;
+}
+
+// Teknik Rider Arayüzü
+export interface TechnicalRider {
+  stage: {
+    minWidth: number;      // metre
+    minDepth: number;      // metre
+    minHeight?: number;    // metre
+    roofRequired: boolean;
+    backlineProvided: boolean;
+    instrumentList?: string[];
+  };
+  sound: {
+    systemType: 'line_array' | 'point_source' | 'any';
+    minPower: number;      // watt
+    monitors: number;      // adet
+    inEarMonitors?: number;
+    mixerChannels?: number;
+    specificBrands?: string[];
+  };
+  lighting: {
+    movingHeadCount: number;
+    ledBarCount?: number;
+    strobeCount?: number;
+    hazeRequired: boolean;
+    followSpotRequired: boolean;
+    ledWallSize?: string;
+    specificRequirements?: string[];
+  };
+  power: {
+    totalKW: number;
+    phases: 1 | 3;
+    backupGeneratorRequired: boolean;
+  };
+  timing: {
+    loadInHours: number;
+    soundCheckHours: number;
+    loadOutHours: number;
+  };
+  notes?: string;
+}
+
+// Ulaşım Rider Arayüzü
+export interface TransportRider {
+  airportTransfer: {
+    required: boolean;
+    vehicleType: 'sedan' | 'suv' | 'van' | 'sprinter' | 'minibus';
+    passengerCount: number;
+    luggageNote?: string;
+  };
+  localTransport: {
+    required: boolean;
+    vehicleType: 'sedan' | 'suv' | 'van' | 'sprinter';
+    availableHours: string;
+  };
+  crewTransport?: {
+    vehicleType: string;
+    passengerCount: number;
+  };
+  notes?: string;
+}
+
+// Konaklama Rider Arayüzü
+export interface AccommodationRider {
+  artistRooms: {
+    count: number;
+    type: 'standard' | 'deluxe' | 'suite' | 'presidential';
+    minStarRating: 3 | 4 | 5;
+    bedType?: 'single' | 'double' | 'king';
+  };
+  crewRooms: {
+    count: number;
+    type: 'standard' | 'deluxe';
+    minStarRating: 3 | 4 | 5;
+  };
+  checkIn: string;
+  checkOut: string;
+  earlyCheckIn?: boolean;
+  lateCheckOut?: boolean;
+  meals: {
+    breakfast: boolean;
+    lunch?: boolean;
+    dinner?: boolean;
+    dietaryRestrictions?: string[];
+  };
+  maxDistanceToVenue?: number;
+  notes?: string;
+}
+
+// Backstage Rider Arayüzü
+export interface BackstageRider {
+  dressingRoom: {
+    count: number;
+    privateRequired: boolean;
+    amenities: string[];
+  };
+  catering: {
+    hotMeals: boolean;
+    coldMeals: boolean;
+    beverages: string[];
+    snacks: string[];
+    alcoholPolicy: 'none' | 'beer_wine' | 'full_bar';
+    dietaryRestrictions?: string[];
+  };
+  other: {
+    towels: number;
+    bathrobeRequired?: boolean;
+    ironRequired?: boolean;
+    wifiRequired: boolean;
+  };
+  notes?: string;
+}
+
+// Rider Dokümanı Arayüzü
+export interface RiderDocument {
+  id: string;
+  type: 'technical' | 'transport' | 'accommodation' | 'backstage' | 'general';
+  fileName: string;
+  fileSize: number;
+  fileType: 'pdf' | 'doc' | 'docx';
+  uploadedAt: string;
+  version: number;
+  url: string;
+}
+
+// Sanatçı Arayüzü (Genişletilmiş)
 export interface Artist {
   id: string;
   name: string;
@@ -35,6 +171,20 @@ export interface Artist {
   };
   upcomingShows: ArtistShow[];
   pastShows: ArtistShow[];
+
+  // YENİ: Ekip Üyeleri
+  crew: CrewMember[];
+
+  // YENİ: Rider'lar
+  riders: {
+    technical?: TechnicalRider;
+    transport?: TransportRider;
+    accommodation?: AccommodationRider;
+    backstage?: BackstageRider;
+  };
+
+  // YENİ: Rider Dosyaları
+  riderDocuments: RiderDocument[];
 }
 
 export interface ArtistShow {
@@ -59,6 +209,29 @@ export interface ArtistContract {
   createdAt: string;
   signedAt?: string;
 }
+
+// Rol etiketleri
+export const crewRoleLabels: Record<CrewMember['role'], string> = {
+  manager: 'Menajer',
+  sound_engineer: 'Ses Mühendisi',
+  lighting_designer: 'Işık Tasarımcısı',
+  tour_manager: 'Tur Menajeri',
+  stage_manager: 'Sahne Amiri',
+  musician: 'Müzisyen',
+  backup_vocal: 'Backing Vokal',
+  technician: 'Teknisyen',
+  security: 'Güvenlik',
+  other: 'Diğer',
+};
+
+// Rider tipi etiketleri
+export const riderTypeLabels: Record<RiderDocument['type'], string> = {
+  technical: 'Teknik Rider',
+  transport: 'Ulaşım Rider',
+  accommodation: 'Konaklama Rider',
+  backstage: 'Backstage Rider',
+  general: 'Genel',
+};
 
 // Mock Artists Data
 export const mockArtists: Artist[] = [
@@ -102,6 +275,92 @@ export const mockArtists: Artist[] = [
     pastShows: [
       { id: 'sh3', eventName: 'New Year Party', venue: 'Zorlu PSM', city: 'İstanbul', date: '31 Aralık 2023', status: 'completed', fee: 150000 },
     ],
+    // YENİ: Ekip Üyeleri
+    crew: [
+      { id: 'cr1', name: 'Murat Özkan', role: 'manager', phone: '+90 532 111 2233', email: 'murat@djphantom.com' },
+      { id: 'cr2', name: 'Ali Kaya', role: 'sound_engineer', phone: '+90 533 222 3344', email: 'ali@djphantom.com' },
+      { id: 'cr3', name: 'Zeynep Demir', role: 'tour_manager', phone: '+90 534 333 4455', email: 'zeynep@djphantom.com' },
+    ],
+    // YENİ: Rider'lar
+    riders: {
+      technical: {
+        stage: {
+          minWidth: 8,
+          minDepth: 6,
+          minHeight: 4,
+          roofRequired: true,
+          backlineProvided: false,
+          instrumentList: [],
+        },
+        sound: {
+          systemType: 'line_array',
+          minPower: 10000,
+          monitors: 2,
+          inEarMonitors: 1,
+          mixerChannels: 16,
+          specificBrands: ['Pioneer', 'Allen & Heath'],
+        },
+        lighting: {
+          movingHeadCount: 12,
+          ledBarCount: 8,
+          strobeCount: 4,
+          hazeRequired: true,
+          followSpotRequired: false,
+          ledWallSize: '3x2m',
+        },
+        power: {
+          totalKW: 30,
+          phases: 3,
+          backupGeneratorRequired: false,
+        },
+        timing: {
+          loadInHours: 2,
+          soundCheckHours: 1,
+          loadOutHours: 1,
+        },
+        notes: 'DJ booth minimum 2x1.5m olmalı. CDJ-3000 ve DJM-900NXS2 tercih edilir.',
+      },
+      transport: {
+        airportTransfer: {
+          required: true,
+          vehicleType: 'sedan',
+          passengerCount: 3,
+          luggageNote: '2 büyük bavul + DJ ekipman çantası',
+        },
+        localTransport: {
+          required: true,
+          vehicleType: 'sedan',
+          availableHours: '16:00-04:00',
+        },
+        notes: 'Şoför İngilizce bilmeli.',
+      },
+      accommodation: {
+        artistRooms: {
+          count: 1,
+          type: 'suite',
+          minStarRating: 4,
+          bedType: 'king',
+        },
+        crewRooms: {
+          count: 2,
+          type: 'standard',
+          minStarRating: 4,
+        },
+        checkIn: '14:00',
+        checkOut: '12:00',
+        lateCheckOut: true,
+        meals: {
+          breakfast: true,
+          dietaryRestrictions: [],
+        },
+        maxDistanceToVenue: 15,
+        notes: 'Sessiz oda tercih edilir.',
+      },
+    },
+    riderDocuments: [
+      { id: 'rd1', type: 'technical', fileName: 'DJ_Phantom_Technical_Rider_v3.pdf', fileSize: 1250000, fileType: 'pdf', uploadedAt: '2024-03-15', version: 3, url: '/documents/rd1.pdf' },
+      { id: 'rd2', type: 'transport', fileName: 'DJ_Phantom_Transport_Requirements.pdf', fileSize: 450000, fileType: 'pdf', uploadedAt: '2024-03-15', version: 1, url: '/documents/rd2.pdf' },
+    ],
   },
   {
     id: 'art2',
@@ -139,6 +398,129 @@ export const mockArtists: Artist[] = [
       { id: 'sh4', eventName: 'Yaz Konserleri', venue: 'Harbiye Açıkhava', city: 'İstanbul', date: '20 Ağustos 2024', status: 'confirmed', fee: 350000 },
     ],
     pastShows: [],
+    // YENİ: Ekip Üyeleri
+    crew: [
+      { id: 'cr4', name: 'Selin Arslan', role: 'manager', phone: '+90 535 111 2233', email: 'selin@elifdeniz.com' },
+      { id: 'cr5', name: 'Burak Yıldız', role: 'sound_engineer', phone: '+90 536 222 3344', email: 'burak@elifdeniz.com' },
+      { id: 'cr6', name: 'Ayşe Korkmaz', role: 'lighting_designer', phone: '+90 537 333 4455', email: 'ayse@elifdeniz.com' },
+      { id: 'cr7', name: 'Emre Tan', role: 'tour_manager', phone: '+90 538 444 5566', email: 'emre@elifdeniz.com' },
+      { id: 'cr8', name: 'Deniz Çelik', role: 'musician', phone: '+90 539 555 6677', notes: 'Klavyeci' },
+      { id: 'cr9', name: 'Can Öztürk', role: 'musician', phone: '+90 530 666 7788', notes: 'Gitarist' },
+      { id: 'cr10', name: 'Merve Acar', role: 'backup_vocal', phone: '+90 531 777 8899' },
+      { id: 'cr11', name: 'Gizem Şen', role: 'backup_vocal', phone: '+90 532 888 9900' },
+    ],
+    // YENİ: Rider'lar
+    riders: {
+      technical: {
+        stage: {
+          minWidth: 12,
+          minDepth: 10,
+          minHeight: 8,
+          roofRequired: true,
+          backlineProvided: true,
+          instrumentList: ['Yamaha Grand Piano', 'Fender Rhodes', 'Bass Amp (Ampeg)', 'Guitar Amp (Fender Twin)'],
+        },
+        sound: {
+          systemType: 'line_array',
+          minPower: 15000,
+          monitors: 8,
+          inEarMonitors: 6,
+          mixerChannels: 48,
+          specificBrands: ['d&b audiotechnik', 'L-Acoustics'],
+        },
+        lighting: {
+          movingHeadCount: 24,
+          ledBarCount: 16,
+          strobeCount: 6,
+          hazeRequired: true,
+          followSpotRequired: true,
+          ledWallSize: '6x4m',
+          specificRequirements: ['Minimum 2 follow spot', 'Truss sistemi gerekli'],
+        },
+        power: {
+          totalKW: 60,
+          phases: 3,
+          backupGeneratorRequired: true,
+        },
+        timing: {
+          loadInHours: 6,
+          soundCheckHours: 3,
+          loadOutHours: 3,
+        },
+        notes: 'Sahne monitör mühendisi sanatçı tarafından sağlanacaktır. FOH mühendisi venue tarafından sağlanabilir.',
+      },
+      transport: {
+        airportTransfer: {
+          required: true,
+          vehicleType: 'sprinter',
+          passengerCount: 10,
+          luggageNote: 'Ekip ve enstrüman taşıması için geniş bagaj alanı gerekli',
+        },
+        localTransport: {
+          required: true,
+          vehicleType: 'sprinter',
+          availableHours: '10:00-02:00',
+        },
+        crewTransport: {
+          vehicleType: 'minibus',
+          passengerCount: 8,
+        },
+        notes: 'VIP araç tercihen Mercedes V-Class veya Sprinter.',
+      },
+      accommodation: {
+        artistRooms: {
+          count: 2,
+          type: 'suite',
+          minStarRating: 5,
+          bedType: 'king',
+        },
+        crewRooms: {
+          count: 6,
+          type: 'deluxe',
+          minStarRating: 4,
+        },
+        checkIn: '14:00',
+        checkOut: '12:00',
+        earlyCheckIn: true,
+        lateCheckOut: true,
+        meals: {
+          breakfast: true,
+          lunch: true,
+          dinner: true,
+          dietaryRestrictions: ['Vejetaryen seçenek olmalı'],
+        },
+        maxDistanceToVenue: 10,
+        notes: 'Tüm odalar aynı katta olmalı. Fitness merkezi ve spa erişimi.',
+      },
+      backstage: {
+        dressingRoom: {
+          count: 2,
+          privateRequired: true,
+          amenities: ['Ayna (aydınlatmalı)', 'Koltuk', 'Masa', 'Klima', 'Özel tuvalet'],
+        },
+        catering: {
+          hotMeals: true,
+          coldMeals: true,
+          beverages: ['Su (Erikli)', 'Taze sıkım meyve suyu', 'Çay', 'Türk kahvesi', 'Filtre kahve'],
+          snacks: ['Taze meyve tabağı', 'Kuruyemiş', 'Çikolata', 'Sandviçler'],
+          alcoholPolicy: 'none',
+          dietaryRestrictions: ['Fıstık alerjisi - fıstık içeren ürün olmamalı'],
+        },
+        other: {
+          towels: 20,
+          bathrobeRequired: true,
+          ironRequired: true,
+          wifiRequired: true,
+        },
+        notes: 'Soyunma odası sahneye yakın olmalı. Çiçek ve mum yasak (alerji).',
+      },
+    },
+    riderDocuments: [
+      { id: 'rd3', type: 'technical', fileName: 'Elif_Deniz_Technical_Rider_2024.pdf', fileSize: 2500000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 2, url: '/documents/rd3.pdf' },
+      { id: 'rd4', type: 'accommodation', fileName: 'Elif_Deniz_Hospitality_Rider.pdf', fileSize: 800000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 1, url: '/documents/rd4.pdf' },
+      { id: 'rd5', type: 'backstage', fileName: 'Elif_Deniz_Backstage_Requirements.pdf', fileSize: 650000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 1, url: '/documents/rd5.pdf' },
+      { id: 'rd6', type: 'transport', fileName: 'Elif_Deniz_Transport_Rider.pdf', fileSize: 500000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 1, url: '/documents/rd6.pdf' },
+    ],
   },
   {
     id: 'art3',
@@ -175,6 +557,56 @@ export const mockArtists: Artist[] = [
     },
     upcomingShows: [],
     pastShows: [],
+    crew: [
+      { id: 'cr12', name: 'Ozan Baysal', role: 'manager', phone: '+90 532 999 1122', email: 'ozan@duman.com' },
+      { id: 'cr13', name: 'Batuhan Mutlugil', role: 'musician', notes: 'Gitarist - Grup üyesi' },
+      { id: 'cr14', name: 'Ari Barokas', role: 'musician', notes: 'Basçı - Grup üyesi' },
+      { id: 'cr15', name: 'Cengiz Baysal', role: 'sound_engineer', phone: '+90 533 888 2233' },
+      { id: 'cr16', name: 'Hakan Yılmaz', role: 'lighting_designer', phone: '+90 534 777 3344' },
+      { id: 'cr17', name: 'Serkan Aksu', role: 'tour_manager', phone: '+90 535 666 4455' },
+    ],
+    riders: {
+      technical: {
+        stage: {
+          minWidth: 14,
+          minDepth: 12,
+          minHeight: 10,
+          roofRequired: true,
+          backlineProvided: true,
+          instrumentList: ['Drum Kit (DW)', 'Bass Amp (Ampeg SVT)', 'Guitar Amp (Marshall JCM800)', 'Acoustic Guitar'],
+        },
+        sound: {
+          systemType: 'line_array',
+          minPower: 25000,
+          monitors: 10,
+          inEarMonitors: 4,
+          mixerChannels: 56,
+          specificBrands: ['d&b audiotechnik', 'Meyer Sound'],
+        },
+        lighting: {
+          movingHeadCount: 32,
+          ledBarCount: 20,
+          strobeCount: 8,
+          hazeRequired: true,
+          followSpotRequired: true,
+          ledWallSize: '8x5m',
+        },
+        power: {
+          totalKW: 80,
+          phases: 3,
+          backupGeneratorRequired: true,
+        },
+        timing: {
+          loadInHours: 8,
+          soundCheckHours: 4,
+          loadOutHours: 4,
+        },
+        notes: 'Işık ve ses sistemleri sanatçı teknik ekibi tarafından kontrol edilecektir.',
+      },
+    },
+    riderDocuments: [
+      { id: 'rd7', type: 'technical', fileName: 'Duman_Technical_Rider_2024.pdf', fileSize: 3200000, fileType: 'pdf', uploadedAt: '2024-02-20', version: 4, url: '/documents/rd7.pdf' },
+    ],
   },
   {
     id: 'art4',
@@ -213,6 +645,46 @@ export const mockArtists: Artist[] = [
       { id: 'sh6', eventName: 'Sunset Party', venue: 'Macakizi', city: 'Bodrum', date: '5 Temmuz 2024', status: 'pending', fee: 60000 },
     ],
     pastShows: [],
+    crew: [
+      { id: 'cr18', name: 'Ceren Yıldırım', role: 'manager', phone: '+90 536 111 5566', email: 'ceren@djmerva.com' },
+    ],
+    riders: {
+      technical: {
+        stage: {
+          minWidth: 4,
+          minDepth: 3,
+          roofRequired: false,
+          backlineProvided: false,
+        },
+        sound: {
+          systemType: 'any',
+          minPower: 5000,
+          monitors: 2,
+          mixerChannels: 8,
+          specificBrands: ['Pioneer'],
+        },
+        lighting: {
+          movingHeadCount: 4,
+          ledBarCount: 4,
+          hazeRequired: true,
+          followSpotRequired: false,
+        },
+        power: {
+          totalKW: 15,
+          phases: 1,
+          backupGeneratorRequired: false,
+        },
+        timing: {
+          loadInHours: 1,
+          soundCheckHours: 0.5,
+          loadOutHours: 0.5,
+        },
+        notes: 'CDJ-2000NXS2 veya CDJ-3000 + DJM-900NXS2 gerekli.',
+      },
+    },
+    riderDocuments: [
+      { id: 'rd8', type: 'technical', fileName: 'DJ_Merva_Technical_Rider.pdf', fileSize: 680000, fileType: 'pdf', uploadedAt: '2024-04-01', version: 1, url: '/documents/rd8.pdf' },
+    ],
   },
   {
     id: 'art5',
@@ -246,6 +718,13 @@ export const mockArtists: Artist[] = [
     },
     upcomingShows: [],
     pastShows: [],
+    crew: [
+      { id: 'cr19', name: 'Mehmet Demir', role: 'manager', phone: '+90 537 222 6677', email: 'mehmet@coverband.com' },
+      { id: 'cr20', name: 'Kemal Yılmaz', role: 'musician', notes: 'Klavyeci' },
+      { id: 'cr21', name: 'Sevgi Arslan', role: 'backup_vocal' },
+    ],
+    riders: {},
+    riderDocuments: [],
   },
 ];
 
@@ -308,6 +787,37 @@ export function getContractsByStatus(status: ArtistContract['status']): ArtistCo
   return mockContracts.filter(c => c.status === status);
 }
 
+// Rider kontrolü
+export function getArtistRiderStatus(artist: Artist): {
+  technical: boolean;
+  transport: boolean;
+  accommodation: boolean;
+  backstage: boolean;
+  completionRate: number;
+} {
+  const riders = artist.riders || {};
+  const technical = !!riders.technical;
+  const transport = !!riders.transport;
+  const accommodation = !!riders.accommodation;
+  const backstage = !!riders.backstage;
+
+  const completed = [technical, transport, accommodation, backstage].filter(Boolean).length;
+  const completionRate = Math.round((completed / 4) * 100);
+
+  return { technical, transport, accommodation, backstage, completionRate };
+}
+
+// Sanatçı için rider dokümanı getir
+export function getArtistRiderDocuments(artistId: string, type?: RiderDocument['type']): RiderDocument[] {
+  const artist = getArtistById(artistId);
+  if (!artist) return [];
+
+  if (type) {
+    return artist.riderDocuments.filter(d => d.type === type);
+  }
+  return artist.riderDocuments;
+}
+
 // Stats
 export function getArtistStats() {
   const totalArtists = mockArtists.length;
@@ -316,6 +826,17 @@ export function getArtistStats() {
   const upcomingShows = mockArtists.reduce((acc, a) => acc + a.upcomingShows.length, 0);
   const totalRevenue = mockContracts.filter(c => c.status === 'signed').reduce((acc, c) => acc + c.fee, 0);
 
+  // Rider tamamlanma oranları
+  const riderStats = mockArtists.reduce((acc, artist) => {
+    const status = getArtistRiderStatus(artist);
+    return {
+      withTechnical: acc.withTechnical + (status.technical ? 1 : 0),
+      withTransport: acc.withTransport + (status.transport ? 1 : 0),
+      withAccommodation: acc.withAccommodation + (status.accommodation ? 1 : 0),
+      withBackstage: acc.withBackstage + (status.backstage ? 1 : 0),
+    };
+  }, { withTechnical: 0, withTransport: 0, withAccommodation: 0, withBackstage: 0 });
+
   return {
     totalArtists,
     activeArtists,
@@ -323,5 +844,6 @@ export function getArtistStats() {
     upcomingShows,
     totalRevenue,
     pendingContracts: mockContracts.filter(c => c.status === 'sent').length,
+    riderStats,
   };
 }

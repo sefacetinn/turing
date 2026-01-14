@@ -1417,7 +1417,6 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           }}
           reviewerType="organizer"
           onSubmit={(review) => {
-            console.log('Review submitted:', review);
             setShowRatingModal(false);
             setRatingTarget(null);
             Alert.alert('Basarili', 'Degerlendirmeniz gonderildi!');

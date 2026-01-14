@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -103,11 +104,10 @@ export function MyReviewsScreen() {
   };
 
   const handleSubmitReview = (review: any) => {
-    console.log('Review submitted:', review);
     setRatingModalVisible(false);
     setSelectedTarget(null);
     setSelectedEvent(null);
-    // In real app, send to API and refresh data
+    Alert.alert('Basarili', 'Degerlendirmeniz kaydedildi. Tesekkurler!');
   };
 
   const renderPendingTab = () => (

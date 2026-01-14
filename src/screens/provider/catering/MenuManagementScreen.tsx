@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -118,7 +119,7 @@ export function MenuManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => {}}
+        onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
       >
         <View style={styles.menuCardHeader}>
           <View style={styles.menuImageContainer}>
@@ -229,7 +230,7 @@ export function MenuManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => {}}
+        onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
       >
         <View style={styles.packageImageContainer}>
           <Image source={{ uri: pkg.image }} style={styles.packageImage} />
@@ -295,11 +296,19 @@ export function MenuManagementScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Menu Yonetimi</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-            {stats.totalItems} urun, {stats.totalPackages} paket
-          </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Menu Yonetimi</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
+              {stats.totalItems} urun, {stats.totalPackages} paket
+            </Text>
+          </View>
         </View>
         <TouchableOpacity
           style={[
@@ -309,7 +318,7 @@ export function MenuManagementScreen() {
               borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
             },
           ]}
-          onPress={() => {}}
+          onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
         >
           <Ionicons name="add" size={22} color={colors.brand[400]} />
         </TouchableOpacity>
@@ -515,6 +524,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   headerSubtitle: { fontSize: 13, marginTop: 2 },

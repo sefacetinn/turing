@@ -148,7 +148,7 @@ export function PosterGenerator({
   const [posterGenerated, setPosterGenerated] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const selectedSizeConfig = posterSizes.find(s => s.id === selectedSize)!;
+  const selectedSizeConfig = posterSizes.find(s => s.id === selectedSize) ?? posterSizes[0];
   const previewWidth = width - 80;
   const previewHeight = previewWidth / selectedSizeConfig.aspectRatio;
 

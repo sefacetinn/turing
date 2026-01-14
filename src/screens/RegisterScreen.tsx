@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -303,17 +304,23 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
 
             {/* Social Login */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={[styles.socialButton, {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border
-              }]}>
+              <TouchableOpacity
+                style={[styles.socialButton, {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border
+                }]}
+                onPress={() => Alert.alert('Google ile Kayit', 'Google ile kayit yakinda aktif olacak.')}
+              >
                 <Ionicons name="logo-google" size={20} color={colors.text} />
                 <Text style={[styles.socialText, { color: colors.text }]}>Google</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.socialButton, {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border
-              }]}>
+              <TouchableOpacity
+                style={[styles.socialButton, {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.surface,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : colors.border
+                }]}
+                onPress={() => Alert.alert('Apple ile Kayit', 'Apple ile kayit yakinda aktif olacak.')}
+              >
                 <Ionicons name="logo-apple" size={20} color={colors.text} />
                 <Text style={[styles.socialText, { color: colors.text }]}>Apple</Text>
               </TouchableOpacity>

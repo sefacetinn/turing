@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,18 +44,28 @@ const providerMenuItems = [
 
 // Business management items for different provider types
 const businessManagementItems = [
-  { id: 'artistRoster', icon: 'musical-notes', label: 'Sanatçı Kadrosu', description: 'Booking sağlayıcıları için', gradient: ['#9333EA', '#C084FC'] },
-  { id: 'equipment', icon: 'hardware-chip', label: 'Ekipman Envanteri', description: 'Teknik firmalar için', gradient: ['#3B82F6', '#60A5FA'] },
-  { id: 'menu', icon: 'restaurant', label: 'Menü Yönetimi', description: 'Catering firmaları için', gradient: ['#F59E0B', '#FBBF24'] },
-  { id: 'fleet', icon: 'car', label: 'Filo Yönetimi', description: 'Ulaşım firmaları için', gradient: ['#10B981', '#34D399'] },
-  { id: 'personnel', icon: 'shield-checkmark', label: 'Personel Yönetimi', description: 'Güvenlik firmaları için', gradient: ['#EF4444', '#F87171'] },
+  { id: 'artistRoster', icon: 'musical-notes', label: 'Sanatçı Kadrosu', description: 'Booking sağlayıcıları için', gradient: ['#9333EA', '#C084FC'], requiredService: 'booking' },
+  { id: 'equipment', icon: 'hardware-chip', label: 'Ekipman Envanteri', description: 'Teknik firmalar için', gradient: ['#3B82F6', '#60A5FA'], requiredService: 'technical' },
+  { id: 'menu', icon: 'restaurant', label: 'Menü Yönetimi', description: 'Catering firmaları için', gradient: ['#F59E0B', '#FBBF24'], requiredService: 'catering' },
+  { id: 'fleet', icon: 'car', label: 'Filo Yönetimi', description: 'Ulaşım firmaları için', gradient: ['#10B981', '#34D399'], requiredService: 'transport' },
+  { id: 'personnel', icon: 'shield-checkmark', label: 'Personel Yönetimi', description: 'Güvenlik firmaları için', gradient: ['#EF4444', '#F87171'], requiredService: 'security' },
 ];
 
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
-  const { canSwitchMode } = useApp();
+  const { canSwitchMode, providerServices = [] } = useApp();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
+
+  // Filter business management items based on provider's active services
+  const filteredBusinessItems = useMemo(() => {
+    if (!providerServices || providerServices.length === 0) {
+      return businessManagementItems; // Show all if no services defined yet
+    }
+    return businessManagementItems.filter(item =>
+      providerServices.includes(item.requiredService)
+    );
+  }, [providerServices]);
 
   const handleMenuPress = (itemId: string) => {
     switch (itemId) {
@@ -374,8 +384,8 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           </View>
         </View>
 
-        {/* Business Management Section - Only for providers */}
-        {isProviderMode && (
+        {/* Business Management Section - Only for providers with active services */}
+        {isProviderMode && filteredBusinessItems.length > 0 && (
           <View style={styles.businessSection}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>İşletme Yönetimi</Text>
             <ScrollView
@@ -383,7 +393,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.businessScrollContent}
             >
-              {businessManagementItems.map((item) => (
+              {filteredBusinessItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={[

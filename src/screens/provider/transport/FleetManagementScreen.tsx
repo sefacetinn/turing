@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -148,7 +149,16 @@ export function FleetManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => {}}
+        onPress={() => {
+          Alert.alert(
+            `${vehicle.brand} ${vehicle.model}`,
+            `Plaka: ${vehicle.plate}\nKapasite: ${vehicle.capacity} kisi\nYakıt: ${vehicle.fuelType}\nSaatlik: ${vehicle.hourlyRate.toLocaleString('tr-TR')} TL`,
+            [
+              { text: 'Duzenle', onPress: () => Alert.alert('Bilgi', 'Arac duzenleme ekrani henuz hazir degil.') },
+              { text: 'Kapat', style: 'cancel' },
+            ]
+          );
+        }}
       >
         <View style={styles.cardHeader}>
           <View style={styles.vehicleImageContainer}>
@@ -262,7 +272,17 @@ export function FleetManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => {}}
+        onPress={() => {
+          Alert.alert(
+            driver.name,
+            `Telefon: ${driver.phone}\nTecrube: ${driver.experience} yil\nEhliyet: ${driver.licenseType}\nPuan: ${driver.rating}`,
+            [
+              { text: 'Ara', onPress: () => Alert.alert('Bilgi', `${driver.phone} numarasi aranıyor...`) },
+              { text: 'Duzenle', onPress: () => Alert.alert('Bilgi', 'Sofor duzenleme ekrani henuz hazir degil.') },
+              { text: 'Kapat', style: 'cancel' },
+            ]
+          );
+        }}
       >
         <View style={styles.cardHeader}>
           <View style={styles.driverImageContainer}>
@@ -370,7 +390,18 @@ export function FleetManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => {}}
+        onPress={() => {
+          const driverName = driver?.name || 'Atanmadi';
+          const vehiclePlate = vehicle?.plate || 'Atanmadi';
+          Alert.alert(
+            trip.eventName || 'Transfer',
+            `Musteri: ${trip.clientName}\nYolcu: ${trip.passengerCount} kisi\nAlim: ${trip.pickupLocation}\nBırakma: ${trip.dropoffLocation}\nSofor: ${driverName}\nArac: ${vehiclePlate}\nUcret: ${trip.price.toLocaleString('tr-TR')} TL`,
+            [
+              { text: 'Detaylar', onPress: () => Alert.alert('Bilgi', 'Sefer detay ekrani henuz hazir degil.') },
+              { text: 'Kapat', style: 'cancel' },
+            ]
+          );
+        }}
       >
         <View style={styles.tripHeader}>
           <View style={styles.tripInfo}>
@@ -447,11 +478,19 @@ export function FleetManagementScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Filo Yonetimi</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-            {stats.totalVehicles} arac, {stats.totalDrivers} sofor
-          </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Filo Yonetimi</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
+              {stats.totalVehicles} arac, {stats.totalDrivers} sofor
+            </Text>
+          </View>
         </View>
         <TouchableOpacity
           style={[
@@ -461,7 +500,18 @@ export function FleetManagementScreen() {
               borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
             },
           ]}
-          onPress={() => {}}
+          onPress={() => {
+            Alert.alert(
+              'Yeni Ekle',
+              'Ne eklemek istiyorsunuz?',
+              [
+                { text: 'Arac Ekle', onPress: () => Alert.alert('Bilgi', 'Arac ekleme formu henuz hazir degil.') },
+                { text: 'Sofor Ekle', onPress: () => Alert.alert('Bilgi', 'Sofor ekleme formu henuz hazir degil.') },
+                { text: 'Sefer Olustur', onPress: () => Alert.alert('Bilgi', 'Sefer olusturma formu henuz hazir degil.') },
+                { text: 'Iptal', style: 'cancel' },
+              ]
+            );
+          }}
         >
           <Ionicons name="add" size={22} color={colors.brand[400]} />
         </TouchableOpacity>
@@ -644,6 +694,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   headerSubtitle: { fontSize: 13, marginTop: 2 },
