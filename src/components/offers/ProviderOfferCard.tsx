@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { gradients } from '../../theme/colors';
-import { ProviderOffer, getCategoryGradient, needsResponse } from '../../data/offersData';
+import { ProviderOffer, needsResponse } from '../../data/offersData';
+import {
+  getCategoryGradient,
+  getCategoryIcon,
+  getCategoryBadgeText,
+} from '../../utils/categoryHelpers';
 
 interface ProviderOfferCardProps {
   offer: ProviderOffer;
@@ -118,11 +123,13 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           end={{ x: 1, y: 0 }}
         >
           <Ionicons
-            name={offer.serviceCategory === 'technical' ? 'hardware-chip' : offer.serviceCategory === 'booking' ? 'musical-notes' : 'briefcase'}
+            name={getCategoryIcon(offer.serviceCategory) as keyof typeof Ionicons.glyphMap}
             size={12}
             color="white"
           />
-          <Text style={styles.roleBadgeText}>{offer.role}</Text>
+          <Text style={styles.roleBadgeText}>
+            {getCategoryBadgeText(offer.serviceCategory, offer.eventTitle)}
+          </Text>
         </LinearGradient>
       </View>
 

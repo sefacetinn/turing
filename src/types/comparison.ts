@@ -1,4 +1,4 @@
-import type { ServiceCategory, OperationSubCategory } from './index';
+import type { ServiceCategory, OperationSubCategory, OfferStatus } from './index';
 
 // Enhanced provider info for comparison
 export interface ComparisonProvider {
@@ -29,7 +29,7 @@ export interface EnhancedOffer {
   deliveryTime: string;
   deliveryDays: number;
   message: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'counter_offered';
+  status: OfferStatus;
   createdAt: string;
   // Computed scores (0-100)
   priceScore?: number;

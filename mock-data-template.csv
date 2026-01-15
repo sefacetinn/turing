@@ -1,0 +1,117 @@
+TURING MOCK DATA TEMPLATE
+=========================
+Bu dosyayı Excel'de açıp her bölümü ayrı sheet'lere kopyalayabilirsiniz.
+Veya direkt bu CSV'yi doldurup geri gönderebilirsiniz.
+
+================================================================================
+SHEET 1: ORGANIZATORLER
+================================================================================
+org_id,firma_adi,yetkili_kisi,email,telefon,logo_url,aciklama,konum
+ORG001,Pozitif Live,Ahmet Yılmaz,ahmet@pozitif.com,+90 532 111 2222,https://example.com/logo1.png,Türkiye'nin lider etkinlik organizatörü,İstanbul
+ORG002,,,,,,,
+ORG003,,,,,,,
+ORG004,,,,,,,
+ORG005,,,,,,,
+
+================================================================================
+SHEET 2: PROVIDER FIRMALAR (Hizmet Sağlayıcılar)
+================================================================================
+prov_id,firma_adi,hizmet_turleri,yetkili_kisi,email,telefon,logo_url,rating,aciklama,konum
+PROV001,EventPro 360,"teknik,ses-isik",Mehmet Demir,info@eventpro.com,+90 533 222 3333,https://example.com/prov1.png,4.8,Profesyonel ses ve ışık sistemleri,İstanbul
+PROV002,Star Booking,booking,,,,,,,
+PROV003,,catering,,,,,,,
+PROV004,,transport,,,,,,,
+PROV005,,security,,,,,,,
+PROV006,,accommodation,,,,,,,
+
+Hizmet türleri: teknik, ses-isik, booking, catering, transport, security, accommodation, venue
+
+================================================================================
+SHEET 3: SANATCILAR
+================================================================================
+artist_id,sanatci_adi,tur,ajans_firma,booking_fiyat_min,booking_fiyat_max,image_url,aciklama
+ART001,Sıla,Pop,Star Booking,500000,800000,https://example.com/sila.jpg,
+ART002,Tarkan,Pop,,,,,
+ART003,Duman,Rock,,,,,
+ART004,Mabel Matiz,Alternative,,,,,
+ART005,,,,,,,
+
+================================================================================
+SHEET 4: MEKANLAR
+================================================================================
+venue_id,mekan_adi,sehir,ilce,kapasite,mekan_turu,adres,image_url
+VEN001,Harbiye Açıkhava,İstanbul,Şişli,4500,acik-hava,,
+VEN002,Vodafone Park,İstanbul,Beşiktaş,42000,stadyum,,
+VEN003,Zorlu PSM,İstanbul,Beşiktaş,2500,kapali-salon,,
+VEN004,KüçükÇiftlik Park,İstanbul,Maçka,15000,acik-hava,,
+VEN005,,,,,,,
+
+Mekan türleri: acik-hava, stadyum, kapali-salon, otel, kongre-merkezi
+
+================================================================================
+SHEET 5: ETKINLIKLER
+================================================================================
+event_id,etkinlik_adi,etkinlik_turu,tarih_baslangic,tarih_bitis,mekan_id,organizator_id,sanatci_id,durum,tahmini_katilimci,butce,aciklama
+EVT001,Big Bang Summer Festival,festival,2026-07-10,2026-07-12,VEN004,ORG001,"ART001,ART002,ART003",aktif,25000,5000000,3 günlük yaz festivali
+EVT002,Vodafone Park Konseri - Sıla,konser,2026-08-28,2026-08-28,VEN002,ORG001,ART001,planli,40000,3000000,
+EVT003,Kurumsal Yılbaşı Gecesi,kurumsal,2026-12-31,2026-12-31,VEN003,ORG002,ART001,teklif-asamasinda,1500,800000,
+EVT004,Zeytinli Rock Festivali,festival,2026-07-16,2026-07-19,,ORG001,"ART003,ART004",tamamlandi,35000,,
+EVT005,,,,,,,,,,,
+
+Etkinlik türleri: festival, konser, kurumsal, dugun, lansman, konferans
+Durum: teklif-asamasinda, planli, aktif, tamamlandi, iptal
+
+================================================================================
+SHEET 6: HIZMET GEREKSINIMLERI (Her etkinlik için gerekli hizmetler)
+================================================================================
+req_id,event_id,hizmet_turu,aciklama,butce_min,butce_max,durum
+REQ001,EVT001,teknik,Ana sahne ses ve ışık sistemi,400000,500000,teklif-alindi
+REQ002,EVT001,catering,VIP ve backstage catering,200000,300000,teklif-bekliyor
+REQ003,EVT001,security,Festival güvenliği,350000,450000,onaylandi
+REQ004,EVT002,teknik,Stadyum ses sistemi,200000,280000,teklif-alindi
+REQ005,EVT002,booking,Sıla performansı,500000,800000,onaylandi
+REQ006,,,,,
+
+Durum: teklif-bekliyor, teklif-alindi, onaylandi, reddedildi
+
+================================================================================
+SHEET 7: TEKLIFLER
+================================================================================
+offer_id,req_id,provider_id,teklif_tutari,durum,teklif_tarihi,gecerlilik_suresi,notlar
+OFR001,REQ001,PROV001,450000,beklemede,2026-01-10,7 gün,Line array sistem dahil
+OFR002,REQ001,PROV002,480000,reddedildi,2026-01-09,7 gün,
+OFR003,REQ003,PROV005,380000,onaylandi,2026-01-05,14 gün,200 personel
+OFR004,REQ004,PROV001,245000,pazarlik,2026-01-12,7 gün,
+OFR005,REQ005,PROV002,650000,onaylandi,2026-01-01,30 gün,Sıla booking
+OFR006,,,,,,
+
+Durum: beklemede, pazarlik, onaylandi, reddedildi
+
+================================================================================
+SHEET 8: SOZLESMELER (Onaylanan tekliflerden oluşan)
+================================================================================
+contract_id,offer_id,event_id,provider_id,organizator_id,toplam_tutar,odenen,kalan,durum,imza_tarihi
+CON001,OFR003,EVT001,PROV005,ORG001,380000,190000,190000,aktif,2026-01-06
+CON002,OFR005,EVT002,PROV002,ORG001,650000,325000,325000,aktif,2026-01-02
+CON003,,,,,,,,,
+
+Durum: taslak, imza-bekliyor, aktif, tamamlandi, iptal
+
+================================================================================
+SHEET 9: MESAJLAR/CHATLER
+================================================================================
+chat_id,event_id,taraf1_id,taraf1_tur,taraf2_id,taraf2_tur,son_mesaj,okunmamis_sayisi
+CHAT001,EVT001,ORG001,organizator,PROV001,provider,Teknik detayları konuşalım mı?,2
+CHAT002,EVT001,ORG001,organizator,PROV005,provider,Güvenlik planı hazır,0
+CHAT003,EVT002,ORG001,organizator,PROV001,provider,Ses kontrolü ne zaman?,1
+CHAT004,EVT002,ORG001,organizator,PROV002,provider,Sıla rider'ı eklendi,0
+CHAT005,,,,,,,
+
+================================================================================
+NOTLAR
+================================================================================
+- ID'leri değiştirmeden kullanın (ORG001, PROV001, EVT001 vb.)
+- Virgülle ayrılmış değerlerde tırnak kullanın: "ART001,ART002"
+- Boş satırları silebilirsiniz veya daha fazla ekleyebilirsiniz
+- Tarih formatı: YYYY-MM-DD
+- Para birimi: TL (sadece sayı yazın)

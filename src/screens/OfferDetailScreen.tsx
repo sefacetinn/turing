@@ -22,22 +22,25 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { ServiceRequirementsDisplay } from '../components';
 import { offers, getQuoteRequestForOffer } from '../data/mockData';
-import { enhancedOffers, getQuoteRequestById, getCategoryGradient } from '../data/offersData';
+import { enhancedOffers, getQuoteRequestById, getCategoryGradient, providerOffers } from '../data/offersData';
 import { CategoryRequirements } from '../types';
+import { useApp } from '../../App';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Complete offer data interface for this screen
+// Uses "counterparty" to represent the other party (provider for organizer, organizer for provider)
 interface OfferData {
   id: string;
-  providerName: string;
-  providerImage: string;
-  providerRating: number;
-  providerReviewCount: number;
-  providerVerified: boolean;
-  providerCompletedJobs: number;
-  providerResponseTime: string;
-  providerPhone: string;
+  counterpartyName: string;
+  counterpartyImage: string;
+  counterpartyRating: number;
+  counterpartyReviewCount: number;
+  counterpartyVerified: boolean;
+  counterpartyCompletedJobs: number;
+  counterpartyResponseTime: string;
+  counterpartyPhone: string;
+  counterpartyType: 'provider' | 'organizer'; // To show correct label in UI
   service: string;
   category: string;
   eventTitle: string;
@@ -59,28 +62,65 @@ export function OfferDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { colors, isDark, helpers } = useTheme();
+  const { isProviderMode } = useApp();
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = 80;
   const { offerId } = (route.params as { offerId: string }) || { offerId: 'o1' };
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Try to find offer in both old and enhanced offers
+  // Try to find offer based on mode
+  // Provider mode: look in providerOffers (these have organizer info)
+  // Organizer mode: look in offers/enhancedOffers (these have provider info)
+  const providerModeOffer = providerOffers.find(o => o.id === offerId);
   const legacyOffer = offers.find(o => o.id === offerId);
   const enhancedOffer = enhancedOffers.find(o => o.id === offerId);
 
   // Helper to build complete offer data
   const buildOfferData = (): OfferData => {
+    // PROVIDER MODE: Show organizer info as counterparty
+    if (isProviderMode && providerModeOffer) {
+      return {
+        id: providerModeOffer.id,
+        counterpartyName: providerModeOffer.organizer.name,
+        counterpartyImage: providerModeOffer.organizer.image,
+        counterpartyRating: 4.7,
+        counterpartyReviewCount: 45,
+        counterpartyVerified: true,
+        counterpartyCompletedJobs: 120,
+        counterpartyResponseTime: '3 saat',
+        counterpartyPhone: '+90 532 987 6543',
+        counterpartyType: 'organizer',
+        service: providerModeOffer.role,
+        category: providerModeOffer.serviceCategory,
+        eventTitle: providerModeOffer.eventTitle,
+        eventId: providerModeOffer.eventId,
+        eventDate: providerModeOffer.eventDate,
+        eventVenue: providerModeOffer.location,
+        amount: providerModeOffer.amount,
+        originalAmount: providerModeOffer.amount,
+        discount: 0,
+        status: providerModeOffer.status,
+        notes: providerModeOffer.counterOffer?.message || '',
+        validUntil: '7 gün',
+        deliveryTime: '3 gün',
+        items: [],
+        createdAt: providerModeOffer.date,
+      };
+    }
+
+    // ORGANIZER MODE: Show provider info as counterparty
     if (legacyOffer) {
       return {
         id: legacyOffer.id,
-        providerName: legacyOffer.providerName,
-        providerImage: legacyOffer.providerImage,
-        providerRating: 4.8,
-        providerReviewCount: 127,
-        providerVerified: true,
-        providerCompletedJobs: 200,
-        providerResponseTime: '2 saat',
-        providerPhone: '+90 532 123 4567',
+        counterpartyName: legacyOffer.providerName,
+        counterpartyImage: legacyOffer.providerImage,
+        counterpartyRating: 4.8,
+        counterpartyReviewCount: 127,
+        counterpartyVerified: true,
+        counterpartyCompletedJobs: 200,
+        counterpartyResponseTime: '2 saat',
+        counterpartyPhone: '+90 532 123 4567',
+        counterpartyType: 'provider',
         service: legacyOffer.service,
         category: legacyOffer.category,
         eventTitle: legacyOffer.eventTitle,
@@ -102,14 +142,15 @@ export function OfferDetailScreen() {
     if (enhancedOffer) {
       return {
         id: enhancedOffer.id,
-        providerName: enhancedOffer.provider.name,
-        providerImage: enhancedOffer.provider.image,
-        providerRating: enhancedOffer.provider.rating || 4.8,
-        providerReviewCount: enhancedOffer.provider.reviewCount || 127,
-        providerVerified: enhancedOffer.provider.verified,
-        providerCompletedJobs: enhancedOffer.provider.completedJobs || 200,
-        providerResponseTime: enhancedOffer.provider.responseTime || '2 saat',
-        providerPhone: '+90 532 123 4567',
+        counterpartyName: enhancedOffer.provider.name,
+        counterpartyImage: enhancedOffer.provider.image,
+        counterpartyRating: enhancedOffer.provider.rating || 4.8,
+        counterpartyReviewCount: enhancedOffer.provider.reviewCount || 127,
+        counterpartyVerified: enhancedOffer.provider.verified,
+        counterpartyCompletedJobs: enhancedOffer.provider.completedJobs || 200,
+        counterpartyResponseTime: enhancedOffer.provider.responseTime || '2 saat',
+        counterpartyPhone: '+90 532 123 4567',
+        counterpartyType: 'provider',
         service: enhancedOffer.serviceName,
         category: enhancedOffer.category,
         eventTitle: enhancedOffer.eventTitle,
@@ -128,18 +169,50 @@ export function OfferDetailScreen() {
       };
     }
 
-    // Fallback
+    // Fallback - check mode
+    if (isProviderMode && providerOffers.length > 0) {
+      const fallbackOffer = providerOffers[0];
+      return {
+        id: fallbackOffer.id,
+        counterpartyName: fallbackOffer.organizer.name,
+        counterpartyImage: fallbackOffer.organizer.image,
+        counterpartyRating: 4.7,
+        counterpartyReviewCount: 45,
+        counterpartyVerified: true,
+        counterpartyCompletedJobs: 120,
+        counterpartyResponseTime: '3 saat',
+        counterpartyPhone: '+90 532 987 6543',
+        counterpartyType: 'organizer',
+        service: fallbackOffer.role,
+        category: fallbackOffer.serviceCategory,
+        eventTitle: fallbackOffer.eventTitle,
+        eventId: fallbackOffer.eventId,
+        eventDate: fallbackOffer.eventDate,
+        eventVenue: fallbackOffer.location,
+        amount: fallbackOffer.amount,
+        originalAmount: fallbackOffer.amount,
+        discount: 0,
+        status: fallbackOffer.status,
+        notes: '',
+        validUntil: '7 gün',
+        deliveryTime: '3 gün',
+        items: [],
+        createdAt: fallbackOffer.date,
+      };
+    }
+
     const fallbackOffer = offers[0];
     return {
       id: fallbackOffer.id,
-      providerName: fallbackOffer.providerName,
-      providerImage: fallbackOffer.providerImage,
-      providerRating: 4.8,
-      providerReviewCount: 127,
-      providerVerified: true,
-      providerCompletedJobs: 200,
-      providerResponseTime: '2 saat',
-      providerPhone: '+90 532 123 4567',
+      counterpartyName: fallbackOffer.providerName,
+      counterpartyImage: fallbackOffer.providerImage,
+      counterpartyRating: 4.8,
+      counterpartyReviewCount: 127,
+      counterpartyVerified: true,
+      counterpartyCompletedJobs: 200,
+      counterpartyResponseTime: '2 saat',
+      counterpartyPhone: '+90 532 123 4567',
+      counterpartyType: 'provider',
       service: fallbackOffer.service,
       category: fallbackOffer.category,
       eventTitle: fallbackOffer.eventTitle,
@@ -183,7 +256,7 @@ export function OfferDetailScreen() {
   const handleAcceptOffer = () => {
     Alert.alert(
       'Teklifi Kabul Et',
-      `${offer.providerName} firmasının ₺${offer.amount.toLocaleString('tr-TR')} tutarındaki teklifini kabul etmek istediğinize emin misiniz?`,
+      `${offer.counterpartyName} firmasının ₺${offer.amount.toLocaleString('tr-TR')} tutarındaki teklifini kabul etmek istediğinize emin misiniz?`,
       [
         { text: 'İptal', style: 'cancel' },
         {
@@ -248,26 +321,41 @@ export function OfferDetailScreen() {
   const handleNavigateToChat = () => {
     navigation.navigate('Chat', {
       chatId: `provider_${offer.id}`,
-      recipientName: offer.providerName
+      recipientName: offer.counterpartyName
     });
   };
 
   const handleNavigateToEvent = () => {
-    navigation.navigate('OrganizerEventDetail', { eventId: offer.eventId || 'e1' });
+    // Navigate to appropriate event detail screen based on mode
+    if (isProviderMode) {
+      navigation.navigate('ProviderEventDetail', { eventId: offer.eventId || 'e1' });
+    } else {
+      navigation.navigate('OrganizerEventDetail', { eventId: offer.eventId || 'e1' });
+    }
   };
 
-  const handleNavigateToProvider = () => {
-    navigation.navigate('ProviderDetail', { providerId: offer.id });
+  const handleNavigateToCounterparty = () => {
+    // In provider mode, show organizer profile; in organizer mode, show provider profile
+    if (isProviderMode) {
+      // Navigate to organizer profile (if exists) or show basic info
+      Alert.alert(
+        offer.counterpartyName,
+        `Organizatör Bilgileri\n\n⭐ ${offer.counterpartyRating} (${offer.counterpartyReviewCount} değerlendirme)\n📋 ${offer.counterpartyCompletedJobs} etkinlik düzenledi`,
+        [{ text: 'Tamam' }]
+      );
+    } else {
+      navigation.navigate('ProviderDetail', { providerId: offer.id });
+    }
   };
 
   const handleCall = () => {
-    Linking.openURL(`tel:${offer.providerPhone || '+905321234567'}`);
+    Linking.openURL(`tel:${offer.counterpartyPhone || '+905321234567'}`);
   };
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${offer.providerName} - ${offer.service}\n💰 ₺${offer.amount.toLocaleString('tr-TR')}\n📅 ${offer.eventTitle}\n\nTuring üzerinden teklif`,
+        message: `${offer.counterpartyName} - ${offer.service}\n💰 ₺${offer.amount.toLocaleString('tr-TR')}\n📅 ${offer.eventTitle}\n\nTuring üzerinden teklif`,
         title: `Teklif: ${offer.service}`,
       });
     } catch (error) {
@@ -432,14 +520,14 @@ export function OfferDetailScreen() {
             >
               <TouchableOpacity
                 style={styles.providerMainInfo}
-                onPress={handleNavigateToProvider}
+                onPress={handleNavigateToCounterparty}
                 activeOpacity={0.7}
               >
-                <Image source={{ uri: offer.providerImage }} style={styles.providerImage} />
+                <Image source={{ uri: offer.counterpartyImage }} style={styles.providerImage} />
                 <View style={styles.providerDetails}>
                   <View style={styles.providerNameRow}>
-                    <Text style={[styles.providerName, { color: colors.text }]}>{offer.providerName}</Text>
-                    {offer.providerVerified && (
+                    <Text style={[styles.providerName, { color: colors.text }]}>{offer.counterpartyName}</Text>
+                    {offer.counterpartyVerified && (
                       <View style={[styles.verifiedBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                         <Ionicons name="shield-checkmark" size={14} color={colors.success} />
                         <Text style={[styles.verifiedText, { color: colors.success }]}>Doğrulanmış</Text>
@@ -448,8 +536,8 @@ export function OfferDetailScreen() {
                   </View>
                   <View style={styles.providerRatingRow}>
                     <Ionicons name="star" size={16} color="#fbbf24" />
-                    <Text style={[styles.providerRating, { color: colors.text }]}>{offer.providerRating}</Text>
-                    <Text style={[styles.providerReviewCount, { color: colors.textMuted }]}>({offer.providerReviewCount} değerlendirme)</Text>
+                    <Text style={[styles.providerRating, { color: colors.text }]}>{offer.counterpartyRating}</Text>
+                    <Text style={[styles.providerReviewCount, { color: colors.textMuted }]}>({offer.counterpartyReviewCount} değerlendirme)</Text>
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -458,13 +546,15 @@ export function OfferDetailScreen() {
               <View style={[styles.providerStatsRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
                 <View style={styles.providerStatBox}>
                   <Ionicons name="briefcase-outline" size={18} color={colors.brand[400]} />
-                  <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.providerCompletedJobs}</Text>
-                  <Text style={[styles.providerStatLabel, { color: colors.textMuted }]}>Tamamlanan İş</Text>
+                  <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.counterpartyCompletedJobs}</Text>
+                  <Text style={[styles.providerStatLabel, { color: colors.textMuted }]}>
+                    {offer.counterpartyType === 'organizer' ? 'Düzenlenen Etkinlik' : 'Tamamlanan İş'}
+                  </Text>
                 </View>
                 <View style={[styles.providerStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
                 <View style={styles.providerStatBox}>
                   <Ionicons name="flash-outline" size={18} color={colors.warning} />
-                  <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.providerResponseTime}</Text>
+                  <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.counterpartyResponseTime}</Text>
                   <Text style={[styles.providerStatLabel, { color: colors.textMuted }]}>Yanıt Süresi</Text>
                 </View>
               </View>
@@ -497,7 +587,7 @@ export function OfferDetailScreen() {
                     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'
                   }]}
-                  onPress={handleNavigateToProvider}
+                  onPress={handleNavigateToCounterparty}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="person" size={18} color={colors.text} />
@@ -577,7 +667,9 @@ export function OfferDetailScreen() {
         {/* Provider Notes */}
         {offer.notes && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sağlayıcı Notu</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {offer.counterpartyType === 'organizer' ? 'Organizatör Notu' : 'Sağlayıcı Notu'}
+            </Text>
             <View style={[styles.notesCard, {
               backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground,
               borderColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border
@@ -610,7 +702,10 @@ export function OfferDetailScreen() {
                   <View style={styles.timelineContent}>
                     <View style={styles.timelineHeader}>
                       <Text style={[styles.timelineBy, { color: colors.text }]}>
-                        {item.by === 'provider' ? offer.providerName : 'Siz'}
+                        {isProviderMode
+                          ? (item.by === 'organizer' ? offer.counterpartyName : 'Siz')
+                          : (item.by === 'provider' ? offer.counterpartyName : 'Siz')
+                        }
                       </Text>
                       <Text style={[styles.timelineDate, { color: colors.textMuted }]}>{item.date}</Text>
                     </View>
@@ -623,8 +718,8 @@ export function OfferDetailScreen() {
           </View>
         )}
 
-        {/* Market Comparison */}
-        {offer.status === 'pending' && (
+        {/* Market Comparison - Only for organizers */}
+        {offer.status === 'pending' && !isProviderMode && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Piyasa Karşılaştırması</Text>
@@ -691,8 +786,9 @@ export function OfferDetailScreen() {
         <View style={{ height: 200 }} />
       </Animated.ScrollView>
 
-      {/* Bottom Actions */}
-      {offer.status === 'pending' && (
+      {/* Bottom Actions - Organizer mode only, for pending/counter_offered offers */}
+      {/* accepted and rejected have their own dedicated action sections below */}
+      {!isProviderMode && offer.status !== 'accepted' && offer.status !== 'rejected' && (
         <View style={[styles.bottomActions, {
           backgroundColor: isDark ? 'rgba(9, 9, 11, 0.98)' : colors.background,
           borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
@@ -929,14 +1025,18 @@ export function OfferDetailScreen() {
               <Ionicons name="share-outline" size={22} color={colors.text} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Paylaş</Text>
             </TouchableOpacity>
-            <View style={[styles.menuDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]} />
-            <TouchableOpacity style={styles.menuItem} onPress={() => {
-              setShowMenu(false);
-              navigation.navigate('CompareOffers', { quoteRequestId: offer.id });
-            }}>
-              <Ionicons name="git-compare-outline" size={22} color={colors.text} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Teklifleri Karşılaştır</Text>
-            </TouchableOpacity>
+            {!isProviderMode && (
+              <>
+                <View style={[styles.menuDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]} />
+                <TouchableOpacity style={styles.menuItem} onPress={() => {
+                  setShowMenu(false);
+                  navigation.navigate('CompareOffers', { quoteRequestId: offer.id });
+                }}>
+                  <Ionicons name="git-compare-outline" size={22} color={colors.text} />
+                  <Text style={[styles.menuItemText, { color: colors.text }]}>Teklifleri Karşılaştır</Text>
+                </TouchableOpacity>
+              </>
+            )}
             <View style={[styles.menuDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]} />
             <TouchableOpacity style={styles.menuItem} onPress={handleReport}>
               <Ionicons name="flag-outline" size={22} color={colors.error} />
@@ -1073,7 +1173,7 @@ const styles = StyleSheet.create({
   contractStatus: { fontSize: 13, marginTop: 4 },
 
   // Bottom Actions
-  bottomActions: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 34, borderTopWidth: 1, gap: 12 },
+  bottomActions: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, borderTopWidth: 1, gap: 12 },
   rejectButton: { width: 54, height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   negotiateButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 20, borderRadius: 16, borderWidth: 1 },
   negotiateButtonText: { fontSize: 14, fontWeight: '600' },

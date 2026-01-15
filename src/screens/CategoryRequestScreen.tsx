@@ -24,24 +24,33 @@ import {
   riderTypeLabels,
   RiderDocument,
 } from '../data/provider/artistData';
+import { draftRequests, getDraftById } from '../data/offersData';
 
 export function CategoryRequestScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { category, provider } = (route.params as { category: string; provider?: any }) || { category: 'booking' };
+  const { category, provider, eventId, draftId } = (route.params as {
+    category: string;
+    provider?: any;
+    eventId?: string;
+    draftId?: string;
+  }) || { category: 'booking' };
   const { colors, isDark, helpers } = useTheme();
 
   const config = categoryConfig[category] || categoryConfig.booking;
   const options = categoryOptions[category as keyof typeof categoryOptions] || {};
 
-  // Common state
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [eventDate, setEventDate] = useState('');
-  const [budget, setBudget] = useState('');
-  const [notes, setNotes] = useState('');
+  // Load draft data if draftId is provided
+  const existingDraft = draftId ? getDraftById(draftId) : null;
 
-  // Category-specific state (consolidated)
-  const [formState, setFormState] = useState<Record<string, any>>({});
+  // Common state - initialize from draft if available
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(existingDraft?.eventId || eventId || null);
+  const [eventDate, setEventDate] = useState(existingDraft?.formData?.eventDate || '');
+  const [budget, setBudget] = useState(existingDraft?.budget || '');
+  const [notes, setNotes] = useState(existingDraft?.notes || '');
+
+  // Category-specific state (consolidated) - initialize from draft if available
+  const [formState, setFormState] = useState<Record<string, any>>(existingDraft?.formData || {});
 
   // Artist and Rider state (for booking/technical/transport/accommodation categories)
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
@@ -98,6 +107,39 @@ export function CategoryRequestScreen() {
     Alert.alert(
       'Teklif Talebi Gönderildi',
       'Talebiniz ilgili sağlayıcılara iletildi. En kısa sürede teklifler alacaksınız.',
+      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+    );
+  };
+
+  const handleSaveDraft = () => {
+    if (!selectedEvent) {
+      Alert.alert('Uyarı', 'Taslak kaydetmek için lütfen bir etkinlik seçin');
+      return;
+    }
+
+    const selectedEventData = userEvents.find(e => e.id === selectedEvent);
+    const draftData = {
+      id: existingDraft?.id || `draft_${Date.now()}`,
+      eventId: selectedEvent,
+      eventTitle: selectedEventData?.title || '',
+      category,
+      categoryName: config.title.replace(' Talebi', ''),
+      formData: {
+        ...formState,
+        eventDate,
+      },
+      budget: budget || undefined,
+      notes: notes || undefined,
+      createdAt: existingDraft?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // In a real app, this would save to storage/backend
+    console.log('Draft saved:', draftData);
+
+    Alert.alert(
+      'Taslak Kaydedildi',
+      'Talebiniz taslak olarak kaydedildi. "Tekliflerim" sayfasındaki "Taslaklar" sekmesinden devam edebilirsiniz.',
       [{ text: 'Tamam', onPress: () => navigation.goBack() }]
     );
   };
@@ -283,19 +325,14 @@ export function CategoryRequestScreen() {
         <FormSection title="Tahmini Katılımcı">
           <SelectionChips options={opt.guestCounts} selected={formState.guestCount || ''} onSelect={v => updateForm('guestCount', v)} />
         </FormSection>
-        <FormSection title="Performans Detayları">
-          <InputLabel label="Set Süresi" />
+        <FormSection title="Set Süresi">
           <SelectionChips options={opt.durations} selected={formState.duration || ''} onSelect={v => updateForm('duration', v)} />
-          <InputLabel label="Set Sayısı" marginTop />
-          <SelectionChips options={opt.setCounts} selected={formState.setCount || ''} onSelect={v => updateForm('setCount', v)} />
         </FormSection>
-        <FormSection title="Ek Hizmetler">
-          <SwitchRow icon="volume-high-outline" label="Ses Sistemi Gerekli" value={formState.soundSystem || false} onValueChange={v => updateForm('soundSystem', v)} />
-          <SwitchRow icon="bed-outline" label="Konaklama Gerekli" value={formState.accommodation || false} onValueChange={v => updateForm('accommodation', v)} />
-          <SwitchRow icon="airplane-outline" label="Ulaşım Gerekli" value={formState.travel || false} onValueChange={v => updateForm('travel', v)} />
+        <FormSection title="Yaş Sınırı">
+          <SelectionChips options={opt.ageRestrictions} selected={formState.ageRestriction || ''} onSelect={v => updateForm('ageRestriction', v)} />
         </FormSection>
-        <FormSection title="Backstage İstekleri">
-          <TextAreaInput placeholder="Sanatçının backstage talepleri varsa belirtin..." value={formState.backstageNeeds || ''} onChangeText={(v: string) => updateForm('backstageNeeds', v)} colors={colors} isDark={isDark} />
+        <FormSection title="Oturma Düzeni">
+          <SelectionChips options={opt.seatingTypes} selected={formState.seatingType || ''} onSelect={v => updateForm('seatingType', v)} />
         </FormSection>
       </>
     );
@@ -661,8 +698,8 @@ export function CategoryRequestScreen() {
 
         {renderCategoryFields()}
 
-        <FormSection title="Bütçe Aralığı">
-          <SimpleInput placeholder="Örn: 50.000 - 100.000 TL" value={budget} onChangeText={setBudget} colors={colors} isDark={isDark} icon="cash-outline" />
+        <FormSection title="Bütçe" subtitle="(Opsiyonel)">
+          <SimpleInput placeholder="Örn: 150.000 TL" value={budget} onChangeText={setBudget} colors={colors} isDark={isDark} icon="cash-outline" keyboardType="numeric" />
         </FormSection>
 
         <FormSection title="Ek Notlar">
@@ -673,23 +710,32 @@ export function CategoryRequestScreen() {
       </ScrollView>
 
       <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={styles.submitButtonText}>Teklif Talebi Gönder</Text>
-            <Ionicons name="paper-plane" size={18} color="white" />
-          </LinearGradient>
-        </TouchableOpacity>
+        <View style={styles.bottomButtonsRow}>
+          <TouchableOpacity
+            style={[styles.draftButton, { borderColor: colors.warning, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.08)' }]}
+            onPress={handleSaveDraft}
+          >
+            <Ionicons name="bookmark-outline" size={18} color={colors.warning} />
+            <Text style={[styles.draftButtonText, { color: colors.warning }]}>Taslak</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={styles.submitButtonText}>Teklif Talebi Gönder</Text>
+              <Ionicons name="paper-plane" size={18} color="white" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 // Helper components
-function SimpleInput({ placeholder, value, onChangeText, colors, isDark, icon }: any) {
+function SimpleInput({ placeholder, value, onChangeText, colors, isDark, icon, keyboardType }: any) {
   return (
     <View style={[styles.inputContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.inputBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
       {icon && <Ionicons name={icon} size={18} color={colors.textMuted} />}
-      <TextInput style={[styles.input, { color: colors.text }]} placeholder={placeholder} placeholderTextColor={colors.textMuted} value={value} onChangeText={onChangeText} />
+      <TextInput style={[styles.input, { color: colors.text }]} placeholder={placeholder} placeholderTextColor={colors.textMuted} value={value} onChangeText={onChangeText} keyboardType={keyboardType} />
     </View>
   );
 }
@@ -733,8 +779,11 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 14 },
   textAreaContainer: { paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginTop: 8 },
   textArea: { fontSize: 14, minHeight: 80 },
-  bottomAction: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 32, borderTopWidth: 1 },
-  submitButton: { borderRadius: 14, overflow: 'hidden' },
+  bottomAction: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 100, borderTopWidth: 1 },
+  bottomButtonsRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  draftButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 16, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1.5 },
+  draftButtonText: { fontSize: 14, fontWeight: '600' },
+  submitButton: { flex: 1, borderRadius: 14, overflow: 'hidden' },
   submitButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
   submitButtonText: { fontSize: 15, fontWeight: '600', color: 'white' },
   // Artist Selection Styles

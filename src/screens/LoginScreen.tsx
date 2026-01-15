@@ -24,9 +24,10 @@ import {
   clearRememberedEmail,
 } from '../utils/storage';
 import { validateEmail } from '../utils/validation';
+import { validateCredentials, TestAccount, testAccounts } from '../data/testAccounts';
 
 interface LoginScreenProps {
-  onLogin: (asProvider: boolean) => void;
+  onLogin: (asProvider: boolean, account?: TestAccount) => void;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
@@ -71,6 +72,29 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       return;
     }
 
+    // Validate credentials against test accounts
+    const account = validateCredentials(email, password);
+
+    if (!account) {
+      Alert.alert(
+        'Giriş Başarısız',
+        'E-posta veya şifre hatalı.\n\nDemo hesapları:\n• Organizatör: demo@organizer.com\n• Booking: demo@booking.com\n• Teknik: demo@technical.com\n• Catering: demo@catering.com\n• Ulaşım: demo@transport.com\n• Güvenlik: demo@security.com\n\nŞifre: demo123',
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
+
+    // Check if account type matches selected mode
+    if ((selectedMode === 'provider' && account.role !== 'provider') ||
+        (selectedMode === 'organizer' && account.role !== 'organizer')) {
+      Alert.alert(
+        'Hatalı Mod Seçimi',
+        `Bu hesap ${account.role === 'provider' ? 'sağlayıcı' : 'organizatör'} hesabıdır. Lütfen doğru modu seçin.`,
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
+
     // Handle remember me
     if (rememberMe) {
       await saveRememberedEmail(email);
@@ -78,7 +102,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       await clearRememberedEmail();
     }
 
-    onLogin(selectedMode === 'provider');
+    onLogin(selectedMode === 'provider', account);
   };
 
   const handleForgotPassword = () => {
@@ -308,7 +332,57 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
                 borderColor: 'rgba(16, 185, 129, 0.3)',
               }]}
-              onPress={() => onLogin(selectedMode === 'provider')}
+              onPress={() => {
+                if (selectedMode === 'organizer') {
+                  // Direct login for organizer
+                  const orgAccount = testAccounts.find(a => a.type === 'organizer');
+                  if (orgAccount) onLogin(false, orgAccount);
+                } else {
+                  // Show provider options
+                  Alert.alert(
+                    'Demo Hesap Seçin',
+                    'Hangi sağlayıcı hesabıyla giriş yapmak istiyorsunuz?',
+                    [
+                      {
+                        text: 'Booking (Sanatçı)',
+                        onPress: () => {
+                          const acc = testAccounts.find(a => a.type === 'booking');
+                          if (acc) onLogin(true, acc);
+                        },
+                      },
+                      {
+                        text: 'Teknik (Ses-Işık)',
+                        onPress: () => {
+                          const acc = testAccounts.find(a => a.type === 'technical');
+                          if (acc) onLogin(true, acc);
+                        },
+                      },
+                      {
+                        text: 'Catering',
+                        onPress: () => {
+                          const acc = testAccounts.find(a => a.type === 'catering');
+                          if (acc) onLogin(true, acc);
+                        },
+                      },
+                      {
+                        text: 'Ulaşım',
+                        onPress: () => {
+                          const acc = testAccounts.find(a => a.type === 'transport');
+                          if (acc) onLogin(true, acc);
+                        },
+                      },
+                      {
+                        text: 'Güvenlik',
+                        onPress: () => {
+                          const acc = testAccounts.find(a => a.type === 'security');
+                          if (acc) onLogin(true, acc);
+                        },
+                      },
+                      { text: 'İptal', style: 'cancel' },
+                    ]
+                  );
+                }
+              }}
               activeOpacity={0.8}
             >
               <Ionicons name="flash" size={18} color="#10b981" />

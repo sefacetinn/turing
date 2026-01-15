@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useApp } from '../../App';
 import {
   TabType,
   ProviderEvent,
@@ -30,6 +31,7 @@ const colors = defaultColors;
 export function ProviderEventsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const { providerServices } = useApp();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -41,8 +43,44 @@ export function ProviderEventsScreen() {
     }, 1000);
   }, []);
 
+  // Filter events by provider's service types
+  const serviceFilteredEvents = useMemo(() => {
+    if (!providerServices || providerServices.length === 0) {
+      return providerEvents;
+    }
+    // Map service categories to provider service IDs
+    const serviceTypeMap: Record<string, string[]> = {
+      'booking': ['booking'],
+      'technical': ['sound-light', 'technical'],
+      'sound-light': ['technical', 'sound-light'],
+      'venue': ['venue'],
+      'accommodation': ['accommodation'],
+      'transport': ['transport'],
+      'flight': ['flight'],
+      'security': ['security'],
+      'catering': ['catering'],
+      'generator': ['generator'],
+      'beverage': ['beverage'],
+      'medical': ['medical'],
+      'sanitation': ['sanitation'],
+      'media': ['media'],
+      'barrier': ['barrier'],
+      'tent': ['tent'],
+      'ticketing': ['ticketing'],
+      'decoration': ['decoration'],
+    };
+
+    return providerEvents.filter(event => {
+      // Check if event's serviceType matches any of provider's services
+      const mappedTypes = serviceTypeMap[event.serviceType] || [event.serviceType];
+      return providerServices.some(ps =>
+        mappedTypes.includes(ps) || ps === event.serviceType
+      );
+    });
+  }, [providerServices]);
+
   const filteredEvents = useMemo(() => {
-    let filtered = providerEvents;
+    let filtered = serviceFilteredEvents;
 
     if (activeTab === 'active') {
       filtered = filtered.filter(e => ['active', 'planned'].includes(e.status));
@@ -60,9 +98,30 @@ export function ProviderEventsScreen() {
     }
 
     return filtered;
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, serviceFilteredEvents]);
 
-  const stats = useMemo(() => calculateStats(providerEvents), []);
+  const stats = useMemo(() => calculateStats(serviceFilteredEvents), [serviceFilteredEvents]);
+
+  // Generate card title as "Artist/Event Name - City"
+  const getCardTitle = (event: ProviderEvent) => {
+    // Extract city from location (e.g., "İstanbul, Maçka" -> "İstanbul")
+    const city = event.location.split(',')[0].trim();
+
+    // Try to extract artist name if it's a concert (contains "Konseri - " or similar)
+    if (event.eventTitle.includes(' - ')) {
+      const parts = event.eventTitle.split(' - ');
+      // If it's like "Vodafone Park Konseri - Tarkan", use the artist name
+      if (parts.length === 2 && !parts[1].includes('20')) {
+        return `${parts[1]} - ${city}`;
+      }
+      // If it's like "Düğün - Zeynep & Emre", use the names
+      return `${parts[1]} - ${city}`;
+    }
+
+    // For festivals and other events, use a shortened title
+    const shortTitle = event.eventTitle.split(' ').slice(0, 2).join(' ');
+    return `${shortTitle} - ${city}`;
+  };
 
   const renderEventCard = (event: ProviderEvent) => {
     const statusInfo = getStatusInfo(event.status, colors);
@@ -122,7 +181,7 @@ export function ProviderEventsScreen() {
           </View>
 
           <View style={styles.eventImageContent}>
-            <Text style={styles.eventImageTitle} numberOfLines={1}>{event.eventTitle}</Text>
+            <Text style={styles.eventImageTitle} numberOfLines={1}>{getCardTitle(event)}</Text>
             <Text style={styles.eventVenueText}>{event.venue}</Text>
           </View>
         </View>
@@ -210,7 +269,10 @@ export function ProviderEventsScreen() {
             {stats.activeCount} aktif iş
           </Text>
         </View>
-        <TouchableOpacity style={[styles.calendarButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+        <TouchableOpacity
+          style={[styles.calendarButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+          onPress={() => navigation.navigate('CalendarView')}
+        >
           <Ionicons name="calendar" size={20} color={colors.text} />
         </TouchableOpacity>
       </View>

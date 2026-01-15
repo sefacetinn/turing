@@ -159,12 +159,24 @@ export function OrganizerEventsScreen() {
     };
   }, []);
 
+  // Generate card title as "Artist Name - City"
+  const getCardTitle = (event: Event, eventArtists: { name: string | null; image: string }[]) => {
+    const artistName = eventArtists[0]?.name;
+    const city = event.location;
+    if (artistName) {
+      return `${artistName} - ${city}`;
+    }
+    // Fallback for events without artists (corporate, private etc.)
+    return `${event.title.split(' ')[0]} - ${city}`;
+  };
+
   const renderEventCard = (event: Event) => {
     const statusInfo = getStatusInfo(event.status);
     const eventArtists = getEventArtists(event.services);
     const serviceCategories = getServiceCategories(event.services);
     const confirmedServices = event.services.filter(s => s.status === 'confirmed').length;
     const totalServices = event.services.length;
+    const cardTitle = getCardTitle(event, eventArtists);
 
     return (
       <TouchableOpacity
@@ -223,7 +235,7 @@ export function OrganizerEventsScreen() {
 
         {/* Event Content */}
         <View style={styles.eventContent}>
-          <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
+          <Text style={[styles.eventTitle, { color: colors.text }]} numberOfLines={1}>{cardTitle}</Text>
 
           <View style={styles.eventMeta}>
             <View style={styles.eventMetaItem}>
@@ -471,26 +483,30 @@ export function OrganizerEventsScreen() {
             {/* Events for Selected Date */}
             <Text style={[styles.calendarEventsTitle, { color: colors.text }]}>Bu Ayki Etkinlikler</Text>
             {filteredEvents.length > 0 ? (
-              filteredEvents.map(event => (
-                <TouchableOpacity
-                  key={event.id}
-                  style={[styles.calendarEventItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}
-                  onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
-                >
-                  <View style={[styles.calendarEventDate, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
-                    <Text style={[styles.calendarEventDay, { color: colors.brand[400] }]}>{event.date.split(' ')[0]}</Text>
-                    <Text style={[styles.calendarEventMonth, { color: colors.brand[400] }]}>{event.date.split(' ')[1]?.substring(0, 3)}</Text>
-                  </View>
-                  <View style={styles.calendarEventInfo}>
-                    <Text style={[styles.calendarEventTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
-                    <View style={styles.calendarEventMeta}>
-                      <Ionicons name="location-outline" size={12} color={colors.textMuted} />
-                      <Text style={[styles.calendarEventLocation, { color: colors.textMuted }]}>{event.venue}</Text>
+              filteredEvents.map(event => {
+                const calEventArtists = getEventArtists(event.services);
+                const calCardTitle = getCardTitle(event, calEventArtists);
+                return (
+                  <TouchableOpacity
+                    key={event.id}
+                    style={[styles.calendarEventItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}
+                    onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
+                  >
+                    <View style={[styles.calendarEventDate, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
+                      <Text style={[styles.calendarEventDay, { color: colors.brand[400] }]}>{event.date.split(' ')[0]}</Text>
+                      <Text style={[styles.calendarEventMonth, { color: colors.brand[400] }]}>{event.date.split(' ')[1]?.substring(0, 3)}</Text>
                     </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-              ))
+                    <View style={styles.calendarEventInfo}>
+                      <Text style={[styles.calendarEventTitle, { color: colors.text }]} numberOfLines={1}>{calCardTitle}</Text>
+                      <View style={styles.calendarEventMeta}>
+                        <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                        <Text style={[styles.calendarEventLocation, { color: colors.textMuted }]}>{event.venue}</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                );
+              })
             ) : (
               <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Bu ay etkinlik yok</Text>

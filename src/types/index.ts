@@ -20,31 +20,53 @@ export type ViewType =
   | 'offer-detail'
   | 'event-detail';
 
-// Service Categories
+// Service Categories (Ana Hizmet Kategorileri - 6 adet)
 export type ServiceCategory =
-  | 'booking'
-  | 'technical'
-  | 'accommodation'
-  | 'venue'
-  | 'flight'
-  | 'transport'
-  | 'operation'
-  | 'catering';
+  | 'booking'        // Sanatçı / Booking
+  | 'technical'      // Teknik Ekipman
+  | 'accommodation'  // Konaklama
+  | 'venue'          // Mekan
+  | 'transport'      // Ulaşım
+  | 'operation';     // Operasyon (alt kategorileri var: güvenlik, catering, uçuş, vb.)
 
-// Operation Sub-categories
+// ============================================
+// TEKLİF DURUM TİPLERİ (OFFER STATUS TYPES)
+// ============================================
+/**
+ * Teklif Durumları:
+ * - pending: Beklemede (provider teklif verdi, organizatör yanıt bekliyor)
+ * - counter_offered: Pazarlık sürecinde (karşı teklif yapıldı)
+ * - accepted: Onaylandı (karşılıklı kabul edildi)
+ * - rejected: Reddedildi
+ * - expired: Süresi doldu
+ * - cancelled: İptal edildi
+ */
+export type OfferStatus =
+  | 'pending'           // Beklemede - yanıt bekleniyor
+  | 'counter_offered'   // Pazarlık sürecinde - karşı teklif yapıldı
+  | 'accepted'          // Onaylandı - karşılıklı kabul edildi
+  | 'rejected'          // Reddedildi
+  | 'expired'           // Süresi doldu
+  | 'cancelled';        // İptal edildi
+
+// Sekme tipleri
+export type OfferTabType = 'active' | 'accepted' | 'rejected' | 'drafts';
+
+// Operation Sub-categories (Operasyon Alt Kategorileri - 13 adet)
 export type OperationSubCategory =
-  | 'security'
-  | 'catering'
-  | 'generator'
-  | 'beverage'
-  | 'medical'
-  | 'sanitation'
-  | 'media'
-  | 'barrier'
-  | 'tent'
-  | 'ticketing'
-  | 'decoration'
-  | 'production';
+  | 'security'       // Güvenlik
+  | 'catering'       // Catering
+  | 'flight'         // Uçuş
+  | 'generator'      // Jeneratör
+  | 'beverage'       // İçecek
+  | 'medical'        // Medikal
+  | 'sanitation'     // Sanitasyon
+  | 'media'          // Medya
+  | 'barrier'        // Bariyer
+  | 'tent'           // Çadır
+  | 'ticketing'      // Biletleme
+  | 'decoration'     // Dekorasyon
+  | 'production';    // Prodüksiyon
 
 // Artist Interface
 export interface Artist {

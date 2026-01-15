@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { gradients } from '../theme/colors';
+import { useApp } from '../../App';
 import {
   HomeHeader,
   SearchBar,
@@ -140,10 +141,10 @@ function OrganizerHomeContent() {
                     index !== Math.min(dashboard.pendingActions.length, 3) - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
                   ]}
                   onPress={() => {
-                    if (action.type === 'offer') {
-                      navigation.navigate('OfferDetail' as any, { offerId: action.id });
-                    } else {
-                      navigation.navigate('ServiceProviders' as any, { category: 'technical' });
+                    if (action.type === 'offer' && action.offerId) {
+                      navigation.navigate('OfferDetail' as any, { offerId: action.offerId });
+                    } else if (action.type === 'service') {
+                      navigation.navigate('ServiceProviders' as any, { category: action.serviceCategory || 'technical' });
                     }
                   }}
                 >
@@ -333,6 +334,7 @@ function OrganizerHomeContent() {
 function ProviderHomeContent() {
   const navigation = useNavigation<HomeStackNavigationProp>();
   const { colors, isDark, helpers } = useTheme();
+  const { providerServices } = useApp();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -340,6 +342,47 @@ function ProviderHomeContent() {
     if (hour < 18) return 'İyi günler';
     return 'İyi akşamlar';
   };
+
+  // Service type mapping for filtering
+  const serviceTypeMap: Record<string, string[]> = {
+    'booking': ['booking'],
+    'technical': ['sound-light', 'technical'],
+    'sound-light': ['technical', 'sound-light'],
+    'transport': ['transport'],
+    'accommodation': ['accommodation'],
+    'security': ['security'],
+    'catering': ['catering'],
+    'venue': ['venue'],
+    'operation': ['operation', 'security', 'catering'],
+  };
+
+  // Filter upcoming jobs based on provider services
+  const filteredUpcomingJobs = useMemo(() => {
+    if (!providerServices || providerServices.length === 0) {
+      return upcomingJobs;
+    }
+    return upcomingJobs.filter((job: any) => {
+      if (!job.serviceType) return true;
+      const mappedTypes = serviceTypeMap[job.serviceType] || [job.serviceType];
+      return providerServices.some(ps =>
+        mappedTypes.includes(ps) || ps === job.serviceType
+      );
+    });
+  }, [providerServices]);
+
+  // Filter recent requests based on provider services
+  const filteredRecentRequests = useMemo(() => {
+    if (!providerServices || providerServices.length === 0) {
+      return recentRequests;
+    }
+    return recentRequests.filter((request: any) => {
+      if (!request.serviceType) return true;
+      const mappedTypes = serviceTypeMap[request.serviceType] || [request.serviceType];
+      return providerServices.some(ps =>
+        mappedTypes.includes(ps) || ps === request.serviceType
+      );
+    });
+  }, [providerServices]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -378,7 +421,7 @@ function ProviderHomeContent() {
 
         <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />
 
-        {upcomingJobs.map((job) => (
+        {filteredUpcomingJobs.slice(0, 3).map((job) => (
           <UpcomingJobCard
             key={job.id}
             {...job}
@@ -388,7 +431,7 @@ function ProviderHomeContent() {
 
         <SectionHeader title="Yeni Talepler" onViewAll={() => navigation.navigate('OffersTab' as any)} />
 
-        {recentRequests.map((request) => (
+        {filteredRecentRequests.slice(0, 3).map((request) => (
           <RequestCard
             key={request.id}
             {...request}

@@ -60,6 +60,7 @@ export function CreateEventScreen() {
 
   const currentStepIndex = steps.findIndex(s => s.key === currentStep);
   const availableDistricts = useMemo(() => getAvailableDistricts(eventData.city), [eventData.city]);
+  const newVenueDistricts = useMemo(() => getAvailableDistricts(newVenue.city), [newVenue.city]);
   const availableVenues = useMemo(
     () => getAvailableVenues(eventData.city, eventData.district, customVenues),
     [eventData.city, eventData.district, customVenues]
@@ -121,10 +122,10 @@ export function CreateEventScreen() {
         ...prev,
         venue: venueName,
         venueCapacity: selectedVenue.capacity,
-        guestCount: prev.guestCount || capacityStr, // Only auto-fill if empty
+        guestCount: capacityStr, // Always auto-fill with venue capacity
       }));
     } else {
-      setEventData(prev => ({ ...prev, venue: venueName }));
+      setEventData(prev => ({ ...prev, venue: venueName, venueCapacity: '', guestCount: '' }));
     }
   };
 
@@ -180,7 +181,7 @@ export function CreateEventScreen() {
   };
 
   const handleAddVenue = () => {
-    if (!newVenue.name.trim() || !newVenue.venueType) return;
+    if (!newVenue.name.trim() || !newVenue.venueType || !newVenue.city || !newVenue.district || !newVenue.capacity) return;
     const features: string[] = [];
     if (newVenue.hasBackstage) features.push('Kulis');
     if (newVenue.hasParking) features.push('Otopark');
@@ -189,7 +190,7 @@ export function CreateEventScreen() {
     if (newVenue.hasAirConditioning) features.push('Klima');
     if (newVenue.hasDisabledAccess) features.push('Engelli Erişimi');
 
-    const venueId = `${eventData.city}-${eventData.district}-custom-${Date.now()}`;
+    const venueId = `${newVenue.city}-${newVenue.district}-custom-${Date.now()}`;
     const venue: Venue = {
       id: venueId,
       name: newVenue.name,
@@ -200,7 +201,15 @@ export function CreateEventScreen() {
     };
 
     setCustomVenues(prev => [...prev, venue]);
-    setEventData(prev => ({ ...prev, venue: venue.name }));
+    // Update event data with venue and its location
+    setEventData(prev => ({
+      ...prev,
+      city: newVenue.city,
+      district: newVenue.district,
+      venue: venue.name,
+      venueCapacity: venue.capacity,
+      guestCount: newVenue.capacity.replace(/\./g, ''),
+    }));
     setNewVenue(initialNewVenueData);
     setShowAddVenue(false);
     setActiveDropdown(null);
@@ -264,49 +273,6 @@ export function CreateEventScreen() {
             <Text style={[styles.stepSubtitle, { color: colors.textMuted }]}>
               Etkinliğiniz hakkında temel bilgileri girin
             </Text>
-
-            {/* Event Image Upload */}
-            <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Görseli</Text>
-              <TouchableOpacity
-                style={[styles.imageUploadArea, {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
-                  borderColor: eventData.image ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border),
-                }]}
-                onPress={pickImage}
-              >
-                {eventData.image ? (
-                  <View style={styles.imagePreviewContainer}>
-                    <Image source={{ uri: eventData.image }} style={styles.imagePreview} />
-                    <View style={styles.imageOverlay}>
-                      <TouchableOpacity
-                        style={styles.changeImageBtn}
-                        onPress={pickImage}
-                      >
-                        <Ionicons name="camera" size={18} color="white" />
-                        <Text style={styles.changeImageText}>Değiştir</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.removeImageBtn}
-                        onPress={() => setEventData(prev => ({ ...prev, image: null }))}
-                      >
-                        <Ionicons name="trash" size={18} color="white" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.imageUploadContent}>
-                    <View style={[styles.imageUploadIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
-                      <Ionicons name="image-outline" size={28} color={colors.brand[400]} />
-                    </View>
-                    <Text style={[styles.imageUploadText, { color: colors.text }]}>Görsel Ekle</Text>
-                    <Text style={[styles.imageUploadHint, { color: colors.textMuted }]}>
-                      Etkinlik kartında başlık görseli olarak kullanılacak
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
 
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Adı *</Text>
@@ -382,14 +348,14 @@ export function CreateEventScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            {eventData.district && availableVenues.length > 0 && (
+            {eventData.district && (
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.textMuted }]}>Mekan</Text>
                 <TouchableOpacity
-                  style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }]}
+                  style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: eventData.venue ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) }]}
                   onPress={() => setActiveDropdown('venue')}
                 >
-                  <Ionicons name="business-outline" size={20} color={colors.textMuted} />
+                  <Ionicons name="business-outline" size={20} color={eventData.venue ? colors.brand[400] : colors.textMuted} />
                   <Text style={[styles.dropdownButtonText, { color: colors.textMuted }, eventData.venue && { color: colors.text }]}>
                     {eventData.venue || 'Mekan seçin'}
                   </Text>
@@ -399,19 +365,44 @@ export function CreateEventScreen() {
             )}
             <View style={styles.formGroup}>
               <Text style={[styles.formLabel, { color: colors.textMuted }]}>Tahmini Konuk Sayısı</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', color: colors.text }]}
-                placeholder="Örn: 5000"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="numeric"
-                value={eventData.guestCount}
-                onChangeText={text => setEventData(prev => ({ ...prev, guestCount: text }))}
-              />
+              <View style={[styles.capacityInputContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', borderColor: eventData.guestCount ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) }]}>
+                <TouchableOpacity
+                  style={[styles.capacityButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+                  onPress={() => {
+                    const current = parseInt(eventData.guestCount) || 0;
+                    const step = current >= 1000 ? 500 : 100;
+                    if (current > step) {
+                      setEventData(prev => ({ ...prev, guestCount: String(current - step) }));
+                    }
+                  }}
+                >
+                  <Ionicons name="remove" size={20} color={colors.text} />
+                </TouchableOpacity>
+                <TextInput
+                  style={[styles.capacityInput, { color: colors.text }]}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  value={eventData.guestCount}
+                  onChangeText={text => setEventData(prev => ({ ...prev, guestCount: text.replace(/[^0-9]/g, '') }))}
+                  textAlign="center"
+                />
+                <TouchableOpacity
+                  style={[styles.capacityButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+                  onPress={() => {
+                    const current = parseInt(eventData.guestCount) || 0;
+                    const step = current >= 1000 ? 500 : 100;
+                    setEventData(prev => ({ ...prev, guestCount: String(current + step) }));
+                  }}
+                >
+                  <Ionicons name="add" size={20} color={colors.text} />
+                </TouchableOpacity>
+              </View>
               {eventData.venueCapacity && (
                 <View style={styles.capacityHint}>
                   <Ionicons name="information-circle-outline" size={14} color={colors.brand[400]} />
                   <Text style={[styles.capacityHintText, { color: colors.textMuted }]}>
-                    Mekan kapasitesi: {eventData.venueCapacity} kişi
+                    Mekan kapasitesi: {eventData.venueCapacity} kişi (otomatik dolduruldu, değiştirebilirsiniz)
                   </Text>
                 </View>
               )}
@@ -427,6 +418,49 @@ export function CreateEventScreen() {
                 value={eventData.description}
                 onChangeText={text => setEventData(prev => ({ ...prev, description: text }))}
               />
+            </View>
+
+            {/* Event Image Upload - At the bottom */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Görseli</Text>
+              <TouchableOpacity
+                style={[styles.imageUploadArea, {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                  borderColor: eventData.image ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border),
+                }]}
+                onPress={pickImage}
+              >
+                {eventData.image ? (
+                  <View style={styles.imagePreviewContainer}>
+                    <Image source={{ uri: eventData.image }} style={styles.imagePreview} />
+                    <View style={styles.imageOverlay}>
+                      <TouchableOpacity
+                        style={styles.changeImageBtn}
+                        onPress={pickImage}
+                      >
+                        <Ionicons name="camera" size={18} color="white" />
+                        <Text style={styles.changeImageText}>Değiştir</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.removeImageBtn}
+                        onPress={() => setEventData(prev => ({ ...prev, image: null }))}
+                      >
+                        <Ionicons name="trash" size={18} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.imageUploadContent}>
+                    <View style={[styles.imageUploadIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                      <Ionicons name="image-outline" size={28} color={colors.brand[400]} />
+                    </View>
+                    <Text style={[styles.imageUploadText, { color: colors.text }]}>Görsel Ekle</Text>
+                    <Text style={[styles.imageUploadHint, { color: colors.textMuted }]}>
+                      Etkinlik kartında başlık görseli olarak kullanılacak
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         );
@@ -645,9 +679,19 @@ export function CreateEventScreen() {
       <SelectModal
         visible={activeDropdown === 'venue'}
         title="Mekan Seçin"
-        options={availableVenues.map(v => ({ value: v.name, label: v.name, subtitle: `Kapasite: ${v.capacity}` }))}
+        options={[
+          ...availableVenues.map(v => ({ value: v.name, label: v.name, subtitle: `Kapasite: ${v.capacity}` })),
+          { value: '__add_new__', label: '+ Yeni Mekan Ekle', subtitle: 'Manuel olarak mekan bilgisi girin' }
+        ]}
         selectedValue={eventData.venue}
-        onSelect={handleVenueSelect}
+        onSelect={(value) => {
+          if (value === '__add_new__') {
+            setActiveDropdown(null);
+            setShowAddVenue(true);
+          } else {
+            handleVenueSelect(value);
+          }
+        }}
         onClose={() => setActiveDropdown(null)}
       />
 
@@ -657,6 +701,230 @@ export function CreateEventScreen() {
         onToggle={toggleOperationSubService}
         onClose={() => setShowOperationModal(false)}
       />
+
+      {/* New Venue City Selection */}
+      <SelectModal
+        visible={activeDropdown === 'newVenueCity'}
+        title="İl Seçin"
+        options={cities.map(c => ({ value: c, label: c }))}
+        selectedValue={newVenue.city}
+        onSelect={city => setNewVenue(prev => ({ ...prev, city, district: '' }))}
+        onClose={() => setActiveDropdown(null)}
+      />
+
+      {/* New Venue District Selection */}
+      <SelectModal
+        visible={activeDropdown === 'newVenueDistrict'}
+        title="İlçe Seçin"
+        options={newVenueDistricts.map(d => ({ value: d, label: d }))}
+        selectedValue={newVenue.district}
+        onSelect={district => setNewVenue(prev => ({ ...prev, district }))}
+        onClose={() => setActiveDropdown(null)}
+      />
+
+      {/* Add New Venue Modal */}
+      <Modal
+        visible={showAddVenue}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddVenue(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.addVenueModal, { backgroundColor: colors.background }]}>
+            <View style={styles.addVenueHeader}>
+              <Text style={[styles.addVenueTitle, { color: colors.text }]}>Yeni Mekan Ekle</Text>
+              <TouchableOpacity onPress={() => setShowAddVenue(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.addVenueContent} showsVerticalScrollIndicator={false}>
+              {/* Approval Notice */}
+              <View style={[styles.approvalNotice, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}>
+                <Ionicons name="information-circle" size={20} color={colors.info} />
+                <Text style={[styles.approvalNoticeText, { color: colors.textSecondary }]}>
+                  Eklediğiniz mekan, sistem onayından sonra mekan havuzuna eklenecek ve diğer kullanıcılar tarafından da seçilebilir olacaktır.
+                </Text>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Mekan Adı *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', color: colors.text }]}
+                  placeholder="Örn: Grand Hotel Balo Salonu"
+                  placeholderTextColor={colors.textMuted}
+                  value={newVenue.name}
+                  onChangeText={text => setNewVenue(prev => ({ ...prev, name: text }))}
+                />
+              </View>
+
+              {/* City Selection */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>İl *</Text>
+                <TouchableOpacity
+                  style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: newVenue.city ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) }]}
+                  onPress={() => setActiveDropdown('newVenueCity')}
+                >
+                  <Ionicons name="location-outline" size={20} color={newVenue.city ? colors.brand[400] : colors.textMuted} />
+                  <Text style={[styles.dropdownButtonText, { color: newVenue.city ? colors.text : colors.textMuted }]}>
+                    {newVenue.city || 'İl seçin'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              {/* District Selection */}
+              {newVenue.city && (
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { color: colors.textMuted }]}>İlçe *</Text>
+                  <TouchableOpacity
+                    style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: newVenue.district ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) }]}
+                    onPress={() => setActiveDropdown('newVenueDistrict')}
+                  >
+                    <Ionicons name="navigate-outline" size={20} color={newVenue.district ? colors.brand[400] : colors.textMuted} />
+                    <Text style={[styles.dropdownButtonText, { color: newVenue.district ? colors.text : colors.textMuted }]}>
+                      {newVenue.district || 'İlçe seçin'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Detailed Address */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Detaylı Adres</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', color: colors.text }]}
+                  placeholder="Mahalle, sokak, bina no vb."
+                  placeholderTextColor={colors.textMuted}
+                  value={newVenue.address}
+                  onChangeText={text => setNewVenue(prev => ({ ...prev, address: text }))}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Kapasite *</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', color: colors.text }]}
+                  placeholder="Örn: 500"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numeric"
+                  value={newVenue.capacity}
+                  onChangeText={text => setNewVenue(prev => ({ ...prev, capacity: text }))}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Mekan Tipi *</Text>
+                <View style={styles.venueTypeOptions}>
+                  {[
+                    { id: 'indoor', label: 'Kapalı Alan', icon: 'business' },
+                    { id: 'outdoor', label: 'Açık Alan', icon: 'sunny' },
+                    { id: 'hybrid', label: 'Hibrit', icon: 'apps' },
+                  ].map(type => (
+                    <TouchableOpacity
+                      key={type.id}
+                      style={[
+                        styles.venueTypeOption,
+                        {
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                          borderColor: newVenue.venueType === type.id ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border)
+                        },
+                        newVenue.venueType === type.id && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }
+                      ]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, venueType: type.id as any }))}
+                    >
+                      <Ionicons
+                        name={type.icon as any}
+                        size={20}
+                        color={newVenue.venueType === type.id ? colors.brand[400] : colors.textMuted}
+                      />
+                      <Text style={[
+                        styles.venueTypeLabel,
+                        { color: newVenue.venueType === type.id ? colors.text : colors.textMuted }
+                      ]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Mekan Özellikleri</Text>
+                <View style={styles.venueFeatures}>
+                  {[
+                    { key: 'hasStage', label: 'Sahne', icon: 'easel-outline' },
+                    { key: 'hasSoundSystem', label: 'Ses Sistemi', icon: 'volume-high-outline' },
+                    { key: 'hasBackstage', label: 'Kulis/Backstage', icon: 'people-outline' },
+                    { key: 'hasParking', label: 'Otopark', icon: 'car-outline' },
+                    { key: 'hasAirConditioning', label: 'Klima', icon: 'snow-outline' },
+                    { key: 'hasDisabledAccess', label: 'Engelli Erişimi', icon: 'accessibility-outline' },
+                  ].map(feature => (
+                    <TouchableOpacity
+                      key={feature.key}
+                      style={[
+                        styles.venueFeatureItem,
+                        {
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                          borderColor: (newVenue as any)[feature.key] ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border)
+                        },
+                        (newVenue as any)[feature.key] && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }
+                      ]}
+                      onPress={() => setNewVenue(prev => ({ ...prev, [feature.key]: !(prev as any)[feature.key] }))}
+                    >
+                      <View style={styles.venueFeatureContent}>
+                        <Ionicons
+                          name={feature.icon as any}
+                          size={18}
+                          color={(newVenue as any)[feature.key] ? colors.brand[400] : colors.textMuted}
+                        />
+                        <Text style={[
+                          styles.venueFeatureLabel,
+                          { color: (newVenue as any)[feature.key] ? colors.text : colors.textMuted }
+                        ]}>
+                          {feature.label}
+                        </Text>
+                      </View>
+                      <View style={[
+                        styles.venueFeatureCheckbox,
+                        {
+                          backgroundColor: (newVenue as any)[feature.key] ? colors.brand[400] : 'transparent',
+                          borderColor: (newVenue as any)[feature.key] ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.2)' : colors.border)
+                        }
+                      ]}>
+                        {(newVenue as any)[feature.key] && (
+                          <Ionicons name="checkmark" size={12} color="white" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ height: 20 }} />
+            </ScrollView>
+
+            <View style={[styles.addVenueFooter, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <TouchableOpacity
+                style={[styles.addVenueButton, { opacity: !newVenue.name.trim() || !newVenue.venueType || !newVenue.city || !newVenue.district || !newVenue.capacity ? 0.5 : 1 }]}
+                onPress={handleAddVenue}
+                disabled={!newVenue.name.trim() || !newVenue.venueType || !newVenue.city || !newVenue.district || !newVenue.capacity}
+              >
+                <LinearGradient
+                  colors={gradients.primary}
+                  style={styles.addVenueButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="add-circle" size={20} color="white" />
+                  <Text style={styles.addVenueButtonText}>Mekan Ekle</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -752,7 +1020,33 @@ const styles = StyleSheet.create({
   // Date Button Styles
   dateButtonContent: { flex: 1 },
   multiDateHint: { fontSize: 11, marginTop: 2 },
+  // Capacity Input with +/- buttons
+  capacityInputContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  capacityButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  capacityInput: { flex: 1, fontSize: 18, fontWeight: '600', paddingVertical: 12 },
   // Capacity Hint
   capacityHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  capacityHintText: { fontSize: 12 },
+  capacityHintText: { fontSize: 12, flex: 1 },
+  // Add Venue Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  addVenueModal: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },
+  addVenueHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  addVenueTitle: { fontSize: 18, fontWeight: '600' },
+  addVenueContent: { padding: 20 },
+  addVenueFooter: { padding: 20, borderTopWidth: 1 },
+  addVenueButton: { borderRadius: 14, overflow: 'hidden' },
+  addVenueButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 8 },
+  addVenueButtonText: { fontSize: 16, fontWeight: '600', color: 'white' },
+  venueTypeOptions: { flexDirection: 'row', gap: 10 },
+  venueTypeOption: { flex: 1, flexDirection: 'column', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1, gap: 6 },
+  venueTypeLabel: { fontSize: 12, fontWeight: '500' },
+  // Venue Features
+  venueFeatures: { gap: 8 },
+  venueFeatureItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 12, borderWidth: 1 },
+  venueFeatureContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  venueFeatureLabel: { fontSize: 14 },
+  venueFeatureCheckbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  // Approval Notice
+  approvalNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, marginBottom: 20 },
+  approvalNoticeText: { flex: 1, fontSize: 13, lineHeight: 18 },
 });

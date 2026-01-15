@@ -15,19 +15,25 @@ import {
   ProviderOfferCard,
   EmptyOfferState,
   MultiOfferCard,
+  DraftCard,
 } from '../components/offers';
 import {
   OfferTabType,
+  OfferStatus,
   OrganizerOffer,
   ProviderOffer,
+  DraftRequest,
   organizerOffers,
   providerOffers,
   enhancedOffers,
   quoteRequests,
+  draftRequests,
+  getTabForStatus,
 } from '../data/offersData';
 import { groupOffersByService, calculateOfferScores } from '../utils/offerUtils';
 import { defaultComparisonCriteria } from '../types/comparison';
 import type { OffersStackNavigationProp } from '../types';
+import { useApp } from '../../App';
 
 interface OffersScreenProps {
   isProviderMode: boolean;
@@ -38,6 +44,7 @@ type ViewMode = 'grouped' | 'individual';
 export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const navigation = useNavigation<OffersStackNavigationProp>();
   const { colors, isDark } = useTheme();
+  const { providerServices = [] } = useApp();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<OfferTabType>('active');
   const [refreshing, setRefreshing] = useState(false);
@@ -59,25 +66,67 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
     }, 1000);
   }, []);
 
-  // Stats calculation
+  // Filter provider offers by service category
+  const filteredProviderOffers = useMemo(() => {
+    if (!isProviderMode) return [];
+    // If provider has specific services, filter by those
+    if (providerServices.length > 0) {
+      return providerOffers.filter(o => providerServices.includes(o.serviceCategory));
+    }
+    // Fallback to all offers if no services defined
+    return providerOffers;
+  }, [isProviderMode, providerServices]);
+
+  // Stats calculation - State machine'e göre tutarlı filtreleme
+  // Aktif: pending + counter_offered
+  // Onaylanan: SADECE accepted (karşılıklı onaylanmış)
+  // Reddedilen: rejected + expired + cancelled
   const stats = useMemo(() => {
-    const offers = isProviderMode ? providerOffers : organizerOffers;
+    const offers = isProviderMode ? filteredProviderOffers : organizerOffers;
     return {
-      active: offers.filter(o => o.status === 'pending' || o.status === 'counter_offered').length,
+      // Aktif = beklemede veya pazarlık sürecinde
+      active: offers.filter(o =>
+        o.status === 'pending' || o.status === 'counter_offered'
+      ).length,
+      // Onaylanan = SADECE karşılıklı kabul edilmiş
       accepted: offers.filter(o => o.status === 'accepted').length,
-      rejected: offers.filter(o => o.status === 'rejected').length,
+      // Reddedilen = reddedilmiş, süresi dolmuş veya iptal edilmiş
+      rejected: offers.filter(o =>
+        o.status === 'rejected' ||
+        o.status === 'expired' ||
+        o.status === 'cancelled'
+      ).length,
+      drafts: isProviderMode ? 0 : draftRequests.length,
       total: offers.length,
     };
-  }, [isProviderMode]);
+  }, [isProviderMode, filteredProviderOffers]);
 
   // Filtered offers by tab (for individual view)
+  // State machine'e göre tutarlı filtreleme
   const filteredOffers = useMemo(() => {
-    const offers = isProviderMode ? providerOffers : organizerOffers;
-    if (activeTab === 'active') {
-      return offers.filter(o => o.status === 'pending' || o.status === 'counter_offered');
+    const offers = isProviderMode ? filteredProviderOffers : organizerOffers;
+
+    switch (activeTab) {
+      case 'active':
+        // Aktif sekmesi: pending ve counter_offered durumları
+        return offers.filter(o =>
+          o.status === 'pending' || o.status === 'counter_offered'
+        );
+      case 'accepted':
+        // Onaylanan sekmesi: SADECE accepted durumu
+        // DİKKAT: counter_offered durumu ASLA burada gösterilmez!
+        return offers.filter(o => o.status === 'accepted');
+      case 'rejected':
+        // Reddedilen sekmesi: rejected, expired, cancelled durumları
+        return offers.filter(o =>
+          o.status === 'rejected' ||
+          o.status === 'expired' ||
+          o.status === 'cancelled'
+        );
+      default:
+        return offers;
     }
-    return offers.filter(o => o.status === activeTab);
-  }, [isProviderMode, activeTab]);
+  }, [isProviderMode, activeTab, filteredProviderOffers]);
 
   // Grouped offers for comparison view
   const groupedOffers = useMemo(() => {
@@ -162,6 +211,34 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
     ]);
   };
 
+  const handleContinueDraft = (draftId: string) => {
+    const draft = draftRequests.find(d => d.id === draftId);
+    if (draft) {
+      (navigation as any).navigate('CategoryRequest', {
+        category: draft.category,
+        eventId: draft.eventId,
+        draftId: draft.id,
+      });
+    }
+  };
+
+  const handleDeleteDraft = (draftId: string) => {
+    Alert.alert(
+      'Taslağı Sil',
+      'Bu taslağı silmek istediğinize emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Başarılı', 'Taslak silindi.');
+          },
+        },
+      ]
+    );
+  };
+
   const renderOfferCard = (offer: OrganizerOffer | ProviderOffer) => {
     if (isProviderMode) {
       return (
@@ -190,7 +267,10 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   // Show grouped view for organizer in active tab
   const showGroupedView = !isProviderMode && viewMode === 'grouped' && activeTab === 'active';
 
-  const headerTitle = isProviderMode ? 'Gönderilen Teklifler' : 'Tekliflerim';
+  // Show drafts view
+  const showDraftsView = !isProviderMode && activeTab === 'drafts';
+
+  const headerTitle = isProviderMode ? 'Teklifler' : 'Tekliflerim';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -286,10 +366,25 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           stats={stats}
+          showDrafts={!isProviderMode}
         />
 
         <View style={showGroupedView ? styles.offersListContentGrouped : styles.offersListContentInner}>
-          {showGroupedView ? (
+          {showDraftsView ? (
+            // Drafts view
+            draftRequests.length > 0 ? (
+              draftRequests.map((draft) => (
+                <DraftCard
+                  key={draft.id}
+                  draft={draft}
+                  onContinue={() => handleContinueDraft(draft.id)}
+                  onDelete={() => handleDeleteDraft(draft.id)}
+                />
+              ))
+            ) : (
+              <EmptyOfferState />
+            )
+          ) : showGroupedView ? (
             // Grouped view with MultiOfferCards
             groupedOffers.length > 0 ? (
               groupedOffers.map((group) => (

@@ -24,18 +24,22 @@ import {
   mockGivenReviews,
   mockPendingReviews,
   mockPendingProviderReviews,
+  mockOrganizerReceivedReviews,
+  mockOrganizerGivenReviews,
   calculateRatingBreakdown,
   calculateTopTags,
   calculateAverageRating,
   calculateWouldWorkAgainPercent,
 } from '../data/reviewData';
+import { useApp } from '../../App';
 
 type TabType = 'pending' | 'given' | 'received';
 
 export function MyReviewsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
-  const [activeTab, setActiveTab] = useState<TabType>('pending');
+  const { isProviderMode } = useApp();
+  const [activeTab, setActiveTab] = useState<TabType>('received');
   const [refreshing, setRefreshing] = useState(false);
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{
@@ -51,9 +55,10 @@ export function MyReviewsScreen() {
     serviceCategory?: string;
   } | null>(null);
 
-  // For demo, assume current user is a provider (can toggle based on user type)
-  const isProvider = true;
-  const pendingReviews = isProvider ? mockPendingReviews : mockPendingProviderReviews;
+  // Use context to determine mode
+  const pendingReviews = isProviderMode ? mockPendingReviews : mockPendingProviderReviews;
+  const receivedReviews = isProviderMode ? mockReceivedReviews : mockOrganizerReceivedReviews;
+  const givenReviews = isProviderMode ? mockGivenReviews : mockOrganizerGivenReviews;
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -63,23 +68,21 @@ export function MyReviewsScreen() {
   }, []);
 
   const receivedStats = useMemo(() => {
-    const reviews = mockReceivedReviews;
     return {
-      average: calculateAverageRating(reviews),
-      total: reviews.length,
-      wouldWorkAgain: calculateWouldWorkAgainPercent(reviews),
-      breakdown: calculateRatingBreakdown(reviews),
-      topTags: calculateTopTags(reviews),
+      average: calculateAverageRating(receivedReviews),
+      total: receivedReviews.length,
+      wouldWorkAgain: calculateWouldWorkAgainPercent(receivedReviews),
+      breakdown: calculateRatingBreakdown(receivedReviews),
+      topTags: calculateTopTags(receivedReviews),
     };
-  }, []);
+  }, [receivedReviews]);
 
   const givenStats = useMemo(() => {
-    const reviews = mockGivenReviews;
     return {
-      average: calculateAverageRating(reviews),
-      total: reviews.length,
+      average: calculateAverageRating(givenReviews),
+      total: givenReviews.length,
     };
-  }, []);
+  }, [givenReviews]);
 
   const handleReview = (target: {
     id: string;
@@ -178,12 +181,12 @@ export function MyReviewsScreen() {
         </View>
       </View>
 
-      {mockGivenReviews.length > 0 ? (
+      {givenReviews.length > 0 ? (
         <>
           <Text style={[styles.listTitle, { color: colors.text }]}>
             Yazdığım Değerlendirmeler
           </Text>
-          {mockGivenReviews.map(review => (
+          {givenReviews.map(review => (
             <ReviewCard
               key={review.id}
               review={review}
@@ -219,12 +222,12 @@ export function MyReviewsScreen() {
         <RatingBreakdown ratings={receivedStats.breakdown} />
       )}
 
-      {mockReceivedReviews.length > 0 ? (
+      {receivedReviews.length > 0 ? (
         <>
           <Text style={[styles.listTitle, { color: colors.text }]}>
             Aldığım Değerlendirmeler
           </Text>
-          {mockReceivedReviews.map(review => (
+          {receivedReviews.map(review => (
             <ReviewCard
               key={review.id}
               review={review}
@@ -263,7 +266,7 @@ export function MyReviewsScreen() {
 
       {/* Tabs */}
       <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
           {[
             { key: 'pending', label: 'Bekleyen', count: pendingReviews.length },
             { key: 'given', label: 'Yazdıklarım' },
@@ -315,7 +318,7 @@ export function MyReviewsScreen() {
           }}
           target={selectedTarget}
           event={selectedEvent}
-          reviewerType={isProvider ? 'provider' : 'organizer'}
+          reviewerType={isProviderMode ? 'provider' : 'organizer'}
           onSubmit={handleSubmitReview}
         />
       )}
@@ -354,10 +357,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderBottomWidth: 1,
   },
-  tabContent: {
+  tabBar: {
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 8,
+  },
+  tabContent: {
+    flex: 1,
   },
   tab: {
     paddingVertical: 12,

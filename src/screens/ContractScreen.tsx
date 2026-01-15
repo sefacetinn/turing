@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   pendingSignature: { fontSize: 12 },
   signButton: { alignItems: 'center', gap: 6 },
   signButtonText: { fontSize: 12, fontWeight: '600' },
-  bottomActions: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 32, borderTopWidth: 1 },
+  bottomActions: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 100, borderTopWidth: 1 },
   signContractButton: { borderRadius: 14, overflow: 'hidden' },
   signContractGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
   signContractText: { fontSize: 16, fontWeight: '700', color: 'white' },

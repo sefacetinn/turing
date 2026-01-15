@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 34,
+    paddingBottom: 100,
     backgroundColor: 'rgba(9, 9, 11, 0.98)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',

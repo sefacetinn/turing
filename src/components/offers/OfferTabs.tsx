@@ -10,17 +10,23 @@ interface OfferTabsProps {
     active: number;
     accepted: number;
     rejected: number;
+    drafts?: number;
   };
+  showDrafts?: boolean;
 }
 
-export function OfferTabs({ activeTab, onTabChange, stats }: OfferTabsProps) {
+export function OfferTabs({ activeTab, onTabChange, stats, showDrafts = false }: OfferTabsProps) {
   const { colors, isDark } = useTheme();
 
-  const tabs: { key: OfferTabType; label: string; colorKey: 'brand' | 'success' | 'error' }[] = [
+  const baseTabs: { key: OfferTabType; label: string; colorKey: 'brand' | 'success' | 'error' | 'warning' }[] = [
     { key: 'active', label: 'Aktif', colorKey: 'brand' },
     { key: 'accepted', label: 'Onaylanan', colorKey: 'success' },
     { key: 'rejected', label: 'Reddedilen', colorKey: 'error' },
   ];
+
+  const tabs = showDrafts && stats.drafts !== undefined
+    ? [...baseTabs, { key: 'drafts' as OfferTabType, label: 'Taslaklar', colorKey: 'warning' as const }]
+    : baseTabs;
 
   const getTabColor = (colorKey: string, isActive: boolean) => {
     if (!isActive) return colors.textMuted;
@@ -28,12 +34,14 @@ export function OfferTabs({ activeTab, onTabChange, stats }: OfferTabsProps) {
       case 'brand': return colors.brand[400];
       case 'success': return colors.success;
       case 'error': return colors.error;
+      case 'warning': return colors.warning;
       default: return colors.textMuted;
     }
   };
 
   const getTabCount = (key: OfferTabType) => {
-    return stats[key];
+    if (key === 'drafts') return stats.drafts || 0;
+    return stats[key as keyof typeof stats] as number;
   };
 
   return (

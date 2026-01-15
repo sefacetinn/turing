@@ -69,6 +69,8 @@ import { EquipmentInventoryScreen } from './src/screens/provider/technical/Equip
 import { MenuManagementScreen } from './src/screens/provider/catering/MenuManagementScreen';
 import { FleetManagementScreen } from './src/screens/provider/transport/FleetManagementScreen';
 import { PersonnelManagementScreen } from './src/screens/provider/security/PersonnelManagementScreen';
+import { RequestOrganizerModeScreen } from './src/screens/RequestOrganizerModeScreen';
+import { RequestProviderModeScreen } from './src/screens/RequestProviderModeScreen';
 
 // Auth Screens
 import {
@@ -79,6 +81,7 @@ import {
   RegistrationSuccessScreen,
   AccountPendingScreen,
 } from './src/screens/auth';
+import { TestAccount } from './src/data/testAccounts';
 
 // App Context
 interface AppContextType {
@@ -87,6 +90,7 @@ interface AppContextType {
   canSwitchMode: boolean; // Only users with dual access can switch
   providerServices: string[];
   setProviderServices: (services: string[]) => void;
+  currentAccount: TestAccount | null;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -95,6 +99,7 @@ export const AppContext = createContext<AppContextType>({
   canSwitchMode: true, // Default to true for demo
   providerServices: [],
   setProviderServices: () => {},
+  currentAccount: null,
 });
 
 export const useApp = () => useContext(AppContext);
@@ -240,6 +245,8 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="MenuManagement" component={MenuManagementScreen} />
       <Stack.Screen name="FleetManagement" component={FleetManagementScreen} />
       <Stack.Screen name="PersonnelManagement" component={PersonnelManagementScreen} />
+      <Stack.Screen name="RequestOrganizerMode" component={RequestOrganizerModeScreen} />
+      <Stack.Screen name="RequestProviderMode" component={RequestProviderModeScreen} />
     </Stack.Navigator>
   );
 }
@@ -286,7 +293,7 @@ function MainTabs({ onLogout }: { onLogout: () => void }) {
 }
 
 // Auth Stack Navigator
-function AuthStack({ onLogin }: { onLogin: (asProvider: boolean) => void }) {
+function AuthStack({ onLogin }: { onLogin: (asProvider: boolean, account?: TestAccount) => void }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login">
@@ -342,6 +349,7 @@ function AppContent() {
   const [providerServices, setProviderServices] = useState<string[]>([
     'booking', 'technical', 'transport', 'catering', 'security'
   ]); // Default: all services enabled
+  const [currentAccount, setCurrentAccount] = useState<TestAccount | null>(null);
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   // Check onboarding status on mount
@@ -359,20 +367,34 @@ function AppContent() {
     setHasOnboarded(true);
   }, []);
 
-  const handleLogin = useCallback((asProvider: boolean) => {
+  const handleLogin = useCallback((asProvider: boolean, account?: TestAccount) => {
     setIsLoggedIn(true);
     setIsProviderMode(asProvider);
+    setCurrentAccount(account || null);
     // In a real app, check account status from API
     setAccountStatus('approved');
-    // In a real app, this would come from the user's profile
-    // setCanSwitchMode(user.hasProviderAccess && user.hasOrganizerAccess);
-    setCanSwitchMode(true); // Demo: allow for all
+
+    // Set provider services based on account type
+    if (account && account.providerServices) {
+      setProviderServices(account.providerServices);
+      setCanSwitchMode(false); // Provider accounts can't switch to organizer
+    } else if (account && account.role === 'organizer') {
+      setProviderServices([]);
+      setCanSwitchMode(false); // Organizer accounts can't switch to provider
+    } else {
+      // Default: allow for demo mode without account
+      setProviderServices(['booking', 'technical', 'transport', 'catering', 'security']);
+      setCanSwitchMode(true);
+    }
   }, []);
 
   const handleLogout = useCallback(() => {
     setIsLoggedIn(false);
     setIsProviderMode(false);
     setAccountStatus('approved');
+    setCurrentAccount(null);
+    setProviderServices(['booking', 'technical', 'transport', 'catering', 'security']);
+    setCanSwitchMode(true);
     setNavigationKey(prev => prev + 1); // Reset navigation on logout
   }, []);
 
@@ -427,7 +449,7 @@ function AppContent() {
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode, providerServices, setProviderServices }}>
+      <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode, providerServices, setProviderServices, currentAccount }}>
         <RBACProvider isProvider={isProviderMode}>
           <NavigationContainer
             ref={navigationRef}

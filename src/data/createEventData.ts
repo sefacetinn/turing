@@ -1,8 +1,9 @@
 import { categoryGradients } from '../theme/colors';
+import { cityDistricts, cities as allCities, getDistricts } from '../utils/cityData';
 
 // Types
 export type Step = 'type' | 'details' | 'services' | 'budget' | 'review';
-export type DropdownType = 'date' | 'time' | 'city' | 'district' | 'venue' | null;
+export type DropdownType = 'date' | 'time' | 'city' | 'district' | 'venue' | 'newVenueCity' | 'newVenueDistrict' | null;
 
 export interface Venue {
   id: string;
@@ -64,7 +65,9 @@ export interface EventData {
 
 export interface NewVenueData {
   name: string;
-  address: string;
+  city: string;
+  district: string;
+  address: string; // Detailed address (street, number etc.)
   capacity: string;
   venueType: 'indoor' | 'outdoor' | 'hybrid' | '';
   hasBackstage: boolean;
@@ -180,7 +183,8 @@ export const locationData: Record<string, {
   },
 };
 
-export const cities = Object.keys(locationData);
+// Use all 81 Turkish cities from cityData
+export const cities = allCities;
 
 // Date options
 export const months = [
@@ -284,7 +288,12 @@ export const getFormattedLocation = (city: string, district: string, venue: stri
 
 export const getAvailableDistricts = (city: string): string[] => {
   if (!city) return [];
-  return locationData[city]?.districts || [];
+  // First check if we have predefined districts with venues
+  if (locationData[city]?.districts) {
+    return locationData[city].districts;
+  }
+  // Otherwise use all districts from cityData
+  return getDistricts(city);
 };
 
 export const getAvailableVenues = (city: string, district: string, customVenues: Venue[]): Venue[] => {
@@ -317,6 +326,8 @@ export const initialEventData: EventData = {
 
 export const initialNewVenueData: NewVenueData = {
   name: '',
+  city: '',
+  district: '',
   address: '',
   capacity: '',
   venueType: '',

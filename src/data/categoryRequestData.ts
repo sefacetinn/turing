@@ -2,7 +2,7 @@ import { gradients } from '../theme/colors';
 
 // Category configurations
 export const categoryConfig: Record<string, { title: string; icon: string; gradient: readonly [string, string, ...string[]] }> = {
-  booking: { title: 'Sanatçı / DJ Talebi', icon: 'musical-notes', gradient: gradients.booking },
+  booking: { title: 'Sanatçı Talebi', icon: 'musical-notes', gradient: gradients.booking },
   technical: { title: 'Teknik Ekipman Talebi', icon: 'volume-high', gradient: gradients.technical },
   venue: { title: 'Mekan Talebi', icon: 'business', gradient: gradients.venue },
   accommodation: { title: 'Konaklama Talebi', icon: 'bed', gradient: gradients.accommodation },
@@ -24,9 +24,11 @@ export const categoryConfig: Record<string, { title: string; icon: string; gradi
 
 // Mock events
 export const userEvents = [
-  { id: 'e1', title: 'Yaz Festivali 2024', date: '15 Temmuz 2024', location: 'İstanbul' },
-  { id: 'e2', title: 'Kurumsal Gala', date: '22 Ağustos 2024', location: 'Ankara' },
-  { id: 'e3', title: 'Düğün Organizasyonu', date: '1 Eylül 2024', location: 'İzmir' },
+  { id: 'e1', title: 'Big Bang Summer Festival 2026', date: '15-17 Temmuz 2026', location: 'İstanbul' },
+  { id: 'e2', title: 'Garanti BBVA Kurumsal Gala', date: '5 Eylül 2026', location: 'İstanbul' },
+  { id: 'e3', title: 'Düğün - Zeynep & Emre', date: '12 Haziran 2026', location: 'İstanbul' },
+  { id: 'e4', title: 'Vodafone Park Konseri - Tarkan', date: '28 Ağustos 2026', location: 'İstanbul' },
+  { id: 'e5', title: 'Türkiye İnovasyon Zirvesi 2026', date: '22-23 Nisan 2026', location: 'İstanbul' },
 ];
 
 // Category-specific options
@@ -36,7 +38,8 @@ export const categoryOptions = {
     venueTypes: ['Açık Alan', 'Kapalı Alan', 'Stadyum', 'Sahil', 'Otel', 'Konferans'],
     guestCounts: ['< 100', '100-500', '500-1000', '1000-5000', '5000+'],
     durations: ['30 dk', '45 dk', '60 dk', '90 dk', '120 dk', 'Özel'],
-    setCounts: ['1 Set', '2 Set', '3 Set'],
+    ageRestrictions: ['Tüm Yaşlar', '+16', '+18', '+21'],
+    seatingTypes: ['Ayakta', 'Oturmalı', 'Karma', 'VIP Bölümü Var'],
   },
   technical: {
     venueTypes: ['Açık Alan', 'Kapalı Alan', 'Yarı Açık'],

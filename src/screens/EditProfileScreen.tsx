@@ -15,12 +15,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useApp } from '../../App';
 
 const colors = defaultColors;
 
 export function EditProfileScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
+  const { isProviderMode, canSwitchMode } = useApp();
 
   // Profile state
   const [name, setName] = useState('Ahmet Yılmaz');
@@ -365,6 +367,92 @@ export function EditProfileScreen() {
           </View>
         </View>
 
+        {/* Organizer Mode Request - Only for providers without dual access */}
+        {!canSwitchMode && isProviderMode && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Hesap Türü</Text>
+            <TouchableOpacity
+              style={[
+                styles.organizerRequestCard,
+                {
+                  backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.06)',
+                  borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)',
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('RequestOrganizerMode')}
+            >
+              <View style={styles.organizerRequestContent}>
+                <View
+                  style={[
+                    styles.organizerRequestIcon,
+                    {
+                      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)',
+                    },
+                  ]}
+                >
+                  <Ionicons name="people" size={24} color={colors.brand[400]} />
+                </View>
+                <View style={styles.organizerRequestTextContainer}>
+                  <Text style={[styles.organizerRequestTitle, { color: colors.text }]}>
+                    Organizatör Modu
+                  </Text>
+                  <Text style={[styles.organizerRequestDescription, { color: colors.textMuted }]}>
+                    Etkinlik düzenlemek için organizatör hesabı açın
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.requestBadge, { backgroundColor: colors.brand[500] }]}>
+                <Text style={styles.requestBadgeText}>Talep Et</Text>
+                <Ionicons name="arrow-forward" size={14} color="white" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Provider Mode Request - Only for organizers without dual access */}
+        {!canSwitchMode && !isProviderMode && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Hesap Türü</Text>
+            <TouchableOpacity
+              style={[
+                styles.organizerRequestCard,
+                {
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+                },
+              ]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('RequestProviderMode')}
+            >
+              <View style={styles.organizerRequestContent}>
+                <View
+                  style={[
+                    styles.organizerRequestIcon,
+                    {
+                      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                    },
+                  ]}
+                >
+                  <Ionicons name="briefcase" size={24} color="#10b981" />
+                </View>
+                <View style={styles.organizerRequestTextContainer}>
+                  <Text style={[styles.organizerRequestTitle, { color: colors.text }]}>
+                    Hizmet Sağlayıcı Modu
+                  </Text>
+                  <Text style={[styles.organizerRequestDescription, { color: colors.textMuted }]}>
+                    Hizmet sunmak için sağlayıcı hesabı açın
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.requestBadge, { backgroundColor: '#10b981' }]}>
+                <Text style={styles.requestBadgeText}>Talep Et</Text>
+                <Ionicons name="arrow-forward" size={14} color="white" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
@@ -563,5 +651,50 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: 'white',
+  },
+  organizerRequestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  organizerRequestContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  organizerRequestIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  organizerRequestTextContainer: {
+    flex: 1,
+  },
+  organizerRequestTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  organizerRequestDescription: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  requestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  requestBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

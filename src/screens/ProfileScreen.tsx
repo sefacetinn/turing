@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,11 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { userProfile } from '../data/mockData';
 import { useApp } from '../../App';
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface ProfileScreenProps {
   isProviderMode: boolean;
@@ -54,8 +59,12 @@ const businessManagementItems = [
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
-  const { canSwitchMode, providerServices = [] } = useApp();
+  const { canSwitchMode, providerServices = [], currentAccount } = useApp();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
+  const [isBusinessExpanded, setIsBusinessExpanded] = useState(false);
+
+  // Use currentAccount data if available, otherwise fallback to userProfile
+  const profile = currentAccount?.profile || userProfile;
 
   // Filter business management items based on provider's active services
   const filteredBusinessItems = useMemo(() => {
@@ -123,6 +132,11 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         navigation.navigate('PersonnelManagement');
         break;
     }
+  };
+
+  const toggleBusinessSection = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsBusinessExpanded(!isBusinessExpanded);
   };
 
   const dynamicStyles = {
@@ -309,7 +323,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
                 end={{ x: 1, y: 1 }}
               >
                 <Text style={styles.avatarText}>
-                  {userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  {profile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                 </Text>
               </LinearGradient>
               <View style={dynamicStyles.editAvatarButton}>
@@ -317,9 +331,12 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
               </View>
             </View>
             <View style={styles.profileInfo}>
-              <Text style={dynamicStyles.profileName}>{userProfile.name}</Text>
-              <Text style={dynamicStyles.profileEmail}>{userProfile.email}</Text>
-              {userProfile.verified && (
+              <Text style={dynamicStyles.profileName}>{profile.name}</Text>
+              {profile.company && (
+                <Text style={[dynamicStyles.profileEmail, { marginBottom: 2 }]}>{profile.company}</Text>
+              )}
+              <Text style={dynamicStyles.profileEmail}>{profile.email}</Text>
+              {profile.verified && (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                   <Text style={[styles.verifiedText, { color: colors.success }]}>Doğrulanmış</Text>
@@ -330,8 +347,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         </TouchableOpacity>
 
         {/* Mode Switch - Only show if user has dual access */}
-        {/* Debug: Always show for now, canSwitchMode = {canSwitchMode} */}
-        {true && (
+        {canSwitchMode && (
           <View style={dynamicStyles.modeCard}>
             <View style={styles.modeInfo}>
               <View style={[
@@ -368,17 +384,29 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         {/* Stats */}
         <View style={styles.statsRow}>
           <View style={dynamicStyles.statCard}>
-            <Text style={dynamicStyles.statNumber}>{userProfile.stats.totalEvents}</Text>
-            <Text style={dynamicStyles.statLabel}>Etkinlik</Text>
+            <Text style={dynamicStyles.statNumber}>
+              {isProviderMode
+                ? ((profile.stats as any).completedJobs || 0)
+                : ((profile.stats as any).totalEvents || 0)}
+            </Text>
+            <Text style={dynamicStyles.statLabel}>
+              {isProviderMode ? 'Tamamlanan İş' : 'Etkinlik'}
+            </Text>
           </View>
           <View style={dynamicStyles.statCard}>
-            <Text style={dynamicStyles.statNumber}>{userProfile.stats.totalOffers}</Text>
-            <Text style={dynamicStyles.statLabel}>Teklif</Text>
+            <Text style={dynamicStyles.statNumber}>
+              {isProviderMode
+                ? ((profile.stats as any).activeJobs || 0)
+                : ((profile.stats as any).totalOffers || 0)}
+            </Text>
+            <Text style={dynamicStyles.statLabel}>
+              {isProviderMode ? 'Aktif İş' : 'Teklif'}
+            </Text>
           </View>
           <View style={dynamicStyles.statCard}>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={dynamicStyles.statNumber}>{userProfile.stats.rating}</Text>
+              <Text style={dynamicStyles.statNumber}>{profile.stats.rating}</Text>
             </View>
             <Text style={dynamicStyles.statLabel}>Puan</Text>
           </View>
@@ -386,41 +414,54 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
 
         {/* Business Management Section - Only for providers with active services */}
         {isProviderMode && filteredBusinessItems.length > 0 && (
-          <View style={styles.businessSection}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>İşletme Yönetimi</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.businessScrollContent}
+          <View style={dynamicStyles.menuSection}>
+            {/* Business Management Header (Expandable) */}
+            <TouchableOpacity
+              style={[
+                dynamicStyles.menuItem,
+                styles.menuItemFirst,
+                !isBusinessExpanded && styles.menuItemLast,
+              ]}
+              activeOpacity={0.7}
+              onPress={toggleBusinessSection}
             >
-              {filteredBusinessItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    styles.businessCard,
-                    {
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-                    },
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => handleBusinessManagementPress(item.id)}
-                >
-                  <LinearGradient
-                    colors={item.gradient as [string, string]}
-                    style={styles.businessIconContainer}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    <Ionicons name={item.icon as any} size={22} color="white" />
-                  </LinearGradient>
-                  <Text style={[styles.businessCardLabel, { color: colors.text }]}>{item.label}</Text>
-                  <Text style={[styles.businessCardDesc, { color: colors.textMuted }]} numberOfLines={1}>
-                    {item.description}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              <View style={styles.menuItemLeft}>
+                <View style={dynamicStyles.menuIcon}>
+                  <Ionicons name="briefcase-outline" size={20} color={colors.brand[400]} />
+                </View>
+                <Text style={[dynamicStyles.menuLabel, { fontWeight: '600' }]}>İşletme Yönetimi</Text>
+              </View>
+              <Ionicons
+                name={isBusinessExpanded ? 'chevron-down' : 'chevron-forward'}
+                size={18}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+
+            {/* Expanded Business Items */}
+            {isBusinessExpanded && filteredBusinessItems.map((item, index) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  dynamicStyles.menuItem,
+                  styles.businessSubItem,
+                  index === filteredBusinessItems.length - 1 && styles.menuItemLast,
+                ]}
+                activeOpacity={0.7}
+                onPress={() => handleBusinessManagementPress(item.id)}
+              >
+                <View style={styles.menuItemLeft}>
+                  <View style={[dynamicStyles.menuIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.12)' : 'rgba(147, 51, 234, 0.08)' }]}>
+                    <Ionicons name={item.icon as any} size={18} color={colors.brand[400]} />
+                  </View>
+                  <View>
+                    <Text style={dynamicStyles.menuLabel}>{item.label}</Text>
+                    <Text style={[styles.businessSubItemDesc, { color: colors.textMuted }]}>{item.description}</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            ))}
           </View>
         )}
 
@@ -548,6 +589,13 @@ const styles = StyleSheet.create({
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  businessSubItem: {
+    paddingLeft: 24,
+  },
+  businessSubItemDesc: {
+    fontSize: 11,
+    marginTop: 2,
   },
   logoutText: {
     fontSize: 14,

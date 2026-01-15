@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { gradients } from '../../theme/colors';
-import { OrganizerOffer, getCategoryGradient, needsResponse } from '../../data/offersData';
+import { OrganizerOffer, needsResponse } from '../../data/offersData';
+import {
+  getCategoryGradient,
+  getCategoryIcon,
+  getCategoryShortLabel,
+} from '../../utils/categoryHelpers';
 
 interface OrganizerOfferCardProps {
   offer: OrganizerOffer;
@@ -59,6 +64,7 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
   const hasCounterFromProvider = offer.counterOffer?.by === 'provider';
   const budgetDiff = currentAmount - offer.originalBudget;
   const isUnderBudget = budgetDiff <= 0;
+  const isCompleted = offer.status === 'accepted' || offer.status === 'rejected';
 
   return (
     <TouchableOpacity
@@ -144,26 +150,28 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
             end={{ x: 1, y: 0 }}
           >
             <Ionicons
-              name={
-                offer.serviceCategory === 'technical' ? 'hardware-chip' :
-                offer.serviceCategory === 'venue' ? 'flower' :
-                offer.serviceCategory === 'transport' ? 'car' : 'briefcase'
-              }
+              name={getCategoryIcon(offer.serviceCategory) as keyof typeof Ionicons.glyphMap}
               size={12}
               color="white"
             />
-            <Text style={styles.serviceBadgeText}>{offer.serviceName}</Text>
+            <Text style={styles.serviceBadgeText}>
+              {getCategoryShortLabel(offer.serviceCategory)} • {offer.serviceName}
+            </Text>
           </LinearGradient>
         </View>
         <Text style={[styles.eventTitle, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
       </View>
 
-      <View style={styles.messageSection}>
-        <Ionicons name="chatbubble-outline" size={14} color={colors.textMuted} />
-        <Text style={[styles.messageText, { color: colors.textMuted }]} numberOfLines={2}>{offer.message}</Text>
-      </View>
+      {/* Message section - only for active offers */}
+      {!isCompleted && (
+        <View style={styles.messageSection}>
+          <Ionicons name="chatbubble-outline" size={14} color={colors.textMuted} />
+          <Text style={[styles.messageText, { color: colors.textMuted }]} numberOfLines={2}>{offer.message}</Text>
+        </View>
+      )}
 
-      {offer.counterOffer && (
+      {/* Counter offer section - only for active offers */}
+      {!isCompleted && offer.counterOffer && (
         <View style={[
           styles.counterOfferSection,
           offer.counterOffer.by === 'provider' && styles.counterOfferFromProvider
@@ -202,65 +210,98 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
         </View>
       )}
 
-      <View style={styles.priceSection}>
-        <View style={[styles.priceRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)' }]}>
-          <View style={styles.priceItem}>
-            <Text style={[styles.priceLabel, { color: colors.textMuted }]}>
-              {offer.counterOffer ? 'İlk Teklif' : 'Teklif Tutarı'}
-            </Text>
-            <Text style={[
-              styles.priceValue,
-              { color: colors.text },
-              offer.counterOffer && { color: colors.textMuted, textDecorationLine: 'line-through', fontSize: 12 }
-            ]}>
-              ₺{offer.amount.toLocaleString('tr-TR')}
-            </Text>
-          </View>
-          <View style={[styles.priceDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)' }]} />
-          <View style={styles.priceItem}>
-            <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Bütçeniz</Text>
-            <Text style={[styles.budgetValue, { color: colors.textSecondary }]}>
-              ₺{offer.originalBudget.toLocaleString('tr-TR')}
+      {/* Simplified price for completed offers */}
+      {isCompleted ? (
+        <View style={styles.completedPriceSection}>
+          <View style={[styles.completedPriceRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)' }]}>
+            <View style={styles.completedPriceLabel}>
+              <Text style={[styles.priceLabel, { color: colors.textMuted }]}>
+                {offer.status === 'accepted' ? 'Kabul Edilen Tutar' : 'Teklif Tutarı'}
+              </Text>
+            </View>
+            <Text style={[styles.completedPriceValue, { color: offer.status === 'accepted' ? colors.success : colors.error }]}>
+              ₺{currentAmount.toLocaleString('tr-TR')}
             </Text>
           </View>
-          <View style={[styles.priceDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)' }]} />
-          <View style={styles.priceItem}>
-            <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Fark</Text>
+          {/* Show rejection reason or acceptance info */}
+          {offer.status === 'rejected' && offer.rejectionReason && (
+            <View style={[styles.rejectionReasonBox, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
+              <Ionicons name="information-circle" size={14} color={colors.error} />
+              <Text style={[styles.rejectionReasonText, { color: colors.error }]}>{offer.rejectionReason}</Text>
+            </View>
+          )}
+          {offer.status === 'accepted' && (
+            <View style={[styles.acceptedInfoBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={[styles.acceptedInfoText, { color: colors.success }]}>
+                Karşılıklı onaylandı • {offer.acceptedAt}
+              </Text>
+            </View>
+          )}
+        </View>
+      ) : (
+        <>
+          <View style={styles.priceSection}>
+            <View style={[styles.priceRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)' }]}>
+              <View style={styles.priceItem}>
+                <Text style={[styles.priceLabel, { color: colors.textMuted }]}>
+                  {offer.counterOffer ? 'İlk Teklif' : 'Teklif Tutarı'}
+                </Text>
+                <Text style={[
+                  styles.priceValue,
+                  { color: colors.text },
+                  offer.counterOffer && { color: colors.textMuted, textDecorationLine: 'line-through', fontSize: 12 }
+                ]}>
+                  ₺{offer.amount.toLocaleString('tr-TR')}
+                </Text>
+              </View>
+              <View style={[styles.priceDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)' }]} />
+              <View style={styles.priceItem}>
+                <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Bütçeniz</Text>
+                <Text style={[styles.budgetValue, { color: colors.textSecondary }]}>
+                  ₺{offer.originalBudget.toLocaleString('tr-TR')}
+                </Text>
+              </View>
+              <View style={[styles.priceDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)' }]} />
+              <View style={styles.priceItem}>
+                <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Fark</Text>
+                <View style={[
+                  styles.diffBadge,
+                  { backgroundColor: isUnderBudget ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
+                ]}>
+                  <Ionicons
+                    name={isUnderBudget ? 'trending-down' : 'trending-up'}
+                    size={12}
+                    color={isUnderBudget ? colors.success : colors.error}
+                  />
+                  <Text style={[styles.diffValue, { color: isUnderBudget ? colors.success : colors.error }]}>
+                    ₺{Math.abs(budgetDiff).toLocaleString('tr-TR')}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
             <View style={[
-              styles.diffBadge,
-              { backgroundColor: isUnderBudget ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
+              styles.budgetStatus,
+              { backgroundColor: isUnderBudget ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }
             ]}>
               <Ionicons
-                name={isUnderBudget ? 'trending-down' : 'trending-up'}
-                size={12}
-                color={isUnderBudget ? colors.success : colors.error}
+                name={isUnderBudget ? 'checkmark-circle' : 'alert-circle'}
+                size={14}
+                color={isUnderBudget ? colors.success : colors.warning}
               />
-              <Text style={[styles.diffValue, { color: isUnderBudget ? colors.success : colors.error }]}>
-                ₺{Math.abs(budgetDiff).toLocaleString('tr-TR')}
+              <Text style={[styles.budgetStatusText, { color: isUnderBudget ? colors.success : colors.warning }]}>
+                {isUnderBudget ? 'Bütçe dahilinde' : 'Bütçeyi aşıyor'}
               </Text>
             </View>
           </View>
-        </View>
 
-        <View style={[
-          styles.budgetStatus,
-          { backgroundColor: isUnderBudget ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }
-        ]}>
-          <Ionicons
-            name={isUnderBudget ? 'checkmark-circle' : 'alert-circle'}
-            size={14}
-            color={isUnderBudget ? colors.success : colors.warning}
-          />
-          <Text style={[styles.budgetStatusText, { color: isUnderBudget ? colors.success : colors.warning }]}>
-            {isUnderBudget ? 'Bütçe dahilinde' : 'Bütçeyi aşıyor'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.deliverySection}>
-        <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-        <Text style={[styles.deliveryText, { color: colors.textMuted }]}>Teslim: {offer.deliveryTime}</Text>
-      </View>
+          <View style={styles.deliverySection}>
+            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
+            <Text style={[styles.deliveryText, { color: colors.textMuted }]}>Teslim: {offer.deliveryTime}</Text>
+          </View>
+        </>
+      )}
 
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
@@ -690,5 +731,49 @@ const styles = StyleSheet.create({
   },
   completedText: {
     fontSize: 12,
+  },
+  // Simplified price section for completed offers
+  completedPriceSection: {
+    marginHorizontal: 16,
+    marginBottom: 10,
+    gap: 8,
+  },
+  completedPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 12,
+  },
+  completedPriceLabel: {
+    flex: 1,
+  },
+  completedPriceValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  rejectionReasonBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+  },
+  rejectionReasonText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  acceptedInfoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 10,
+  },
+  acceptedInfoText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

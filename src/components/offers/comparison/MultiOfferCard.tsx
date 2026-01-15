@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from '
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../../theme/ThemeContext';
-import { getCategoryGradient } from '../../../data/offersData';
 import { ProviderOfferTile } from './ProviderOfferTile';
 import type { GroupedOffers, EnhancedOffer } from '../../../types/comparison';
 import {
@@ -14,6 +13,10 @@ import {
   getBadgeText,
 } from '../../../utils/offerUtils';
 import { defaultComparisonCriteria } from '../../../types/comparison';
+import {
+  getCategoryGradient,
+  getCategoryIcon as getCategoryIconFromHelpers,
+} from '../../../utils/categoryHelpers';
 
 interface MultiOfferCardProps {
   groupedOffers: GroupedOffers;
@@ -51,21 +54,6 @@ export function MultiOfferCard({
     );
   }, [scoredOffers]);
 
-  const getCategoryIcon = (category: string): string => {
-    const icons: Record<string, string> = {
-      technical: 'volume-high',
-      booking: 'musical-notes',
-      venue: 'business',
-      accommodation: 'bed',
-      transport: 'car',
-      flight: 'airplane',
-      catering: 'restaurant',
-      security: 'shield-checkmark',
-      operation: 'settings',
-    };
-    return icons[category] || 'ellipse';
-  };
-
   return (
     <View
       style={[
@@ -94,7 +82,7 @@ export function MultiOfferCard({
         <View style={styles.headerLeft}>
           <View style={styles.serviceRow}>
             <Ionicons
-              name={getCategoryIcon(groupedOffers.serviceCategory as string) as any}
+              name={getCategoryIconFromHelpers(groupedOffers.serviceCategory as string) as any}
               size={18}
               color={accentColor}
             />

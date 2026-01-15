@@ -87,19 +87,20 @@ const isSameDay = (d1: Date, d2: Date): boolean => {
 };
 
 // Mock events for calendar
+// Title format: "Sanatçı Adı - Şehir" veya "Etkinlik Adı - Şehir"
 const mockCalendarEvents: CalendarEvent[] = [
   {
     id: '1',
-    title: 'Yaz Festivali 2024',
+    title: 'Sıla & Tarkan - İstanbul',
     date: new Date(2024, 6, 15),
     time: '16:00',
     category: 'booking',
     status: 'confirmed',
-    venue: 'KüsümPark',
+    venue: 'KüçükÇiftlik Park',
   },
   {
     id: '2',
-    title: 'Kurumsal Gala',
+    title: 'Garanti BBVA - İstanbul',
     date: new Date(2024, 7, 22),
     time: '19:00',
     category: 'venue',
@@ -108,7 +109,7 @@ const mockCalendarEvents: CalendarEvent[] = [
   },
   {
     id: '3',
-    title: 'Düğün Organizasyonu',
+    title: 'Zeynep & Emre - İstanbul',
     date: new Date(2024, 8, 1),
     time: '18:00',
     category: 'booking',
@@ -117,7 +118,7 @@ const mockCalendarEvents: CalendarEvent[] = [
   },
   {
     id: '4',
-    title: 'Tech Conference',
+    title: 'Tech Conference - İstanbul',
     date: new Date(2024, 9, 10),
     time: '09:00',
     category: 'technical',

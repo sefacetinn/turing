@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 100,
     backgroundColor: 'rgba(9, 9, 11, 0.95)',
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.06)',
