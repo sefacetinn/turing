@@ -172,8 +172,11 @@ function OffersStack() {
         {() => <ContractsListScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
+      <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
+      <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
     </Stack.Navigator>
   );
 }

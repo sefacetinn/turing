@@ -1,6 +1,6 @@
 // RBAC (Role-Based Access Control) Tip Tanımları
 
-import type { ServiceCategory } from './index';
+import type { ServiceCategory, OperationSubCategory } from './index';
 
 // İzin aksiyonları
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve';
@@ -67,7 +67,7 @@ export interface Role {
   description: string;
   permissions: Permission[];
   isDefault?: boolean;       // Yeni üyeler için varsayılan
-  category?: ServiceCategory; // Provider rolleri için kategori
+  category?: ServiceCategory | OperationSubCategory; // Provider rolleri için kategori (ana veya alt kategori)
 }
 
 // Üye durumu

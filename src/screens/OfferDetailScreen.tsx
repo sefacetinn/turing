@@ -22,7 +22,7 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { ServiceRequirementsDisplay } from '../components';
 import { offers, getQuoteRequestForOffer } from '../data/mockData';
-import { enhancedOffers, getQuoteRequestById, getCategoryGradient, providerOffers } from '../data/offersData';
+import { enhancedOffers, getQuoteRequestById, getCategoryGradient, providerOffers, organizerOffers } from '../data/offersData';
 import { CategoryRequirements } from '../types';
 import { useApp } from '../../App';
 
@@ -70,10 +70,11 @@ export function OfferDetailScreen() {
 
   // Try to find offer based on mode
   // Provider mode: look in providerOffers (these have organizer info)
-  // Organizer mode: look in offers/enhancedOffers (these have provider info)
+  // Organizer mode: look in organizerOffers first, then enhanced, then legacy
   const providerModeOffer = providerOffers.find(o => o.id === offerId);
-  const legacyOffer = offers.find(o => o.id === offerId);
+  const organizerOffer = organizerOffers.find(o => o.id === offerId);
   const enhancedOffer = enhancedOffers.find(o => o.id === offerId);
+  const legacyOffer = offers.find(o => o.id === offerId);
 
   // Helper to build complete offer data
   const buildOfferData = (): OfferData => {
@@ -108,37 +109,40 @@ export function OfferDetailScreen() {
       };
     }
 
-    // ORGANIZER MODE: Show provider info as counterparty
-    if (legacyOffer) {
+    // ORGANIZER MODE: First check organizerOffers (primary source used by OffersScreen)
+    if (!isProviderMode && organizerOffer) {
       return {
-        id: legacyOffer.id,
-        counterpartyName: legacyOffer.providerName,
-        counterpartyImage: legacyOffer.providerImage,
-        counterpartyRating: 4.8,
-        counterpartyReviewCount: 127,
-        counterpartyVerified: true,
-        counterpartyCompletedJobs: 200,
+        id: organizerOffer.id,
+        counterpartyName: organizerOffer.provider.name,
+        counterpartyImage: organizerOffer.provider.image,
+        counterpartyRating: organizerOffer.provider.rating || 4.8,
+        counterpartyReviewCount: 127, // Default value
+        counterpartyVerified: organizerOffer.provider.verified,
+        counterpartyCompletedJobs: 200, // Default value
         counterpartyResponseTime: '2 saat',
         counterpartyPhone: '+90 532 123 4567',
         counterpartyType: 'provider',
-        service: legacyOffer.service,
-        category: legacyOffer.category,
-        eventTitle: legacyOffer.eventTitle,
-        eventId: legacyOffer.eventId || 'e1',
+        service: organizerOffer.serviceName,
+        category: organizerOffer.serviceCategory,
+        eventTitle: organizerOffer.eventTitle,
+        eventId: 'e1', // Default value - not in OrganizerOffer interface
         eventDate: '15 Temmuz 2026',
         eventVenue: 'Zorlu PSM, İstanbul',
-        amount: legacyOffer.amount,
-        originalAmount: legacyOffer.originalAmount || legacyOffer.amount,
-        discount: legacyOffer.discount || 0,
-        status: legacyOffer.status,
-        notes: legacyOffer.notes || '',
-        validUntil: legacyOffer.validUntil || '7 gün',
-        deliveryTime: '3 gün',
-        items: legacyOffer.items || [],
-        createdAt: legacyOffer.createdAt || '10 Ocak 2026',
+        amount: organizerOffer.amount,
+        originalAmount: organizerOffer.originalBudget,
+        discount: organizerOffer.originalBudget > organizerOffer.amount
+          ? Math.round((1 - organizerOffer.amount / organizerOffer.originalBudget) * 100)
+          : 0,
+        status: organizerOffer.status,
+        notes: organizerOffer.message || '',
+        validUntil: '7 gün',
+        deliveryTime: organizerOffer.deliveryTime || '3 gün',
+        items: [],
+        createdAt: organizerOffer.date || '10 Ocak 2026',
       };
     }
 
+    // Try enhanced offers next
     if (enhancedOffer) {
       return {
         id: enhancedOffer.id,
@@ -166,6 +170,37 @@ export function OfferDetailScreen() {
         deliveryTime: enhancedOffer.deliveryTime || '3 gün',
         items: [],
         createdAt: '10 Ocak 2026',
+      };
+    }
+
+    // Try legacy offers (mockData.ts) - for backwards compatibility
+    if (legacyOffer) {
+      return {
+        id: legacyOffer.id,
+        counterpartyName: legacyOffer.providerName,
+        counterpartyImage: legacyOffer.providerImage,
+        counterpartyRating: 4.8,
+        counterpartyReviewCount: 127,
+        counterpartyVerified: true,
+        counterpartyCompletedJobs: 200,
+        counterpartyResponseTime: '2 saat',
+        counterpartyPhone: '+90 532 123 4567',
+        counterpartyType: 'provider',
+        service: legacyOffer.service,
+        category: legacyOffer.category,
+        eventTitle: legacyOffer.eventTitle,
+        eventId: legacyOffer.eventId || 'e1',
+        eventDate: '15 Temmuz 2026',
+        eventVenue: 'Zorlu PSM, İstanbul',
+        amount: legacyOffer.amount,
+        originalAmount: legacyOffer.originalAmount || legacyOffer.amount,
+        discount: legacyOffer.discount || 0,
+        status: legacyOffer.status,
+        notes: legacyOffer.notes || '',
+        validUntil: legacyOffer.validUntil || '7 gün',
+        deliveryTime: '3 gün',
+        items: legacyOffer.items || [],
+        createdAt: legacyOffer.createdAt || '10 Ocak 2026',
       };
     }
 
