@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   saveButtonText: { color: 'white', fontWeight: '600' },
 
   content: { flex: 1 },
-  contentContainer: { padding: 16 },
+  contentContainer: { padding: 16, paddingBottom: 100 },
 
   imageSection: {
     flexDirection: 'row',

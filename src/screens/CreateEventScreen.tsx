@@ -702,29 +702,9 @@ export function CreateEventScreen() {
         onClose={() => setShowOperationModal(false)}
       />
 
-      {/* New Venue City Selection */}
-      <SelectModal
-        visible={activeDropdown === 'newVenueCity'}
-        title="İl Seçin"
-        options={cities.map(c => ({ value: c, label: c }))}
-        selectedValue={newVenue.city}
-        onSelect={city => setNewVenue(prev => ({ ...prev, city, district: '' }))}
-        onClose={() => setActiveDropdown(null)}
-      />
-
-      {/* New Venue District Selection */}
-      <SelectModal
-        visible={activeDropdown === 'newVenueDistrict'}
-        title="İlçe Seçin"
-        options={newVenueDistricts.map(d => ({ value: d, label: d }))}
-        selectedValue={newVenue.district}
-        onSelect={district => setNewVenue(prev => ({ ...prev, district }))}
-        onClose={() => setActiveDropdown(null)}
-      />
-
-      {/* Add New Venue Modal */}
+      {/* Add New Venue Modal - Hide when city/district selection is open */}
       <Modal
-        visible={showAddVenue}
+        visible={showAddVenue && activeDropdown !== 'newVenueCity' && activeDropdown !== 'newVenueDistrict'}
         transparent
         animationType="slide"
         onRequestClose={() => setShowAddVenue(false)}
@@ -925,6 +905,26 @@ export function CreateEventScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* New Venue City Selection - Only show when Add Venue flow is active */}
+      <SelectModal
+        visible={showAddVenue && activeDropdown === 'newVenueCity'}
+        title="İl Seçin"
+        options={cities.map(c => ({ value: c, label: c }))}
+        selectedValue={newVenue.city}
+        onSelect={city => setNewVenue(prev => ({ ...prev, city, district: '' }))}
+        onClose={() => setActiveDropdown(null)}
+      />
+
+      {/* New Venue District Selection - Only show when Add Venue flow is active */}
+      <SelectModal
+        visible={showAddVenue && activeDropdown === 'newVenueDistrict'}
+        title="İlçe Seçin"
+        options={newVenueDistricts.map(d => ({ value: d, label: d }))}
+        selectedValue={newVenue.district}
+        onSelect={district => setNewVenue(prev => ({ ...prev, district }))}
+        onClose={() => setActiveDropdown(null)}
+      />
     </SafeAreaView>
   );
 }

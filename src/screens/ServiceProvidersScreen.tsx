@@ -381,7 +381,7 @@ export function ServiceProvidersScreen() {
           </TouchableOpacity>
         ))}
 
-        <View style={{ height: selectionMode && selectedProviders.length > 0 ? 100 : 24 }} />
+        <View style={{ height: selectionMode && selectedProviders.length > 0 ? 140 : 100 }} />
       </ScrollView>
 
       {/* Bulk Offer Button */}

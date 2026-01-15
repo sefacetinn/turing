@@ -8,7 +8,7 @@ import { ProviderOffer, needsResponse } from '../../data/offersData';
 import {
   getCategoryGradient,
   getCategoryIcon,
-  getCategoryBadgeText,
+  getCategoryShortLabel,
 } from '../../utils/categoryHelpers';
 
 interface ProviderOfferCardProps {
@@ -128,7 +128,7 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
             color="white"
           />
           <Text style={styles.roleBadgeText}>
-            {getCategoryBadgeText(offer.serviceCategory, offer.eventTitle)}
+            {getCategoryShortLabel(offer.serviceCategory)}
           </Text>
         </LinearGradient>
       </View>

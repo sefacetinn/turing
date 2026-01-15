@@ -561,6 +561,8 @@ export type HomeStackParamList = {
   RequestOffer: { providerId: string; category: ServiceCategory };
   CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string };
   Chat: { chatId: string; recipientName: string };
+  PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
+  ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
 };
 
 // Events Stack Params
@@ -573,7 +575,10 @@ export type EventsStackParamList = {
   ProviderDetail: { providerId: string; category?: ServiceCategory };
   CreateEvent: undefined;
   ServiceProviders: { category: ServiceCategory | OperationSubCategory };
+  CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string; provider?: { id: string; name: string; rating: number; image: string; } };
   Chat: { chatId: string; recipientName: string };
+  PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
+  ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
 };
 
 // Offers Stack Params
@@ -623,6 +628,9 @@ export type ProfileStackParamList = {
   RolePermissions: { roleId: string };
   // Reviews
   MyReviews: undefined;
+  // Gallery & Reviews
+  PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
+  ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
 };
 
 // Navigation Props Types

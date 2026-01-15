@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { SelectionChips, SwitchRow, FormSection, InputLabel } from '../components/categoryRequest';
+import { CalendarPickerModal } from '../components/createEvent';
 import { categoryConfig, userEvents, categoryOptions } from '../data/categoryRequestData';
 import {
   mockArtists,
@@ -45,7 +46,8 @@ export function CategoryRequestScreen() {
 
   // Common state - initialize from draft if available
   const [selectedEvent, setSelectedEvent] = useState<string | null>(existingDraft?.eventId || eventId || null);
-  const [eventDate, setEventDate] = useState(existingDraft?.formData?.eventDate || '');
+  const [selectedDates, setSelectedDates] = useState<string[]>(existingDraft?.formData?.selectedDates || []);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [budget, setBudget] = useState(existingDraft?.budget || '');
   const [notes, setNotes] = useState(existingDraft?.notes || '');
 
@@ -99,6 +101,23 @@ export function CategoryRequestScreen() {
     }
   };
 
+  // Format selected dates for display
+  const formattedServiceDate = useMemo(() => {
+    if (selectedDates.length === 0) return '';
+    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    if (selectedDates.length === 1) {
+      const [year, month, day] = selectedDates[0].split('-');
+      return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+    }
+    const sorted = [...selectedDates].sort();
+    const [year1, month1, day1] = sorted[0].split('-');
+    const [year2, month2, day2] = sorted[sorted.length - 1].split('-');
+    if (year1 === year2 && month1 === month2) {
+      return `${parseInt(day1)}-${parseInt(day2)} ${months[parseInt(month1) - 1]} ${year1}`;
+    }
+    return `${parseInt(day1)} ${months[parseInt(month1) - 1]} - ${parseInt(day2)} ${months[parseInt(month2) - 1]} ${year2}`;
+  }, [selectedDates]);
+
   const handleSubmit = () => {
     if (!selectedEvent) {
       Alert.alert('Uyarı', 'Lütfen bir etkinlik seçin');
@@ -126,7 +145,7 @@ export function CategoryRequestScreen() {
       categoryName: config.title.replace(' Talebi', ''),
       formData: {
         ...formState,
-        eventDate,
+        selectedDates,
       },
       budget: budget || undefined,
       notes: notes || undefined,
@@ -135,7 +154,7 @@ export function CategoryRequestScreen() {
     };
 
     // In a real app, this would save to storage/backend
-    console.log('Draft saved:', draftData);
+    // Draft saved successfully
 
     Alert.alert(
       'Taslak Kaydedildi',
@@ -635,7 +654,7 @@ export function CategoryRequestScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
         <View style={styles.categoryBadge}>
           <LinearGradient colors={config.gradient} style={styles.categoryIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Ionicons name={config.icon as any} size={24} color="white" />
@@ -691,7 +710,36 @@ export function CategoryRequestScreen() {
         </FormSection>
 
         <FormSection title="Hizmet Tarihi">
-          <SimpleInput placeholder="GG/AA/YYYY" value={eventDate} onChangeText={setEventDate} colors={colors} isDark={isDark} icon="calendar-outline" />
+          <TouchableOpacity
+            style={[
+              styles.datePickerButton,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)',
+                borderColor: selectedDates.length > 0 ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border),
+              }
+            ]}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={selectedDates.length > 0 ? colors.brand[400] : colors.textMuted}
+            />
+            <View style={styles.datePickerContent}>
+              <Text style={[
+                styles.datePickerText,
+                { color: formattedServiceDate ? colors.text : colors.textMuted }
+              ]}>
+                {formattedServiceDate || 'Tarih seçin'}
+              </Text>
+              {selectedDates.length > 1 && (
+                <Text style={[styles.datePickerHint, { color: colors.brand[400] }]}>
+                  {selectedDates.length} gün seçildi
+                </Text>
+              )}
+            </View>
+            <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
         </FormSection>
 
         {renderArtistRiderSection()}
@@ -726,6 +774,15 @@ export function CategoryRequestScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Date Picker Modal */}
+      <CalendarPickerModal
+        visible={showDatePicker}
+        selectedDates={selectedDates}
+        onDatesChange={setSelectedDates}
+        onClose={() => setShowDatePicker(false)}
+        multiSelect={true}
+      />
     </SafeAreaView>
   );
 }
@@ -812,4 +869,9 @@ const styles = StyleSheet.create({
   riderSummaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   riderSummaryTitle: { fontSize: 14, fontWeight: '600' },
   riderSummaryText: { fontSize: 13, lineHeight: 20 },
+  // Date Picker Styles
+  datePickerButton: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 8, gap: 10 },
+  datePickerContent: { flex: 1 },
+  datePickerText: { fontSize: 15 },
+  datePickerHint: { fontSize: 11, marginTop: 2 },
 });

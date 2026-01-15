@@ -161,6 +161,16 @@ export interface Artist {
     totalShows: number;
     monthlyListeners: string;
     followers: string;
+    spotifyMonthly?: string;
+    youtubeSubscribers?: string;
+    instagramFollowers?: string;
+    totalStreams?: string;
+  };
+  // Booking firma bilgisi
+  bookingAgency?: {
+    id: string;
+    name: string;
+    logo?: string;
   };
   requirements: {
     minFee: number;
@@ -260,6 +270,15 @@ export const mockArtists: Artist[] = [
       totalShows: 523,
       monthlyListeners: '2.5M',
       followers: '850K',
+      spotifyMonthly: '2.5M',
+      youtubeSubscribers: '320K',
+      instagramFollowers: '850K',
+      totalStreams: '150M',
+    },
+    bookingAgency: {
+      id: 'booking1',
+      name: 'Prime Artist Management',
+      logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=100',
     },
     requirements: {
       minFee: 75000,
@@ -386,6 +405,15 @@ export const mockArtists: Artist[] = [
       totalShows: 234,
       monthlyListeners: '5.2M',
       followers: '1.2M',
+      spotifyMonthly: '5.2M',
+      youtubeSubscribers: '1.8M',
+      instagramFollowers: '1.2M',
+      totalStreams: '450M',
+    },
+    bookingAgency: {
+      id: 'booking1',
+      name: 'Prime Artist Management',
+      logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=100',
     },
     requirements: {
       minFee: 200000,
@@ -547,6 +575,15 @@ export const mockArtists: Artist[] = [
       totalShows: 1250,
       monthlyListeners: '8.5M',
       followers: '3.5M',
+      spotifyMonthly: '8.5M',
+      youtubeSubscribers: '2.8M',
+      instagramFollowers: '3.5M',
+      totalStreams: '1.2B',
+    },
+    bookingAgency: {
+      id: 'booking2',
+      name: 'Rock Management Turkey',
+      logo: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=100',
     },
     requirements: {
       minFee: 500000,
@@ -632,6 +669,15 @@ export const mockArtists: Artist[] = [
       totalShows: 89,
       monthlyListeners: '450K',
       followers: '120K',
+      spotifyMonthly: '450K',
+      youtubeSubscribers: '85K',
+      instagramFollowers: '120K',
+      totalStreams: '15M',
+    },
+    bookingAgency: {
+      id: 'booking3',
+      name: 'Electronic Artists Agency',
+      logo: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100',
     },
     requirements: {
       minFee: 40000,
@@ -708,6 +754,13 @@ export const mockArtists: Artist[] = [
       totalShows: 450,
       monthlyListeners: '50K',
       followers: '25K',
+      spotifyMonthly: '50K',
+      instagramFollowers: '25K',
+    },
+    bookingAgency: {
+      id: 'booking1',
+      name: 'Prime Artist Management',
+      logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=100',
     },
     requirements: {
       minFee: 25000,

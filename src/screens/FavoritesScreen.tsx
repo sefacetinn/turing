@@ -91,7 +91,7 @@ export function FavoritesScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {activeTab === 'artists' ? (
           <View style={styles.artistsGrid}>
             {favoriteArtists.map((artist) => (

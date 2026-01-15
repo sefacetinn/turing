@@ -89,7 +89,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
         </ScrollView>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Conversations */}
         <View style={styles.conversationsList}>
           {filteredConversations.map((chat) => (

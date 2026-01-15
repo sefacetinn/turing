@@ -12,7 +12,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -89,6 +89,7 @@ export function ChatScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { colors, isDark, helpers } = useTheme();
+  const insets = useSafeAreaInsets();
   const params = (route.params || {}) as ChatParams;
 
   // Support both conversationId and providerId/providerName/providerImage
@@ -628,7 +629,8 @@ export function ChatScreen() {
         {/* Input Area */}
         <View style={[styles.inputContainer, {
           backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background,
-          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+          paddingBottom: Math.max(insets.bottom, 12) + 12,
         }]}>
           <TouchableOpacity
             style={[styles.attachButton, {

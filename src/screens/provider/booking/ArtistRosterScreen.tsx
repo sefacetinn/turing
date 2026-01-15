@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
   tabBadgeText: { fontSize: 11, fontWeight: '600' },
   tabIndicator: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 1 },
   artistsList: { flex: 1 },
-  artistsListContent: { paddingHorizontal: 20, gap: 16 },
+  artistsListContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 16 },
   artistCard: {
     borderRadius: 20,
     borderWidth: 1,

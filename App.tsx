@@ -26,6 +26,7 @@ import { MessagesScreen } from './src/screens/MessagesScreen';
 import { ChatScreen } from './src/screens/ChatScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ArtistDetailScreen } from './src/screens/ArtistDetailScreen';
+import { ArtistProfileScreen } from './src/screens/ArtistProfileScreen';
 import { ProviderDetailScreen } from './src/screens/ProviderDetailScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
@@ -58,6 +59,8 @@ import TeamScreen from './src/screens/TeamScreen';
 import InviteMemberScreen from './src/screens/InviteMemberScreen';
 import MemberDetailScreen from './src/screens/MemberDetailScreen';
 import { MyReviewsScreen } from './src/screens/MyReviewsScreen';
+import { PortfolioGalleryScreen } from './src/screens/PortfolioGalleryScreen';
+import { ProviderReviewsScreen } from './src/screens/ProviderReviewsScreen';
 
 // Provider-specific screens
 import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
@@ -116,6 +119,7 @@ function HomeStack() {
         {() => <HomeScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
+      <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
@@ -129,6 +133,8 @@ function HomeStack() {
       <Stack.Screen name="Contract" component={ContractScreen} />
       <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
+      <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
+      <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
     </Stack.Navigator>
   );
 }
@@ -150,9 +156,12 @@ function EventsStack() {
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       <Stack.Screen name="ServiceProviders" component={ServiceProvidersScreen} />
+      <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
       <Stack.Screen name="Contract" component={ContractScreen} />
+      <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
+      <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
     </Stack.Navigator>
   );
 }
@@ -219,6 +228,7 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="About" component={AboutScreen} />
       <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
+      <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="AddCard" component={AddCardScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
@@ -238,6 +248,8 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="InviteMember" component={InviteMemberScreen} />
       <Stack.Screen name="MemberDetail" component={MemberDetailScreen} />
       <Stack.Screen name="MyReviews" component={MyReviewsScreen} />
+      <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
+      <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
       {/* Provider-specific management screens */}
       <Stack.Screen name="ArtistRoster" component={ArtistRosterScreen} />
       <Stack.Screen name="ArtistDetailManage" component={ArtistDetailManageScreen} />

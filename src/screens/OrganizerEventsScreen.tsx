@@ -110,6 +110,51 @@ export function OrganizerEventsScreen() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Calendar state
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+  // Get days in month
+  const getDaysInMonth = (month: number, year: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  // Get first day of month (0 = Sunday, 1 = Monday, etc.)
+  const getFirstDayOfMonth = (month: number, year: number) => {
+    const day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Convert to Monday = 0
+  };
+
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+  const firstDayOfMonth = getFirstDayOfMonth(currentMonth, currentYear);
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(currentYear - 1);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+    setSelectedDay(null);
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(currentYear + 1);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+    setSelectedDay(null);
+  };
+
+  const handleDayPress = (day: number) => {
+    setSelectedDay(selectedDay === day ? null : day);
+  };
+
   // Pull to refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -428,12 +473,18 @@ export function OrganizerEventsScreen() {
           <View style={styles.calendarView}>
             {/* Calendar Header */}
             <View style={[styles.calendarHeader, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
-              <Text style={[styles.calendarMonth, { color: colors.text }]}>Ocak 2024</Text>
+              <Text style={[styles.calendarMonth, { color: colors.text }]}>{monthNames[currentMonth]} {currentYear}</Text>
               <View style={styles.calendarNav}>
-                <TouchableOpacity style={[styles.calendarNavButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                <TouchableOpacity
+                  style={[styles.calendarNavButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+                  onPress={handlePrevMonth}
+                >
                   <Ionicons name="chevron-back" size={18} color={colors.text} />
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.calendarNavButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}>
+                <TouchableOpacity
+                  style={[styles.calendarNavButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+                  onPress={handleNextMonth}
+                >
                   <Ionicons name="chevron-forward" size={18} color={colors.text} />
                 </TouchableOpacity>
               </View>
@@ -450,28 +501,38 @@ export function OrganizerEventsScreen() {
 
               {/* Days Grid */}
               <View style={styles.daysGrid}>
-                {Array.from({ length: 35 }, (_, i) => {
-                  const dayNum = i - 1; // Offset for month start
-                  const isCurrentMonth = dayNum >= 0 && dayNum < 31;
+                {Array.from({ length: 42 }, (_, i) => {
+                  const dayNum = i - firstDayOfMonth;
+                  const isCurrentMonth = dayNum >= 0 && dayNum < daysInMonth;
                   const day = isCurrentMonth ? dayNum + 1 : '';
-                  const hasEvent = [15, 17, 20, 25, 28].includes(dayNum + 1);
-                  const isToday = dayNum + 1 === 14;
+
+                  // Check if this day has an event (mock data - in real app would check actual events)
+                  const today = new Date();
+                  const isToday = dayNum + 1 === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+                  const isSelected = selectedDay === dayNum + 1;
+
+                  // Mock event days for this month (would come from real data)
+                  const eventDays = [10, 15, 17, 20, 22, 25, 28];
+                  const hasEvent = eventDays.includes(dayNum + 1);
 
                   return (
                     <TouchableOpacity
                       key={i}
                       style={[
                         styles.dayCell,
-                        isToday && { backgroundColor: colors.brand[500], borderRadius: 12 },
+                        isToday && !isSelected && { backgroundColor: colors.brand[500], borderRadius: 12 },
+                        isSelected && { backgroundColor: colors.brand[400], borderRadius: 12 },
                       ]}
+                      onPress={() => isCurrentMonth && handleDayPress(dayNum + 1)}
+                      disabled={!isCurrentMonth}
                     >
                       <Text style={[
                         styles.dayText,
-                        { color: isCurrentMonth ? (isToday ? 'white' : colors.text) : colors.textMuted },
+                        { color: isCurrentMonth ? ((isToday || isSelected) ? 'white' : colors.text) : 'transparent' },
                       ]}>
                         {day}
                       </Text>
-                      {hasEvent && isCurrentMonth && (
+                      {hasEvent && isCurrentMonth && !isSelected && (
                         <View style={[styles.eventDot, { backgroundColor: isToday ? 'white' : colors.brand[400] }]} />
                       )}
                     </TouchableOpacity>
@@ -481,7 +542,9 @@ export function OrganizerEventsScreen() {
             </View>
 
             {/* Events for Selected Date */}
-            <Text style={[styles.calendarEventsTitle, { color: colors.text }]}>Bu Ayki Etkinlikler</Text>
+            <Text style={[styles.calendarEventsTitle, { color: colors.text }]}>
+              {selectedDay ? `${selectedDay} ${monthNames[currentMonth]} Etkinlikleri` : 'Bu Ayki Etkinlikler'}
+            </Text>
             {filteredEvents.length > 0 ? (
               filteredEvents.map(event => {
                 const calEventArtists = getEventArtists(event.services);
@@ -655,6 +718,7 @@ const styles = StyleSheet.create({
   },
   eventsListContent: {
     paddingHorizontal: 20,
+    paddingBottom: 100,
     gap: 16,
   },
   eventCard: {

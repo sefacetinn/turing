@@ -770,7 +770,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15 },
   contentList: { flex: 1 },
-  contentListContainer: { paddingHorizontal: 20, gap: 12 },
+  contentListContainer: { paddingHorizontal: 20, paddingBottom: 100, gap: 12 },
   card: {
     borderRadius: 16,
     borderWidth: 1,

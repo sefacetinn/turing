@@ -247,7 +247,11 @@ export function ProviderDetailScreen() {
             </View>
             <View style={styles.artistsGrid}>
               {provider.artists.map((artist) => (
-                <TouchableOpacity key={artist.id} style={[styles.artistCard, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+                <TouchableOpacity
+                  key={artist.id}
+                  style={[styles.artistCard, ...(isDark ? [] : [helpers.getShadow('sm')])]}
+                  onPress={() => navigation.navigate('ArtistProfile', { artistId: artist.id })}
+                >
                   <Image source={{ uri: artist.image }} style={styles.artistImage} />
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.9)']}
@@ -274,13 +278,27 @@ export function ProviderDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Portfolyo</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PortfolioGallery', {
+                images: provider.portfolio,
+                initialIndex: 0,
+                providerName: provider.name,
+              })}
+            >
               <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör</Text>
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.portfolioScroll}>
             {provider.portfolio.map((image, index) => (
-              <TouchableOpacity key={index} style={styles.portfolioItem}>
+              <TouchableOpacity
+                key={index}
+                style={styles.portfolioItem}
+                onPress={() => navigation.navigate('PortfolioGallery', {
+                  images: provider.portfolio,
+                  initialIndex: index,
+                  providerName: provider.name,
+                })}
+              >
                 <Image source={{ uri: image }} style={styles.portfolioImage} />
               </TouchableOpacity>
             ))}
@@ -325,7 +343,15 @@ export function ProviderDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Değerlendirmeler</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ProviderReviews', {
+                providerId: provider.id,
+                providerName: provider.name,
+                reviews: provider.reviews,
+                rating: provider.rating,
+                reviewCount: provider.reviewCount,
+              })}
+            >
               <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümü ({provider.reviewCount})</Text>
             </TouchableOpacity>
           </View>

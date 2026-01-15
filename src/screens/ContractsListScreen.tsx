@@ -524,6 +524,7 @@ const styles = StyleSheet.create({
   },
   contractsListContent: {
     paddingHorizontal: 16,
+    paddingBottom: 100,
     gap: 12,
   },
   contractCard: {

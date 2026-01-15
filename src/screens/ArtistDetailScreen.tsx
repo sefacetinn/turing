@@ -137,7 +137,23 @@ export function ArtistDetailScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Değerlendirmeler</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ProviderReviews' as any, {
+                providerId: artist.id,
+                providerName: artist.name,
+                reviews: reviews.map(r => ({
+                  id: r.id,
+                  name: r.user,
+                  avatar: r.user.substring(0, 2).toUpperCase(),
+                  rating: r.rating,
+                  date: r.date,
+                  text: r.comment,
+                  eventType: 'Etkinlik',
+                })),
+                rating: artist.rating,
+                reviewCount: artist.reviews,
+              })}
+            >
               <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümü ({artist.reviews})</Text>
             </TouchableOpacity>
           </View>

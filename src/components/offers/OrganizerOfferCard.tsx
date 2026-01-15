@@ -155,7 +155,7 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
               color="white"
             />
             <Text style={styles.serviceBadgeText}>
-              {getCategoryShortLabel(offer.serviceCategory)} • {offer.serviceName}
+              {getCategoryShortLabel(offer.serviceCategory)}
             </Text>
           </LinearGradient>
         </View>

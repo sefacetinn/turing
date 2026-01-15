@@ -66,8 +66,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
           // Use system preference if no saved theme
           setThemeState(systemColorScheme === 'light' ? 'light' : 'dark');
         }
-      } catch (error) {
-        console.log('Error loading theme:', error);
+      } catch {
+        // Error loading theme, using default
       } finally {
         setIsLoaded(true);
       }
@@ -80,8 +80,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     setThemeState(newTheme);
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
-    } catch (error) {
-      console.log('Error saving theme:', error);
+    } catch {
+      // Error saving theme preference
     }
   }, []);
 

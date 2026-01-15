@@ -187,7 +187,7 @@ export function NotificationsScreen() {
       </View>
 
       {/* Notifications List */}
-      <ScrollView style={styles.notificationsList} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.notificationsList} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {Object.entries(groupedNotifications).map(([date, notifications]) => (
           <View key={date}>
             <Text style={[styles.dateHeader, { color: colors.textMuted }]}>{date}</Text>

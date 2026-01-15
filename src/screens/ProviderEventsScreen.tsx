@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   tabBadgeActive: { backgroundColor: 'rgba(147, 51, 234, 0.3)' },
   tabBadgeText: { fontSize: 10, fontWeight: '600' },
   eventsList: { flex: 1 },
-  eventsListContent: { paddingHorizontal: 20, gap: 12 },
+  eventsListContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 12 },
   eventCard: { backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.04)', overflow: 'hidden' },
   eventImageContainer: { height: 130, position: 'relative' },
   eventImage: { width: '100%', height: '100%' },

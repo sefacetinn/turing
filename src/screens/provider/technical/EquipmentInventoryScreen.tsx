@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
   tabBadgeText: { fontSize: 11, fontWeight: '600' },
   tabIndicator: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 1 },
   equipmentList: { flex: 1 },
-  equipmentListContent: { paddingHorizontal: 20, gap: 12 },
+  equipmentListContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 12 },
   equipmentCard: {
     borderRadius: 16,
     borderWidth: 1,

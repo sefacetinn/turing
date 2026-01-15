@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   offersListContent: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   offersListContentInner: {
     paddingHorizontal: 20,

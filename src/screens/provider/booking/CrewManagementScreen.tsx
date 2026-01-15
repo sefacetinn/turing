@@ -380,10 +380,10 @@ const styles = StyleSheet.create({
   },
 
   listContent: { flex: 1 },
-  listContentContainer: { padding: 16 },
+  listContentContainer: { padding: 16, paddingBottom: 100 },
 
   formContent: { flex: 1 },
-  formContentContainer: { padding: 16 },
+  formContentContainer: { padding: 16, paddingBottom: 100 },
 
   inputGroup: { marginBottom: 20 },
   inputLabel: { fontSize: 13, marginBottom: 8 },

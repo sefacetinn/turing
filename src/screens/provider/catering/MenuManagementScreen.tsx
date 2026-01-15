@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   categoryTabText: { fontSize: 12, fontWeight: '500' },
   categoryTabCount: { fontSize: 11 },
   contentList: { flex: 1 },
-  contentListContainer: { paddingHorizontal: 20, gap: 12 },
+  contentListContainer: { paddingHorizontal: 20, paddingBottom: 100, gap: 12 },
   menuCard: {
     borderRadius: 16,
     borderWidth: 1,
