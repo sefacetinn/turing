@@ -66,6 +66,8 @@ import { ProviderFinanceScreen } from './src/screens/ProviderFinanceScreen';
 import { EventOperationsScreen } from './src/screens/EventOperationsScreen';
 import { ServiceOperationsScreen } from './src/screens/ServiceOperationsScreen';
 import { ProviderRequestDetailScreen } from './src/screens/ProviderRequestDetailScreen';
+import { OperationHubScreen } from './src/screens/OperationHubScreen';
+import { OperationSectionDetailScreen } from './src/screens/OperationSectionDetailScreen';
 
 // Provider-specific screens
 import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
@@ -143,6 +145,8 @@ function HomeStack() {
       <Stack.Screen name="ProviderFinance" component={ProviderFinanceScreen} />
       <Stack.Screen name="EventOperations" component={EventOperationsScreen} />
       <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
+      <Stack.Screen name="OperationHub" component={OperationHubScreen} />
+      <Stack.Screen name="OperationSectionDetail" component={OperationSectionDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -172,6 +176,8 @@ function EventsStack() {
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
       <Stack.Screen name="EventOperations" component={EventOperationsScreen} />
       <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
+      <Stack.Screen name="OperationHub" component={OperationHubScreen} />
+      <Stack.Screen name="OperationSectionDetail" component={OperationSectionDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -199,6 +205,8 @@ function OffersStack() {
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       <Stack.Screen name="EventOperations" component={EventOperationsScreen} />
       <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
+      <Stack.Screen name="OperationHub" component={OperationHubScreen} />
+      <Stack.Screen name="OperationSectionDetail" component={OperationSectionDetailScreen} />
     </Stack.Navigator>
   );
 }
