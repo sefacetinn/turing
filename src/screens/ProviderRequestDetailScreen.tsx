@@ -1032,7 +1032,7 @@ export function ProviderRequestDetailScreen() {
         <TouchableOpacity
           style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
           activeOpacity={0.7}
-          onPress={() => navigation.navigate('OrganizerProfile', { organizerId: offer.organizer.id || 'ORG001' })}
+          onPress={() => navigation.navigate('ProviderDetail', { providerId: offer.organizer.id || 'ORG001', providerName: offer.organizer.name })}
         >
           <View style={styles.organizerCompact}>
             <Image source={{ uri: offer.organizer.image }} style={styles.organizerImageSmall} />
