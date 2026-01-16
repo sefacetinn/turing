@@ -18,6 +18,7 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,7 +46,7 @@ import {
 const { width } = Dimensions.get('window');
 
 // Animated Header Components
-function ScrollHeader({ scrollY, title }: { scrollY: Animated.SharedValue<number>; title: string }) {
+function ScrollHeader({ scrollY, title }: { scrollY: SharedValue<number>; title: string }) {
   const insets = useSafeAreaInsets();
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -67,7 +68,7 @@ function ScrollHeader({ scrollY, title }: { scrollY: Animated.SharedValue<number
   );
 }
 
-function LargeTitle({ scrollY, title, subtitle }: { scrollY: Animated.SharedValue<number>; title: string; subtitle?: string }) {
+function LargeTitle({ scrollY, title, subtitle }: { scrollY: SharedValue<number>; title: string; subtitle?: string }) {
   const animatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(scrollY.value, [0, 40, 80], [1, 0.5, 0], Extrapolation.CLAMP);
     const translateY = interpolate(scrollY.value, [0, 80], [0, -20], Extrapolation.CLAMP);

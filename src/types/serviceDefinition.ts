@@ -24,11 +24,6 @@ export type SystemRole =
   | 'team_member';     // Ekip üyesi
 
 /**
- * İzin türleri
- */
-export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve';
-
-/**
  * Hizmet izinleri
  */
 export interface ServicePermissions {

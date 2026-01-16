@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Image,
   Dimensions,
-  FlatList,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -27,15 +34,53 @@ const artists = [
 ];
 
 const { width } = Dimensions.get('window');
+const SCROLL_THRESHOLD = 220;
 
 export function ArtistDetailScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<Record<string, object | undefined>>>();
   const route = useRoute();
   const { artistId } = (route.params as { artistId: string }) || { artistId: '1' };
 
   const artist = artists.find(a => a.id === artistId) || artists[0];
   const { colors, isDark, helpers } = useTheme();
+  const insets = useSafeAreaInsets();
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Animated header background style
+  const headerBgStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 50, SCROLL_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  // Animated header title style
+  const headerTitleStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [10, 0],
+      Extrapolation.CLAMP
+    );
+    return { opacity, transform: [{ translateY }] };
+  });
 
   const reviews = [
     { id: '1', user: 'Event Masters', rating: 5, comment: 'Muhteşem performans, profesyonel ekip!', date: '15 Haziran 2024' },
@@ -45,36 +90,59 @@ export function ArtistDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.headerImage}>
-        <Image source={{ uri: artist.image }} style={styles.coverImage} />
-        <LinearGradient
-          colors={['transparent', isDark ? 'rgba(9,9,11,0.9)' : 'rgba(255,255,255,0.9)', colors.background]}
-          style={styles.imageGradient}
-        />
-        <SafeAreaView style={styles.headerActions}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="white" />
+      {/* Animated Header Background */}
+      <Animated.View style={[styles.animatedHeaderBg, { paddingTop: insets.top }, headerBgStyle]}>
+        <BlurView intensity={isDark ? 60 : 80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.7)' : 'rgba(255, 255, 255, 0.8)' }]} />
+      </Animated.View>
+
+      {/* Floating Header */}
+      <View style={[styles.headerActions, { paddingTop: insets.top }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+
+        {/* Animated Title */}
+        <Animated.Text
+          style={[styles.animatedHeaderTitle, { color: colors.text }, headerTitleStyle]}
+          numberOfLines={1}
+        >
+          {artist.name}
+        </Animated.Text>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setIsFavorite(!isFavorite)}
+          >
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={24}
+              color={isFavorite ? colors.error : colors.text}
+            />
           </TouchableOpacity>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => setIsFavorite(!isFavorite)}
-            >
-              <Ionicons
-                name={isFavorite ? "heart" : "heart-outline"}
-                size={22}
-                color={isFavorite ? colors.error : "white"}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
-              <Ionicons name="share-outline" size={22} color="white" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+          <TouchableOpacity style={styles.headerButton}>
+            <Ionicons name="share-outline" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        style={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
+        {/* Header Image */}
+        <View style={styles.headerImage}>
+          <Image source={{ uri: artist.image }} style={styles.coverImage} />
+          <LinearGradient
+            colors={['transparent', isDark ? 'rgba(9,9,11,0.9)' : 'rgba(255,255,255,0.9)', colors.background]}
+            style={styles.imageGradient}
+          />
+        </View>
+
+        <View style={styles.content}>
         {/* Artist Info */}
         <View style={styles.artistInfo}>
           <View style={styles.nameRow}>
@@ -138,7 +206,7 @@ export function ArtistDetailScreen() {
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Değerlendirmeler</Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('ProviderReviews' as any, {
+              onPress={() => navigation.navigate('ProviderReviews', {
                 providerId: artist.id,
                 providerName: artist.name,
                 reviews: reviews.map(r => ({
@@ -211,7 +279,8 @@ export function ArtistDetailScreen() {
         </View>
 
         <View style={{ height: 120 }} />
-      </ScrollView>
+        </View>
+      </Animated.ScrollView>
 
       {/* Bottom Action */}
       <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.surface, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
@@ -237,7 +306,53 @@ export function ArtistDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  animatedHeaderBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 99,
+    overflow: 'hidden',
+  },
+  animatedHeaderTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  headerActions: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    flex: 1,
   },
   headerImage: {
     height: 320,
@@ -254,38 +369,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 200,
   },
-  headerActions: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   content: {
-    flex: 1,
     marginTop: -60,
   },
   artistInfo: {
@@ -342,7 +426,7 @@ const styles = StyleSheet.create({
   tag: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     borderRadius: 20,
   },
   tagText: {
@@ -382,7 +466,7 @@ const styles = StyleSheet.create({
   priceButton: {
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     borderRadius: 10,
   },
   priceButtonText: {
@@ -427,7 +511,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

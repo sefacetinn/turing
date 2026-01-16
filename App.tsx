@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { CustomTabBar } from './src/components/navigation';
 import { RBACProvider } from './src/context/RBACContext';
+import { ModuleProvider } from './src/context/ModuleContext';
 import { hasCompletedOnboarding, setOnboardingCompleted } from './src/utils/storage';
 
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -64,6 +65,7 @@ import { ProviderReviewsScreen } from './src/screens/ProviderReviewsScreen';
 import { ProviderFinanceScreen } from './src/screens/ProviderFinanceScreen';
 import { EventOperationsScreen } from './src/screens/EventOperationsScreen';
 import { ServiceOperationsScreen } from './src/screens/ServiceOperationsScreen';
+import { ProviderRequestDetailScreen } from './src/screens/ProviderRequestDetailScreen';
 
 // Provider-specific screens
 import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
@@ -183,6 +185,7 @@ function OffersStack() {
         {() => <OffersScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
+      <Stack.Screen name="ProviderRequestDetail" component={ProviderRequestDetailScreen} />
       <Stack.Screen name="CompareOffers" component={CompareOffersScreen} />
       <Stack.Screen name="Contract" component={ContractScreen} />
       <Stack.Screen name="Contracts">
@@ -476,13 +479,15 @@ function AppContent() {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode, providerServices, setProviderServices, currentAccount }}>
         <RBACProvider isProvider={isProviderMode}>
-          <NavigationContainer
-            ref={navigationRef}
-            key={navigationKey}
-            theme={isDark ? CustomDarkTheme : CustomLightTheme}
-          >
-            <MainTabs onLogout={handleLogout} />
-          </NavigationContainer>
+          <ModuleProvider>
+            <NavigationContainer
+              ref={navigationRef}
+              key={navigationKey}
+              theme={isDark ? CustomDarkTheme : CustomLightTheme}
+            >
+              <MainTabs onLogout={handleLogout} />
+            </NavigationContainer>
+          </ModuleProvider>
         </RBACProvider>
       </AppContext.Provider>
     </>
