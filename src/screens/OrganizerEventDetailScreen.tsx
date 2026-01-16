@@ -16,6 +16,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
@@ -91,6 +99,9 @@ const getExpenseCategoryInfo = (category: Expense['category']) => {
 const colors = defaultColors;
 const { width } = Dimensions.get('window');
 
+const HEADER_HEIGHT = 100;
+const SCROLL_THRESHOLD = 200;
+
 export function OrganizerEventDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
@@ -98,6 +109,41 @@ export function OrganizerEventDetailScreen() {
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = 80; // Approximate tab bar height
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const headerBgStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 50, SCROLL_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  const headerTitleStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [10, 0],
+      Extrapolation.CLAMP
+    );
+    return { opacity, transform: [{ translateY }] };
+  });
 
   const [activeSection, setActiveSection] = useState<'services' | 'timeline' | 'budget' | 'tickets' | 'poster'>('services');
   const [showReviseModal, setShowReviseModal] = useState(false);
@@ -110,6 +156,7 @@ export function OrganizerEventDetailScreen() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [ticketSalesStatus, setTicketSalesStatus] = useState<'not_started' | 'pending' | 'active'>('not_started');
   const [salesNote, setSalesNote] = useState('');
+  const [editableCategories, setEditableCategories] = useState<{ id: string; name: string; price: string; capacity: string }[]>([]);
 
   // Budget/Expense state
   const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
@@ -375,8 +422,12 @@ export function OrganizerEventDetailScreen() {
 
   // Generate email content for ticket sales
   const generateSalesEmailContent = () => {
-    const ticketInfo = ticketCategories.map(cat =>
-      `• ${cat.name}: ₺${cat.price} (${cat.capacity} adet)`
+    // Use editableCategories if available (in modal), otherwise use ticketCategories
+    const categoriesToUse = editableCategories.length > 0
+      ? editableCategories.filter(cat => cat.name.trim() && cat.price && cat.capacity)
+      : ticketCategories;
+    const ticketInfo = categoriesToUse.map(cat =>
+      `• ${typeof cat.name === 'string' ? cat.name : cat.name}: ₺${cat.price} (${cat.capacity} adet)`
     ).join('\n');
 
     const emailBody = `
@@ -411,10 +462,29 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
 
   // Send sales request to selected platforms
   const handleSendSalesRequest = () => {
+    // Validate categories
+    const validCategories = editableCategories.filter(cat => cat.name.trim() && cat.price && cat.capacity);
+    if (validCategories.length === 0) {
+      Alert.alert('Hata', 'Lütfen en az bir bilet kategorisi ekleyin');
+      return;
+    }
+
     if (selectedPlatforms.length === 0) {
       Alert.alert('Hata', 'Lütfen en az bir platform seçin');
       return;
     }
+
+    // Save categories
+    const newCategories = validCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name.trim(),
+      price: parseInt(cat.price) || 0,
+      capacity: parseInt(cat.capacity) || 0,
+      sold: 0,
+      remaining: parseInt(cat.capacity) || 0,
+      checkedIn: 0,
+    }));
+    setTicketCategories(newCategories);
 
     const selectedPlatformData = platforms.filter(p => selectedPlatforms.includes(p.id));
     const emails = selectedPlatformData.map(p => p.email).join(',');
@@ -432,11 +502,50 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
     setShowSalesModal(false);
     setSelectedPlatforms([]);
     setSalesNote('');
+    setEditableCategories([]);
 
     Alert.alert(
       'Talep Gönderildi',
       `${selectedPlatformData.length} platforma bilet satış talebi gönderildi. Yanıtları bekleyiniz.`
     );
+  };
+
+  // Open sales modal and initialize editable categories
+  const handleOpenSalesModal = () => {
+    // Initialize with existing categories or default empty one
+    if (ticketCategories.length > 0) {
+      setEditableCategories(ticketCategories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        price: cat.price.toString(),
+        capacity: cat.capacity.toString(),
+      })));
+    } else {
+      setEditableCategories([{ id: 'new_1', name: '', price: '', capacity: '' }]);
+    }
+    setShowSalesModal(true);
+  };
+
+  // Add new category
+  const handleAddCategory = () => {
+    setEditableCategories(prev => [
+      ...prev,
+      { id: `new_${Date.now()}`, name: '', price: '', capacity: '' }
+    ]);
+  };
+
+  // Remove category
+  const handleRemoveCategory = (id: string) => {
+    if (editableCategories.length > 1) {
+      setEditableCategories(prev => prev.filter(cat => cat.id !== id));
+    }
+  };
+
+  // Update category field
+  const handleCategoryChange = (id: string, field: 'name' | 'price' | 'capacity', value: string) => {
+    setEditableCategories(prev => prev.map(cat =>
+      cat.id === id ? { ...cat, [field]: value } : cat
+    ));
   };
 
   // Activate ticket sales (after platform confirmation)
@@ -575,7 +684,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
               <Ionicons name="call" size={14} color={colors.success} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.confirmedActionBtn, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}
+              style={[styles.confirmedActionBtn, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Chat', { chatId: `provider_${service.id}`, recipientName: service.provider })}
             >
@@ -587,7 +696,21 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
               onPress={() => navigation.navigate('Contract', { contractId: service.id })}
             >
               <Ionicons name="document-text" size={14} color={colors.info} />
-              <Text style={[styles.confirmedActionText, { color: colors.info }]}>Sozlesme</Text>
+              <Text style={[styles.confirmedActionText, { color: colors.info }]}>Sözleşme</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.confirmedActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ServiceOperations' as any, {
+                eventId: event.id,
+                serviceId: service.id,
+                serviceCategory: service.category,
+                serviceName: service.name,
+                providerName: service.provider
+              })}
+            >
+              <Ionicons name="settings" size={14} color="#8B5CF6" />
+              <Text style={[styles.confirmedActionText, { color: '#8B5CF6' }]}>Operasyon</Text>
             </TouchableOpacity>
             {event?.status === 'completed' && (
               <TouchableOpacity
@@ -596,7 +719,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                 onPress={() => handleReviewProvider(service)}
               >
                 <Ionicons name="star" size={14} color="#F59E0B" />
-                <Text style={[styles.confirmedActionText, { color: '#F59E0B' }]}>Degerlendir</Text>
+                <Text style={[styles.confirmedActionText, { color: '#F59E0B' }]}>Değerlendir</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -626,19 +749,46 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Header */}
+      <Animated.View style={[styles.animatedHeader, { paddingTop: insets.top }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, headerBgStyle]}>
+          <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)' }]} />
+        </Animated.View>
+        <View style={styles.animatedHeaderContent}>
+          <TouchableOpacity
+            style={styles.animatedBackButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Animated.View style={[styles.animatedTitleContainer, headerTitleStyle]}>
+            <Text style={[styles.animatedHeaderTitle, { color: colors.text }]} numberOfLines={1}>
+              {event.title}
+            </Text>
+          </Animated.View>
+          <View style={styles.animatedHeaderActions}>
+            <TouchableOpacity style={styles.animatedHeaderAction} onPress={handleShare}>
+              <Ionicons name="share-outline" size={20} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.animatedHeaderAction} onPress={handleMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
         {/* Header Image */}
         <View style={styles.headerImage}>
           <Image source={{ uri: event.image }} style={styles.eventImage} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.imageGradient} />
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerActionButton} onPress={handleShare}><Ionicons name="share-outline" size={20} color="white" /></TouchableOpacity>
-            <TouchableOpacity style={styles.headerActionButton} onPress={handleMenu}><Ionicons name="ellipsis-horizontal" size={20} color="white" /></TouchableOpacity>
-          </View>
+          {/* Event Info */}
           <View style={styles.headerContent}>
             <View style={[styles.statusBadge, { backgroundColor: 'rgba(16, 185, 129, 0.2)' }]}>
               <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
@@ -740,7 +890,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           <View style={styles.budgetSection}>
             {/* Budget Overview Cards */}
             <View style={styles.budgetCardsRow}>
-              <View style={[styles.budgetCard, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)', borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)' }]}>
+              <View style={[styles.budgetCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)', borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)' }]}>
                 <Ionicons name="wallet" size={20} color={colors.brand[400]} />
                 <Text style={[styles.budgetCardValue, { color: colors.text }]}>₺{event.budget.toLocaleString('tr-TR')}</Text>
                 <Text style={[styles.budgetCardLabel, { color: colors.textMuted }]}>Toplam Bütçe</Text>
@@ -890,12 +1040,12 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                 ? (isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)')
                 : ticketSalesStatus === 'pending'
                 ? (isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.08)')
-                : (isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'),
+                : (isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)'),
               borderColor: ticketSalesStatus === 'active'
                 ? (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)')
                 : ticketSalesStatus === 'pending'
                 ? (isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)')
-                : (isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)')
+                : (isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)')
             }]}>
               <View style={styles.salesStatusHeader}>
                 <View style={styles.salesStatusLeft}>
@@ -918,7 +1068,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                   </View>
                 </View>
                 {ticketSalesStatus === 'not_started' && (
-                  <TouchableOpacity style={styles.openSalesBtn} onPress={() => setShowSalesModal(true)}>
+                  <TouchableOpacity style={styles.openSalesBtn} onPress={handleOpenSalesModal}>
                     <LinearGradient colors={gradients.primary} style={styles.openSalesBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                       <Ionicons name="rocket" size={16} color="white" />
                       <Text style={styles.openSalesBtnText}>Satışa Aç</Text>
@@ -979,7 +1129,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
             {/* Stats Grid */}
             <View style={styles.ticketStatsGrid}>
               <View style={[styles.ticketStatCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
-                <View style={[styles.ticketStatIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                <View style={[styles.ticketStatIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
                   <Ionicons name="ticket" size={18} color={colors.brand[400]} />
                 </View>
                 <Text style={[styles.ticketStatValue, { color: colors.text }]}>{totalTicketsSold.toLocaleString()}</Text>
@@ -1056,7 +1206,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
               {platforms.map((platform, index) => (
                 <View key={platform.id} style={[styles.platformItem, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, index === platforms.length - 1 && { borderBottomWidth: 0 }]}>
                   <View style={styles.platformInfo}>
-                    <View style={[styles.platformLogo, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                    <View style={[styles.platformLogo, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
                       <Text style={[styles.platformLogoText, { color: colors.brand[400] }]}>{platform.name.charAt(0)}</Text>
                     </View>
                     <View style={styles.platformDetails}>
@@ -1177,7 +1327,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         {activeSection !== 'services' && (
           <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 20 }} />
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       <ReviseEventModal visible={showReviseModal} onClose={() => setShowReviseModal(false)} onSubmit={() => { Alert.alert('Başarılı', 'Değişiklik talebi gönderildi.'); setShowReviseModal(false); }} eventTitle={event.title} />
       <CancelEventModal visible={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={() => { Alert.alert('Etkinlik İptal Edildi', 'Tedarikçilere bildirim gönderildi.'); setShowCancelModal(false); navigation.goBack(); }} eventTitle={event.title} eventDate={event.date} totalSpent={event.spent} confirmedProviders={stats.confirmed} />
@@ -1271,14 +1421,14 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           <View style={[styles.salesModalContent, { backgroundColor: colors.background }]}>
             <View style={styles.salesModalHeader}>
               <Text style={[styles.salesModalTitle, { color: colors.text }]}>Bilet Satışa Aç</Text>
-              <TouchableOpacity onPress={() => { setShowSalesModal(false); setSelectedPlatforms([]); setSalesNote(''); }}>
+              <TouchableOpacity onPress={() => { setShowSalesModal(false); setSelectedPlatforms([]); setSalesNote(''); setEditableCategories([]); }}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.salesModalBody} showsVerticalScrollIndicator={false}>
               {/* Event Summary */}
-              <View style={[styles.salesEventSummary, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)', borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)' }]}>
+              <View style={[styles.salesEventSummary, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)', borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)' }]}>
                 <Text style={[styles.salesEventTitle, { color: colors.text }]}>{event?.title}</Text>
                 <View style={styles.salesEventMeta}>
                   <View style={styles.salesEventMetaItem}>
@@ -1292,15 +1442,54 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                 </View>
               </View>
 
-              {/* Ticket Categories Preview */}
-              <Text style={[styles.salesSectionTitle, { color: colors.text }]}>Bilet Kategorileri</Text>
+              {/* Ticket Categories - Editable */}
+              <View style={styles.salesSectionHeader}>
+                <Text style={[styles.salesSectionTitle, { color: colors.text, marginTop: 0, marginBottom: 0 }]}>Bilet Kategorileri</Text>
+                <TouchableOpacity style={[styles.addCategoryBtn, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]} onPress={handleAddCategory}>
+                  <Ionicons name="add" size={18} color={colors.brand[400]} />
+                  <Text style={[styles.addCategoryBtnText, { color: colors.brand[400] }]}>Ekle</Text>
+                </TouchableOpacity>
+              </View>
               <View style={[styles.salesTicketPreview, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border }]}>
-                {ticketCategories.map((cat, idx) => (
-                  <View key={cat.id} style={[styles.salesTicketItem, idx < ticketCategories.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border }]}>
-                    <Text style={[styles.salesTicketName, { color: colors.text }]}>{cat.name}</Text>
-                    <View style={styles.salesTicketRight}>
-                      <Text style={[styles.salesTicketPrice, { color: colors.brand[400] }]}>₺{cat.price}</Text>
-                      <Text style={[styles.salesTicketCapacity, { color: colors.textMuted }]}>{cat.capacity} adet</Text>
+                {editableCategories.map((cat, idx) => (
+                  <View key={cat.id} style={[styles.editableCategoryItem, idx < editableCategories.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border }]}>
+                    <View style={styles.editableCategoryRow}>
+                      <TextInput
+                        style={[styles.categoryNameInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.surface, borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border, color: colors.text }]}
+                        placeholder="Kategori Adı"
+                        placeholderTextColor={colors.textMuted}
+                        value={cat.name}
+                        onChangeText={(val) => handleCategoryChange(cat.id, 'name', val)}
+                      />
+                      {editableCategories.length > 1 && (
+                        <TouchableOpacity style={styles.removeCategoryBtn} onPress={() => handleRemoveCategory(cat.id)}>
+                          <Ionicons name="trash-outline" size={18} color={colors.error} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={styles.editableCategoryInputs}>
+                      <View style={styles.editableCategoryInputWrapper}>
+                        <Text style={[styles.editableCategoryLabel, { color: colors.textMuted }]}>Fiyat (₺)</Text>
+                        <TextInput
+                          style={[styles.categoryPriceInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.surface, borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border, color: colors.text }]}
+                          placeholder="0"
+                          placeholderTextColor={colors.textMuted}
+                          keyboardType="numeric"
+                          value={cat.price}
+                          onChangeText={(val) => handleCategoryChange(cat.id, 'price', val)}
+                        />
+                      </View>
+                      <View style={styles.editableCategoryInputWrapper}>
+                        <Text style={[styles.editableCategoryLabel, { color: colors.textMuted }]}>Kapasite</Text>
+                        <TextInput
+                          style={[styles.categoryCapacityInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.surface, borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border, color: colors.text }]}
+                          placeholder="0"
+                          placeholderTextColor={colors.textMuted}
+                          keyboardType="numeric"
+                          value={cat.capacity}
+                          onChangeText={(val) => handleCategoryChange(cat.id, 'capacity', val)}
+                        />
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -1317,7 +1506,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                       styles.salesPlatformOption,
                       {
                         backgroundColor: selectedPlatforms.includes(platform.id)
-                          ? (isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)')
+                          ? (isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)')
                           : (isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground),
                         borderColor: selectedPlatforms.includes(platform.id)
                           ? colors.brand[400]
@@ -1332,7 +1521,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                       )}
                     </View>
                     <View style={styles.salesPlatformInfo}>
-                      <View style={[styles.salesPlatformLogo, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                      <View style={[styles.salesPlatformLogo, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' }]}>
                         <Text style={[styles.salesPlatformLogoText, { color: colors.brand[400] }]}>{platform.name.charAt(0)}</Text>
                       </View>
                       <View>
@@ -1382,7 +1571,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
             </ScrollView>
 
             <View style={styles.salesModalFooter}>
-              <TouchableOpacity style={[styles.salesModalCancelBtn, { borderColor: colors.border }]} onPress={() => { setShowSalesModal(false); setSelectedPlatforms([]); setSalesNote(''); }}>
+              <TouchableOpacity style={[styles.salesModalCancelBtn, { borderColor: colors.border }]} onPress={() => { setShowSalesModal(false); setSelectedPlatforms([]); setSalesNote(''); setEditableCategories([]); }}>
                 <Text style={[styles.salesModalCancelText, { color: colors.text }]}>İptal</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1423,12 +1612,54 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  animatedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    height: HEADER_HEIGHT,
+  },
+  animatedHeaderContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  animatedBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  animatedTitleContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  animatedHeaderTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  animatedHeaderActions: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  animatedHeaderAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   errorText: { textAlign: 'center', marginTop: 100 },
   headerImage: { height: 280, position: 'relative' },
   eventImage: { width: '100%', height: '100%' },
@@ -1458,6 +1689,11 @@ const styles = StyleSheet.create({
   quickInfoCard: { flex: 1, alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1 },
   quickInfoValue: { fontSize: 16, fontWeight: '700', marginTop: 8 },
   quickInfoLabel: { fontSize: 11, marginTop: 2 },
+  operationsButton: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginVertical: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
+  operationsIconContainer: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  operationsTextContainer: { flex: 1 },
+  operationsTitle: { fontSize: 15, fontWeight: '600' },
+  operationsSubtitle: { fontSize: 12, marginTop: 2 },
   sectionTabsContainer: { marginBottom: 16, borderBottomWidth: 1 },
   sectionTabsContent: { flexDirection: 'row', paddingHorizontal: 20, gap: 8 },
   sectionTab: { paddingVertical: 12, paddingHorizontal: 12, position: 'relative' },
@@ -1486,7 +1722,7 @@ const styles = StyleSheet.create({
   confirmedServiceActions: { flexDirection: 'row', marginTop: 12, gap: 8 },
   confirmedActionBtn: { width: 40, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
   confirmedActionText: { fontSize: 12, fontWeight: '600' },
-  addServiceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(147, 51, 234, 0.3)', borderStyle: 'dashed', gap: 8 },
+  addServiceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(75, 48, 184, 0.3)', borderStyle: 'dashed', gap: 8 },
   addServiceText: { fontSize: 14, fontWeight: '500' },
   timelineSection: { padding: 20 },
   timelineItem: { flexDirection: 'row', marginBottom: 0 },
@@ -1513,7 +1749,7 @@ const styles = StyleSheet.create({
   budgetCategoryBar: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 4 },
   budgetCategoryFill: { height: '100%', borderRadius: 3 },
   budgetCategoryPercent: { fontSize: 11, textAlign: 'right' },
-  exportButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, backgroundColor: 'rgba(147, 51, 234, 0.1)', gap: 8, marginTop: 8 },
+  exportButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, backgroundColor: 'rgba(75, 48, 184, 0.1)', gap: 8, marginTop: 8 },
   exportButtonText: { fontSize: 14, fontWeight: '500' },
   actionButtons: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 20 },
   actionButtonSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, borderWidth: 1, gap: 8 },
@@ -1722,6 +1958,18 @@ const styles = StyleSheet.create({
   salesTicketRight: { alignItems: 'flex-end' },
   salesTicketPrice: { fontSize: 15, fontWeight: '700' },
   salesTicketCapacity: { fontSize: 11, marginTop: 2 },
+  salesSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  addCategoryBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 4 },
+  addCategoryBtnText: { fontSize: 13, fontWeight: '600' },
+  editableCategoryItem: { paddingVertical: 12 },
+  editableCategoryRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  categoryNameInput: { flex: 1, height: 44, borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, fontSize: 14, fontWeight: '500' },
+  removeCategoryBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  editableCategoryInputs: { flexDirection: 'row', gap: 12 },
+  editableCategoryInputWrapper: { flex: 1 },
+  editableCategoryLabel: { fontSize: 11, marginBottom: 4, fontWeight: '500' },
+  categoryPriceInput: { height: 40, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, fontSize: 14, fontWeight: '600' },
+  categoryCapacityInput: { height: 40, borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, fontSize: 14 },
   salesPlatformOptions: { gap: 10 },
   salesPlatformOption: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1.5 },
   salesPlatformCheckbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginRight: 12 },

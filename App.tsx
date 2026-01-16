@@ -61,6 +61,9 @@ import MemberDetailScreen from './src/screens/MemberDetailScreen';
 import { MyReviewsScreen } from './src/screens/MyReviewsScreen';
 import { PortfolioGalleryScreen } from './src/screens/PortfolioGalleryScreen';
 import { ProviderReviewsScreen } from './src/screens/ProviderReviewsScreen';
+import { ProviderFinanceScreen } from './src/screens/ProviderFinanceScreen';
+import { EventOperationsScreen } from './src/screens/EventOperationsScreen';
+import { ServiceOperationsScreen } from './src/screens/ServiceOperationsScreen';
 
 // Provider-specific screens
 import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
@@ -135,6 +138,9 @@ function HomeStack() {
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
       <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
+      <Stack.Screen name="ProviderFinance" component={ProviderFinanceScreen} />
+      <Stack.Screen name="EventOperations" component={EventOperationsScreen} />
+      <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
     </Stack.Navigator>
   );
 }
@@ -162,6 +168,8 @@ function EventsStack() {
       <Stack.Screen name="Contract" component={ContractScreen} />
       <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
+      <Stack.Screen name="EventOperations" component={EventOperationsScreen} />
+      <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
     </Stack.Navigator>
   );
 }
@@ -186,6 +194,8 @@ function OffersStack() {
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
+      <Stack.Screen name="EventOperations" component={EventOperationsScreen} />
+      <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
     </Stack.Navigator>
   );
 }

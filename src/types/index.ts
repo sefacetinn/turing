@@ -563,6 +563,9 @@ export type HomeStackParamList = {
   Chat: { chatId: string; recipientName: string };
   PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
   ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
+  ProviderFinance: undefined;
+  EventOperations: { eventId: string };
+  ServiceOperations: { eventId: string; serviceId: string; serviceCategory: ServiceCategory; serviceName: string; providerName: string };
 };
 
 // Events Stack Params
@@ -579,6 +582,8 @@ export type EventsStackParamList = {
   Chat: { chatId: string; recipientName: string };
   PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
   ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
+  EventOperations: { eventId: string };
+  ServiceOperations: { eventId: string; serviceId: string; serviceCategory: ServiceCategory; serviceName: string; providerName: string };
 };
 
 // Offers Stack Params
@@ -588,6 +593,8 @@ export type OffersStackParamList = {
   CompareOffers: { quoteRequestId: string; serviceId?: string };
   Contract: { contractId: string };
   Contracts: undefined;
+  EventOperations: { eventId: string };
+  ServiceOperations: { eventId: string; serviceId: string; serviceCategory: ServiceCategory; serviceName: string; providerName: string };
 };
 
 // Messages Stack Params

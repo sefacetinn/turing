@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Image,
@@ -14,10 +13,19 @@ import {
   RefreshControl,
   ActivityIndicator,
   Share,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
@@ -66,12 +74,50 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const colors = defaultColors;
 const { width } = Dimensions.get('window');
 
+const HEADER_HEIGHT = 100;
+const SCROLL_THRESHOLD = 200;
+
 export function ProviderEventDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ProviderEventDetailRouteProp>();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
   const TAB_BAR_HEIGHT = 80;
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const headerBgStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 50, SCROLL_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  const headerTitleStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [10, 0],
+      Extrapolation.CLAMP
+    );
+    return { opacity, transform: [{ translateY }] };
+  });
 
   // Get eventId from route params
   const eventId = route.params?.eventId || 'pe1';
@@ -651,7 +697,7 @@ export function ProviderEventDetailScreen() {
               <Ionicons name="call" size={16} color={colors.success} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.teamActionButton, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.1)' }]}
+              style={[styles.teamActionButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.1)' }]}
               onPress={() => Linking.openURL(`mailto:${member.email}`)}
             >
               <Ionicons name="mail" size={16} color={colors.brand[400]} />
@@ -679,9 +725,40 @@ export function ProviderEventDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Header */}
+      <Animated.View style={[styles.animatedHeader, { paddingTop: insets.top }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, headerBgStyle]}>
+          <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)' }]} />
+        </Animated.View>
+        <View style={styles.animatedHeaderContent}>
+          <TouchableOpacity
+            style={styles.animatedBackButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Animated.View style={[styles.animatedTitleContainer, headerTitleStyle]}>
+            <Text style={[styles.animatedHeaderTitle, { color: colors.text }]} numberOfLines={1}>
+              {event.eventTitle}
+            </Text>
+          </Animated.View>
+          <View style={styles.animatedHeaderActions}>
+            <TouchableOpacity style={styles.animatedHeaderAction} onPress={handleShare}>
+              <Ionicons name="share-outline" size={20} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.animatedHeaderAction} onPress={handleMenu}>
+              <Ionicons name="ellipsis-horizontal" size={20} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -697,24 +774,6 @@ export function ProviderEventDetailScreen() {
             colors={['transparent', 'rgba(0,0,0,0.9)']}
             style={styles.imageGradient}
           />
-
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
-
-          {/* Header Actions */}
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerActionButton} onPress={handleShare}>
-              <Ionicons name="share-outline" size={20} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerActionButton} onPress={handleMenu}>
-              <Ionicons name="ellipsis-horizontal" size={20} color="white" />
-            </TouchableOpacity>
-          </View>
 
           {/* Event Info */}
           <View style={styles.headerContent}>
@@ -799,6 +858,33 @@ export function ProviderEventDetailScreen() {
             </View>
           </LinearGradient>
         </View>
+
+        {/* Operations Button */}
+        <TouchableOpacity
+          style={[
+            styles.operationsButton,
+            {
+              backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)',
+              borderColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)',
+            }
+          ]}
+          onPress={() => (navigation as any).navigate('ServiceOperations', {
+            eventId: event.id,
+            serviceId: event.id,
+            serviceCategory: 'technical',
+            serviceName: event.role,
+            providerName: event.organizerName,
+          })}
+        >
+          <View style={[styles.operationsIconContainer, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+            <Ionicons name="settings-outline" size={20} color="#3B82F6" />
+          </View>
+          <View style={styles.operationsTextContainer}>
+            <Text style={[styles.operationsTitle, { color: colors.text }]}>Operasyonları Görüntüle</Text>
+            <Text style={[styles.operationsSubtitle, { color: colors.textMuted }]}>Görevler, program ve ekip yönetimi</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </TouchableOpacity>
 
         {/* Section Tabs */}
         <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
@@ -959,7 +1045,7 @@ export function ProviderEventDetailScreen() {
             )}
             {/* Add Task Button */}
             <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}
+              style={[styles.addButton, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}
               onPress={() => setShowAddTaskModal(true)}
             >
               <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
@@ -1029,7 +1115,7 @@ export function ProviderEventDetailScreen() {
 
             {/* Invoice Button */}
             <TouchableOpacity
-              style={[styles.invoiceButton, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}
+              style={[styles.invoiceButton, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}
               onPress={handleInvoice}
             >
               <Ionicons name="document-text-outline" size={18} color={colors.brand[400]} />
@@ -1082,7 +1168,7 @@ export function ProviderEventDetailScreen() {
         )}
 
         <View style={{ height: 180 }} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Bottom Actions */}
       <View style={[
@@ -1403,7 +1489,7 @@ export function ProviderEventDetailScreen() {
           }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1411,6 +1497,48 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  animatedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    height: HEADER_HEIGHT,
+  },
+  animatedHeaderContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  animatedBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  animatedTitleContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+  },
+  animatedHeaderTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  animatedHeaderActions: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  animatedHeaderAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerImage: {
     height: 260,
@@ -1565,6 +1693,34 @@ const styles = StyleSheet.create({
   earningsDivider: {
     width: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  operationsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  operationsIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  operationsTextContainer: {
+    flex: 1,
+  },
+  operationsTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  operationsSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
   },
   tabContainer: {
     marginHorizontal: 20,
@@ -1922,7 +2078,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     gap: 8,
     marginTop: 8,
   },
