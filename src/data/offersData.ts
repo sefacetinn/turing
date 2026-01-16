@@ -180,22 +180,40 @@ export interface OrganizerOffer {
   rejectionReason?: string;
 }
 
+// Offer history item for timeline
+export interface OfferHistoryItem {
+  id: string;
+  type: 'submitted' | 'viewed' | 'counter' | 'accepted' | 'rejected' | 'message';
+  by: 'provider' | 'organizer';
+  amount?: number;
+  message?: string;
+  date: string;
+}
+
 export interface ProviderOffer {
   id: string;
   eventId: string;
   eventTitle: string;
   organizer: {
+    id?: string;
     name: string;
     image: string;
   };
   serviceCategory: string;
   role: string;
+  artistName?: string; // For booking category - artist name separate from role
   amount: number;
   status: OfferStatus;
   date: string;
   eventDate: string;
   location: string;
   counterOffer: CounterOffer | null;
+  // Rejection details
+  rejectedAt?: string;
+  rejectedBy?: 'organizer' | 'provider';
+  rejectionReason?: string;
+  // Offer history/timeline
+  history?: OfferHistoryItem[];
 }
 
 // Organizer offers (received from providers) - Organizatörün aldığı teklifler
@@ -570,45 +588,59 @@ export const providerOffers: ProviderOffer[] = [
     eventId: 'EVT002', // Vodafone Park - Sıla
     eventTitle: coreEvents.EVT002.title,
     organizer: {
+      id: 'ORG002',
       name: coreOrganizers.ORG002.name,
       image: coreOrganizers.ORG002.logo,
     },
     serviceCategory: 'booking',
     role: 'Sıla - Ana Sahne Performansı',
+    artistName: 'Sıla',
     amount: 650000,
     status: 'accepted',
     date: '3 gün önce',
     eventDate: '28 Ağustos 2026',
     location: 'İstanbul, Beşiktaş',
     counterOffer: null,
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 650000, date: '5 gün önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '4 gün önce' },
+      { id: 'h3', type: 'accepted', by: 'organizer', date: '3 gün önce' },
+    ],
   },
   {
     id: 'po_book_2',
     eventId: 'EVT004', // Zeytinli Rock Festivali - Mabel Matiz
     eventTitle: coreEvents.EVT004.title,
     organizer: {
+      id: 'ORG001',
       name: coreOrganizers.ORG001.name,
       image: coreOrganizers.ORG001.logo,
     },
     serviceCategory: 'booking',
     role: 'Mabel Matiz - Sahne Performansı',
+    artistName: 'Mabel Matiz',
     amount: 380000,
     status: 'pending',
     date: '1 gün önce',
     eventDate: '16-19 Temmuz 2026',
     location: 'Balıkesir, Edremit',
     counterOffer: null,
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 380000, date: '1 gün önce' },
+    ],
   },
   {
     id: 'po_book_3',
     eventId: 'EVT001', // Big Bang Festival - Tarkan
     eventTitle: coreEvents.EVT001.title,
     organizer: {
+      id: 'ORG001',
       name: coreOrganizers.ORG001.name,
       image: coreOrganizers.ORG001.logo,
     },
     serviceCategory: 'booking',
     role: 'Tarkan - Headliner',
+    artistName: 'Tarkan',
     amount: 950000,
     status: 'counter_offered',
     date: '5 saat önce',
@@ -620,40 +652,194 @@ export const providerOffers: ProviderOffer[] = [
       date: '2 saat önce',
       message: 'Festival bütçemiz kısıtlı. 850.000 TL kabul edebilir misiniz?',
     },
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 950000, date: '5 saat önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '4 saat önce' },
+      { id: 'h3', type: 'counter', by: 'organizer', amount: 850000, message: 'Festival bütçemiz kısıtlı. 850.000 TL kabul edebilir misiniz?', date: '2 saat önce' },
+    ],
   },
   {
     id: 'po_book_4',
     eventId: 'EVT003', // Kurumsal Yılbaşı Gecesi - Sıla
     eventTitle: coreEvents.EVT003.title,
     organizer: {
+      id: 'ORG004',
       name: coreOrganizers.ORG004.name,
       image: coreOrganizers.ORG004.logo,
     },
     serviceCategory: 'booking',
     role: 'Sıla - Özel Performans',
+    artistName: 'Sıla',
     amount: 550000,
     status: 'accepted',
     date: '1 hafta önce',
     eventDate: '31 Aralık 2026',
     location: 'İstanbul, Beşiktaş',
     counterOffer: null,
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 580000, date: '2 hafta önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '12 gün önce' },
+      { id: 'h3', type: 'counter', by: 'organizer', amount: 520000, message: 'Bütçemiz 520.000 TL civarı.', date: '10 gün önce' },
+      { id: 'h4', type: 'counter', by: 'provider', amount: 550000, message: '550.000 TL son teklifimizdir.', date: '9 gün önce' },
+      { id: 'h5', type: 'accepted', by: 'organizer', date: '1 hafta önce' },
+    ],
   },
   {
     id: 'po_book_5',
     eventId: 'EVT005', // Harbiye - Tarkan
     eventTitle: coreEvents.EVT005.title,
     organizer: {
+      id: 'ORG003',
       name: coreOrganizers.ORG003.name,
       image: coreOrganizers.ORG003.logo,
     },
     serviceCategory: 'booking',
     role: 'Tarkan - Yaz Konseri',
+    artistName: 'Tarkan',
     amount: 850000,
     status: 'rejected',
     date: '3 gün önce',
     eventDate: '15 Ağustos 2026',
     location: 'İstanbul, Şişli',
     counterOffer: null,
+    rejectedAt: '3 gün önce',
+    rejectedBy: 'organizer',
+    rejectionReason: 'Başka bir ajans ile anlaşma sağlandı.',
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 850000, date: '5 gün önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '4 gün önce' },
+      { id: 'h3', type: 'rejected', by: 'organizer', message: 'Başka bir ajans ile anlaşma sağlandı.', date: '3 gün önce' },
+    ],
+  },
+  // ================== NEW BOOKING OFFERS ==================
+  {
+    id: 'po_book_6',
+    eventId: 'EVT001', // Big Bang Summer Festival
+    eventTitle: coreEvents.EVT001.title,
+    organizer: {
+      id: 'ORG001',
+      name: coreOrganizers.ORG001.name,
+      image: coreOrganizers.ORG001.logo,
+    },
+    serviceCategory: 'booking',
+    role: 'Duman - Rock Sahne',
+    artistName: 'Duman',
+    amount: 420000,
+    status: 'pending',
+    date: '4 saat önce',
+    eventDate: '10-12 Temmuz 2026',
+    location: 'İstanbul, Maçka',
+    counterOffer: null,
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 420000, date: '4 saat önce' },
+    ],
+  },
+  {
+    id: 'po_book_7',
+    eventId: 'EVT004', // Zeytinli Rock Festivali
+    eventTitle: coreEvents.EVT004.title,
+    organizer: {
+      id: 'ORG001',
+      name: coreOrganizers.ORG001.name,
+      image: coreOrganizers.ORG001.logo,
+    },
+    serviceCategory: 'booking',
+    role: 'Mor ve Ötesi - Ana Sahne',
+    artistName: 'Mor ve Ötesi',
+    amount: 380000,
+    status: 'counter_offered',
+    date: '2 gün önce',
+    eventDate: '16-19 Temmuz 2026',
+    location: 'Balıkesir, Edremit',
+    counterOffer: {
+      amount: 350000,
+      by: 'organizer',
+      date: '1 gün önce',
+      message: 'Festival bütçemiz kısıtlı, 350.000 TL önerebiliriz.',
+    },
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 380000, date: '2 gün önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '2 gün önce' },
+      { id: 'h3', type: 'counter', by: 'organizer', amount: 350000, message: 'Festival bütçemiz kısıtlı, 350.000 TL önerebiliriz.', date: '1 gün önce' },
+    ],
+  },
+  {
+    id: 'po_book_8',
+    eventId: 'EVT002', // Vodafone Park
+    eventTitle: coreEvents.EVT002.title,
+    organizer: {
+      id: 'ORG002',
+      name: coreOrganizers.ORG002.name,
+      image: coreOrganizers.ORG002.logo,
+    },
+    serviceCategory: 'booking',
+    role: 'Teoman - Açılış Performansı',
+    artistName: 'Teoman',
+    amount: 280000,
+    status: 'pending',
+    date: '6 saat önce',
+    eventDate: '28 Ağustos 2026',
+    location: 'İstanbul, Beşiktaş',
+    counterOffer: null,
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 280000, date: '6 saat önce' },
+    ],
+  },
+  {
+    id: 'po_book_9',
+    eventId: 'EVT008', // Garanti BBVA Gala
+    eventTitle: coreEvents.EVT008.title,
+    organizer: {
+      id: 'ORG004',
+      name: coreOrganizers.ORG004.name,
+      image: coreOrganizers.ORG004.logo,
+    },
+    serviceCategory: 'booking',
+    role: 'Kenan Doğulu - Özel Gece',
+    artistName: 'Kenan Doğulu',
+    amount: 320000,
+    status: 'counter_offered',
+    date: '1 gün önce',
+    eventDate: '5 Eylül 2026',
+    location: 'İstanbul, Beşiktaş',
+    counterOffer: {
+      amount: 290000,
+      by: 'organizer',
+      date: '12 saat önce',
+      message: 'Kurumsal bütçemiz dahilinde 290.000 TL önerebiliriz.',
+    },
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 320000, date: '1 gün önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '20 saat önce' },
+      { id: 'h3', type: 'counter', by: 'organizer', amount: 290000, message: 'Kurumsal bütçemiz dahilinde 290.000 TL önerebiliriz.', date: '12 saat önce' },
+    ],
+  },
+  {
+    id: 'po_book_10',
+    eventId: 'EVT006', // Fashion Week Istanbul
+    eventTitle: coreEvents.EVT006.title,
+    organizer: {
+      id: 'ORG005',
+      name: coreOrganizers.ORG005.name,
+      image: coreOrganizers.ORG005.logo,
+    },
+    serviceCategory: 'booking',
+    role: 'Simge Sağın - DJ Set',
+    artistName: 'Simge Sağın',
+    amount: 180000,
+    status: 'rejected',
+    date: '4 gün önce',
+    eventDate: '12-16 Ekim 2026',
+    location: 'İstanbul, Beşiktaş',
+    counterOffer: null,
+    rejectedAt: '4 gün önce',
+    rejectedBy: 'organizer',
+    rejectionReason: 'Etkinlik konseptine daha uygun bir sanatçı tercih edildi.',
+    history: [
+      { id: 'h1', type: 'submitted', by: 'provider', amount: 180000, date: '6 gün önce' },
+      { id: 'h2', type: 'viewed', by: 'organizer', date: '5 gün önce' },
+      { id: 'h3', type: 'rejected', by: 'organizer', message: 'Etkinlik konseptine daha uygun bir sanatçı tercih edildi.', date: '4 gün önce' },
+    ],
   },
 
   // ================== CATERING OFFERS ==================
@@ -1042,7 +1228,7 @@ export const getStatusBadgeStyle = (
     success: { backgroundColor: 'rgba(34, 197, 94, 0.15)', textColor: '#22c55e' },
     warning: { backgroundColor: 'rgba(245, 158, 11, 0.15)', textColor: '#f59e0b' },
     error: { backgroundColor: 'rgba(239, 68, 68, 0.15)', textColor: '#ef4444' },
-    brand: { backgroundColor: 'rgba(99, 102, 241, 0.15)', textColor: '#6366f1' },
+    brand: { backgroundColor: 'rgba(75, 48, 184, 0.15)', textColor: '#4b30b8' },
     textMuted: { backgroundColor: 'rgba(156, 163, 175, 0.15)', textColor: '#9ca3af' },
   };
 

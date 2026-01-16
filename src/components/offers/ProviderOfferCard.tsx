@@ -32,6 +32,21 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
     }
   };
 
+  // Status-based stripe colors for provider cards
+  const getStatusStripeColors = (status: string): readonly [string, string] => {
+    switch (status) {
+      case 'pending':
+      case 'counter_offered':
+        return ['#4B30B8', '#7c6cd9'] as const; // Purple - Active
+      case 'accepted':
+        return ['#10B981', '#34d399'] as const; // Green - Approved
+      case 'rejected':
+        return ['#EF4444', '#f87171'] as const; // Red - Rejected
+      default:
+        return ['#4B30B8', '#7c6cd9'] as const;
+    }
+  };
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'accepted': return 'Kabul Edildi';
@@ -70,8 +85,8 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#e5e7eb',
         },
         showActions && {
-          borderColor: 'rgba(147, 51, 234, 0.3)',
-          backgroundColor: 'rgba(147, 51, 234, 0.03)',
+          borderColor: 'rgba(75, 48, 184, 0.3)',
+          backgroundColor: 'rgba(75, 48, 184, 0.03)',
         },
         isUrgent && {
           borderColor: 'rgba(239, 68, 68, 0.4)',
@@ -82,7 +97,7 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
       onPress={onPress}
     >
       <LinearGradient
-        colors={getCategoryGradient(offer.serviceCategory)}
+        colors={getStatusStripeColors(offer.status)}
         style={styles.topBar}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
@@ -131,6 +146,11 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
             {getCategoryShortLabel(offer.serviceCategory)}
           </Text>
         </LinearGradient>
+        {offer.artistName && (
+          <Text style={[styles.artistNameText, { color: colors.text }]}>
+            {offer.artistName}
+          </Text>
+        )}
       </View>
 
       <View style={styles.eventDetailsRow}>
@@ -138,9 +158,15 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           <View style={styles.eventDetailIcon}>
             <Ionicons name="calendar" size={14} color={colors.brand[400]} />
           </View>
-          <View>
+          <View style={styles.eventDetailTextContainer}>
             <Text style={[styles.eventDetailLabel, { color: colors.textMuted }]}>Tarih</Text>
-            <Text style={[styles.eventDetailValue, { color: colors.text }]}>{offer.eventDate}</Text>
+            <Text
+              style={[styles.eventDetailValue, { color: colors.text }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {offer.eventDate}
+            </Text>
           </View>
         </View>
         <View style={styles.eventDetailDivider} />
@@ -148,9 +174,15 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           <View style={styles.eventDetailIcon}>
             <Ionicons name="location" size={14} color={colors.brand[400]} />
           </View>
-          <View>
+          <View style={styles.eventDetailTextContainer}>
             <Text style={[styles.eventDetailLabel, { color: colors.textMuted }]}>Konum</Text>
-            <Text style={[styles.eventDetailValue, { color: colors.text }]}>{offer.location}</Text>
+            <Text
+              style={[styles.eventDetailValue, { color: colors.text }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {offer.location}
+            </Text>
           </View>
         </View>
       </View>
@@ -224,6 +256,13 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           </View>
         )}
       </View>
+
+      {offer.status === 'rejected' && offer.rejectionReason && (
+        <View style={styles.rejectionBox}>
+          <Ionicons name="information-circle" size={16} color="#EF4444" />
+          <Text style={styles.rejectionText}>{offer.rejectionReason}</Text>
+        </View>
+      )}
 
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
@@ -364,6 +403,9 @@ const styles = StyleSheet.create({
   roleBadgeContainer: {
     paddingHorizontal: 16,
     marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   roleBadge: {
     alignSelf: 'flex-start',
@@ -381,6 +423,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
+  artistNameText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   eventDetailsRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -396,11 +442,14 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 12,
   },
+  eventDetailTextContainer: {
+    flex: 1,
+  },
   eventDetailIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -419,10 +468,10 @@ const styles = StyleSheet.create({
   counterOfferSection: {
     marginHorizontal: 16,
     padding: 14,
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
+    backgroundColor: 'rgba(75, 48, 184, 0.08)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: 'rgba(75, 48, 184, 0.15)',
     marginBottom: 14,
   },
   counterOfferIncoming: {
@@ -564,9 +613,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
+    borderColor: 'rgba(75, 48, 184, 0.2)',
   },
   actionBtnCounterText: {
     fontSize: 12,
@@ -612,5 +661,23 @@ const styles = StyleSheet.create({
   },
   completedText: {
     fontSize: 12,
+  },
+  rejectionBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  rejectionText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#EF4444',
+    lineHeight: 18,
   },
 });

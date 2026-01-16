@@ -19,9 +19,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { providerOffers } from '../data/offersData';
-// PDF functionality - will use native Share for now
-// import * as Print from 'expo-print';
-// import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -117,6 +116,35 @@ export function ProviderRequestDetailScreen() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [venueImageIndex, setVenueImageIndex] = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  // Included/Excluded items for offer
+  const [includedItems, setIncludedItems] = useState([
+    { id: 'live', label: 'Canlı Performans', enabled: true },
+    { id: 'soundcheck', label: 'Ses Kontrolü (Sound Check)', enabled: true },
+    { id: 'rider', label: 'Rider Gereksinimlerine Uyum', enabled: true },
+    { id: 'meetgreet', label: 'Meet & Greet', enabled: false },
+  ]);
+
+  const [excludedItems, setExcludedItems] = useState([
+    { id: 'transport', label: 'Ulaşım', enabled: true },
+    { id: 'accommodation', label: 'Konaklama', enabled: true },
+    { id: 'technical_rider', label: 'Teknik Rider', enabled: true },
+    { id: 'taxes', label: 'Vergiler', enabled: true },
+    { id: 'backstage', label: 'Kulis Riderı', enabled: true },
+    { id: 'pyro', label: 'Pyro/Özel Efektler', enabled: false },
+  ]);
+
+  const toggleIncludedItem = (id: string) => {
+    setIncludedItems(prev => prev.map(item =>
+      item.id === id ? { ...item, enabled: !item.enabled } : item
+    ));
+  };
+
+  const toggleExcludedItem = (id: string) => {
+    setExcludedItems(prev => prev.map(item =>
+      item.id === id ? { ...item, enabled: !item.enabled } : item
+    ));
+  };
 
   // Venue info varies based on event
   const getVenueInfo = (): VenueInfo => {
@@ -882,57 +910,30 @@ export function ProviderRequestDetailScreen() {
       </html>
     `;
 
-    // Create text content for sharing (PDF requires expo-print package)
-    const textContent = `
-📋 TURING - Teklif Belgesi
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 Talep No: ${offer.id.toUpperCase()}
-📅 Tarih: ${currentDate}
-📊 Durum: ${statusConfig.label}
-
-🎵 ETKİNLİK BİLGİLERİ
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-${offer.eventTitle}
-📅 ${offer.eventDate}
-📍 ${offer.location}
-
-👤 ORGANİZATÖR
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-${offer.organizer.name}
-⭐ 4.7 puan · 45 değerlendirme
-
-🏟️ MEKAN
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-${venueInfo.name}
-📍 ${venueInfo.address}, ${venueInfo.city}
-👥 Kapasite: ${venueInfo.capacity.toLocaleString('tr-TR')}
-🎭 Düzen: ${getSeatingTypeLabel(venueInfo.seatingType)}
-🏠 Tip: ${getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}
-
-🎤 PERFORMANS DETAYLARI
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-🕘 Sahne Saati: ${eventDetails.concertTime}
-⏱️ Süre: ${eventDetails.eventDuration}
-🔞 Yaş Sınırı: ${eventDetails.ageLimit}
-👥 Katılımcı: ${eventDetails.participantType}
-
-💰 BÜTÇE
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-${organizerBudget ? '₺' + organizerBudget.toLocaleString('tr-TR') : 'Bütçe İletilmedi'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-Bu belge Turing üzerinden oluşturulmuştur.
-www.turing.app
-    `.trim();
-
     try {
-      await Share.share({
-        message: textContent,
-        title: `Teklif_${offer.id}`,
+      // Generate PDF from HTML
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false,
       });
+
+      // Share the PDF
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Teklif_${offer.id}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        // Fallback to native share if sharing not available
+        await Share.share({
+          url: uri,
+          title: `Teklif_${offer.id}`,
+        });
+      }
     } catch (error) {
-      Alert.alert('Hata', 'Paylaşım yapılırken bir hata oluştu.');
+      console.error('PDF generation error:', error);
+      Alert.alert('Hata', 'PDF oluşturulurken bir hata oluştu.');
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -1003,7 +1004,9 @@ www.turing.app
             )}
           </View>
 
-          <Text style={[styles.heroArtist, { color: colors.text }]}>{offer.role}</Text>
+          <Text style={[styles.heroArtist, { color: colors.text }]}>
+            {offer.serviceCategory === 'booking' && offer.artistName ? offer.artistName : offer.role}
+          </Text>
           <Text style={[styles.heroEvent, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
 
           <View style={styles.heroMeta}>
@@ -1025,8 +1028,12 @@ www.turing.app
           <Text style={[styles.statusTextCompact, { color: statusConfig.color }]}>{statusConfig.label}</Text>
         </View>
 
-        {/* Organizer Card - Compact */}
-        <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
+        {/* Organizer Card - Compact & Clickable */}
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('OrganizerProfile', { organizerId: offer.organizer.id || 'ORG001' })}
+        >
           <View style={styles.organizerCompact}>
             <Image source={{ uri: offer.organizer.image }} style={styles.organizerImageSmall} />
             <View style={styles.organizerInfoCompact}>
@@ -1038,16 +1045,19 @@ www.turing.app
                 <Text style={[styles.reviewCountCompact, { color: colors.textSecondary }]}>(45)</Text>
               </View>
             </View>
-            <View style={styles.organizerActionsCompact}>
-              <TouchableOpacity style={[styles.actionBtnSmall, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]} onPress={handleCall}>
+            <View style={styles.organizerActionsRow}>
+              <TouchableOpacity style={[styles.actionBtnSmall, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]} onPress={(e) => { e.stopPropagation(); handleCall(); }}>
                 <Ionicons name="call" size={16} color="#10B981" />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtnSmall, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]} onPress={handleChat}>
+              <TouchableOpacity style={[styles.actionBtnSmall, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]} onPress={(e) => { e.stopPropagation(); handleChat(); }}>
                 <Ionicons name="chatbubble" size={16} color="#6366F1" />
               </TouchableOpacity>
+              <View style={[styles.chevronIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* Venue Summary Card - Tappable */}
         <TouchableOpacity
@@ -1255,15 +1265,12 @@ www.turing.app
         ) : offer.status === 'accepted' ? (
           <TouchableOpacity
             style={styles.operationsBtn}
-            onPress={() => navigation.navigate('ServiceOperations', {
+            onPress={() => navigation.navigate('ProviderEventDetail', {
               eventId: offer.eventId,
-              serviceId: offer.id,
-              serviceName: offer.role,
-              serviceCategory: offer.serviceCategory,
             })}
           >
-            <Ionicons name="settings-outline" size={20} color="white" />
-            <Text style={styles.operationsBtnText}>Operasyonları Görüntüle</Text>
+            <Ionicons name="calendar-outline" size={20} color="white" />
+            <Text style={styles.operationsBtnText}>Etkinliği Görüntüle</Text>
           </TouchableOpacity>
         ) : (
           <>
@@ -1340,25 +1347,50 @@ www.turing.app
               />
 
               {/* What's Included for Booking */}
-              <View style={[styles.includedBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                <Text style={[styles.includedTitle, { color: colors.text }]}>Teklifinize Dahil Olanlar</Text>
+              <View style={[styles.includedBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.06)' : 'rgba(16, 185, 129, 0.04)' }]}>
+                <Text style={[styles.includedTitle, { color: '#10B981' }]}>Dahil Olanlar</Text>
                 <View style={styles.includedList}>
-                  <View style={styles.includedItem}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={[styles.includedText, { color: colors.textSecondary }]}>Canlı performans</Text>
-                  </View>
-                  <View style={styles.includedItem}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={[styles.includedText, { color: colors.textSecondary }]}>Ses kontrolü (sound check)</Text>
-                  </View>
-                  <View style={styles.includedItem}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={[styles.includedText, { color: colors.textSecondary }]}>Rider gereksinimlerine uyum</Text>
-                  </View>
-                  <View style={styles.includedItem}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={[styles.includedText, { color: colors.textSecondary }]}>Meet & Greet (opsiyonel)</Text>
-                  </View>
+                  {includedItems.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.includedItem}
+                      onPress={() => toggleIncludedItem(item.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={item.enabled ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={18}
+                        color={item.enabled ? '#10B981' : colors.textMuted}
+                      />
+                      <Text style={[styles.includedText, { color: item.enabled ? colors.text : colors.textMuted }]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* What's NOT Included */}
+              <View style={[styles.excludedBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.06)' : 'rgba(239, 68, 68, 0.04)' }]}>
+                <Text style={[styles.excludedTitle, { color: '#EF4444' }]}>Dahil Olmayanlar</Text>
+                <View style={styles.excludedList}>
+                  {excludedItems.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={styles.excludedItem}
+                      onPress={() => toggleExcludedItem(item.id)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons
+                        name={item.enabled ? 'close-circle' : 'ellipse-outline'}
+                        size={18}
+                        color={item.enabled ? '#EF4444' : colors.textMuted}
+                      />
+                      <Text style={[styles.excludedText, { color: item.enabled ? colors.text : colors.textMuted }]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             </ScrollView>
@@ -1878,6 +1910,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  organizerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chevronIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
   actionBtnSmall: {
     width: 36,
     height: 36,
@@ -2287,11 +2332,24 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.15)',
   },
   includedTitle: { fontSize: 14, fontWeight: '600', marginBottom: 12 },
   includedList: { gap: 10 },
-  includedItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  includedText: { fontSize: 13 },
+  includedItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  includedText: { fontSize: 13, flex: 1 },
+  excludedBox: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  excludedTitle: { fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  excludedList: { gap: 10 },
+  excludedItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  excludedText: { fontSize: 13, flex: 1 },
   modalFooter: {
     flexDirection: 'row',
     gap: 12,
