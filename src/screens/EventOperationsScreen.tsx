@@ -9,7 +9,18 @@ import {
   Modal,
   Linking,
   Dimensions,
+  TextInput,
+  Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import Animated, {
@@ -101,18 +112,188 @@ export function EventOperationsScreen() {
   const [selectedMember, setSelectedMember] = useState<OperationTeamMember | null>(null);
   const [taskModalVisible, setTaskModalVisible] = useState(false);
   const [memberModalVisible, setMemberModalVisible] = useState(false);
+  const [newComment, setNewComment] = useState('');
 
-  const operation: EventOperation = sampleEventOperation;
+  // Mutable tasks state - initialized from sample data
+  const [tasks, setTasks] = useState<OperationTask[]>(sampleEventOperation.tasks);
 
-  // Find current user's team member data
+  const operation: EventOperation = { ...sampleEventOperation, tasks };
+
+  // Find current user's team member data (moved up for use in handlers)
   const currentUser = useMemo(() => {
     const allMembers = [
-      ...operation.parties.organizer.teamMembers,
-      ...operation.parties.provider.teamMembers,
-      ...operation.parties.artist.teamMembers,
+      ...sampleEventOperation.parties.organizer.teamMembers,
+      ...sampleEventOperation.parties.provider.teamMembers,
+      ...sampleEventOperation.parties.artist.teamMembers,
     ];
     return allMembers.find(m => m.id === currentUserId);
-  }, [currentUserId, operation]);
+  }, [currentUserId]);
+
+  // ===== ACTION HANDLERS =====
+
+  // Toggle checklist item completion
+  const handleToggleChecklistItem = useCallback((taskId: string, itemId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id !== taskId) return task;
+
+      const updatedChecklist = task.checklist.map(item =>
+        item.id === itemId ? { ...item, completed: !item.completed } : item
+      );
+
+      // Auto-update task status based on checklist completion
+      const completedCount = updatedChecklist.filter(c => c.completed).length;
+      const totalCount = updatedChecklist.length;
+      let newStatus: TaskStatus = task.status;
+
+      if (completedCount === 0) {
+        newStatus = 'pending';
+      } else if (completedCount === totalCount) {
+        newStatus = 'completed';
+      } else {
+        newStatus = 'in_progress';
+      }
+
+      return { ...task, checklist: updatedChecklist, status: newStatus };
+    }));
+
+    // Update selected task if it's the one being modified
+    setSelectedTask(prev => {
+      if (!prev || prev.id !== taskId) return prev;
+      const updatedChecklist = prev.checklist.map(item =>
+        item.id === itemId ? { ...item, completed: !item.completed } : item
+      );
+      const completedCount = updatedChecklist.filter(c => c.completed).length;
+      const totalCount = updatedChecklist.length;
+      let newStatus: TaskStatus = prev.status;
+
+      if (completedCount === 0) {
+        newStatus = 'pending';
+      } else if (completedCount === totalCount) {
+        newStatus = 'completed';
+      } else {
+        newStatus = 'in_progress';
+      }
+
+      return { ...prev, checklist: updatedChecklist, status: newStatus };
+    });
+  }, []);
+
+  // Update task status directly
+  const handleUpdateTaskStatus = useCallback((taskId: string, newStatus: TaskStatus) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setTasks(prevTasks => prevTasks.map(task =>
+      task.id === taskId ? { ...task, status: newStatus } : task
+    ));
+
+    setSelectedTask(prev =>
+      prev && prev.id === taskId ? { ...prev, status: newStatus } : prev
+    );
+  }, []);
+
+  // Cycle through task statuses
+  const handleCycleTaskStatus = useCallback((taskId: string, currentStatus: TaskStatus) => {
+    const statusCycle: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+    const currentIndex = statusCycle.indexOf(currentStatus);
+    const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
+    handleUpdateTaskStatus(taskId, nextStatus);
+  }, [handleUpdateTaskStatus]);
+
+  // Approve task
+  const handleApproveTask = useCallback((taskId: string) => {
+    if (!currentUser) return;
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id !== taskId) return task;
+
+      const updatedApprovals = task.requiredApprovals.map(approval => {
+        if (approval.party === currentUser.party && !approval.approved) {
+          return {
+            ...approval,
+            approved: true,
+            approvedBy: currentUser.id,
+            approvedAt: new Date().toISOString(),
+          };
+        }
+        return approval;
+      });
+
+      // Check if all approvals are done
+      const allApproved = updatedApprovals.every(a => a.approved);
+
+      return {
+        ...task,
+        requiredApprovals: updatedApprovals,
+        status: allApproved ? 'completed' : task.status,
+      };
+    }));
+
+    setSelectedTask(prev => {
+      if (!prev || prev.id !== taskId) return prev;
+
+      const updatedApprovals = prev.requiredApprovals.map(approval => {
+        if (approval.party === currentUser.party && !approval.approved) {
+          return {
+            ...approval,
+            approved: true,
+            approvedBy: currentUser.id,
+            approvedAt: new Date().toISOString(),
+          };
+        }
+        return approval;
+      });
+
+      const allApproved = updatedApprovals.every(a => a.approved);
+
+      return {
+        ...prev,
+        requiredApprovals: updatedApprovals,
+        status: allApproved ? 'completed' : prev.status,
+      };
+    });
+
+    Alert.alert('Başarılı', 'Görev onaylandı!');
+    setTaskModalVisible(false);
+  }, [currentUser]);
+
+  // Add comment to task
+  const handleAddComment = useCallback((taskId: string) => {
+    if (!currentUser || !newComment.trim()) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const comment = {
+      id: `comment-${Date.now()}`,
+      authorId: currentUser.id,
+      authorName: currentUser.name,
+      authorImage: currentUser.image,
+      authorParty: currentUser.party,
+      text: newComment.trim(),
+      createdAt: 'Az önce',
+      mentions: [],
+    };
+
+    setTasks(prevTasks => prevTasks.map(task =>
+      task.id === taskId
+        ? { ...task, comments: [...task.comments, comment] }
+        : task
+    ));
+
+    setSelectedTask(prev =>
+      prev && prev.id === taskId
+        ? { ...prev, comments: [...prev.comments, comment] }
+        : prev
+    );
+
+    setNewComment('');
+  }, [currentUser, newComment]);
 
   // Filter tasks based on user permissions
   const visibleTasks = useMemo(() => {
@@ -639,20 +820,30 @@ export function EventOperationsScreen() {
               ))}
             </View>
 
-            {/* Checklist */}
+            {/* Checklist - Interactive */}
             <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Kontrol Listesi</Text>
+              <View style={styles.modalSectionHeader}>
+                <Text style={styles.modalSectionTitle}>Kontrol Listesi</Text>
+                <Text style={styles.checklistProgress}>
+                  {selectedTask.checklist.filter(c => c.completed).length}/{selectedTask.checklist.length}
+                </Text>
+              </View>
               {selectedTask.checklist.map((item) => (
-                <View key={item.id} style={styles.checklistItem}>
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.checklistItem}
+                  onPress={() => handleToggleChecklistItem(selectedTask.id, item.id)}
+                  activeOpacity={0.7}
+                >
                   <Ionicons
                     name={item.completed ? 'checkbox' : 'square-outline'}
-                    size={20}
+                    size={22}
                     color={item.completed ? '#10B981' : '#D1D5DB'}
                   />
                   <Text style={[styles.checklistText, item.completed && styles.checklistTextCompleted]}>
                     {item.text}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
 
@@ -679,34 +870,66 @@ export function EventOperationsScreen() {
             </View>
 
             {/* Comments */}
-            {selectedTask.comments.length > 0 && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Yorumlar</Text>
-                {selectedTask.comments.map((comment) => (
-                  <View key={comment.id} style={styles.commentItem}>
-                    <Image source={{ uri: comment.authorImage }} style={styles.commentAuthorImage} />
-                    <View style={styles.commentContent}>
-                      <View style={styles.commentHeader}>
-                        <Text style={styles.commentAuthorName}>{comment.authorName}</Text>
-                        <Text style={styles.commentTime}>{comment.createdAt}</Text>
-                      </View>
-                      <Text style={styles.commentText}>{comment.text}</Text>
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Yorumlar ({selectedTask.comments.length})</Text>
+              {selectedTask.comments.map((comment) => (
+                <View key={comment.id} style={styles.commentItem}>
+                  <Image source={{ uri: comment.authorImage }} style={styles.commentAuthorImage} />
+                  <View style={styles.commentContent}>
+                    <View style={styles.commentHeader}>
+                      <Text style={styles.commentAuthorName}>{comment.authorName}</Text>
+                      <Text style={styles.commentTime}>{comment.createdAt}</Text>
                     </View>
+                    <Text style={styles.commentText}>{comment.text}</Text>
                   </View>
-                ))}
+                </View>
+              ))}
+              {selectedTask.comments.length === 0 && (
+                <Text style={styles.noCommentsText}>Henüz yorum yok</Text>
+              )}
+
+              {/* Comment Input */}
+              <View style={styles.commentInputContainer}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Yorum yaz..."
+                  placeholderTextColor="#9CA3AF"
+                  value={newComment}
+                  onChangeText={setNewComment}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[styles.commentSendButton, !newComment.trim() && styles.commentSendButtonDisabled]}
+                  onPress={() => handleAddComment(selectedTask.id)}
+                  disabled={!newComment.trim()}
+                >
+                  <Ionicons name="send" size={18} color={newComment.trim() ? '#fff' : '#9CA3AF'} />
+                </TouchableOpacity>
               </View>
-            )}
+            </View>
           </ScrollView>
 
           {/* Action Buttons */}
-          {currentUser && canApproveTask(currentUser, selectedTask) && (
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.approveButton}>
+          <View style={styles.modalActions}>
+            {currentUser && canApproveTask(currentUser, selectedTask) && (
+              <TouchableOpacity
+                style={styles.approveButton}
+                onPress={() => handleApproveTask(selectedTask.id)}
+              >
                 <Ionicons name="checkmark" size={20} color="#fff" />
                 <Text style={styles.approveButtonText}>Onayla</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+            {!canApproveTask(currentUser!, selectedTask) && (
+              <TouchableOpacity
+                style={[styles.statusButton, { backgroundColor: getStatusColor(selectedTask.status) }]}
+                onPress={() => handleCycleTaskStatus(selectedTask.id, selectedTask.status)}
+              >
+                <Ionicons name="sync" size={18} color="#fff" />
+                <Text style={styles.statusButtonText}>Durumu Değiştir</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </Modal>
     );
@@ -1797,6 +2020,69 @@ const styles = StyleSheet.create({
   },
   approveButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // New styles for interactive elements
+  modalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  checklistProgress: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  noCommentsText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginTop: 16,
+    gap: 8,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1F2937',
+    minHeight: 44,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  commentSendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#4B30B8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentSendButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  statusButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  statusButtonText: {
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
   },

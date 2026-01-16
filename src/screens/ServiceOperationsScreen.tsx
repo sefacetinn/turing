@@ -7,12 +7,22 @@ import {
   Image,
   ScrollView,
   Linking,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { ServiceCategory } from '../types';
+import * as Haptics from 'expo-haptics';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Types
 type ServiceOperationsParams = {
@@ -186,7 +196,8 @@ export function ServiceOperationsScreen() {
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team'>('tasks');
 
-  const tasks = useMemo(() => generateTasks(serviceCategory), [serviceCategory]);
+  // Mutable tasks state
+  const [tasks, setTasks] = useState<OperationTask[]>(() => generateTasks(serviceCategory));
   const team = useMemo(() => generateTeam(serviceCategory), [serviceCategory]);
   const schedule = useMemo(() => generateSchedule(serviceCategory), [serviceCategory]);
 
@@ -195,6 +206,32 @@ export function ServiceOperationsScreen() {
 
   const handleCall = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`);
+  }, []);
+
+  // Cycle task status: pending → in_progress → completed → pending
+  const handleCycleTaskStatus = useCallback((taskId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setTasks(prevTasks => prevTasks.map(task => {
+      if (task.id !== taskId) return task;
+
+      const statusCycle: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+      const currentIndex = statusCycle.indexOf(task.status);
+      const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
+
+      return { ...task, status: nextStatus };
+    }));
+  }, []);
+
+  // Complete task directly
+  const handleCompleteTask = useCallback((taskId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    setTasks(prevTasks => prevTasks.map(task =>
+      task.id === taskId ? { ...task, status: 'completed' } : task
+    ));
   }, []);
 
   const tabs = [
@@ -286,11 +323,24 @@ export function ServiceOperationsScreen() {
               const statusStyle = getStatusStyle(task.status);
               return (
                 <View key={task.id} style={[styles.taskCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                  <View style={styles.taskLeft}>
-                    <View style={[styles.taskCheckbox, { borderColor: statusStyle.text, backgroundColor: task.status === 'completed' ? statusStyle.text : 'transparent' }]}>
+                  {/* Interactive Checkbox */}
+                  <TouchableOpacity
+                    style={styles.taskLeft}
+                    onPress={() => handleCycleTaskStatus(task.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.taskCheckbox,
+                      {
+                        borderColor: statusStyle.text,
+                        backgroundColor: task.status === 'completed' ? statusStyle.text :
+                                        task.status === 'in_progress' ? statusStyle.text + '40' : 'transparent'
+                      }
+                    ]}>
                       {task.status === 'completed' && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                      {task.status === 'in_progress' && <View style={styles.inProgressDot} />}
                     </View>
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.taskContent}>
                     <Text style={[styles.taskTitle, { color: colors.text }, task.status === 'completed' && styles.taskTitleCompleted]}>{task.title}</Text>
                     <View style={styles.taskMeta}>
@@ -299,9 +349,14 @@ export function ServiceOperationsScreen() {
                       <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>{task.time}</Text>
                     </View>
                   </View>
-                  <View style={[styles.taskStatus, { backgroundColor: statusStyle.bg }]}>
+                  {/* Interactive Status Badge */}
+                  <TouchableOpacity
+                    style={[styles.taskStatus, { backgroundColor: statusStyle.bg }]}
+                    onPress={() => handleCycleTaskStatus(task.id)}
+                    activeOpacity={0.7}
+                  >
                     <Text style={[styles.taskStatusText, { color: statusStyle.text }]}>{getStatusLabel(task.status)}</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -480,6 +535,12 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  inProgressDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
   },
   taskContent: {
     flex: 1,
