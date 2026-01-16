@@ -959,58 +959,37 @@ export function ProviderEventDetailScreen() {
               <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
             </View>
 
-            {/* Task Progress */}
-            <View style={styles.sectionBlock}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Görev İlerlemesi</Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
-                  {taskStats.completed}/{taskStats.total} tamamlandı
-                </Text>
-              </View>
-              <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.surfaceAlt }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${(taskStats.completed / taskStats.total) * 100}%`, backgroundColor: colors.brand[500] }
-                  ]}
-                />
-              </View>
-            </View>
+            {/* Summary Stats - Compact Cards */}
+            <View style={styles.summaryStats}>
+              <TouchableOpacity
+                style={[styles.summaryStatCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}
+                onPress={() => setActiveSection('tasks')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="checkbox-outline" size={22} color={colors.brand[400]} />
+                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{taskStats.completed}/{taskStats.total}</Text>
+                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>Görev</Text>
+              </TouchableOpacity>
 
-            {/* Team */}
-            <View style={styles.sectionBlock}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Ekip</Text>
-                <TouchableOpacity onPress={() => setActiveSection('team')}>
-                  <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör</Text>
-                </TouchableOpacity>
-              </View>
-              {team.length > 0 ? (
-                team.slice(0, 3).map(member => renderTeamMember(member))
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="people-outline" size={32} color={colors.textMuted} />
-                  <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz ekip üyesi yok</Text>
-                </View>
-              )}
-            </View>
+              <TouchableOpacity
+                style={[styles.summaryStatCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}
+                onPress={() => setActiveSection('team')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="people-outline" size={22} color={colors.brand[400]} />
+                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{team.length}</Text>
+                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>Ekip</Text>
+              </TouchableOpacity>
 
-            {/* Documents */}
-            <View style={styles.sectionBlock}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Dökümanlar</Text>
-                <TouchableOpacity onPress={() => setActiveSection('documents')}>
-                  <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümünü Gör</Text>
-                </TouchableOpacity>
-              </View>
-              {documents.length > 0 ? (
-                documents.slice(0, 3).map(doc => renderDocument(doc))
-              ) : (
-                <View style={styles.emptyState}>
-                  <Ionicons name="folder-outline" size={32} color={colors.textMuted} />
-                  <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz döküman yok</Text>
-                </View>
-              )}
+              <TouchableOpacity
+                style={[styles.summaryStatCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}
+                onPress={() => setActiveSection('documents')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="document-outline" size={22} color={colors.brand[400]} />
+                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{documents.length}</Text>
+                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>Döküman</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -1771,6 +1750,24 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 14,
     lineHeight: 22,
+  },
+  summaryStats: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  summaryStatCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 14,
+    gap: 6,
+  },
+  summaryStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  summaryStatLabel: {
+    fontSize: 12,
   },
   progressBar: {
     height: 8,
