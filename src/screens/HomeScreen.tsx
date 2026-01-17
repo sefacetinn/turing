@@ -132,6 +132,9 @@ function OrganizerHomeContent() {
 
   const dashboard = organizerDashboard;
 
+  // Calendar events for widget
+  const calendarEvents = useMemo(() => transformOrganizerEvents(organizerEvents), []);
+
   // Unified accent color - Brand purple
   const accentColor = colors.brand[400];
   const accentBg = isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)';
@@ -249,6 +252,12 @@ function OrganizerHomeContent() {
             </View>
           </View>
         )}
+
+        {/* Calendar Widget */}
+        <CalendarWidget
+          events={calendarEvents}
+          onPress={() => navigation.navigate('CalendarView' as any)}
+        />
 
         {/* Active Events - Horizontal Scroll */}
         <View style={styles.section}>
@@ -492,6 +501,9 @@ function ProviderHomeContent() {
     });
   }, [providerServices]);
 
+  // Calendar events for widget
+  const calendarEvents = useMemo(() => transformProviderEvents(providerEvents), []);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollHeader
@@ -552,6 +564,12 @@ function ProviderHomeContent() {
           onOffersPress={() => navigation.navigate('OffersTab' as any)}
           onJobsPress={() => navigation.navigate('EventsTab' as any)}
           onCalendarPress={() => navigation.navigate('CalendarView' as any)}
+        />
+
+        {/* Calendar Widget */}
+        <CalendarWidget
+          events={calendarEvents}
+          onPress={() => navigation.navigate('CalendarView' as any)}
         />
 
         <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />
