@@ -159,7 +159,7 @@ function OrganizerHomeContent() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
-              onPress={() => navigation.navigate('CalendarView' as any)}
+              onPress={() => navigation.navigate('CalendarView')}
             >
               <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -208,7 +208,7 @@ function OrganizerHomeContent() {
           <TouchableOpacity
             style={[styles.nextEventCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('OrganizerEventDetail' as any, { eventId: dashboard.nextEvent.id })}
+            onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: dashboard.nextEvent.id })}
           >
             <Image source={{ uri: dashboard.nextEvent.image }} style={styles.nextEventImage} />
             <View style={styles.nextEventContent}>
@@ -245,9 +245,9 @@ function OrganizerHomeContent() {
                   ]}
                   onPress={() => {
                     if (action.type === 'offer' && action.offerId) {
-                      navigation.navigate('OfferDetail' as any, { offerId: action.offerId });
+                      navigation.navigate('OfferDetail', { offerId: action.offerId });
                     } else if (action.type === 'service') {
-                      navigation.navigate('ServiceProviders' as any, { category: action.serviceCategory || 'technical' });
+                      navigation.navigate('ServiceProviders', { category: action.serviceCategory || 'technical' });
                     }
                   }}
                 >
@@ -278,7 +278,7 @@ function OrganizerHomeContent() {
               <TouchableOpacity
                 key={event.id}
                 style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
-                onPress={() => navigation.navigate('OrganizerEventDetail' as any, { eventId: event.id })}
+                onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
               >
                 <Image source={{ uri: event.image }} style={styles.eventCardImage} />
                 <View style={styles.eventCardBody}>
@@ -315,7 +315,7 @@ function OrganizerHomeContent() {
                   if (category.id === 'operation') {
                     setShowOperationModal(true);
                   } else {
-                    navigation.navigate('ServiceProviders', { category: category.id as any });
+                    navigation.navigate('ServiceProviders', { category: category.id });
                   }
                 }}
               >
@@ -407,7 +407,7 @@ function OrganizerHomeContent() {
                     style={[styles.subcategoryItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
                     onPress={() => {
                       setShowOperationModal(false);
-                      navigation.navigate('ServiceProviders', { category: sub.id as any });
+                      navigation.navigate('ServiceProviders', { category: sub.id });
                     }}
                   >
                     <LinearGradient
@@ -571,7 +571,7 @@ function ProviderHomeContent() {
           monthlyEarnings={providerStats.monthlyEarnings}
           pendingPayments={providerStats.pendingPayments}
           completedJobs={providerStats.completedJobs}
-          onPress={() => navigation.navigate('ProviderFinance' as any)}
+          onPress={() => navigation.navigate('ProviderFinance')}
         />
 
         {/* Quick Stats - 3 kolonlu: Yaklaşan İş, Teklif, Takvim */}
@@ -581,7 +581,7 @@ function ProviderHomeContent() {
           eventsThisWeek={getEventsThisWeek(transformProviderEvents(providerEvents))}
           onOffersPress={() => navigation.navigate('OffersTab' as any)}
           onJobsPress={() => navigation.navigate('EventsTab' as any)}
-          onCalendarPress={() => navigation.navigate('CalendarView' as any)}
+          onCalendarPress={() => navigation.navigate('CalendarView')}
         />
 
         <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />
@@ -590,7 +590,7 @@ function ProviderHomeContent() {
           <UpcomingJobCard
             key={job.id}
             {...job}
-            onPress={() => navigation.navigate('ProviderEventDetail' as any, { eventId: job.id })}
+            onPress={() => navigation.navigate('ProviderEventDetail', { eventId: job.id })}
           />
         ))}
 
@@ -600,7 +600,7 @@ function ProviderHomeContent() {
           <RequestCard
             key={request.id}
             {...request}
-            onPress={() => navigation.navigate('OfferDetail' as any, { offerId: request.id })}
+            onPress={() => navigation.navigate('OfferDetail', { offerId: request.id })}
           />
         ))}
 

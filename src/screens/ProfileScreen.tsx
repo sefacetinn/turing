@@ -13,6 +13,7 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { userProfile } from '../data/mockData';
 import { useApp } from '../../App';
+import { isOrganizerStats, isProviderStats } from '../types';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
 
 // Enable LayoutAnimation for Android
@@ -515,9 +516,11 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         <View style={styles.statsRow}>
           <View style={dynamicStyles.statCard}>
             <Text style={dynamicStyles.statNumber}>
-              {isProviderMode
-                ? ((profile.stats as any).completedJobs || 0)
-                : ((profile.stats as any).totalEvents || 0)}
+              {isProviderMode && isProviderStats(profile.stats)
+                ? profile.stats.completedJobs
+                : isOrganizerStats(profile.stats)
+                ? profile.stats.totalEvents
+                : 0}
             </Text>
             <Text style={dynamicStyles.statLabel}>
               {isProviderMode ? 'Tamamlanan İş' : 'Etkinlik'}
@@ -525,9 +528,11 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           </View>
           <View style={dynamicStyles.statCard}>
             <Text style={dynamicStyles.statNumber}>
-              {isProviderMode
-                ? ((profile.stats as any).activeJobs || 0)
-                : ((profile.stats as any).totalOffers || 0)}
+              {isProviderMode && isProviderStats(profile.stats)
+                ? profile.stats.activeJobs
+                : isOrganizerStats(profile.stats)
+                ? profile.stats.totalOffers
+                : 0}
             </Text>
             <Text style={dynamicStyles.statLabel}>
               {isProviderMode ? 'Aktif İş' : 'Teklif'}

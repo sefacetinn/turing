@@ -176,6 +176,53 @@ export interface User {
   verified: boolean;
 }
 
+// ============================================
+// USER PROFILE TYPES
+// ============================================
+
+// Organizer stats
+export interface OrganizerStats {
+  totalEvents: number;
+  totalOffers: number;
+  rating: number;
+  completionRate: number;
+}
+
+// Provider stats
+export interface ProviderStats {
+  completedJobs: number;
+  activeJobs: number;
+  rating: number;
+  completionRate: number;
+}
+
+// Combined profile stats (union type)
+export type ProfileStats = OrganizerStats | ProviderStats;
+
+// Type guards for profile stats
+export function isOrganizerStats(stats: ProfileStats): stats is OrganizerStats {
+  return 'totalEvents' in stats;
+}
+
+export function isProviderStats(stats: ProfileStats): stats is ProviderStats {
+  return 'completedJobs' in stats;
+}
+
+// User Profile Interface
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar?: string | null;
+  role: 'organizer' | 'provider' | 'both';
+  company?: string;
+  location?: string;
+  verified: boolean;
+  memberSince?: string;
+  stats: ProfileStats;
+}
+
 // Message Interface
 export interface Message {
   id: string;
@@ -569,6 +616,11 @@ export type HomeStackParamList = {
   ProviderFinance: undefined;
   EventOperations: { eventId: string };
   ServiceOperations: { eventId: string; serviceId: string; serviceCategory: ServiceCategory; serviceName: string; providerName: string };
+  // Eklenen ekranlar
+  CalendarView: undefined;
+  OrganizerEventDetail: { eventId: string };
+  ProviderEventDetail: { eventId: string };
+  OfferDetail: { offerId: string };
 };
 
 // Events Stack Params
