@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { EmptyState } from '../components/EmptyState';
+import { SkeletonMessageList } from '../components/Skeleton';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
@@ -39,6 +40,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const [activeTab, setActiveTab] = useState<MessageTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [conversations, setConversations] = useState(initialConversations);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
   // Animated scroll
@@ -57,6 +59,14 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
       }
     });
     return unsubscribe;
+  }, []);
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
 
   // Handle long press on conversation
@@ -214,7 +224,9 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
 
         {/* Conversations */}
         <View style={styles.conversationsList}>
-          {filteredConversations.map((chat) => (
+          {isLoading ? (
+            <SkeletonMessageList count={5} />
+          ) : filteredConversations.map((chat) => (
             <TouchableOpacity
               key={chat.id}
               style={styles.conversationItem}
@@ -254,7 +266,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
             </TouchableOpacity>
           ))}
 
-          {filteredConversations.length === 0 && (
+          {!isLoading && filteredConversations.length === 0 && (
             <EmptyState
               icon={activeTab === 'unread' ? 'mail-open-outline' : activeTab === 'archived' ? 'archive-outline' : 'chatbubbles-outline'}
               title={activeTab === 'unread' ? 'Okunmamış mesaj yok' :

@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { EmptyState } from '../components/EmptyState';
+import { SkeletonEventList } from '../components/Skeleton';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { events as mockEvents, artists } from '../data/mockData';
@@ -119,6 +120,7 @@ export function OrganizerEventsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
   // Animated scroll
@@ -137,6 +139,14 @@ export function OrganizerEventsScreen() {
       }
     });
     return unsubscribe;
+  }, []);
+
+  // Simulate initial loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
   }, []);
 
   // Animated style for header action buttons (shrink on scroll)
@@ -636,7 +646,9 @@ export function OrganizerEventsScreen() {
           </View>
         ) : (
           <View style={styles.eventsListInner}>
-            {filteredEvents.length > 0 ? (
+            {isLoading ? (
+              <SkeletonEventList count={3} />
+            ) : filteredEvents.length > 0 ? (
               filteredEvents.map(event => renderEventCard(event))
             ) : (
               <EmptyState
