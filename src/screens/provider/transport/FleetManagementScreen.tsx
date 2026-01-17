@@ -42,7 +42,7 @@ const vehicleTypeColors: Record<VehicleType, [string, string]> = {
   sedan: ['#3B82F6', '#60A5FA'],
   suv: ['#10B981', '#34D399'],
   van: ['#F59E0B', '#FBBF24'],
-  minibus: ['#9333EA', '#C084FC'],
+  minibus: ['#4b30b8', '#C084FC'],
   bus: ['#EF4444', '#F87171'],
   limousine: ['#EC4899', '#F472B6'],
   sprinter: ['#6366F1', '#818CF8'],
@@ -96,7 +96,7 @@ export function FleetManagementScreen() {
       case 'maintenance':
         return { label: 'Bakimda', color: '#F59E0B', icon: 'construct' as const };
       case 'reserved':
-        return { label: 'Rezerve', color: '#9333EA', icon: 'time' as const };
+        return { label: 'Rezerve', color: '#4b30b8', icon: 'time' as const };
       case 'out_of_service':
         return { label: 'Devre Disi', color: '#EF4444', icon: 'close-circle' as const };
       default:
@@ -113,7 +113,7 @@ export function FleetManagementScreen() {
       case 'off_duty':
         return { label: 'Izinli', color: '#F59E0B', icon: 'bed' as const };
       case 'on_leave':
-        return { label: 'Tatilde', color: '#9333EA', icon: 'airplane' as const };
+        return { label: 'Tatilde', color: '#4b30b8', icon: 'airplane' as const };
       default:
         return { label: 'Bilinmiyor', color: colors.textMuted, icon: 'help-circle' as const };
     }
@@ -122,7 +122,7 @@ export function FleetManagementScreen() {
   const getTripStatusInfo = (status: string) => {
     switch (status) {
       case 'scheduled':
-        return { label: 'Planli', color: '#9333EA', icon: 'time' as const };
+        return { label: 'Planli', color: '#4b30b8', icon: 'time' as const };
       case 'in_progress':
         return { label: 'Devam Ediyor', color: '#3B82F6', icon: 'navigate' as const };
       case 'completed':
@@ -496,8 +496,8 @@ export function FleetManagementScreen() {
           style={[
             styles.addButton,
             {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)',
-              borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)',
+              borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
             },
           ]}
           onPress={() => {
@@ -534,9 +534,9 @@ export function FleetManagementScreen() {
           <Text style={[styles.statCardValue, { color: '#22C55E' }]}>{stats.availableDrivers}</Text>
           <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>Musait Sofor</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
-          <Ionicons name="calendar" size={18} color="#9333EA" />
-          <Text style={[styles.statCardValue, { color: '#9333EA' }]}>{stats.scheduledTrips}</Text>
+        <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}>
+          <Ionicons name="calendar" size={18} color="#4b30b8" />
+          <Text style={[styles.statCardValue, { color: '#4b30b8' }]}>{stats.scheduledTrips}</Text>
           <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>Planli</Text>
         </View>
       </View>

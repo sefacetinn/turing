@@ -76,7 +76,7 @@ export function TagSelector({
           styles.tag,
           {
             backgroundColor: isSelected
-              ? isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+              ? isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)'
               : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
             borderColor: isSelected
               ? colors.brand[400]
@@ -151,7 +151,7 @@ export function TagDisplay({ tags, tagList, size = 'small' }: TagDisplayProps) {
             style={[
               styles.displayTag,
               {
-                backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.08)',
+                backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)',
                 paddingHorizontal: size === 'small' ? 8 : 10,
                 paddingVertical: size === 'small' ? 4 : 6,
               },

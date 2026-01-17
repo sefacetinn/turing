@@ -45,10 +45,10 @@ export function InvitationCard({ invitation, onCancel, onResend }: InvitationCar
         <View
           style={[
             styles.iconCircle,
-            { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)' },
+            { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' },
           ]}
         >
-          <Ionicons name="mail-outline" size={20} color="#6366f1" />
+          <Ionicons name="mail-outline" size={20} color="#4b30b8" />
         </View>
       </View>
 
@@ -86,7 +86,7 @@ export function InvitationCard({ invitation, onCancel, onResend }: InvitationCar
             style={[styles.actionButton, styles.resendButton]}
             onPress={onResend}
           >
-            <Ionicons name="refresh-outline" size={18} color="#6366f1" />
+            <Ionicons name="refresh-outline" size={18} color="#4b30b8" />
           </TouchableOpacity>
         )}
         {onCancel && (
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resendButton: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
   },
   cancelButton: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',

@@ -31,7 +31,7 @@ export function SelectionChips({ options, selected, onSelect, multiSelect = fals
               borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
             },
             isSelected(option) && {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.12)',
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.12)',
               borderColor: colors.brand[500],
             }
           ]}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,26 +12,41 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+
+type SearchScreenParams = {
+  Search: {
+    initialFilter?: 'all' | 'artists' | 'providers' | 'venues';
+    initialQuery?: string;
+  };
+};
 
 // Default colors for static styles
 const colors = defaultColors;
 
 // Local data
 const artists = [
-  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9, type: 'artist' },
-  { id: '2', name: 'DJ Burak Yeter', genre: 'EDM / House', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', rating: 4.8, type: 'artist' },
+  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9, type: 'artist', reviewCount: 128 },
+  { id: '2', name: 'DJ Burak Yeter', genre: 'EDM / House', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', rating: 4.8, type: 'artist', reviewCount: 95 },
+  { id: '3', name: 'Duman', genre: 'Rock', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400', rating: 4.9, type: 'artist', reviewCount: 312 },
+  { id: '4', name: 'Mor ve Ötesi', genre: 'Alternative Rock', image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400', rating: 4.7, type: 'artist', reviewCount: 186 },
+  { id: '5', name: 'Sezen Aksu', genre: 'Pop', image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400', rating: 5.0, type: 'artist', reviewCount: 547 },
+  { id: '6', name: 'Tarkan', genre: 'Pop', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', rating: 4.9, type: 'artist', reviewCount: 423 },
+  { id: '7', name: 'Şebnem Ferah', genre: 'Rock', image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400', rating: 4.8, type: 'artist', reviewCount: 198 },
+  { id: '8', name: 'Athena', genre: 'Ska / Rock', image: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=400', rating: 4.6, type: 'artist', reviewCount: 87 },
 ];
 
 const providers = [
-  { id: 'p1', name: 'Pro Sound Istanbul', category: 'technical', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', rating: 4.9, type: 'provider' },
-  { id: 'p2', name: 'Elite VIP Transfer', category: 'transport', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', rating: 4.8, type: 'provider' },
+  { id: 'p1', name: 'Pro Sound Istanbul', category: 'technical', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', rating: 4.9, type: 'provider', reviewCount: 64 },
+  { id: 'p2', name: 'Elite VIP Transfer', category: 'transport', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', rating: 4.8, type: 'provider', reviewCount: 112 },
+  { id: 'p3', name: 'Stage Masters', category: 'technical', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400', rating: 4.7, type: 'provider', reviewCount: 43 },
+  { id: 'p4', name: 'Backstage Catering', category: 'operation', image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400', rating: 4.5, type: 'provider', reviewCount: 28 },
 ];
 
 const categories = [
-  { id: 'booking', name: 'Booking', icon: 'musical-notes', gradient: ['#9333EA', '#6366f1'] },
+  { id: 'booking', name: 'Booking', icon: 'musical-notes', gradient: ['#4b30b8', '#4b30b8'] },
   { id: 'technical', name: 'Teknik', icon: 'volume-high', gradient: ['#059669', '#34d399'] },
   { id: 'venue', name: 'Mekan', icon: 'business', gradient: ['#2563eb', '#60a5fa'] },
   { id: 'accommodation', name: 'Konaklama', icon: 'bed', gradient: ['#db2777', '#f472b6'] },
@@ -44,14 +59,30 @@ type SortType = 'relevance' | 'rating' | 'price_low' | 'price_high';
 
 export function SearchScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<SearchScreenParams, 'Search'>>();
   const { colors, isDark, helpers } = useTheme();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  // Get initial values from route params
+  const initialFilter = route.params?.initialFilter || 'all';
+  const initialQuery = route.params?.initialQuery || '';
+
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [activeFilter, setActiveFilter] = useState<FilterType>(initialFilter);
   const [sortBy, setSortBy] = useState<SortType>('relevance');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [minRating, setMinRating] = useState(0);
+
+  // Update filter when route params change
+  useEffect(() => {
+    if (route.params?.initialFilter) {
+      setActiveFilter(route.params.initialFilter);
+    }
+    if (route.params?.initialQuery !== undefined) {
+      setSearchQuery(route.params.initialQuery);
+    }
+  }, [route.params]);
 
   const filters: { key: FilterType; label: string; icon: string }[] = [
     { key: 'all', label: 'Tümü', icon: 'apps' },
@@ -149,7 +180,7 @@ export function SearchScreen() {
             )}
           </View>
           <View style={[styles.typeBadge, {
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
           }]}>
             <Text style={[styles.typeBadgeText, { color: colors.brand[400] }]}>
               {item.type === 'artist' ? 'Sanatçı' : 'Hizmet'}
@@ -165,7 +196,7 @@ export function SearchScreen() {
           <View style={styles.ratingContainer}>
             <Ionicons name="star" size={14} color="#fbbf24" />
             <Text style={[styles.ratingText, { color: colors.text }]}>{item.rating}</Text>
-            <Text style={[styles.reviewCount, { color: colors.textMuted }]}>({item.reviews})</Text>
+            <Text style={[styles.reviewCount, { color: colors.textMuted }]}>({item.reviewCount || 0})</Text>
           </View>
 
           {item.location && (
@@ -179,7 +210,7 @@ export function SearchScreen() {
         <View style={styles.resultFooter}>
           <Text style={[styles.priceText, { color: colors.brand[400] }]}>{item.price}</Text>
           <TouchableOpacity style={[styles.contactButton, {
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
           }]}>
             <Ionicons name="chatbubble-outline" size={16} color={colors.brand[400]} />
           </TouchableOpacity>
@@ -222,7 +253,7 @@ export function SearchScreen() {
           style={[styles.filterButton, {
             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
           }, showFilters && {
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
           }]}
           onPress={() => setShowFilters(!showFilters)}
         >
@@ -242,7 +273,7 @@ export function SearchScreen() {
             style={[styles.filterTab, {
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
             }, activeFilter === filter.key && {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
             }]}
             onPress={() => setActiveFilter(filter.key)}
           >
@@ -281,7 +312,7 @@ export function SearchScreen() {
                     style={[styles.sortOption, {
                       backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
                     }, sortBy === option.key && {
-                      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
                     }]}
                     onPress={() => setSortBy(option.key)}
                   >
@@ -310,7 +341,7 @@ export function SearchScreen() {
                   style={[styles.ratingOption, {
                     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
                   }, minRating === rating && {
-                    backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                    backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
                   }]}
                   onPress={() => setMinRating(rating)}
                 >
@@ -342,7 +373,7 @@ export function SearchScreen() {
                       backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
                     },
                     selectedCategories.includes(category.id) && {
-                      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+                      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
                     },
                   ]}
                   onPress={() => toggleCategory(category.id)}
@@ -374,7 +405,7 @@ export function SearchScreen() {
         <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>{results.length} sonuç bulundu</Text>
         {selectedCategories.length > 0 && (
           <View style={[styles.activeFiltersCount, {
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)'
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
           }]}>
             <Text style={[styles.activeFiltersText, { color: colors.brand[400] }]}>
               {selectedCategories.length} filtre aktif
@@ -444,7 +475,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterButtonActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   filterTabs: {
     flexDirection: 'row',
@@ -462,7 +493,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   filterTabActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   filterTabText: {
     fontSize: 11,
@@ -497,7 +528,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   sortOptionActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   sortOptionText: {
     fontSize: 13,
@@ -519,7 +550,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   ratingOptionActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   ratingOptionText: {
     fontSize: 13,
@@ -539,7 +570,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   categoryChipActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   categoryChipText: {
     fontSize: 13,
@@ -569,7 +600,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   activeFiltersCount: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -615,7 +646,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   typeBadge: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -668,7 +699,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },

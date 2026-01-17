@@ -87,7 +87,7 @@ export function TeamMemberCard({
             {member.name}
           </Text>
           {isCurrentUser && (
-            <View style={[styles.youBadge, { backgroundColor: '#6366f1' }]}>
+            <View style={[styles.youBadge, { backgroundColor: '#4b30b8' }]}>
               <Text style={styles.youBadgeText}>Sen</Text>
             </View>
           )}

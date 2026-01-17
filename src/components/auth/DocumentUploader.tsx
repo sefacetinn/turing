@@ -150,7 +150,7 @@ export function DocumentUploader({
                 {
                   backgroundColor: value.type === 'pdf'
                     ? 'rgba(239, 68, 68, 0.15)'
-                    : 'rgba(99, 102, 241, 0.15)',
+                    : 'rgba(75, 48, 184, 0.15)',
                 },
               ]}
             >

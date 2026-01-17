@@ -178,7 +178,7 @@ export function ReviewSummary({
                 key={index}
                 style={[
                   styles.summaryTag,
-                  { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.08)' },
+                  { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' },
                 ]}
               >
                 <Text style={[styles.summaryTagText, { color: colors.brand[400] }]}>

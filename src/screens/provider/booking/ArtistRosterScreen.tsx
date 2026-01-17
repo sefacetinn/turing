@@ -9,39 +9,38 @@ import {
   Image,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../../../components/navigation';
 import { useTheme } from '../../../theme/ThemeContext';
 import {
   Artist,
   mockArtists,
-  mockContracts,
   getArtistStats,
 } from '../../../data/provider/artistData';
+import * as Haptics from 'expo-haptics';
 
 type TabType = 'all' | 'available' | 'on_tour' | 'inactive';
-
-const genreColors: Record<string, [string, string]> = {
-  Electronic: ['#9333EA', '#C084FC'],
-  House: ['#3B82F6', '#60A5FA'],
-  Techno: ['#10B981', '#34D399'],
-  Pop: ['#EC4899', '#F472B6'],
-  'R&B': ['#F59E0B', '#FBBF24'],
-  Rock: ['#EF4444', '#F87171'],
-  Alternative: ['#6366F1', '#818CF8'],
-  'Deep House': ['#0EA5E9', '#38BDF8'],
-  'Melodic Techno': ['#8B5CF6', '#A78BFA'],
-  'Turkish Pop': ['#F43F5E', '#FB7185'],
-};
 
 export function ArtistRosterScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -76,454 +75,455 @@ export function ArtistRosterScreen() {
   const getAvailabilityInfo = (artist: Artist) => {
     switch (artist.availability) {
       case 'available':
-        return { label: 'Musait', color: '#10B981', icon: 'checkmark-circle' as const };
+        return { label: 'Müsait', color: '#10B981' };
       case 'busy':
-        return { label: 'Mesgul', color: '#EF4444', icon: 'close-circle' as const };
+        return { label: 'Meşgul', color: '#EF4444' };
       case 'limited':
-        return { label: 'Sinirli', color: '#F59E0B', icon: 'warning' as const };
+        return { label: 'Sınırlı', color: '#F59E0B' };
       default:
-        return { label: 'Bilinmiyor', color: colors.textMuted, icon: 'help-circle' as const };
+        return { label: 'Bilinmiyor', color: colors.textMuted };
     }
   };
 
   const tabs = [
-    { key: 'all' as TabType, label: 'Tumu', count: mockArtists.length },
-    { key: 'available' as TabType, label: 'Musait', count: stats.availableArtists },
+    { key: 'all' as TabType, label: 'Tümü', count: mockArtists.length },
+    { key: 'available' as TabType, label: 'Müsait', count: stats.availableArtists },
     { key: 'on_tour' as TabType, label: 'Turnede', count: mockArtists.filter(a => a.status === 'on_tour').length },
     { key: 'inactive' as TabType, label: 'Pasif', count: mockArtists.filter(a => a.status === 'inactive').length },
   ];
 
-  const renderArtistCard = (artist: Artist) => {
+  const handleTabChange = (tab: TabType) => {
+    Haptics.selectionAsync();
+    setActiveTab(tab);
+  };
+
+  const formatFollowers = (num: string) => {
+    const n = parseInt(num.replace(/[^0-9]/g, ''));
+    if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n / 1000).toFixed(0)}K`;
+    return num;
+  };
+
+  const renderArtistItem = (artist: Artist, index: number) => {
     const availabilityInfo = getAvailabilityInfo(artist);
-    const upcomingShowsCount = artist.upcomingShows.length;
+    const displayName = artist.stageName || artist.name;
     const primaryGenre = artist.genre[0];
-    const genreGradient = genreColors[primaryGenre] || ['#6366F1', '#818CF8'];
 
     return (
       <TouchableOpacity
         key={artist.id}
         style={[
-          styles.artistCard,
+          styles.artistItem,
           {
             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
             borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
           },
+          index === 0 && styles.artistItemFirst,
         ]}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('ArtistDetailManage', { artistId: artist.id })}
+        activeOpacity={0.7}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.navigate('ArtistDetailManage', { artistId: artist.id });
+        }}
       >
-        <View style={styles.cardImageContainer}>
-          <Image source={{ uri: artist.coverImage }} style={styles.cardCoverImage} />
-          <LinearGradient
-            colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.8)']}
-            style={styles.cardImageGradient}
-            locations={[0, 0.4, 1]}
-          />
+        {/* Avatar */}
+        <View style={styles.avatarContainer}>
+          <Image source={{ uri: artist.image }} style={styles.avatar} />
+          <View style={[styles.statusDot, { backgroundColor: availabilityInfo.color }]} />
+        </View>
 
-          <View style={styles.topLeftBadges}>
-            <LinearGradient
-              colors={genreGradient}
-              style={styles.genreBadge}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="musical-notes" size={12} color="white" />
-              <Text style={styles.genreText}>{primaryGenre}</Text>
-            </LinearGradient>
-          </View>
+        {/* Info */}
+        <View style={styles.artistInfo}>
+          <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={[styles.artistMeta, { color: colors.textMuted }]} numberOfLines={1}>
+            {primaryGenre} • {artist.priceRange}
+          </Text>
+        </View>
 
-          <View style={styles.topRightBadges}>
-            <View style={[styles.availabilityBadge, { backgroundColor: `${availabilityInfo.color}30` }]}>
-              <Ionicons name={availabilityInfo.icon} size={12} color={availabilityInfo.color} />
-              <Text style={[styles.availabilityText, { color: availabilityInfo.color }]}>
-                {availabilityInfo.label}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.artistImageContainer}>
-            <Image source={{ uri: artist.image }} style={styles.artistImage} />
-          </View>
-
-          <View style={styles.cardImageContent}>
-            <Text style={styles.artistName} numberOfLines={1}>
-              {artist.stageName || artist.name}
-            </Text>
-            {artist.stageName && (
-              <Text style={styles.artistRealName}>{artist.name}</Text>
-            )}
+        {/* Stats */}
+        <View style={styles.artistStats}>
+          <View style={styles.statBadge}>
+            <Ionicons name="star" size={12} color="#F59E0B" />
+            <Text style={[styles.statText, { color: colors.text }]}>{artist.rating}</Text>
           </View>
         </View>
 
-        <View style={styles.cardContent}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="star" size={14} color={colors.brand[400]} />
-              </View>
-              <View>
-                <Text style={[styles.statValue, { color: colors.text }]}>{artist.rating}</Text>
-                <Text style={[styles.statLabel, { color: colors.textMuted }]}>Puan</Text>
-              </View>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="musical-note" size={14} color={colors.brand[400]} />
-              </View>
-              <View>
-                <Text style={[styles.statValue, { color: colors.text }]}>{artist.stats.totalShows}</Text>
-                <Text style={[styles.statLabel, { color: colors.textMuted }]}>Gosteriler</Text>
-              </View>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.statItem}>
-              <View style={styles.statIconContainer}>
-                <Ionicons name="people" size={14} color={colors.brand[400]} />
-              </View>
-              <View>
-                <Text style={[styles.statValue, { color: colors.text }]}>{artist.stats.followers}</Text>
-                <Text style={[styles.statLabel, { color: colors.textMuted }]}>Takipci</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.priceRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
-            <View style={styles.priceInfo}>
-              <Ionicons name="cash-outline" size={16} color={colors.textMuted} />
-              <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Ucret Araligi</Text>
-            </View>
-            <Text style={[styles.priceValue, { color: colors.text }]}>{artist.priceRange}</Text>
-          </View>
-
-          <View style={styles.cardFooter}>
-            <View style={styles.upcomingInfo}>
-              <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-              <Text style={[styles.upcomingText, { color: colors.textMuted }]}>
-                {upcomingShowsCount > 0
-                  ? `${upcomingShowsCount} yaklasan etkinlik`
-                  : 'Yaklasan etkinlik yok'}
-              </Text>
-            </View>
-            <View style={styles.genreTags}>
-              {artist.genre.slice(1, 3).map((g, i) => (
-                <View key={i} style={[styles.genreTag, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                  <Text style={[styles.genreTagText, { color: colors.textMuted }]}>{g}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
+        {/* Chevron */}
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollHeader
+        title="Sanatçılar"
+        scrollY={scrollY}
+        showBackButton
+        rightAction={
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            style={[styles.addButton, { backgroundColor: colors.brand[500] }]}
+            onPress={() => navigation.navigate('AddEditArtist')}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <Ionicons name="add" size={20} color="white" />
           </TouchableOpacity>
-          <View>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Sanatci Kadrosu</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-              {stats.totalArtists} sanatci, {stats.upcomingShows} yaklasan gosteriler
-            </Text>
+        }
+      />
+
+      <Animated.ScrollView
+        style={styles.content}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 44 }]}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand[400]} />}
+      >
+        <LargeTitle
+          title="Sanatçılar"
+          subtitle={`${stats.totalArtists} sanatçı`}
+          scrollY={scrollY}
+        />
+
+        {/* Quick Stats */}
+        <View style={styles.quickStats}>
+          <View style={[styles.quickStatItem, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}>
+            <Text style={[styles.quickStatValue, { color: '#10B981' }]}>{stats.availableArtists}</Text>
+            <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Müsait</Text>
+          </View>
+          <View style={[styles.quickStatItem, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.08)' }]}>
+            <Text style={[styles.quickStatValue, { color: '#F59E0B' }]}>{stats.upcomingShows}</Text>
+            <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Gösteri</Text>
+          </View>
+          <View style={[styles.quickStatItem, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)' }]}>
+            <Text style={[styles.quickStatValue, { color: '#6366F1' }]}>{(stats.totalRevenue / 1000).toFixed(0)}K</Text>
+            <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Gelir</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={[
-            styles.addButton,
-            {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)',
-              borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
-            },
-          ]}
-          onPress={() => navigation.navigate('AddEditArtist')}
+
+        {/* Search */}
+        <View style={styles.searchSection}>
+          <View
+            style={[
+              styles.searchBar,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F5F5F5',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+              },
+            ]}
+          >
+            <Ionicons name="search" size={18} color={colors.textMuted} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Sanatçı veya tür ara..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsContainer}
+          style={styles.tabs}
         >
-          <Ionicons name="add" size={22} color={colors.brand[400]} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats Summary */}
-      <View style={[styles.statsSummary, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }]}>
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: colors.brand[400] }]}>{stats.activeArtists}</Text>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Aktif</Text>
-        </View>
-        <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: '#10B981' }]}>{stats.availableArtists}</Text>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Musait</Text>
-        </View>
-        <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: '#F59E0B' }]}>{stats.pendingContracts}</Text>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Bekleyen Sozlesme</Text>
-        </View>
-        <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-        <View style={styles.summaryItem}>
-          <Text style={[styles.summaryValue, { color: colors.text }]}>
-            {(stats.totalRevenue / 1000).toFixed(0)}K
-          </Text>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Gelir</Text>
-        </View>
-      </View>
-
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <View
-          style={[
-            styles.searchBar,
-            {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-            },
-          ]}
-        >
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Sanatci ara..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Tabs */}
-      <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={styles.tab}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <View style={styles.tabContent}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  styles.tab,
+                  isActive && styles.tabActive,
+                  isActive && { backgroundColor: colors.brand[500] },
+                  !isActive && { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F5F5F5' },
+                ]}
+                onPress={() => handleTabChange(tab.key)}
+              >
                 <Text
                   style={[
                     styles.tabText,
-                    { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted },
+                    { color: isActive ? 'white' : colors.textMuted },
                   ]}
                 >
                   {tab.label}
                 </Text>
                 <View
                   style={[
-                    styles.tabBadge,
-                    {
-                      backgroundColor: activeTab === tab.key
-                        ? 'rgba(147, 51, 234, 0.2)'
-                        : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                    },
+                    styles.tabCount,
+                    { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)') },
                   ]}
                 >
                   <Text
                     style={[
-                      styles.tabBadgeText,
-                      { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted },
+                      styles.tabCountText,
+                      { color: isActive ? 'white' : colors.textMuted },
                     ]}
                   >
                     {tab.count}
                   </Text>
                 </View>
-              </View>
-              {activeTab === tab.key && (
-                <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />
-              )}
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
-      </View>
 
-      {/* Artists List */}
-      <ScrollView
-        style={styles.artistsList}
-        contentContainerStyle={styles.artistsListContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand[400]} />}
-      >
-        {filteredArtists.length > 0 ? (
-          filteredArtists.map(renderArtistCard)
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="person-outline" size={48} color={colors.textMuted} />
-            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Sanatci bulunamadi</Text>
-            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
-              Arama kriterlerinize uygun sanatci yok
+        {/* Artists List */}
+        <View style={styles.listSection}>
+          <View style={styles.listHeader}>
+            <Text style={[styles.listTitle, { color: colors.textMuted }]}>
+              {filteredArtists.length} Sanatçı
             </Text>
+            <TouchableOpacity style={styles.sortButton}>
+              <Ionicons name="swap-vertical" size={16} color={colors.textMuted} />
+              <Text style={[styles.sortText, { color: colors.textMuted }]}>Sırala</Text>
+            </TouchableOpacity>
           </View>
-        )}
+
+          {filteredArtists.length > 0 ? (
+            <View style={[
+              styles.listContainer,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+              }
+            ]}>
+              {filteredArtists.map((artist, index) => (
+                <View key={artist.id}>
+                  {renderArtistItem(artist, index)}
+                  {index < filteredArtists.length - 1 && (
+                    <View style={[styles.separator, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border }]} />
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F5F5F5' }]}>
+                <Ionicons name="person-outline" size={32} color={colors.textMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Sanatçı bulunamadı</Text>
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                Arama kriterlerinize uygun sonuç yok
+              </Text>
+            </View>
+          )}
+        </View>
+
         <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  container: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
-  headerSubtitle: { fontSize: 13, marginTop: 2 },
-  addButton: {
-    width: 44,
-    height: 44,
+
+  // Quick Stats
+  quickStats: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
+  quickStatItem: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
   },
-  statsSummary: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
+  quickStatValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  quickStatLabel: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  // Search
+  searchSection: {
     marginBottom: 16,
-    padding: 14,
-    borderRadius: 14,
-    alignItems: 'center',
   },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  summaryValue: { fontSize: 18, fontWeight: '700' },
-  summaryLabel: { fontSize: 10, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.3 },
-  summaryDivider: { width: 1, height: 30 },
-  searchContainer: { paddingHorizontal: 20, marginBottom: 16 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderWidth: 1,
     gap: 10,
-  },
-  searchInput: { flex: 1, fontSize: 15 },
-  tabContainer: {
-    borderBottomWidth: 1,
-    marginBottom: 8,
-  },
-  tabScroll: { paddingHorizontal: 20, gap: 8 },
-  tab: { paddingVertical: 12, paddingHorizontal: 8, position: 'relative' },
-  tabContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tabText: { fontSize: 14, fontWeight: '500' },
-  tabBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  tabBadgeText: { fontSize: 11, fontWeight: '600' },
-  tabIndicator: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, borderRadius: 1 },
-  artistsList: { flex: 1 },
-  artistsListContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 16 },
-  artistCard: {
-    borderRadius: 20,
     borderWidth: 1,
-    overflow: 'hidden',
   },
-  cardImageContainer: { height: 140, position: 'relative' },
-  cardCoverImage: { width: '100%', height: '100%' },
-  cardImageGradient: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
-  topLeftBadges: { position: 'absolute', top: 12, left: 12 },
-  genreBadge: {
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+
+  // Tabs
+  tabs: {
+    marginBottom: 20,
+    marginHorizontal: -20,
+  },
+  tabsContainer: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 8,
   },
-  genreText: { fontSize: 11, fontWeight: '600', color: 'white' },
-  topRightBadges: { position: 'absolute', top: 12, right: 12 },
-  availabilityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  tabActive: {},
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tabCount: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
-  availabilityText: { fontSize: 10, fontWeight: '600' },
-  artistImageContainer: {
-    position: 'absolute',
-    bottom: -30,
-    left: 16,
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    borderWidth: 3,
-    borderColor: 'rgba(0,0,0,0.3)',
-    overflow: 'hidden',
+  tabCountText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
-  artistImage: { width: '100%', height: '100%' },
-  cardImageContent: { position: 'absolute', bottom: 12, left: 92, right: 12 },
-  artistName: { fontSize: 18, fontWeight: '700', color: 'white' },
-  artistRealName: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  cardContent: { padding: 16, paddingTop: 8 },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 14,
-  },
-  statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statValue: { fontSize: 14, fontWeight: '700' },
-  statLabel: { fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 1 },
-  statDivider: { width: 1, height: 30 },
-  priceRow: {
+
+  // List Section
+  listSection: {},
+  listHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 10,
     marginBottom: 12,
   },
-  priceInfo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  priceLabel: { fontSize: 12 },
-  priceValue: { fontSize: 13, fontWeight: '600' },
-  cardFooter: {
+  listTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
   },
-  upcomingInfo: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  upcomingText: { fontSize: 11 },
-  genreTags: { flexDirection: 'row', gap: 6 },
-  genreTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  genreTagText: { fontSize: 10 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyStateTitle: { fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 },
-  emptyStateText: { fontSize: 14, textAlign: 'center' },
+  sortText: {
+    fontSize: 13,
+  },
+  listContainer: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+
+  // Artist Item
+  artistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 14,
+  },
+  artistItemFirst: {},
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  artistInfo: {
+    flex: 1,
+  },
+  artistName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  artistMeta: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  artistStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 8,
+  },
+  statText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  separator: {
+    height: 1,
+    marginLeft: 78,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
 });

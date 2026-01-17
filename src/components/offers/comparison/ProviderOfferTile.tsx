@@ -22,7 +22,7 @@ export function ProviderOfferTile({
 }: ProviderOfferTileProps) {
   const { colors, isDark } = useTheme();
 
-  const accentColor = '#6366f1';
+  const accentColor = '#4b30b8';
 
   return (
     <TouchableOpacity

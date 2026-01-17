@@ -71,7 +71,7 @@ const posterTemplates: PosterTemplate[] = [
     preview: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400',
     gradientColors: ['#1a1a1a', '#2d2d2d', '#1a1a1a'],
     textColor: '#ffffff',
-    accentColor: '#9333ea',
+    accentColor: '#4b30b8',
     overlayOpacity: 0.85,
     fontStyle: 'elegant',
   },
@@ -337,7 +337,7 @@ export function PosterGenerator({
                 styles.sizeOption,
                 {
                   backgroundColor: selectedSize === size.id
-                    ? isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+                    ? isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)'
                     : isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
                   borderColor: selectedSize === size.id ? colors.brand[400] : isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
                 },

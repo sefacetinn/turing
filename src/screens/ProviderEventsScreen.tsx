@@ -1,18 +1,26 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   TextInput,
   Image,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { EmptyState } from '../components/EmptyState';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useApp } from '../../App';
@@ -25,6 +33,7 @@ import {
   getPaymentInfo,
   calculateStats,
 } from '../data/providerEventsData';
+import { scrollToTopEmitter } from '../utils/scrollToTop';
 
 const colors = defaultColors;
 
@@ -32,9 +41,42 @@ export function ProviderEventsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const { providerServices } = useApp();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'EventsTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Animated style for calendar button (shrink on scroll)
+  const calendarAnimatedStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scrollY.value,
+      [0, 60, 120],
+      [1, 0.85, 0.75],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ scale }],
+    };
+  });
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -42,6 +84,16 @@ export function ProviderEventsScreen() {
       setRefreshing(false);
     }, 1000);
   }, []);
+
+  // Format money for display (compact)
+  const formatMoney = (amount: number): string => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1).replace('.0', '')}M`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K`;
+    }
+    return amount.toLocaleString('tr-TR');
+  };
 
   // Filter events by provider's service types
   const serviceFilteredEvents = useMemo(() => {
@@ -102,25 +154,29 @@ export function ProviderEventsScreen() {
 
   const stats = useMemo(() => calculateStats(serviceFilteredEvents), [serviceFilteredEvents]);
 
-  // Generate card title as "Artist/Event Name - City"
+  // Generate card title - show main event name and city
   const getCardTitle = (event: ProviderEvent) => {
-    // Extract city from location (e.g., "İstanbul, Maçka" -> "İstanbul")
     const city = event.location.split(',')[0].trim();
 
-    // Try to extract artist name if it's a concert (contains "Konseri - " or similar)
-    if (event.eventTitle.includes(' - ')) {
-      const parts = event.eventTitle.split(' - ');
-      // If it's like "Vodafone Park Konseri - Tarkan", use the artist name
-      if (parts.length === 2 && !parts[1].includes('20')) {
-        return `${parts[1]} - ${city}`;
-      }
-      // If it's like "Düğün - Zeynep & Emre", use the names
-      return `${parts[1]} - ${city}`;
+    // For booking events, show artist name prominently
+    if (event.serviceType === 'booking') {
+      // Extract artist name from serviceLabel (e.g., "Tarkan - Headliner" -> "Tarkan")
+      const artistName = event.serviceLabel.split(' - ')[0].trim();
+      return `${artistName} - ${city}`;
     }
 
-    // For festivals and other events, use a shortened title
-    const shortTitle = event.eventTitle.split(' ').slice(0, 2).join(' ');
-    return `${shortTitle} - ${city}`;
+    // For other events, use a clean short title
+    // Remove year if present and use first meaningful part
+    let title = event.eventTitle
+      .replace(/\s*20\d{2}\s*/g, '') // Remove year
+      .replace(/\s*-\s*$/, ''); // Remove trailing dash
+
+    // If title is too long, shorten it
+    if (title.length > 25) {
+      title = title.split(' ').slice(0, 3).join(' ');
+    }
+
+    return `${title} - ${city}`;
   };
 
   const renderEventCard = (event: ProviderEvent) => {
@@ -157,7 +213,7 @@ export function ProviderEventsScreen() {
               >
                 <Ionicons name={serviceInfo.icon as any} size={12} color="white" />
               </LinearGradient>
-              <Text style={styles.serviceLabelText}>{event.serviceLabel}</Text>
+              <Text style={styles.serviceLabelText} numberOfLines={1}>{event.serviceLabel}</Text>
             </View>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={11} color="rgba(255,255,255,0.9)" />
@@ -219,8 +275,8 @@ export function ProviderEventsScreen() {
             </View>
             <View style={styles.earningDivider} />
             <View style={styles.earningItem}>
-              <Text style={[styles.earningLabel, { color: colors.textMuted }]}>Kalan</Text>
-              <Text style={[styles.earningValue, { color: colors.warning }]}>
+              <Text style={[styles.earningLabel, { color: colors.textMuted }]}>Bekleyen</Text>
+              <Text style={[styles.earningValue, { color: colors.brand[400] }]}>
                 ₺{(event.earnings - event.paidAmount).toLocaleString('tr-TR')}
               </Text>
             </View>
@@ -261,127 +317,133 @@ export function ProviderEventsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>İşlerim</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-            {stats.activeCount} aktif iş
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.calendarButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
-          onPress={() => navigation.navigate('CalendarView')}
-        >
-          <Ionicons name="calendar" size={20} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={[styles.earningsSummary, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
-        <View style={styles.summaryRow}>
-          <View style={styles.earningsMain}>
-            <Text style={[styles.earningsMainValue, { color: colors.text }]}>₺{stats.totalEarnings.toLocaleString('tr-TR')}</Text>
-            <Text style={[styles.earningsMainLabel, { color: colors.textMuted }]}>toplam kazanç</Text>
-          </View>
-          <View style={styles.earningsDetails}>
-            <View style={styles.earningsDetailItem}>
-              <View style={[styles.earningsIndicator, { backgroundColor: colors.success }]} />
-              <Text style={[styles.earningsDetailValue, { color: colors.text }]}>₺{(stats.paidEarnings / 1000).toFixed(0)}K</Text>
-              <Text style={[styles.earningsDetailLabel, { color: colors.textMuted }]}>ödendi</Text>
-            </View>
-            <View style={styles.earningsDetailItem}>
-              <View style={[styles.earningsIndicator, { backgroundColor: colors.warning }]} />
-              <Text style={[styles.earningsDetailValue, { color: colors.text }]}>₺{(stats.pendingEarnings / 1000).toFixed(0)}K</Text>
-              <Text style={[styles.earningsDetailLabel, { color: colors.textMuted }]}>bekliyor</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.border }]}>
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="İş ara..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Scroll Header */}
+      <ScrollHeader
+        title="İşlerim"
+        scrollY={scrollY}
+        threshold={60}
+        showBackButton={true}
+        rightAction={
+          <Animated.View style={calendarAnimatedStyle}>
+            <TouchableOpacity
+              style={[styles.calendarButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+              onPress={() => navigation.navigate('CalendarView')}
+            >
+              <Ionicons name="calendar" size={20} color={colors.text} />
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
+          </Animated.View>
+        }
+      />
 
-      <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        {[
-          { key: 'active', label: 'Aktif', count: stats.activeCount },
-          { key: 'past', label: 'Geçmiş', count: stats.pastCount },
-        ].map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={styles.tab}
-            onPress={() => setActiveTab(tab.key as any)}
-          >
-            <Text style={[styles.tabText, { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted }]}>
-              {tab.label} ({tab.count})
-            </Text>
-            {activeTab === tab.key && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollViewRef}
         style={styles.eventsList}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.eventsListContent}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={[
+          styles.eventsListContent,
+          { paddingTop: insets.top + 44 },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={colors.brand[400]}
             colors={[colors.brand[400]]}
+            progressViewOffset={insets.top + 44}
           />
         }
       >
-        {filteredEvents.length > 0 ? (
-          filteredEvents.map(event => renderEventCard(event))
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="briefcase-outline" size={48} color={colors.textSecondary} />
-            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>İş Bulunamadı</Text>
-            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
-              {searchQuery
+        {/* Large Title */}
+        <LargeTitle
+          title="İşlerim"
+          subtitle={`${stats.activeCount} aktif iş`}
+        />
+
+        {/* Earnings Summary - Minimal */}
+        <View style={[styles.earningsSummary, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+          <View style={styles.earningsCompactRow}>
+            <Text style={[styles.earningsCompactLabel, { color: colors.textMuted }]}>Kazanç</Text>
+            <Text style={[styles.earningsCompactValue, { color: colors.text }]}>₺{formatMoney(stats.totalEarnings)}</Text>
+            <View style={styles.earningsCompactDot} />
+            <Text style={[styles.earningsCompactSmall, { color: colors.success }]}>₺{formatMoney(stats.paidEarnings)}</Text>
+            <Text style={[styles.earningsCompactMuted, { color: colors.textMuted }]}>alındı</Text>
+            <View style={styles.earningsCompactDot} />
+            <Text style={[styles.earningsCompactSmall, { color: colors.warning }]}>₺{formatMoney(stats.pendingEarnings)}</Text>
+            <Text style={[styles.earningsCompactMuted, { color: colors.textMuted }]}>bekliyor</Text>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={[styles.searchBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.border }]}>
+            <Ionicons name="search" size={18} color={colors.textMuted} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="İş ara..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Tabs */}
+        <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+          {[
+            { key: 'active', label: 'Aktif', count: stats.activeCount },
+            { key: 'past', label: 'Geçmiş', count: stats.pastCount },
+          ].map((tab) => (
+            <TouchableOpacity
+              key={tab.key}
+              style={styles.tab}
+              onPress={() => setActiveTab(tab.key as any)}
+            >
+              <Text style={[styles.tabText, { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted }]}>
+                {tab.label} ({tab.count})
+              </Text>
+              {activeTab === tab.key && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Events List */}
+        <View style={styles.eventsListInner}>
+          {filteredEvents.length > 0 ? (
+            filteredEvents.map(event => renderEventCard(event))
+          ) : (
+            <EmptyState
+              icon="briefcase-outline"
+              title="İş Bulunamadı"
+              message={searchQuery
                 ? 'Arama kriterlerinize uygun iş yok.'
                 : 'Bu kategoride henüz iş yok.'}
-            </Text>
-          </View>
-        )}
+            />
+          )}
+        </View>
         <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold' },
-  headerSubtitle: { fontSize: 13, marginTop: 2 },
-  calendarButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' },
-  earningsSummary: { paddingHorizontal: 20, marginBottom: 12 },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  earningsMain: { flex: 1 },
-  earningsMainValue: { fontSize: 22, fontWeight: '700' },
-  earningsMainLabel: { fontSize: 11, marginTop: 2 },
-  earningsDetails: { flexDirection: 'row', gap: 16 },
-  earningsDetailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  earningsIndicator: { width: 6, height: 6, borderRadius: 3 },
-  earningsDetailValue: { fontSize: 13, fontWeight: '600' },
-  earningsDetailLabel: { fontSize: 11 },
+  calendarButton: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  earningsSummary: { marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1 },
+  earningsCompactRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  earningsCompactLabel: { fontSize: 12, fontWeight: '500' },
+  earningsCompactValue: { fontSize: 15, fontWeight: '700' },
+  earningsCompactSmall: { fontSize: 13, fontWeight: '600' },
+  earningsCompactMuted: { fontSize: 11 },
+  earningsCompactDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: 'rgba(128,128,128,0.4)' },
   searchContainer: { paddingHorizontal: 20, marginBottom: 16 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', gap: 10 },
   searchInput: { flex: 1, fontSize: 15 },
@@ -389,10 +451,11 @@ const styles = StyleSheet.create({
   tab: { paddingVertical: 12, paddingHorizontal: 12, position: 'relative' },
   tabText: { fontSize: 14, fontWeight: '500' },
   tabIndicator: { position: 'absolute', bottom: -1, left: 12, right: 12, height: 2, borderRadius: 1 },
-  tabBadgeActive: { backgroundColor: 'rgba(147, 51, 234, 0.3)' },
+  tabBadgeActive: { backgroundColor: 'rgba(75, 48, 184, 0.3)' },
   tabBadgeText: { fontSize: 10, fontWeight: '600' },
   eventsList: { flex: 1 },
-  eventsListContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 12 },
+  eventsListContent: { paddingBottom: 100 },
+  eventsListInner: { paddingHorizontal: 20, gap: 12 },
   eventCard: { backgroundColor: 'rgba(255, 255, 255, 0.02)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.04)', overflow: 'hidden' },
   eventImageContainer: { height: 130, position: 'relative' },
   eventImage: { width: '100%', height: '100%' },
@@ -437,7 +500,4 @@ const styles = StyleSheet.create({
   teamInfo: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   teamText: { fontSize: 10 },
   arrowContainer: { position: 'absolute', right: 14, top: 145 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
-  emptyStateTitle: { fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 },
-  emptyStateText: { fontSize: 14, textAlign: 'center' },
 });

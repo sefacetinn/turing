@@ -59,7 +59,7 @@ export function DatePickerModal({
                     style={[
                       styles.datePickerItem,
                       day === d.value && {
-                        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)'
+                        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)'
                       }
                     ]}
                     onPress={() => onDayChange(d.value)}
@@ -91,7 +91,7 @@ export function DatePickerModal({
                     style={[
                       styles.datePickerItem,
                       month === m.value && {
-                        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)'
+                        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)'
                       }
                     ]}
                     onPress={() => onMonthChange(m.value)}
@@ -123,7 +123,7 @@ export function DatePickerModal({
                     style={[
                       styles.datePickerItem,
                       year === y.value && {
-                        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)'
+                        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)'
                       }
                     ]}
                     onPress={() => onYearChange(y.value)}
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 20,
     paddingVertical: 16,
-    backgroundColor: '#9333ea',
+    backgroundColor: '#4b30b8',
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

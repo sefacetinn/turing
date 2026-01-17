@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
+import { scrollToTopEmitter } from '../../utils/scrollToTop';
 
 interface TabBarProps {
   state: any;
@@ -44,7 +45,7 @@ function TabItem({ route, index, isFocused, onPress, onLongPress, label }: TabIt
   const scale = useSharedValue(1);
   const translateY = useSharedValue(0);
 
-  const accentColor = '#6366f1';
+  const accentColor = colors.brand[400];
   const badge = TAB_BADGES[route.name];
 
   useEffect(() => {
@@ -80,7 +81,7 @@ function TabItem({ route, index, isFocused, onPress, onLongPress, label }: TabIt
       <Animated.View style={[styles.tabItemContent, animatedStyle]}>
         <View style={[
           styles.iconContainer,
-          isFocused && { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }
+          isFocused && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
         ]}>
           <Ionicons
             name={iconName as any}
@@ -88,7 +89,7 @@ function TabItem({ route, index, isFocused, onPress, onLongPress, label }: TabIt
             color={isFocused ? accentColor : colors.textMuted}
           />
           {badge && badge > 0 && (
-            <View style={[styles.badge, { backgroundColor: route.name === 'MessagesTab' ? colors.error : accentColor }]}>
+            <View style={[styles.badge, { backgroundColor: accentColor }]}>
               <Animated.Text style={styles.badgeText}>{badge}</Animated.Text>
             </View>
           )}
@@ -117,6 +118,10 @@ export function CustomTabBar({ state, descriptors, navigation }: TabBarProps) {
   const { colors, isDark } = useTheme();
   const bottomPadding = Math.max(insets.bottom, 8);
 
+  // Track last tap time for each tab to detect double-tap
+  const lastTapTime = useRef<Record<string, number>>({});
+  const DOUBLE_TAP_DELAY = 300; // ms
+
   return (
     <View style={styles.container}>
       <BlurView
@@ -138,6 +143,19 @@ export function CustomTabBar({ state, descriptors, navigation }: TabBarProps) {
             const isFocused = state.index === index;
 
             const onPress = () => {
+              const now = Date.now();
+              const lastTap = lastTapTime.current[route.name] || 0;
+
+              // Check for double-tap on already focused tab
+              if (isFocused && now - lastTap < DOUBLE_TAP_DELAY) {
+                // Double-tap detected - emit scroll to top event
+                scrollToTopEmitter.emit(route.name);
+                lastTapTime.current[route.name] = 0; // Reset to prevent triple-tap
+                return;
+              }
+
+              lastTapTime.current[route.name] = now;
+
               const event = navigation.emit({
                 type: 'tabPress',
                 target: route.key,

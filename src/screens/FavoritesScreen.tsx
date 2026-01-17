@@ -245,8 +245,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tabActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
+    borderColor: 'rgba(75, 48, 184, 0.3)',
   },
   tabText: {
     fontSize: 12,

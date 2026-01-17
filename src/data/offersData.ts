@@ -155,6 +155,7 @@ export interface CounterOffer {
 
 export interface OrganizerOffer {
   id: string;
+  eventId: string; // mockDataCore events ile uyumlu (EVT001, EVT002, vb.)
   eventTitle: string;
   serviceCategory: string;
   serviceName: string;
@@ -217,9 +218,11 @@ export interface ProviderOffer {
 }
 
 // Organizer offers (received from providers) - Organizatörün aldığı teklifler
+// eventId'ler mockDataCore events ile uyumlu
 export const organizerOffers: OrganizerOffer[] = [
   {
     id: 'o1',
+    eventId: 'EVT001', // Big Bang Summer Festival
     eventTitle: 'Big Bang Summer Festival 2026',
     serviceCategory: 'technical',
     serviceName: 'Işık Sistemi',
@@ -239,6 +242,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o2',
+    eventId: 'EVT002', // Vodafone Park Konseri - Sıla
     eventTitle: 'Vodafone Park Konseri - Sıla',
     serviceCategory: 'technical',
     serviceName: 'Stadyum Ses Sistemi',
@@ -263,6 +267,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o3',
+    eventId: 'EVT001', // Big Bang Summer Festival
     eventTitle: 'Big Bang Summer Festival 2026',
     serviceCategory: 'technical',
     serviceName: 'LED Ekran & Görsel',
@@ -287,6 +292,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o4',
+    eventId: 'EVT001', // Big Bang Summer Festival
     eventTitle: 'Big Bang Summer Festival 2026',
     serviceCategory: 'accommodation',
     serviceName: 'Sanatçı Konaklama',
@@ -308,6 +314,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o5',
+    eventId: 'EVT007', // Türkiye İnovasyon Zirvesi
     eventTitle: 'Türkiye İnovasyon Zirvesi 2026',
     serviceCategory: 'technical',
     serviceName: 'Canlı Yayın & Streaming',
@@ -334,6 +341,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o6',
+    eventId: 'pe7', // Düğün - Zeynep & Emre
     eventTitle: 'Düğün - Zeynep & Emre',
     serviceCategory: 'media',
     serviceName: 'Düğün Fotoğraf & Video',
@@ -356,6 +364,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o7',
+    eventId: 'EVT004', // Zeytinli Rock Festivali
     eventTitle: 'Zeytinli Rock Festivali 2026',
     serviceCategory: 'security',
     serviceName: 'Festival Güvenliği',
@@ -375,6 +384,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o8',
+    eventId: 'EVT006', // Mercedes-Benz Fashion Week
     eventTitle: 'Mercedes-Benz Fashion Week Istanbul',
     serviceCategory: 'technical',
     serviceName: 'Podyum Işık Tasarımı',
@@ -394,6 +404,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o9',
+    eventId: 'EVT008', // Garanti BBVA Kurumsal Gala
     eventTitle: 'Garanti BBVA Kurumsal Gala 2026',
     serviceCategory: 'catering',
     serviceName: 'Gala Catering',
@@ -409,18 +420,14 @@ export const organizerOffers: OrganizerOffer[] = [
     date: '1 hafta önce',
     deliveryTime: '1 gün',
     message: 'Premium kurumsal gala catering. Fine dining menü, 1200 kişilik kapasite.',
-    counterOffer: {
-      amount: 340000,
-      by: 'organizer',
-      date: '8 gün önce',
-      message: 'Karşı teklif.',
-    },
+    counterOffer: null, // Reddedilen tekliflerde counterOffer olmamalı
     rejectedAt: '1 hafta önce',
     rejectedBy: 'provider',
     rejectionReason: 'Teklif edilen bütçe karşılanamadı.',
   },
   {
     id: 'o10',
+    eventId: 'EVT002', // Vodafone Park Konseri - Sıla
     eventTitle: 'Vodafone Park Konseri - Sıla',
     serviceCategory: 'transport',
     serviceName: 'VIP Transfer Hizmeti',
@@ -442,6 +449,7 @@ export const organizerOffers: OrganizerOffer[] = [
   },
   {
     id: 'o11',
+    eventId: 'EVT006', // Mercedes-Benz Fashion Week
     eventTitle: 'Mercedes-Benz Fashion Week Istanbul',
     serviceCategory: 'catering',
     serviceName: 'Backstage Catering',
@@ -457,12 +465,7 @@ export const organizerOffers: OrganizerOffer[] = [
     date: '6 gün önce',
     deliveryTime: '1 gün',
     message: 'Model ve ekip için backstage catering. 4 gün, 200 kişi kapasiteli.',
-    counterOffer: {
-      amount: 72000,
-      by: 'organizer',
-      date: '7 gün önce',
-      message: 'Bütçemiz 75.000 TL.',
-    },
+    counterOffer: null, // Reddedilen tekliflerde counterOffer olmamalı
     rejectedAt: '6 gün önce',
     rejectedBy: 'organizer',
     rejectionReason: 'Rakip firma daha uygun teklif sundu.',
@@ -1691,10 +1694,11 @@ export const getQuoteRequestById = (id: string): ComparisonQuoteRequest | undefi
 // Draft Requests - Taslak Teklif Talepleri
 // ============================================
 
+// DraftRequests eventId'leri mockDataCore events ile uyumlu
 export const draftRequests: DraftRequest[] = [
   {
     id: 'draft1',
-    eventId: 'e1',
+    eventId: 'EVT001', // Big Bang Summer Festival
     eventTitle: 'Big Bang Summer Festival 2026',
     category: 'booking',
     categoryName: 'Sanatçı',
@@ -1713,8 +1717,8 @@ export const draftRequests: DraftRequest[] = [
   },
   {
     id: 'draft2',
-    eventId: 'e4',
-    eventTitle: 'Vodafone Park Konseri - Tarkan',
+    eventId: 'EVT002', // Vodafone Park Konseri
+    eventTitle: 'Vodafone Park Konseri - Sıla',
     category: 'technical',
     categoryName: 'Teknik Ekipman',
     formData: {
@@ -1732,7 +1736,7 @@ export const draftRequests: DraftRequest[] = [
   },
   {
     id: 'draft3',
-    eventId: 'e3',
+    eventId: 'pe7', // Düğün - Zeynep & Emre
     eventTitle: 'Düğün - Zeynep & Emre',
     category: 'decoration',
     categoryName: 'Dekorasyon',

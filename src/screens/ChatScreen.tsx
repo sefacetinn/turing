@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Image,
   TextInput,
@@ -132,6 +133,11 @@ export function ChatScreen() {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showFileOptions, setShowFileOptions] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Common emojis for quick access
+  const commonEmojis = ['😊', '👍', '❤️', '🎉', '👏', '🔥', '✅', '💯', '🙏', '😂', '🤝', '⭐', '💪', '🎵', '🎤', '🎸', '🎹', '🥁', '📅', '💼'];
 
   // Offer form state
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
@@ -148,6 +154,66 @@ export function ChatScreen() {
   React.useEffect(() => {
     setMessages(conversation.messages as ChatMessage[]);
   }, [conversation]);
+
+  // Handle call button
+  const handleCall = () => {
+    Alert.alert(
+      'Sesli Arama',
+      `${conversation.participantName} ile sesli arama başlatılsın mı?`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Ara', onPress: () => Alert.alert('Aranıyor...', 'Arama özelliği yakında aktif olacak.') },
+      ]
+    );
+  };
+
+  // Handle emoji selection
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Handle chat options
+  const chatOptions = [
+    { id: 'profile', label: 'Profili Görüntüle', icon: 'person-outline', action: () => {
+      setShowOptionsModal(false);
+      navigation.navigate('ProviderDetail', { providerId: conversation.id });
+    }},
+    { id: 'mute', label: 'Bildirimleri Sessize Al', icon: 'notifications-off-outline', action: () => {
+      setShowOptionsModal(false);
+      Alert.alert('Bildirimler', 'Bildirimler sessize alındı.');
+    }},
+    { id: 'search', label: 'Mesajlarda Ara', icon: 'search-outline', action: () => {
+      setShowOptionsModal(false);
+      Alert.alert('Arama', 'Mesaj arama özelliği yakında aktif olacak.');
+    }},
+    { id: 'media', label: 'Medya & Dosyalar', icon: 'images-outline', action: () => {
+      setShowOptionsModal(false);
+      Alert.alert('Medya', 'Paylaşılan medya ve dosyalar görüntülenecek.');
+    }},
+    { id: 'block', label: 'Engelle', icon: 'ban-outline', action: () => {
+      setShowOptionsModal(false);
+      Alert.alert(
+        'Engelle',
+        `${conversation.participantName} engellensin mi?`,
+        [
+          { text: 'İptal', style: 'cancel' },
+          { text: 'Engelle', style: 'destructive', onPress: () => Alert.alert('Engellendi', 'Kullanıcı engellendi.') },
+        ]
+      );
+    }},
+    { id: 'delete', label: 'Sohbeti Sil', icon: 'trash-outline', action: () => {
+      setShowOptionsModal(false);
+      Alert.alert(
+        'Sohbeti Sil',
+        'Bu sohbet silinsin mi? Bu işlem geri alınamaz.',
+        [
+          { text: 'İptal', style: 'cancel' },
+          { text: 'Sil', style: 'destructive', onPress: () => navigation.goBack() },
+        ]
+      );
+    }},
+  ];
 
   const sendMessage = () => {
     if (!message.trim()) return;
@@ -320,7 +386,7 @@ export function ChatScreen() {
   // Render special message types
   const renderOfferMessage = (msg: ChatMessage, isMe: boolean) => (
     <View style={[styles.specialMessageCard, {
-      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)',
+      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)',
       borderColor: colors.brand[400],
     }]}>
       <View style={styles.specialMessageHeader}>
@@ -466,7 +532,11 @@ export function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.headerInfo}>
+        <TouchableOpacity
+          style={styles.headerInfo}
+          onPress={() => navigation.navigate('ProviderDetail', { providerId: conversation.id })}
+          activeOpacity={0.7}
+        >
           <Image source={{ uri: conversation.participantImage }} style={styles.headerAvatar} />
           <View>
             <Text style={[styles.headerName, { color: colors.text }]}>{conversation.participantName}</Text>
@@ -480,12 +550,20 @@ export function ChatScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
+          <Pressable
+            style={styles.headerButton}
+            onPress={handleCall}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
             <Ionicons name="call-outline" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
+          </Pressable>
+          <Pressable
+            style={styles.headerButton}
+            onPress={() => setShowOptionsModal(true)}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
             <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
@@ -599,7 +677,7 @@ export function ChatScreen() {
         }]}>
           <TouchableOpacity
             style={[styles.quickAction, {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)'
             }]}
             onPress={() => setShowOfferModal(true)}
           >
@@ -608,7 +686,7 @@ export function ChatScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quickAction, {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)'
             }]}
             onPress={() => setShowMeetingModal(true)}
           >
@@ -617,7 +695,7 @@ export function ChatScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quickAction, {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)'
             }]}
             onPress={() => setShowFileOptions(true)}
           >
@@ -630,7 +708,7 @@ export function ChatScreen() {
         <View style={[styles.inputContainer, {
           backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background,
           borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-          paddingBottom: Math.max(insets.bottom, 12) + 12,
+          paddingBottom: Math.max(insets.bottom, 12) + 80,
         }]}>
           <TouchableOpacity
             style={[styles.attachButton, {
@@ -653,7 +731,7 @@ export function ChatScreen() {
               multiline
               maxLength={1000}
             />
-            <TouchableOpacity style={styles.emojiButton}>
+            <TouchableOpacity style={styles.emojiButton} onPress={() => setShowEmojiPicker(true)}>
               <Ionicons name="happy-outline" size={22} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
@@ -704,7 +782,7 @@ export function ChatScreen() {
                           backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
                           borderColor: selectedEvent === event.id ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
                         },
-                        selectedEvent === event.id && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }
+                        selectedEvent === event.id && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }
                       ]}
                       onPress={() => setSelectedEvent(event.id)}
                     >
@@ -923,7 +1001,7 @@ export function ChatScreen() {
               }]}
               onPress={handleDocumentPick}
             >
-              <View style={[styles.fileOptionIcon, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
+              <View style={[styles.fileOptionIcon, { backgroundColor: 'rgba(75, 48, 184, 0.15)' }]}>
                 <Ionicons name="document" size={22} color={colors.brand[400]} />
               </View>
               <View style={styles.fileOptionInfo}>
@@ -944,6 +1022,85 @@ export function ChatScreen() {
                 <Text style={[styles.fileOptionDesc, { color: colors.textMuted }]}>Geri dön</Text>
               </View>
             </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Options Modal */}
+      <Modal
+        visible={showOptionsModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowOptionsModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.fileOptionsOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOptionsModal(false)}
+        >
+          <View style={[styles.optionsModalContent, {
+            backgroundColor: colors.background,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+          }]}>
+            <View style={[styles.optionsHeader, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+              <Text style={[styles.optionsTitle, { color: colors.text }]}>Sohbet Seçenekleri</Text>
+            </View>
+            {chatOptions.map((option, index) => (
+              <TouchableOpacity
+                key={option.id}
+                style={[styles.optionItem, {
+                  borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+                  borderBottomWidth: index < chatOptions.length - 1 ? 1 : 0,
+                }]}
+                onPress={option.action}
+              >
+                <Ionicons
+                  name={option.icon as any}
+                  size={20}
+                  color={option.id === 'block' || option.id === 'delete' ? '#ef4444' : colors.text}
+                />
+                <Text style={[
+                  styles.optionLabel,
+                  { color: option.id === 'block' || option.id === 'delete' ? '#ef4444' : colors.text }
+                ]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Emoji Picker Modal */}
+      <Modal
+        visible={showEmojiPicker}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowEmojiPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.fileOptionsOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEmojiPicker(false)}
+        >
+          <View style={[styles.emojiPickerContent, {
+            backgroundColor: colors.background,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+          }]}>
+            <View style={[styles.optionsHeader, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+              <Text style={[styles.optionsTitle, { color: colors.text }]}>Emoji Seç</Text>
+            </View>
+            <View style={styles.emojiGrid}>
+              {commonEmojis.map((emoji, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.emojiItem}
+                  onPress={() => handleEmojiSelect(emoji)}
+                >
+                  <Text style={styles.emojiText}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -974,6 +1131,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: 4,
+    marginRight: 8,
   },
   headerAvatar: {
     width: 40,
@@ -1002,6 +1160,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 4,
+    zIndex: 10,
   },
   headerButton: {
     width: 40,
@@ -1093,7 +1252,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderRadius: 20,
   },
   quickActionText: {
@@ -1432,5 +1591,52 @@ const styles = StyleSheet.create({
   },
   fileOptionDesc: {
     fontSize: 12,
+  },
+  // Options Modal
+  optionsModalContent: {
+    width: '80%',
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  optionsHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  optionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  optionLabel: {
+    fontSize: 15,
+  },
+  // Emoji Picker
+  emojiPickerContent: {
+    width: '85%',
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 12,
+    justifyContent: 'center',
+  },
+  emojiItem: {
+    width: '20%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiText: {
+    fontSize: 28,
   },
 });

@@ -1,10 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, RefreshControl, TextInput, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { EmptyState } from '../components/EmptyState';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { scrollToTopEmitter } from '../utils/scrollToTop';
 
 // Default colors for static styles (dark theme)
 const colors = defaultColors;
@@ -15,7 +22,7 @@ interface MessagesScreenProps {
   isProviderMode: boolean;
 }
 
-const conversations = [
+const initialConversations = [
   { id: 'c1', name: 'Pro Sound Istanbul', message: 'Teknik detayları görüşmek isteriz...', time: '2 dk', unread: 3, avatar: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=100', archived: false },
   { id: 'c2', name: 'Elite Transfer', message: 'Araç hazır, onayınızı bekliyoruz.', time: '1 saat', unread: 0, avatar: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=100', archived: false },
   { id: 'c3', name: 'Grand Hotel', message: 'Oda rezervasyonu tamamlandı.', time: '3 saat', unread: 1, avatar: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=100', archived: false },
@@ -28,68 +35,183 @@ const conversations = [
 export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<MessageTab>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [conversations, setConversations] = useState(initialConversations);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'MessagesTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Handle long press on conversation
+  const handleLongPress = (chat: typeof conversations[0]) => {
+    const options = chat.archived
+      ? [
+          { text: 'Arşivden Çıkar', onPress: () => toggleArchive(chat.id) },
+          { text: 'Sil', style: 'destructive' as const, onPress: () => deleteConversation(chat.id) },
+          { text: 'İptal', style: 'cancel' as const },
+        ]
+      : [
+          { text: 'Arşivle', onPress: () => toggleArchive(chat.id) },
+          { text: 'Okundu İşaretle', onPress: () => markAsRead(chat.id) },
+          { text: 'Sil', style: 'destructive' as const, onPress: () => deleteConversation(chat.id) },
+          { text: 'İptal', style: 'cancel' as const },
+        ];
+
+    Alert.alert(chat.name, 'Ne yapmak istiyorsunuz?', options);
+  };
+
+  // Toggle archive status
+  const toggleArchive = (id: string) => {
+    setConversations(prev =>
+      prev.map(c => c.id === id ? { ...c, archived: !c.archived } : c)
+    );
+  };
+
+  // Mark as read
+  const markAsRead = (id: string) => {
+    setConversations(prev =>
+      prev.map(c => c.id === id ? { ...c, unread: 0 } : c)
+    );
+  };
+
+  // Delete conversation
+  const deleteConversation = (id: string) => {
+    Alert.alert(
+      'Sohbeti Sil',
+      'Bu sohbet kalıcı olarak silinecek. Emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => setConversations(prev => prev.filter(c => c.id !== id)),
+        },
+      ]
+    );
+  };
 
   const filteredConversations = useMemo(() => {
-    if (activeTab === 'all') return conversations.filter(c => !c.archived);
-    if (activeTab === 'unread') return conversations.filter(c => c.unread > 0 && !c.archived);
-    if (activeTab === 'archived') return conversations.filter(c => c.archived);
-    return conversations;
-  }, [activeTab]);
+    let result = conversations;
+
+    // Filter by tab
+    if (activeTab === 'all') result = result.filter(c => !c.archived);
+    else if (activeTab === 'unread') result = result.filter(c => c.unread > 0 && !c.archived);
+    else if (activeTab === 'archived') result = result.filter(c => c.archived);
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(c =>
+        c.name.toLowerCase().includes(query) ||
+        c.message.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [activeTab, searchQuery]);
 
   const unreadCount = conversations.filter(c => c.unread > 0 && !c.archived).length;
   const archivedCount = conversations.filter(c => c.archived).length;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Mesajlar</Text>
-        <TouchableOpacity style={styles.newMessageButton}>
-          <Ionicons name="create-outline" size={22} color={colors.brand[400]} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Search */}
-      <View style={[styles.searchContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.border }]}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <Text style={[styles.searchPlaceholder, { color: colors.textMuted }]}>Mesajlarda ara...</Text>
-      </View>
-
-      {/* Tabs */}
-      <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Scroll Header */}
+      <ScrollHeader
+        title="Mesajlar"
+        scrollY={scrollY}
+        threshold={60}
+        showBackButton={true}
+        rightAction={
           <TouchableOpacity
-            style={styles.tab}
-            onPress={() => setActiveTab('all')}
+            style={styles.newMessageButton}
+            onPress={() => navigation.navigate('Search', { initialFilter: 'providers' })}
           >
-            <Text style={[styles.tabText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
-              Tümü
-            </Text>
-            {activeTab === 'all' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            <Ionicons name="create-outline" size={22} color={colors.brand[400]} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => setActiveTab('unread')}
-          >
-            <Text style={[styles.tabText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>
-              Okunmamış {unreadCount > 0 && `(${unreadCount})`}
-            </Text>
-            {activeTab === 'unread' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => setActiveTab('archived')}
-          >
-            <Text style={[styles.tabText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>
-              Arşiv {archivedCount > 0 && `(${archivedCount})`}
-            </Text>
-            {activeTab === 'archived' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
+        }
+      />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <Animated.ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: insets.top + 44, paddingBottom: 100 }}
+      >
+        {/* Large Title */}
+        <LargeTitle
+          title="Mesajlar"
+          subtitle={`${unreadCount} okunmamış mesaj`}
+        />
+
+        {/* Search */}
+        <View style={[styles.searchContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.border }]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Mesajlarda ara..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Tabs */}
+        <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+          <View style={styles.tabContent}>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveTab('all')}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
+                Tümü
+              </Text>
+              {activeTab === 'all' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveTab('unread')}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>
+                Okunmamış {unreadCount > 0 && `(${unreadCount})`}
+              </Text>
+              {activeTab === 'unread' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveTab('archived')}
+            >
+              <Text style={[styles.tabText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>
+                Arşiv {archivedCount > 0 && `(${archivedCount})`}
+              </Text>
+              {activeTab === 'archived' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Conversations */}
         <View style={styles.conversationsList}>
           {filteredConversations.map((chat) => (
@@ -98,6 +220,8 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
               style={styles.conversationItem}
               activeOpacity={0.7}
               onPress={() => navigation.navigate('Chat', { conversationId: chat.id })}
+              onLongPress={() => handleLongPress(chat)}
+              delayLongPress={500}
             >
               <View style={styles.avatarContainer}>
                 <Image source={{ uri: chat.avatar }} style={styles.avatar} />
@@ -131,46 +255,23 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           ))}
 
           {filteredConversations.length === 0 && (
-            <View style={styles.emptyState}>
-              <Ionicons
-                name={activeTab === 'unread' ? 'mail-open-outline' : activeTab === 'archived' ? 'archive-outline' : 'chatbubbles-outline'}
-                size={48}
-                color={colors.textSecondary}
-              />
-              <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-                {activeTab === 'unread' ? 'Okunmamış mesaj yok' :
-                 activeTab === 'archived' ? 'Arşivlenmiş mesaj yok' : 'Mesaj yok'}
-              </Text>
-              <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
-                {activeTab === 'unread' ? 'Tüm mesajlarınız okunmuş' :
-                 activeTab === 'archived' ? 'Arşive taşınan mesajlar burada görünecek' : 'Yeni mesajlar burada görünecek'}
-              </Text>
-            </View>
+            <EmptyState
+              icon={activeTab === 'unread' ? 'mail-open-outline' : activeTab === 'archived' ? 'archive-outline' : 'chatbubbles-outline'}
+              title={activeTab === 'unread' ? 'Okunmamış mesaj yok' :
+                     activeTab === 'archived' ? 'Arşivlenmiş mesaj yok' : 'Mesaj yok'}
+              message={activeTab === 'unread' ? 'Tüm mesajlarınız okunmuş.' :
+                       activeTab === 'archived' ? 'Arşive taşınan mesajlar burada görünecek.' : 'Yeni mesajlar burada görünecek.'}
+            />
           )}
         </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   newMessageButton: {
     width: 40,
@@ -191,8 +292,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.06)',
     gap: 10,
   },
-  searchPlaceholder: {
+  searchInput: {
+    flex: 1,
     fontSize: 14,
+    paddingVertical: 0,
   },
   tabContainer: {
     marginBottom: 16,
@@ -292,20 +395,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     color: 'white',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 16,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'center',
   },
 });

@@ -1,20 +1,20 @@
-// Brand Colors - Premium Purple Palette (shared between themes)
+// Brand Colors - Deep Purple Palette (shared between themes)
 export const brandColors = {
-  50: '#faf5ff',
-  100: '#f3e8ff',
-  200: '#e9d5ff',
-  300: '#d8b4fe',
-  400: '#c084fc',
-  500: '#a855f7',
-  600: '#9333ea',
-  700: '#7c3aed',
-  800: '#6b21a8',
-  900: '#581c87',
+  50: '#f5f3ff',
+  100: '#ede9fe',
+  200: '#ddd6fe',
+  300: '#c4b5fd',
+  400: '#4b30b8',
+  500: '#4027a0',
+  600: '#351e88',
+  700: '#2a1570',
+  800: '#1f0c58',
+  900: '#140340',
 };
 
 // Category Colors (shared)
 export const categoryColors = {
-  booking: { from: '#9333EA', to: '#6366f1' },
+  booking: { from: '#4b30b8', to: '#7c6cd9' },
   technical: { from: '#059669', to: '#34d399' },
   accommodation: { from: '#db2777', to: '#f472b6' },
   venue: { from: '#2563eb', to: '#60a5fa' },
@@ -91,8 +91,8 @@ export const darkTheme = {
   brand: brandColors,
 
   // Legacy
-  primary: '#9333ea',
-  primaryDark: '#7c3aed',
+  primary: '#4b30b8',
+  primaryDark: '#351e88',
   secondary: '#f97316',
   secondaryDark: '#ea580c',
 
@@ -134,12 +134,12 @@ export const darkTheme = {
   cardBackground: 'rgba(255, 255, 255, 0.02)',
   cardBackgroundHover: 'rgba(255, 255, 255, 0.04)',
   cardBackgroundSolid: '#18181b',
-  cardBackgroundActive: 'rgba(147, 51, 234, 0.05)',
+  cardBackgroundActive: 'rgba(75, 48, 184, 0.05)',
 
   // Input
   inputBackground: 'rgba(255, 255, 255, 0.05)',
   inputBorder: 'rgba(255, 255, 255, 0.1)',
-  inputFocusBorder: 'rgba(147, 51, 234, 0.5)',
+  inputFocusBorder: 'rgba(75, 48, 184, 0.5)',
 
   // Tab bar
   tabBar: '#09090b',
@@ -175,15 +175,15 @@ export const lightTheme = {
   // Brand - Darker for better contrast on light backgrounds
   brand: {
     ...brandColors,
-    400: '#9333ea',
-    500: '#7c3aed',
-    600: '#6d28d9',
-    700: '#5b21b6',
+    400: '#4b30b8',
+    500: '#4027a0',
+    600: '#351e88',
+    700: '#2a1570',
   },
 
   // Legacy - Improved contrast
-  primary: '#6d28d9', // Better contrast (5.9:1)
-  primaryDark: '#5b21b6',
+  primary: '#4b30b8',
+  primaryDark: '#351e88',
   secondary: '#c2410c',
   secondaryDark: '#9a3412',
 
@@ -225,17 +225,17 @@ export const lightTheme = {
   cardBackground: '#fafafa',
   cardBackgroundHover: '#f4f4f5',
   cardBackgroundSolid: '#ffffff',
-  cardBackgroundActive: 'rgba(109, 40, 217, 0.08)',
+  cardBackgroundActive: 'rgba(75, 48, 184, 0.08)',
 
   // Input
   inputBackground: '#f4f4f5',
   inputBorder: 'rgba(0, 0, 0, 0.12)',
-  inputFocusBorder: 'rgba(109, 40, 217, 0.5)',
+  inputFocusBorder: 'rgba(75, 48, 184, 0.5)',
 
   // Tab bar
   tabBar: '#ffffff',
   tabBarBorder: 'rgba(0, 0, 0, 0.08)',
-  tabActive: '#6d28d9',
+  tabActive: '#4b30b8',
   tabInactive: zincScale[400],
 
   // Status bar
@@ -262,9 +262,9 @@ export const colors = darkTheme;
 
 // Gradients (shared between themes)
 export const gradients = {
-  primary: ['#9333ea', '#7c3aed', '#6366f1'] as const,
-  primaryLight: ['#a855f7', '#9333ea', '#7c3aed'] as const,
-  booking: ['#9333EA', '#6366f1'] as const,
+  primary: ['#4b30b8', '#5c3fca', '#7c6cd9'] as const,
+  primaryLight: ['#7c6cd9', '#5c3fca', '#4b30b8'] as const,
+  booking: ['#4b30b8', '#7c6cd9'] as const,
   technical: ['#059669', '#34d399'] as const,
   accommodation: ['#db2777', '#f472b6'] as const,
   venue: ['#2563eb', '#60a5fa'] as const,
@@ -276,7 +276,7 @@ export const gradients = {
 export const categoryGradients = {
   wedding: ['#ec4899', '#f472b6'] as const,
   corporate: ['#3b82f6', '#60a5fa'] as const,
-  concert: ['#9333ea', '#c084fc'] as const,
+  concert: ['#4b30b8', '#7c6cd9'] as const,
   party: ['#f59e0b', '#fbbf24'] as const,
   festival: ['#10b981', '#34d399'] as const,
 };

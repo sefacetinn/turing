@@ -59,6 +59,15 @@ interface ScheduleItem {
   status: 'done' | 'active' | 'upcoming';
 }
 
+interface PaymentItem {
+  id: string;
+  title: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'overdue';
+  dueDate: string;
+  paidDate?: string;
+}
+
 // Service configurations
 const serviceConfigs: Record<string, { title: string; icon: string }> = {
   technical: { title: 'Teknik Operasyonlar', icon: 'hardware-chip-outline' },
@@ -185,6 +194,25 @@ const generateSchedule = (category: string): ScheduleItem[] => {
   return schedules[category] || schedules.technical;
 };
 
+const generatePayments = (): PaymentItem[] => {
+  return [
+    { id: '1', title: 'Ön Ödeme', amount: 25000, status: 'paid', dueDate: '01 Ocak 2026', paidDate: '28 Aralık 2025' },
+    { id: '2', title: 'Ara Ödeme', amount: 35000, status: 'pending', dueDate: '15 Ocak 2026' },
+    { id: '3', title: 'Son Ödeme', amount: 40000, status: 'pending', dueDate: '30 Ocak 2026' },
+  ];
+};
+
+const getPaymentStatusInfo = (status: PaymentItem['status']) => {
+  switch (status) {
+    case 'paid':
+      return { label: 'Ödendi', icon: 'checkmark-circle', color: '#10B981' };
+    case 'overdue':
+      return { label: 'Gecikmiş', icon: 'alert-circle', color: '#EF4444' };
+    default:
+      return { label: 'Bekliyor', icon: 'time', color: '#F59E0B' };
+  }
+};
+
 export function ServiceOperationsScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: ServiceOperationsParams }, 'params'>>();
@@ -194,12 +222,13 @@ export function ServiceOperationsScreen() {
   const { serviceCategory, serviceName, providerName } = route.params;
   const config = serviceConfigs[serviceCategory] || serviceConfigs.technical;
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team' | 'payments'>('tasks');
 
   // Mutable tasks state
   const [tasks, setTasks] = useState<OperationTask[]>(() => generateTasks(serviceCategory));
   const team = useMemo(() => generateTeam(serviceCategory), [serviceCategory]);
   const schedule = useMemo(() => generateSchedule(serviceCategory), [serviceCategory]);
+  const payments = useMemo(() => generatePayments(), []);
 
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const progress = Math.round((completedTasks / tasks.length) * 100);
@@ -238,6 +267,7 @@ export function ServiceOperationsScreen() {
     { key: 'tasks', label: 'Görevler', count: tasks.length },
     { key: 'schedule', label: 'Program', count: schedule.length },
     { key: 'team', label: 'Ekip', count: team.length },
+    { key: 'payments', label: 'Ödemeler', count: payments.length },
   ];
 
   const getStatusStyle = (status: TaskStatus) => {
@@ -413,6 +443,66 @@ export function ServiceOperationsScreen() {
                 </TouchableOpacity>
               </View>
             ))}
+          </View>
+        )}
+
+        {/* Payments Tab */}
+        {activeTab === 'payments' && (
+          <View style={styles.list}>
+            {/* Payment Summary */}
+            <View style={[styles.paymentSummary, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+              <View style={styles.paymentSummaryItem}>
+                <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Toplam</Text>
+                <Text style={[styles.paymentSummaryValue, { color: colors.text }]}>
+                  ₺{payments.reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
+                </Text>
+              </View>
+              <View style={[styles.paymentSummaryDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+              <View style={styles.paymentSummaryItem}>
+                <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Alınan</Text>
+                <Text style={[styles.paymentSummaryValue, { color: '#10B981' }]}>
+                  ₺{payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
+                </Text>
+              </View>
+              <View style={[styles.paymentSummaryDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+              <View style={styles.paymentSummaryItem}>
+                <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Bekleyen</Text>
+                <Text style={[styles.paymentSummaryValue, { color: '#F59E0B' }]}>
+                  ₺{payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
+                </Text>
+              </View>
+            </View>
+
+            {/* Payment Cards */}
+            {payments.map((payment) => {
+              const statusInfo = getPaymentStatusInfo(payment.status);
+              return (
+                <View key={payment.id} style={[styles.paymentCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={styles.paymentHeader}>
+                    <View style={styles.paymentInfo}>
+                      <Text style={[styles.paymentTitle, { color: colors.text }]}>{payment.title}</Text>
+                      <Text style={[styles.paymentDate, { color: colors.textSecondary }]}>
+                        {payment.status === 'paid' ? `Ödeme: ${payment.paidDate}` : `Vade: ${payment.dueDate}`}
+                      </Text>
+                    </View>
+                    <View style={[styles.paymentStatusBadge, { backgroundColor: statusInfo.color + '20' }]}>
+                      <Ionicons name={statusInfo.icon as any} size={12} color={statusInfo.color} />
+                      <Text style={[styles.paymentStatusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.paymentAmount, { color: colors.text }]}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
+                </View>
+              );
+            })}
+
+            {/* Invoice Button */}
+            <TouchableOpacity
+              style={[styles.invoiceButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
+              onPress={() => Alert.alert('Fatura', 'Fatura oluşturuluyor...')}
+            >
+              <Ionicons name="document-text-outline" size={18} color="#4B30B8" />
+              <Text style={styles.invoiceButtonText}>Fatura Oluştur</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -674,6 +764,82 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Payment styles
+  paymentSummary: {
+    flexDirection: 'row',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  paymentSummaryItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  paymentSummaryLabel: {
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  paymentSummaryValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  paymentSummaryDivider: {
+    width: 1,
+  },
+  paymentCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  paymentInfo: {
+    flex: 1,
+  },
+  paymentTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  paymentDate: {
+    fontSize: 13,
+  },
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  paymentStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  paymentAmount: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  invoiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 10,
+    gap: 8,
+    marginTop: 6,
+  },
+  invoiceButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B30B8',
   },
 });
 

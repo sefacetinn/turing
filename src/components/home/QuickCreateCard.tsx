@@ -17,7 +17,7 @@ export function QuickCreateCard({ onPress }: QuickCreateCardProps) {
       style={[
         styles.container,
         {
-          borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.3)',
+          borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.3)',
           ...(isDark ? {} : helpers.getShadow('md')),
         },
       ]}
@@ -27,8 +27,8 @@ export function QuickCreateCard({ onPress }: QuickCreateCardProps) {
       <LinearGradient
         colors={
           isDark
-            ? ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.1)']
-            : ['rgba(147, 51, 234, 0.08)', 'rgba(99, 102, 241, 0.05)']
+            ? ['rgba(75, 48, 184, 0.1)', 'rgba(75, 48, 184, 0.1)']
+            : ['rgba(75, 48, 184, 0.08)', 'rgba(75, 48, 184, 0.05)']
         }
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     borderRadius: 20,
     marginBottom: 4,
   },

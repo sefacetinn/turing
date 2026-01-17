@@ -104,7 +104,7 @@ export function RequestOrganizerModeScreen() {
                 },
               ]}
             >
-              <View style={[styles.benefitIcon, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
+              <View style={[styles.benefitIcon, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}>
                 <Ionicons name={benefit.icon as any} size={20} color={colors.brand[400]} />
               </View>
               <View style={styles.benefitContent}>

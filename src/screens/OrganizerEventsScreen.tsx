@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   TextInput,
@@ -10,13 +9,23 @@ import {
   Dimensions,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { EmptyState } from '../components/EmptyState';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { events as mockEvents, artists } from '../data/mockData';
+import { scrollToTopEmitter } from '../utils/scrollToTop';
 
 // Default colors for static styles (dark theme)
 const colors = defaultColors;
@@ -72,7 +81,7 @@ const getStatusInfo = (status: string) => {
     case 'confirmed':
       return { label: 'Onaylandı', color: colors.success, bgColor: 'rgba(16, 185, 129, 0.15)' };
     case 'planning':
-      return { label: 'Planlama', color: colors.brand[400], bgColor: 'rgba(147, 51, 234, 0.15)' };
+      return { label: 'Planlama', color: colors.brand[400], bgColor: 'rgba(75, 48, 184, 0.15)' };
     case 'draft':
       return { label: 'Taslak', color: colors.zinc[400], bgColor: 'rgba(161, 161, 170, 0.15)' };
     case 'completed':
@@ -105,10 +114,50 @@ const getServiceCategories = (services: Service[]) => {
 export function OrganizerEventsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'EventsTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Animated style for header action buttons (shrink on scroll)
+  const headerActionsAnimatedStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scrollY.value,
+      [0, 60, 120],
+      [1, 0.85, 0.7],
+      Extrapolation.CLAMP
+    );
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 60, 120],
+      [1, 0.9, 0.8],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ scale }],
+      opacity,
+    };
+  });
 
   // Calendar state
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -204,15 +253,9 @@ export function OrganizerEventsScreen() {
     };
   }, []);
 
-  // Generate card title as "Artist Name - City"
-  const getCardTitle = (event: Event, eventArtists: { name: string | null; image: string }[]) => {
-    const artistName = eventArtists[0]?.name;
-    const city = event.location;
-    if (artistName) {
-      return `${artistName} - ${city}`;
-    }
-    // Fallback for events without artists (corporate, private etc.)
-    return `${event.title.split(' ')[0]} - ${city}`;
+  // Generate card title - use event title directly
+  const getCardTitle = (event: Event) => {
+    return event.title;
   };
 
   const renderEventCard = (event: Event) => {
@@ -221,7 +264,7 @@ export function OrganizerEventsScreen() {
     const serviceCategories = getServiceCategories(event.services);
     const confirmedServices = event.services.filter(s => s.status === 'confirmed').length;
     const totalServices = event.services.length;
-    const cardTitle = getCardTitle(event, eventArtists);
+    const cardTitle = getCardTitle(event);
 
     return (
       <TouchableOpacity
@@ -370,104 +413,117 @@ export function OrganizerEventsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Etkinliklerim</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
-            {stats.active} aktif etkinlik
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
-            onPress={() => setShowCalendar(!showCalendar)}
-          >
-            <Ionicons
-              name={showCalendar ? 'list' : 'calendar'}
-              size={20}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => navigation.navigate('CreateEvent')}
-          >
-            <LinearGradient
-              colors={gradients.primary}
-              style={styles.addButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="add" size={20} color="white" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <View style={[
-          styles.searchBar,
-          {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-          }
-        ]}>
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Etkinlik ara..."
-            placeholderTextColor={colors.textMuted}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Tabs */}
-      <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
-          {[
-            { key: 'active', label: 'Aktif', count: stats.active },
-            { key: 'past', label: 'Geçmiş', count: stats.past },
-            { key: 'all', label: 'Tümü', count: stats.total },
-          ].map((tab) => (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Scroll Header */}
+      <ScrollHeader
+        title="Etkinliklerim"
+        scrollY={scrollY}
+        threshold={60}
+        showBackButton={true}
+        rightAction={
+          <Animated.View style={[styles.headerActions, headerActionsAnimatedStyle]}>
             <TouchableOpacity
-              key={tab.key}
-              style={styles.tab}
-              onPress={() => setActiveTab(tab.key as any)}
+              style={[styles.headerButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
+              onPress={() => setShowCalendar(!showCalendar)}
             >
-              <Text style={[styles.tabText, { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted }]}>
-                {tab.label}
-                {tab.count !== undefined && ` (${tab.count})`}
-              </Text>
-              {activeTab === tab.key && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+              <Ionicons
+                name={showCalendar ? 'list' : 'calendar'}
+                size={20}
+                color={colors.text}
+              />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => navigation.navigate('CreateEvent')}
+            >
+              <LinearGradient
+                colors={gradients.primary}
+                style={styles.addButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="add" size={20} color="white" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+        }
+      />
 
-      {/* Events List or Calendar View */}
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollViewRef}
         style={styles.eventsList}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.eventsListContent}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={[
+          styles.eventsListContent,
+          { paddingTop: insets.top + 44 },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={colors.brand[400]}
             colors={[colors.brand[400]]}
+            progressViewOffset={insets.top + 44}
           />
         }
       >
+        {/* Large Title */}
+        <LargeTitle
+          title="Etkinliklerim"
+          subtitle={`${stats.active} aktif etkinlik`}
+        />
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <View style={[
+            styles.searchBar,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+            }
+          ]}>
+            <Ionicons name="search" size={18} color={colors.textMuted} />
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Etkinlik ara..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Tabs */}
+        <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+          <View style={styles.tabContent}>
+            {[
+              { key: 'active', label: 'Aktif', count: stats.active },
+              { key: 'past', label: 'Geçmiş', count: stats.past },
+              { key: 'all', label: 'Tümü', count: stats.total },
+            ].map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={styles.tab}
+                onPress={() => setActiveTab(tab.key as any)}
+              >
+                <Text style={[styles.tabText, { color: activeTab === tab.key ? colors.brand[400] : colors.textMuted }]}>
+                  {tab.label}
+                  {tab.count !== undefined && ` (${tab.count})`}
+                </Text>
+                {activeTab === tab.key && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Events Content */}
         {showCalendar ? (
           /* Calendar View */
           <View style={styles.calendarView}>
@@ -547,15 +603,14 @@ export function OrganizerEventsScreen() {
             </Text>
             {filteredEvents.length > 0 ? (
               filteredEvents.map(event => {
-                const calEventArtists = getEventArtists(event.services);
-                const calCardTitle = getCardTitle(event, calEventArtists);
+                const calCardTitle = getCardTitle(event);
                 return (
                   <TouchableOpacity
                     key={event.id}
                     style={[styles.calendarEventItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}
                     onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
                   >
-                    <View style={[styles.calendarEventDate, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
+                    <View style={[styles.calendarEventDate, { backgroundColor: 'rgba(75, 48, 184, 0.15)' }]}>
                       <Text style={[styles.calendarEventDay, { color: colors.brand[400] }]}>{event.date.split(' ')[0]}</Text>
                       <Text style={[styles.calendarEventMonth, { color: colors.brand[400] }]}>{event.date.split(' ')[1]?.substring(0, 3)}</Text>
                     </View>
@@ -571,89 +626,60 @@ export function OrganizerEventsScreen() {
                 );
               })
             ) : (
-              <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Bu ay etkinlik yok</Text>
-              </View>
+              <EmptyState
+                icon="calendar-outline"
+                title="Etkinlik Yok"
+                message="Bu ay için planlanmış etkinlik bulunmuyor."
+                compact
+              />
             )}
           </View>
-        ) : filteredEvents.length > 0 ? (
-          filteredEvents.map(event => renderEventCard(event))
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} />
-            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Etkinlik Bulunamadı</Text>
-            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
-              {searchQuery
-                ? 'Arama kriterlerinize uygun etkinlik yok.'
-                : 'Henüz etkinlik oluşturmadınız.'}
-            </Text>
-            {!searchQuery && (
-              <TouchableOpacity
-                style={styles.emptyStateButton}
-                onPress={() => navigation.navigate('CreateEvent')}
-              >
-                <LinearGradient
-                  colors={gradients.primary}
-                  style={styles.emptyStateButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Ionicons name="add" size={18} color="white" />
-                  <Text style={styles.emptyStateButtonText}>Etkinlik Oluştur</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+          <View style={styles.eventsListInner}>
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map(event => renderEventCard(event))
+            ) : (
+              <EmptyState
+                icon="calendar-outline"
+                title="Etkinlik Bulunamadı"
+                message={searchQuery
+                  ? 'Arama kriterlerinize uygun etkinlik yok.'
+                  : 'Henüz etkinlik oluşturmadınız.'}
+                actionLabel={!searchQuery ? 'Etkinlik Oluştur' : undefined}
+                onAction={!searchQuery ? () => navigation.navigate('CreateEvent') : undefined}
+              />
             )}
           </View>
         )}
         <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    marginTop: 2,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   addButton: {
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   addButtonGradient: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -704,7 +730,7 @@ const styles = StyleSheet.create({
   },
   // Removed old tab styles - now using underline indicator
   tabBadgeActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(75, 48, 184, 0.3)',
   },
   tabBadgeText: {
     fontSize: 9,
@@ -717,8 +743,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventsListContent: {
-    paddingHorizontal: 20,
     paddingBottom: 100,
+  },
+  eventsListInner: {
+    paddingHorizontal: 20,
     gap: 16,
   },
   eventCard: {
@@ -915,38 +943,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     top: 156,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyStateButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  emptyStateButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  emptyStateButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.white,
   },
   // Calendar View Styles
   calendarView: {

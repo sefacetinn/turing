@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   modalDone: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#4b30b8',
   },
   modalContent: {
     flex: 1,

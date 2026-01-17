@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, StyleSheet, RefreshControl, Alert, TouchableOpacity, Text } from 'react-native';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { View, StyleSheet, RefreshControl, Alert, TouchableOpacity, Text, Modal } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { useTheme } from '../theme/ThemeContext';
+import { scrollToTopEmitter } from '../utils/scrollToTop';
 import {
   OfferTabs,
   OrganizerOfferCard,
@@ -49,15 +50,30 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const [activeTab, setActiveTab] = useState<OfferTabType>('active');
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grouped');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterService, setFilterService] = useState<string | null>(null);
+  const [filterPriceRange, setFilterPriceRange] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'price' | 'rating'>('date');
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
 
   const scrollY = useSharedValue(0);
-  const accentColor = '#6366f1';
+  const accentColor = colors.brand[400];
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
     },
   });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'OffersTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -106,27 +122,57 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const filteredOffers = useMemo(() => {
     const offers = isProviderMode ? filteredProviderOffers : organizerOffers;
 
+    let result;
     switch (activeTab) {
       case 'active':
         // Aktif sekmesi: pending ve counter_offered durumları
-        return offers.filter(o =>
+        result = offers.filter(o =>
           o.status === 'pending' || o.status === 'counter_offered'
         );
+        break;
       case 'accepted':
         // Onaylanan sekmesi: SADECE accepted durumu
         // DİKKAT: counter_offered durumu ASLA burada gösterilmez!
-        return offers.filter(o => o.status === 'accepted');
+        result = offers.filter(o => o.status === 'accepted');
+        break;
       case 'rejected':
         // Reddedilen sekmesi: rejected, expired, cancelled durumları
-        return offers.filter(o =>
+        result = offers.filter(o =>
           o.status === 'rejected' ||
           o.status === 'expired' ||
           o.status === 'cancelled'
         );
+        break;
       default:
-        return offers;
+        result = offers;
     }
-  }, [isProviderMode, activeTab, filteredProviderOffers]);
+
+    // Apply service filter
+    if (filterService) {
+      result = result.filter(o => (o as any).service === filterService || (o as any).serviceName === filterService);
+    }
+
+    // Apply price range filter
+    if (filterPriceRange !== 'all') {
+      result = result.filter(o => {
+        const amount = (o as any).amount || (o as any).price || 0;
+        if (filterPriceRange === 'low') return amount < 50000;
+        if (filterPriceRange === 'medium') return amount >= 50000 && amount < 150000;
+        if (filterPriceRange === 'high') return amount >= 150000;
+        return true;
+      });
+    }
+
+    // Apply sorting
+    if (sortBy === 'price') {
+      result = [...result].sort((a, b) => ((a as any).amount || 0) - ((b as any).amount || 0));
+    } else if (sortBy === 'rating') {
+      result = [...result].sort((a, b) => ((b as any).rating || 0) - ((a as any).rating || 0));
+    }
+    // Default is by date (already sorted)
+
+    return result;
+  }, [isProviderMode, activeTab, filteredProviderOffers, filterService, filterPriceRange, sortBy]);
 
   // Grouped offers for comparison view
   const groupedOffers = useMemo(() => {
@@ -182,7 +228,13 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   };
 
   const handleOfferPress = (offerId: string) => {
-    navigation.navigate('OfferDetail', { offerId });
+    // Provider mode: go to request detail screen to see requirements and submit offer
+    // Organizer mode: go to offer detail to see received offers
+    if (isProviderMode) {
+      navigation.navigate('ProviderRequestDetail', { offerId });
+    } else {
+      navigation.navigate('OfferDetail', { offerId });
+    }
   };
 
   const handleSelectOffer = (offerId: string) => {
@@ -206,10 +258,16 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   };
 
   const handleFilterPress = () => {
-    Alert.alert('Filtrele', 'Filtreleme ozelligi yakinda aktif olacak.', [
-      { text: 'Tamam' },
-    ]);
+    setShowFilterModal(true);
   };
+
+  const resetFilters = () => {
+    setFilterService(null);
+    setFilterPriceRange('all');
+    setSortBy('date');
+  };
+
+  const hasActiveFilters = filterService !== null || filterPriceRange !== 'all' || sortBy !== 'date';
 
   const handleContinueDraft = (draftId: string) => {
     const draft = draftRequests.find(d => d.id === draftId);
@@ -279,16 +337,19 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
         title={headerTitle}
         scrollY={scrollY}
         threshold={60}
+        showBackButton={true}
         rightAction={
           !isProviderMode && (
             <TouchableOpacity onPress={handleFilterPress} style={styles.headerButton}>
-              <Ionicons name="options-outline" size={22} color={colors.text} />
+              <Ionicons name="options-outline" size={22} color={hasActiveFilters ? accentColor : colors.text} />
+              {hasActiveFilters && <View style={[styles.filterBadge, { backgroundColor: accentColor }]} />}
             </TouchableOpacity>
           )
         }
       />
 
       <Animated.ScrollView
+        ref={scrollViewRef}
         style={styles.offersList}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
@@ -412,6 +473,91 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
         </View>
         <View style={styles.bottomSpacer} />
       </Animated.ScrollView>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Filtrele ve Sırala</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {/* Sort By */}
+              <Text style={[styles.filterLabel, { color: colors.text }]}>Sıralama</Text>
+              <View style={styles.filterOptions}>
+                {[
+                  { key: 'date', label: 'Tarih' },
+                  { key: 'price', label: 'Fiyat' },
+                  { key: 'rating', label: 'Puan' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' },
+                      sortBy === option.key && { backgroundColor: 'rgba(75, 48, 184, 0.15)', borderColor: accentColor },
+                    ]}
+                    onPress={() => setSortBy(option.key as any)}
+                  >
+                    <Text style={[styles.filterOptionText, { color: sortBy === option.key ? accentColor : colors.textMuted }]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Price Range */}
+              <Text style={[styles.filterLabel, { color: colors.text, marginTop: 20 }]}>Fiyat Aralığı</Text>
+              <View style={styles.filterOptions}>
+                {[
+                  { key: 'all', label: 'Tümü' },
+                  { key: 'low', label: '< ₺50K' },
+                  { key: 'medium', label: '₺50K - ₺150K' },
+                  { key: 'high', label: '> ₺150K' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.filterOption,
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)' },
+                      filterPriceRange === option.key && { backgroundColor: 'rgba(75, 48, 184, 0.15)', borderColor: accentColor },
+                    ]}
+                    onPress={() => setFilterPriceRange(option.key as any)}
+                  >
+                    <Text style={[styles.filterOptionText, { color: filterPriceRange === option.key ? accentColor : colors.textMuted }]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={[styles.modalFooter, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <TouchableOpacity
+                style={[styles.resetButton, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]}
+                onPress={resetFilters}
+              >
+                <Text style={[styles.resetButtonText, { color: colors.textMuted }]}>Sıfırla</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.applyButton, { backgroundColor: accentColor }]}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <Text style={styles.applyButtonText}>Uygula</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -464,5 +610,87 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 120,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterOptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+  },
+  resetButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  applyButton: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  applyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
   },
 });

@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-
-const colors = defaultColors;
+import * as Haptics from 'expo-haptics';
 
 interface PaymentMethod {
   id: string;
@@ -16,42 +25,61 @@ interface PaymentMethod {
   last4: string;
   expiry?: string;
   bankName?: string;
+  iban?: string;
   isDefault: boolean;
+  cardHolder?: string;
+}
+
+interface Transaction {
+  id: string;
+  title: string;
+  date: string;
+  amount: number;
+  type: 'payment' | 'refund' | 'payout';
 }
 
 export function PaymentMethodsScreen() {
   const navigation = useNavigation<any>();
-  const { colors, isDark, helpers } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
-    { id: '1', type: 'card', brand: 'Visa', last4: '4242', expiry: '12/26', isDefault: true },
-    { id: '2', type: 'card', brand: 'Mastercard', last4: '8888', expiry: '09/25', isDefault: false },
-    { id: '3', type: 'bank', bankName: 'Garanti BBVA', last4: '7890', isDefault: false },
+    { id: '1', type: 'card', brand: 'Visa', last4: '4242', expiry: '12/26', isDefault: true, cardHolder: 'SEFA CETIN' },
+    { id: '2', type: 'card', brand: 'Mastercard', last4: '8888', expiry: '09/25', isDefault: false, cardHolder: 'SEFA CETIN' },
+    { id: '3', type: 'bank', bankName: 'Garanti BBVA', last4: '7890', iban: 'TR33 0006 1005 1978 6457 8413 26', isDefault: false },
   ]);
 
-  const getCardIcon = (brand?: string) => {
-    switch (brand?.toLowerCase()) {
-      case 'visa':
-        return 'card';
-      case 'mastercard':
-        return 'card';
-      default:
-        return 'card-outline';
-    }
-  };
+  const [transactions] = useState<Transaction[]>([
+    { id: 't1', title: 'DJ Phantom - Performans', date: '15 Ocak 2025', amount: -2450, type: 'payment' },
+    { id: 't2', title: 'İade - İptal edilen etkinlik', date: '10 Ocak 2025', amount: 1200, type: 'refund' },
+    { id: 't3', title: 'Sound System Kiralama', date: '5 Ocak 2025', amount: -3800, type: 'payment' },
+  ]);
 
-  const getCardColor = (brand?: string) => {
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [showAddBankModal, setShowAddBankModal] = useState(false);
+
+  // Card form state
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCVC, setCardCVC] = useState('');
+  const [cardName, setCardName] = useState('');
+
+  // Bank form state
+  const [bankName, setBankName] = useState('');
+  const [iban, setIban] = useState('');
+
+  const getCardGradient = (brand?: string): [string, string] => {
     switch (brand?.toLowerCase()) {
       case 'visa':
-        return ['#1a1f71', '#00579f'];
+        return ['#1a1f71', '#4b6cb7'];
       case 'mastercard':
         return ['#eb001b', '#f79e1b'];
       default:
-        return gradients.primary;
+        return ['#4B30B8', '#6366F1'];
     }
   };
 
   const handleSetDefault = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setPaymentMethods((prev) =>
       prev.map((method) => ({
         ...method,
@@ -60,28 +88,109 @@ export function PaymentMethodsScreen() {
     );
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, name: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Ödeme Yöntemi Sil',
-      'Bu ödeme yöntemini silmek istediğinize emin misiniz?',
+      `"${name}" silmek istediğinize emin misiniz?`,
       [
         { text: 'İptal', style: 'cancel' },
         {
           text: 'Sil',
           style: 'destructive',
-          onPress: () => setPaymentMethods((prev) => prev.filter((m) => m.id !== id)),
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setPaymentMethods((prev) => prev.filter((m) => m.id !== id));
+          },
         },
       ]
     );
   };
 
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\s/g, '').replace(/\D/g, '');
+    const groups = cleaned.match(/.{1,4}/g);
+    return groups ? groups.join(' ').substr(0, 19) : '';
+  };
+
+  const formatExpiry = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    if (cleaned.length >= 2) {
+      return cleaned.substr(0, 2) + '/' + cleaned.substr(2, 2);
+    }
+    return cleaned;
+  };
+
+  const formatIBAN = (text: string) => {
+    const cleaned = text.replace(/\s/g, '').toUpperCase();
+    const groups = cleaned.match(/.{1,4}/g);
+    return groups ? groups.join(' ') : '';
+  };
+
   const handleAddCard = () => {
-    navigation.navigate('AddCard');
+    if (!cardNumber || !cardExpiry || !cardCVC || !cardName) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      return;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const last4 = cardNumber.replace(/\s/g, '').slice(-4);
+    const newCard: PaymentMethod = {
+      id: Date.now().toString(),
+      type: 'card',
+      brand: cardNumber.startsWith('4') ? 'Visa' : 'Mastercard',
+      last4,
+      expiry: cardExpiry,
+      cardHolder: cardName.toUpperCase(),
+      isDefault: paymentMethods.length === 0,
+    };
+
+    setPaymentMethods((prev) => [...prev, newCard]);
+    setShowAddCardModal(false);
+    setCardNumber('');
+    setCardExpiry('');
+    setCardCVC('');
+    setCardName('');
   };
 
   const handleAddBank = () => {
-    Alert.alert('Banka Hesabı Ekle', 'Banka hesabı ekleme özelliği yakında eklenecek.');
+    if (!bankName || !iban) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      return;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const last4 = iban.replace(/\s/g, '').slice(-4);
+    const newBank: PaymentMethod = {
+      id: Date.now().toString(),
+      type: 'bank',
+      bankName,
+      last4,
+      iban: formatIBAN(iban),
+      isDefault: false,
+    };
+
+    setPaymentMethods((prev) => [...prev, newBank]);
+    setShowAddBankModal(false);
+    setBankName('');
+    setIban('');
   };
+
+  const getTransactionColor = (type: Transaction['type']) => {
+    switch (type) {
+      case 'payment':
+        return colors.error;
+      case 'refund':
+        return '#10B981';
+      case 'payout':
+        return '#3B82F6';
+      default:
+        return colors.text;
+    }
+  };
+
+  const cards = paymentMethods.filter((m) => m.type === 'card');
+  const banks = paymentMethods.filter((m) => m.type === 'bank');
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -97,205 +206,359 @@ export function PaymentMethodsScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cards Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Kartlarım</Text>
-
-          {paymentMethods
-            .filter((m) => m.type === 'card')
-            .map((card) => (
-              <TouchableOpacity
-                key={card.id}
-                style={styles.cardContainer}
-                activeOpacity={0.9}
-                onLongPress={() => handleDelete(card.id)}
-              >
-                <LinearGradient
-                  colors={getCardColor(card.brand) as [string, string]}
-                  style={styles.creditCard}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardBrand}>{card.brand}</Text>
-                    {card.isDefault && (
-                      <View style={styles.defaultBadge}>
-                        <Text style={styles.defaultBadgeText}>Varsayılan</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.cardNumber}>•••• •••• •••• {card.last4}</Text>
-                  <View style={styles.cardFooter}>
-                    <View>
-                      <Text style={styles.cardLabel}>Son Kullanma</Text>
-                      <Text style={styles.cardExpiry}>{card.expiry}</Text>
-                    </View>
-                    <Ionicons name="wifi" size={24} color="rgba(255,255,255,0.6)" style={{ transform: [{ rotate: '90deg' }] }} />
-                  </View>
-                </LinearGradient>
-
-                <View style={styles.cardActions}>
-                  {!card.isDefault && (
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleSetDefault(card.id)}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={18} color={colors.brand[400]} />
-                      <Text style={[styles.actionText, { color: colors.brand[400] }]}>Varsayılan Yap</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleDelete(card.id)}
-                  >
-                    <Ionicons name="trash-outline" size={18} color={colors.error} />
-                    <Text style={[styles.actionText, { color: colors.error }]}>Sil</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))}
-
-          {/* Add Card Button */}
-          <TouchableOpacity
-            style={[
-              styles.addButton,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
-              }
-            ]}
-            onPress={handleAddCard}
-            activeOpacity={0.7}
-          >
-            <View style={styles.addButtonInner}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Kartlarım</Text>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowAddCardModal(true);
+              }}
+            >
               <Ionicons name="add-circle" size={24} color={colors.brand[400]} />
-              <Text style={[styles.addButtonText, { color: colors.brand[400] }]}>Yeni Kart Ekle</Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+
+          {cards.length === 0 ? (
+            <TouchableOpacity
+              style={[styles.emptyCard, { borderColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]}
+              onPress={() => setShowAddCardModal(true)}
+            >
+              <Ionicons name="card-outline" size={32} color={colors.textMuted} />
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>Kart ekleyin</Text>
+            </TouchableOpacity>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.cardsScroll}
+            >
+              {cards.map((card) => (
+                <TouchableOpacity
+                  key={card.id}
+                  style={styles.cardWrapper}
+                  activeOpacity={0.9}
+                  onPress={() => handleSetDefault(card.id)}
+                  onLongPress={() => handleDelete(card.id, `${card.brand} •••• ${card.last4}`)}
+                >
+                  <LinearGradient
+                    colors={getCardGradient(card.brand)}
+                    style={styles.creditCard}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    {/* Card chip */}
+                    <View style={styles.cardTop}>
+                      <View style={styles.cardChip}>
+                        <View style={styles.chipLine} />
+                        <View style={styles.chipLine} />
+                        <View style={styles.chipLine} />
+                      </View>
+                      {card.isDefault && (
+                        <View style={styles.defaultBadge}>
+                          <Ionicons name="checkmark" size={10} color="white" />
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={styles.cardNumber}>•••• •••• •••• {card.last4}</Text>
+
+                    <View style={styles.cardBottom}>
+                      <View>
+                        <Text style={styles.cardLabel}>Kart Sahibi</Text>
+                        <Text style={styles.cardHolder}>{card.cardHolder}</Text>
+                      </View>
+                      <View style={styles.cardRight}>
+                        <View>
+                          <Text style={styles.cardLabel}>S.K.T.</Text>
+                          <Text style={styles.cardExpiry}>{card.expiry}</Text>
+                        </View>
+                        <Text style={styles.cardBrand}>{card.brand}</Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+
+              {/* Add card button */}
+              <TouchableOpacity
+                style={[styles.addCardButton, { borderColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]}
+                onPress={() => setShowAddCardModal(true)}
+              >
+                <Ionicons name="add" size={32} color={colors.brand[400]} />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
         </View>
 
         {/* Bank Accounts Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Banka Hesapları</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Banka Hesapları</Text>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowAddBankModal(true);
+              }}
+            >
+              <Ionicons name="add-circle" size={24} color={colors.brand[400]} />
+            </TouchableOpacity>
+          </View>
 
-          {paymentMethods
-            .filter((m) => m.type === 'bank')
-            .map((bank) => (
-              <View
+          {banks.length === 0 ? (
+            <TouchableOpacity
+              style={[styles.emptyBank, {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground,
+                borderColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border,
+              }]}
+              onPress={() => setShowAddBankModal(true)}
+            >
+              <View style={[styles.emptyBankIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5' }]}>
+                <Ionicons name="business-outline" size={24} color={colors.textMuted} />
+              </View>
+              <Text style={[styles.emptyBankText, { color: colors.textMuted }]}>Banka hesabı ekleyin</Text>
+              <Ionicons name="add" size={20} color={colors.brand[400]} />
+            </TouchableOpacity>
+          ) : (
+            banks.map((bank) => (
+              <TouchableOpacity
                 key={bank.id}
-                style={[
-                  styles.bankCard,
-                  {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
-                    ...(isDark ? {} : helpers.getShadow('sm')),
-                  }
-                ]}
+                style={[styles.bankCard, {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground,
+                  borderColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border,
+                }]}
+                activeOpacity={0.7}
+                onPress={() => handleSetDefault(bank.id)}
+                onLongPress={() => handleDelete(bank.id, bank.bankName || '')}
               >
-                <View style={styles.bankInfo}>
-                  <View style={styles.bankIcon}>
-                    <Ionicons name="business" size={24} color={colors.brand[400]} />
+                <View style={styles.bankLeft}>
+                  <View style={[styles.bankIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+                    <Ionicons name="business" size={20} color={colors.brand[400]} />
                   </View>
                   <View>
                     <Text style={[styles.bankName, { color: colors.text }]}>{bank.bankName}</Text>
-                    <Text style={[styles.bankAccount, { color: colors.textMuted }]}>TR** **** **** **** **** {bank.last4}</Text>
+                    <Text style={[styles.bankIban, { color: colors.textMuted }]}>•••• {bank.last4}</Text>
                   </View>
                 </View>
-                <View style={styles.cardActions}>
-                  {!bank.isDefault && (
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => handleSetDefault(bank.id)}
-                    >
-                      <Ionicons name="checkmark-circle-outline" size={18} color={colors.brand[400]} />
-                      <Text style={[styles.actionText, { color: colors.brand[400] }]}>Varsayılan</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => handleDelete(bank.id)}
-                  >
-                    <Ionicons name="trash-outline" size={18} color={colors.error} />
-                    <Text style={[styles.actionText, { color: colors.error }]}>Sil</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-
-          {/* Add Bank Button */}
-          <TouchableOpacity
-            style={[
-              styles.addButton,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
-              }
-            ]}
-            onPress={handleAddBank}
-            activeOpacity={0.7}
-          >
-            <View style={styles.addButtonInner}>
-              <Ionicons name="add-circle" size={24} color={colors.brand[400]} />
-              <Text style={[styles.addButtonText, { color: colors.brand[400] }]}>Banka Hesabı Ekle</Text>
-            </View>
-          </TouchableOpacity>
+                {bank.isDefault ? (
+                  <View style={[styles.bankDefaultBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                    <Ionicons name="checkmark" size={14} color="#10B981" />
+                  </View>
+                ) : (
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
-        {/* Billing History */}
+        {/* Recent Transactions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Fatura Geçmişi</Text>
-          <View
-            style={[
-              styles.historyCard,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
-                ...(isDark ? {} : helpers.getShadow('sm')),
-              }
-            ]}
-          >
-            <TouchableOpacity style={styles.historyRow} activeOpacity={0.7}>
-              <View style={styles.historyInfo}>
-                <Text style={[styles.historyTitle, { color: colors.text }]}>Ocak 2025 Faturası</Text>
-                <Text style={[styles.historyDate, { color: colors.textMuted }]}>15 Ocak 2025</Text>
-              </View>
-              <View style={styles.historyRight}>
-                <Text style={[styles.historyAmount, { color: colors.text }]}>₺2.450</Text>
-                <Ionicons name="download-outline" size={20} color={colors.brand[400]} />
-              </View>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Son İşlemler</Text>
+            <TouchableOpacity>
+              <Text style={[styles.seeAllText, { color: colors.brand[400] }]}>Tümü</Text>
             </TouchableOpacity>
-            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
-            <TouchableOpacity style={styles.historyRow} activeOpacity={0.7}>
-              <View style={styles.historyInfo}>
-                <Text style={[styles.historyTitle, { color: colors.text }]}>Aralık 2024 Faturası</Text>
-                <Text style={[styles.historyDate, { color: colors.textMuted }]}>15 Aralık 2024</Text>
+          </View>
+
+          <View style={[styles.transactionsCard, {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border,
+          }]}>
+            {transactions.map((tx, index) => (
+              <View key={tx.id}>
+                <View style={styles.transactionRow}>
+                  <View style={styles.txLeft}>
+                    <View style={[styles.txIcon, {
+                      backgroundColor: tx.type === 'payment'
+                        ? 'rgba(239, 68, 68, 0.1)'
+                        : tx.type === 'refund'
+                        ? 'rgba(16, 185, 129, 0.1)'
+                        : 'rgba(59, 130, 246, 0.1)'
+                    }]}>
+                      <Ionicons
+                        name={tx.type === 'payment' ? 'arrow-up' : tx.type === 'refund' ? 'arrow-down' : 'wallet'}
+                        size={16}
+                        color={getTransactionColor(tx.type)}
+                      />
+                    </View>
+                    <View>
+                      <Text style={[styles.txTitle, { color: colors.text }]} numberOfLines={1}>{tx.title}</Text>
+                      <Text style={[styles.txDate, { color: colors.textMuted }]}>{tx.date}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.txAmount, { color: getTransactionColor(tx.type) }]}>
+                    {tx.amount > 0 ? '+' : ''}₺{Math.abs(tx.amount).toLocaleString('tr-TR')}
+                  </Text>
+                </View>
+                {index < transactions.length - 1 && (
+                  <View style={[styles.txDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border }]} />
+                )}
               </View>
-              <View style={styles.historyRight}>
-                <Text style={[styles.historyAmount, { color: colors.text }]}>₺1.890</Text>
-                <Ionicons name="download-outline" size={20} color={colors.brand[400]} />
-              </View>
-            </TouchableOpacity>
-            <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]} />
-            <TouchableOpacity style={styles.viewAllRow} activeOpacity={0.7}>
-              <Text style={[styles.viewAllText, { color: colors.brand[400] }]}>Tüm Faturaları Gör</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.brand[400]} />
-            </TouchableOpacity>
+            ))}
           </View>
         </View>
 
-        {/* Info Box */}
+        {/* Security Info */}
         <View style={styles.section}>
-          <View style={styles.infoBox}>
-            <Ionicons name="shield-checkmark" size={24} color={colors.success} />
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoTitle, { color: colors.success }]}>Güvenli Ödemeler</Text>
-              <Text style={[styles.infoText, { color: colors.textMuted }]}>
-                Tüm ödeme bilgileriniz 256-bit SSL şifreleme ile korunmaktadır.
-              </Text>
-            </View>
+          <View style={[styles.securityBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)' }]}>
+            <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+            <Text style={[styles.securityText, { color: colors.textMuted }]}>
+              Tüm ödemeler 256-bit SSL ile şifrelenmektedir
+            </Text>
           </View>
         </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Add Card Modal */}
+      <Modal visible={showAddCardModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Yeni Kart Ekle</Text>
+              <TouchableOpacity onPress={() => setShowAddCardModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Kart Numarası</Text>
+              <TextInput
+                style={[styles.modalInput, {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+                  color: colors.text,
+                }]}
+                value={cardNumber}
+                onChangeText={(t) => setCardNumber(formatCardNumber(t))}
+                placeholder="0000 0000 0000 0000"
+                placeholderTextColor={colors.zinc[500]}
+                keyboardType="number-pad"
+                maxLength={19}
+              />
+
+              <View style={styles.inputRow}>
+                <View style={styles.inputHalf}>
+                  <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Son Kullanma</Text>
+                  <TextInput
+                    style={[styles.modalInput, {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+                      color: colors.text,
+                    }]}
+                    value={cardExpiry}
+                    onChangeText={(t) => setCardExpiry(formatExpiry(t))}
+                    placeholder="AA/YY"
+                    placeholderTextColor={colors.zinc[500]}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                  />
+                </View>
+                <View style={styles.inputHalf}>
+                  <Text style={[styles.inputLabel, { color: colors.textMuted }]}>CVV</Text>
+                  <TextInput
+                    style={[styles.modalInput, {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+                      color: colors.text,
+                    }]}
+                    value={cardCVC}
+                    onChangeText={setCardCVC}
+                    placeholder="•••"
+                    placeholderTextColor={colors.zinc[500]}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    secureTextEntry
+                  />
+                </View>
+              </View>
+
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Kart Üzerindeki İsim</Text>
+              <TextInput
+                style={[styles.modalInput, {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+                  color: colors.text,
+                }]}
+                value={cardName}
+                onChangeText={setCardName}
+                placeholder="AD SOYAD"
+                placeholderTextColor={colors.zinc[500]}
+                autoCapitalize="characters"
+              />
+            </ScrollView>
+
+            <TouchableOpacity style={styles.modalButton} onPress={handleAddCard}>
+              <LinearGradient
+                colors={['#4B30B8', '#6366F1']}
+                style={styles.modalButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="card" size={18} color="white" />
+                <Text style={styles.modalButtonText}>Kartı Kaydet</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add Bank Modal */}
+      <Modal visible={showAddBankModal} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Banka Hesabı Ekle</Text>
+              <TouchableOpacity onPress={() => setShowAddBankModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Banka Adı</Text>
+              <TextInput
+                style={[styles.modalInput, {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+                  color: colors.text,
+                }]}
+                value={bankName}
+                onChangeText={setBankName}
+                placeholder="Örn: Garanti BBVA"
+                placeholderTextColor={colors.zinc[500]}
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.textMuted }]}>IBAN</Text>
+              <TextInput
+                style={[styles.modalInput, {
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5',
+                  color: colors.text,
+                }]}
+                value={iban}
+                onChangeText={(t) => setIban(formatIBAN(t))}
+                placeholder="TR00 0000 0000 0000 0000 0000 00"
+                placeholderTextColor={colors.zinc[500]}
+                autoCapitalize="characters"
+                maxLength={32}
+              />
+            </ScrollView>
+
+            <TouchableOpacity style={styles.modalButton} onPress={handleAddBank}>
+              <LinearGradient
+                colors={['#4B30B8', '#6366F1']}
+                style={styles.modalButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="business" size={18} color="white" />
+                <Text style={styles.modalButtonText}>Hesabı Kaydet</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -321,119 +584,170 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+
   section: {
-    paddingHorizontal: 20,
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 16,
   },
-  cardContainer: {
-    marginBottom: 16,
+  seeAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // Cards
+  cardsScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  cardWrapper: {
+    width: 300,
   },
   creditCard: {
-    padding: 20,
-    borderRadius: 16,
+    width: '100%',
     height: 180,
+    borderRadius: 16,
+    padding: 20,
     justifyContent: 'space-between',
   },
-  cardHeader: {
+  cardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  cardBrand: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
+  cardChip: {
+    width: 40,
+    height: 30,
+    backgroundColor: '#d4af37',
+    borderRadius: 6,
+    padding: 4,
+    justifyContent: 'space-around',
+  },
+  chipLine: {
+    height: 2,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 1,
   },
   defaultBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  defaultBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'white',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardNumber: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '500',
     color: 'white',
     letterSpacing: 2,
   },
-  cardFooter: {
+  cardBottom: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
   cardLabel: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.6)',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  cardExpiry: {
-    fontSize: 14,
+  cardHolder: {
+    fontSize: 12,
     fontWeight: '500',
     color: 'white',
     marginTop: 2,
   },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 16,
-    marginTop: 12,
+  cardRight: {
+    alignItems: 'flex-end',
+    gap: 8,
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  cardExpiry: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'white',
+    marginTop: 2,
   },
-  actionText: {
-    fontSize: 13,
+  cardBrand: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: 'white',
   },
-  addButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  addCardButton: {
+    width: 80,
+    height: 180,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     borderStyle: 'dashed',
-    padding: 20,
-  },
-  addButtonInner: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
   },
-  addButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  bankCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  emptyCard: {
+    marginHorizontal: 20,
+    height: 120,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    marginBottom: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
-  bankInfo: {
+  emptyText: {
+    fontSize: 14,
+  },
+
+  // Banks
+  emptyBank: {
+    marginHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+  },
+  emptyBankIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyBankText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  bankCard: {
+    marginHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  bankLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   bankIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -441,78 +755,137 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  bankAccount: {
-    fontSize: 12,
-    marginTop: 4,
+  bankIban: {
+    fontSize: 13,
+    marginTop: 2,
   },
-  historyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
+  bankDefaultBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Transactions
+  transactionsCard: {
+    marginHorizontal: 20,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
     overflow: 'hidden',
   },
-  historyRow: {
+  transactionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    padding: 14,
   },
-  historyInfo: {
-    flex: 1,
-  },
-  historyTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  historyDate: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  historyRight: {
+  txLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  historyAmount: {
+  txIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  txTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    maxWidth: 180,
+  },
+  txDate: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  txAmount: {
     fontSize: 15,
     fontWeight: '600',
   },
-  divider: {
+  txDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    marginHorizontal: 16,
+    marginHorizontal: 14,
   },
-  viewAllRow: {
+
+  // Security
+  securityBox: {
+    marginHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 10,
+  },
+  securityText: {
+    fontSize: 13,
+    flex: 1,
+  },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 16,
+  },
+  modalInput: {
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  inputHalf: {
+    flex: 1,
+  },
+  modalButton: {
+    margin: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  modalButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 14,
-    gap: 6,
+    paddingVertical: 16,
+    gap: 8,
   },
-  viewAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoTitle: {
-    fontSize: 14,
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
-  },
-  infoText: {
-    fontSize: 12,
-    lineHeight: 18,
   },
 });

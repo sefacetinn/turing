@@ -2,32 +2,80 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Image,
   Linking,
   Alert,
   Dimensions,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { getProviderDetail } from '../data/providerDetailData';
 
 const { width } = Dimensions.get('window');
 
+const HEADER_HEIGHT = 100;
+const SCROLL_THRESHOLD = 200;
+
 export function ProviderDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { providerId } = (route.params as { providerId: string }) || { providerId: 't1' };
   const { colors, isDark, helpers } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const provider = getProviderDetail(providerId);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Animated header background style
+  const headerBgStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 50, SCROLL_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  // Animated header title style
+  const headerTitleStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [SCROLL_THRESHOLD - 30, SCROLL_THRESHOLD + 20],
+      [10, 0],
+      Extrapolation.CLAMP
+    );
+    return { opacity, transform: [{ translateY }] };
+  });
 
   const handleCall = () => {
     Alert.alert(
@@ -72,45 +120,50 @@ export function ProviderDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Header Background */}
+      <Animated.View style={[styles.animatedHeaderBg, { paddingTop: insets.top }, headerBgStyle]}>
+        <BlurView intensity={isDark ? 60 : 80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.7)' : 'rgba(255, 255, 255, 0.8)' }]} />
+      </Animated.View>
+
       {/* Header - Floating */}
-      <View style={styles.floatingHeader}>
+      <View style={[styles.floatingHeader, { paddingTop: insets.top }]}>
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-          <LinearGradient
-            colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.3)']}
-            style={styles.headerButtonBg}
-          >
-            <Ionicons name="arrow-back" size={22} color="white" />
-          </LinearGradient>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
+
+        {/* Animated Title */}
+        <Animated.Text
+          style={[styles.animatedHeaderTitle, { color: colors.text }, headerTitleStyle]}
+          numberOfLines={1}
+        >
+          {provider.name}
+        </Animated.Text>
+
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => setIsFavorite(!isFavorite)}
           >
-            <LinearGradient
-              colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.3)']}
-              style={styles.headerButtonBg}
-            >
-              <Ionicons
-                name={isFavorite ? 'heart' : 'heart-outline'}
-                size={22}
-                color={isFavorite ? colors.error : 'white'}
-              />
-            </LinearGradient>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={24}
+              color={isFavorite ? colors.error : colors.text}
+            />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
-            <LinearGradient
-              colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.3)']}
-              style={styles.headerButtonBg}
-            >
-              <Ionicons name="share-outline" size={22} color="white" />
-            </LinearGradient>
+            <Ionicons name="share-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
         {/* Hero Image */}
         <View style={styles.heroContainer}>
           <Image source={{ uri: provider.coverImage }} style={styles.heroImage} />
@@ -151,7 +204,7 @@ export function ProviderDetailScreen() {
           {/* Price Range */}
           <View style={styles.priceContainer}>
             <LinearGradient
-              colors={['rgba(147, 51, 234, 0.15)', 'rgba(147, 51, 234, 0.05)']}
+              colors={['rgba(75, 48, 184, 0.15)', 'rgba(75, 48, 184, 0.05)']}
               style={styles.priceGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -192,7 +245,7 @@ export function ProviderDetailScreen() {
           {provider.highlights.map((highlight, index) => (
             <View key={index} style={[styles.highlightItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
               <LinearGradient
-                colors={['rgba(147, 51, 234, 0.2)', 'rgba(147, 51, 234, 0.05)']}
+                colors={['rgba(75, 48, 184, 0.2)', 'rgba(75, 48, 184, 0.05)']}
                 style={styles.highlightIconBg}
               >
                 <Ionicons name={highlight.icon as any} size={18} color={colors.brand[400]} />
@@ -319,7 +372,7 @@ export function ProviderDetailScreen() {
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.contactItem, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={handleEmail}>
-              <View style={[styles.contactIconBg, { backgroundColor: 'rgba(147, 51, 234, 0.15)' }]}>
+              <View style={[styles.contactIconBg, { backgroundColor: 'rgba(75, 48, 184, 0.15)' }]}>
                 <Ionicons name="mail" size={18} color={colors.brand[400]} />
               </View>
               <View style={styles.contactText}>
@@ -388,7 +441,7 @@ export function ProviderDetailScreen() {
         </View>
 
         <View style={{ height: 140 }} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Bottom Action */}
       <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.98)' : colors.cardBackground, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('lg')])]}>
@@ -412,7 +465,7 @@ export function ProviderDetailScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -420,9 +473,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  animatedHeaderBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 99,
+    overflow: 'hidden',
+  },
+  animatedHeaderTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
   floatingHeader: {
     position: 'absolute',
-    top: 50,
+    top: 0,
     left: 0,
     right: 0,
     zIndex: 100,
@@ -430,19 +499,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   headerButton: {
-    marginRight: 8,
-  },
-  headerButtonBg: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerActions: {
     flexDirection: 'row',
+    gap: 4,
   },
   heroContainer: {
     height: 280,
@@ -535,7 +602,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
+    borderColor: 'rgba(75, 48, 184, 0.2)',
   },
   priceText: {
     fontSize: 17,
@@ -560,7 +627,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -637,10 +704,10 @@ const styles = StyleSheet.create({
   specialtyTag: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
+    borderColor: 'rgba(75, 48, 184, 0.2)',
   },
   specialtyText: {
     fontSize: 13,
@@ -781,7 +848,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -810,7 +877,7 @@ const styles = StyleSheet.create({
   eventTypeBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderRadius: 6,
   },
   eventTypeText: {

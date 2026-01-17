@@ -2,13 +2,18 @@ import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { EmptyState } from '../components/EmptyState';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -31,13 +36,22 @@ const localNotifications = [
 export function NotificationsScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [notificationsList, setNotificationsList] = useState(localNotifications);
   const [activeTab, setActiveTab] = useState<NotificationTab>('all');
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'offer':
-        return { name: 'document-text', color: colors.brand[400], bg: 'rgba(147, 51, 234, 0.15)' };
+        return { name: 'document-text', color: colors.brand[400], bg: 'rgba(75, 48, 184, 0.15)' };
       case 'message':
         return { name: 'chatbubble', color: colors.success, bg: 'rgba(34, 197, 94, 0.15)' };
       case 'booking':
@@ -51,7 +65,7 @@ export function NotificationsScreen() {
       case 'system':
         return { name: 'information-circle', color: colors.textMuted, bg: isDark ? 'rgba(161, 161, 170, 0.15)' : 'rgba(113, 113, 122, 0.15)' };
       default:
-        return { name: 'notifications', color: colors.brand[400], bg: 'rgba(147, 51, 234, 0.15)' };
+        return { name: 'notifications', color: colors.brand[400], bg: 'rgba(75, 48, 184, 0.15)' };
     }
   };
 
@@ -111,22 +125,37 @@ export function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Bildirimler</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-            <Text style={[styles.markAllText, { color: colors.brand[400] }]}>Tümünü Okundu İşaretle</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Animated Scroll Header */}
+      <ScrollHeader
+        title="Bildirimler"
+        scrollY={scrollY}
+        threshold={60}
+        showBackButton={true}
+        rightAction={
+          unreadCount > 0 ? (
+            <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
+              <Text style={[styles.markAllText, { color: colors.brand[400] }]}>Okundu</Text>
+            </TouchableOpacity>
+          ) : undefined
+        }
+      />
 
-      {/* Tabs */}
-      <View style={styles.tabRow}>
+      <Animated.ScrollView
+        style={styles.notificationsList}
+        contentContainerStyle={{ paddingTop: insets.top + 44, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+      >
+        {/* Large Title */}
+        <LargeTitle
+          title="Bildirimler"
+          subtitle={`${unreadCount} okunmamış bildirim`}
+        />
+
+        {/* Tabs */}
+        <View style={styles.tabRow}>
         <TouchableOpacity
           style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'all' && styles.tabButtonActive]}
           onPress={() => setActiveTab('all')}
@@ -186,8 +215,7 @@ export function NotificationsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Notifications List */}
-      <ScrollView style={styles.notificationsList} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {/* Notifications List */}
         {Object.entries(groupedNotifications).map(([date, notifications]) => (
           <View key={date}>
             <Text style={[styles.dateHeader, { color: colors.textMuted }]}>{date}</Text>
@@ -203,8 +231,8 @@ export function NotificationsScreen() {
                       borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
                     },
                     !notification.read && {
-                      backgroundColor: 'rgba(147, 51, 234, 0.05)',
-                      borderColor: 'rgba(147, 51, 234, 0.1)',
+                      backgroundColor: 'rgba(75, 48, 184, 0.05)',
+                      borderColor: 'rgba(75, 48, 184, 0.1)',
                     }
                   ]}
                   onPress={() => handleNotificationPress(notification)}
@@ -238,22 +266,16 @@ export function NotificationsScreen() {
         ))}
 
         {filteredNotifications.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
-            <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-              {activeTab === 'all' ? 'Bildirim yok' :
-               activeTab === 'offers' ? 'Teklif bildirimi yok' :
-               activeTab === 'messages' ? 'Mesaj bildirimi yok' : 'Sistem bildirimi yok'}
-            </Text>
-            <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
-              Yeni bildirimler burada görünecek
-            </Text>
-          </View>
+          <EmptyState
+            icon="notifications-off-outline"
+            title={activeTab === 'all' ? 'Bildirim yok' :
+                   activeTab === 'offers' ? 'Teklif bildirimi yok' :
+                   activeTab === 'messages' ? 'Mesaj bildirimi yok' : 'Sistem bildirimi yok'}
+            message="Yeni bildirimler burada görünecek."
+          />
         )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
@@ -261,30 +283,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
   markAllButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexShrink: 0,
   },
   markAllText: {
     fontSize: 13,
+    fontWeight: '500',
+    flexShrink: 0,
   },
   tabRow: {
     flexDirection: 'row',
@@ -302,7 +309,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   tabButtonActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   tabButtonText: {
     fontSize: 12,
@@ -320,7 +327,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   tabBadgeActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(75, 48, 184, 0.3)',
   },
   tabBadgeText: {
     fontSize: 10,
@@ -348,8 +355,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   notificationUnread: {
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
-    borderColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.05)',
+    borderColor: 'rgba(75, 48, 184, 0.1)',
   },
   iconContainer: {
     width: 44,
@@ -388,7 +395,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
@@ -401,20 +408,5 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginLeft: 8,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 16,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'center',
   },
 });

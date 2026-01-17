@@ -6,7 +6,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
     title: "Turing'e Hoş Geldiniz",
     description: 'Etkinlik ve müzik sektörünün buluşma noktası',
     icon: 'musical-notes',
-    gradient: ['#9333EA', '#6366f1'],
+    gradient: ['#4b30b8', '#a855f7'],
   },
   {
     id: '2',

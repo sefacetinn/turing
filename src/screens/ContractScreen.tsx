@@ -58,7 +58,7 @@ export function ContractScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Contract Header */}
         <View style={styles.contractHeader}>
-          <LinearGradient colors={['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.05)']} style={styles.contractHeaderGradient}>
+          <LinearGradient colors={['rgba(75, 48, 184, 0.1)', 'rgba(75, 48, 184, 0.05)']} style={styles.contractHeaderGradient}>
             <Ionicons name="document-text" size={32} color={colors.brand[400]} />
             <Text style={[styles.contractTitle, { color: colors.text }]}>{contractTemplate.title}</Text>
             <Text style={[styles.contractNumber, { color: colors.textMuted }]}>Sözleşme No: {contract.id.toUpperCase()}</Text>
@@ -69,7 +69,7 @@ export function ContractScreen() {
         {/* Parties Section */}
         <View style={styles.partiesSection}>
           {[{ party: contract.organizer, label: 'ORGANİZATÖR', iconBg: 'rgba(59, 130, 246, 0.15)', icon: 'business', iconColor: colors.info, signature: contract.organizerSignature },
-            { party: contract.provider, label: 'HİZMET SAĞLAYICI', iconBg: 'rgba(147, 51, 234, 0.15)', icon: 'briefcase', iconColor: colors.brand[400], signature: contract.providerSignature }].map((item, idx) => (
+            { party: contract.provider, label: 'HİZMET SAĞLAYICI', iconBg: 'rgba(75, 48, 184, 0.15)', icon: 'briefcase', iconColor: colors.brand[400], signature: contract.providerSignature }].map((item, idx) => (
             <React.Fragment key={idx}>
               {idx > 0 && <View style={styles.partyDivider}><View style={styles.partyDividerLine} /><Ionicons name="swap-horizontal" size={20} color={colors.textSecondary} /><View style={styles.partyDividerLine} /></View>}
               <View style={styles.partyCard}>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   statusBannerText: { fontSize: 13, fontWeight: '600' },
   scrollView: { flex: 1 },
   contractHeader: { margin: 16 },
-  contractHeaderGradient: { padding: 24, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(147, 51, 234, 0.2)' },
+  contractHeaderGradient: { padding: 24, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(75, 48, 184, 0.2)' },
   contractTitle: { fontSize: 18, fontWeight: '700', marginTop: 12, textAlign: 'center' },
   contractNumber: { fontSize: 12, marginTop: 8 },
   contractDate: { fontSize: 11, marginTop: 4 },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: '700' },
   modalSubtitle: { fontSize: 13, marginBottom: 20 },
   signaturePad: { marginBottom: 20 },
-  signaturePadInner: { height: 180, borderRadius: 16, borderWidth: 2, borderColor: 'rgba(147, 51, 234, 0.3)', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  signaturePadInner: { height: 180, borderRadius: 16, borderWidth: 2, borderColor: 'rgba(75, 48, 184, 0.3)', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
   signaturePadPlaceholder: { fontSize: 14 },
   clearSignatureButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 },
   clearSignatureText: { fontSize: 12 },

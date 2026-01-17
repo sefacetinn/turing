@@ -140,7 +140,7 @@ export function ScrollHeader({
               style={styles.backButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="chevron-back" size={28} color={colors.text} />
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
             </TouchableOpacity>
           )}
         </View>
@@ -165,7 +165,7 @@ export function ScrollHeader({
 }
 
 // Large title component for the scrollable content
-export function LargeTitle({ title, subtitle }: { title: string; subtitle?: string }) {
+export function LargeTitle({ title, subtitle, scrollY }: { title: string; subtitle?: string; scrollY?: SharedValue<number> }) {
   const { colors } = useTheme();
 
   return (
@@ -210,12 +210,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   leftContainer: {
-    width: 60,
+    minWidth: 60,
     alignItems: 'flex-start',
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -230,8 +230,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   rightContainer: {
-    width: 60,
+    minWidth: 60,
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   largeTitleContainer: {
     paddingHorizontal: 20,

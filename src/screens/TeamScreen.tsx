@@ -90,7 +90,7 @@ export default function TeamScreen() {
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color="#6366f1" />
+        <ActivityIndicator size="large" color={colors.brand[400]} />
       </View>
     );
   }
@@ -115,7 +115,7 @@ export default function TeamScreen() {
         </Text>
         {canManageTeam && (
           <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: '#6366f1' }]}
+            style={[styles.addButton, { backgroundColor: colors.brand[400] }]}
             onPress={() => navigation.navigate('InviteMember')}
           >
             <Ionicons name="add" size={22} color="#ffffff" />
@@ -131,7 +131,7 @@ export default function TeamScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#6366f1"
+            tintColor={colors.brand[400]}
           />
         }
       >
@@ -140,12 +140,12 @@ export default function TeamScreen() {
           style={[
             styles.orgCard,
             {
-              backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)',
-              borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.05)',
+              borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
             },
           ]}
         >
-          <Ionicons name="business" size={24} color="#6366f1" />
+          <Ionicons name="business" size={24} color={colors.brand[400]} />
           <View style={styles.orgInfo}>
             <Text style={[styles.orgName, { color: colors.text }]}>
               {currentOrganization?.name}
@@ -323,6 +323,6 @@ const styles = StyleSheet.create({
   inviteLinkText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#4b30b8',
   },
 });

@@ -33,7 +33,7 @@ export function CompareOffersScreen() {
   const [sortBy, setSortBy] = useState<OfferSortOption>('score');
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
 
-  const accentColor = '#6366f1';
+  const accentColor = colors.brand[400];
 
   // Get quote request and offers
   const quoteRequest = useMemo(
@@ -260,8 +260,8 @@ export function CompareOffersScreen() {
                         {
                           backgroundColor: isBestValue
                             ? isDark
-                              ? 'rgba(99, 102, 241, 0.15)'
-                              : 'rgba(99, 102, 241, 0.08)'
+                              ? 'rgba(75, 48, 184, 0.15)'
+                              : 'rgba(75, 48, 184, 0.08)'
                             : isDark
                               ? 'rgba(255,255,255,0.01)'
                               : 'white',

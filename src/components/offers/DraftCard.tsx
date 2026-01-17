@@ -17,7 +17,7 @@ export function DraftCard({ draft, onContinue, onDelete }: DraftCardProps) {
   const categoryInfo = categoryConfig[draft.category] || {
     title: draft.categoryName,
     icon: 'document-outline',
-    gradient: ['#6366f1', '#8b5cf6'],
+    gradient: ['#4b30b8', '#8b5cf6'],
   };
 
   const formatDate = (dateString: string) => {

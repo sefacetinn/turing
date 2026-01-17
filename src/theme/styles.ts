@@ -28,8 +28,8 @@ export const getCardStyle = (
 
   if (options?.active) {
     baseStyle.backgroundColor = isDark
-      ? 'rgba(147, 51, 234, 0.08)'
-      : 'rgba(147, 51, 234, 0.06)';
+      ? 'rgba(75, 48, 184, 0.08)'
+      : 'rgba(75, 48, 184, 0.06)';
     baseStyle.borderColor = colors.brand[400];
   }
 
@@ -82,7 +82,7 @@ export const getBadgeStyle = (
     warning: { bg: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)', border: colors.warning },
     error: { bg: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)', border: colors.error },
     info: { bg: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)', border: colors.info },
-    brand: { bg: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)', border: colors.brand[400] },
+    brand: { bg: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)', border: colors.brand[400] },
   };
 
   return {

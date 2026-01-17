@@ -1,13 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager, RefreshControl, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { userProfile } from '../data/mockData';
 import { useApp } from '../../App';
+import { scrollToTopEmitter } from '../utils/scrollToTop';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -49,7 +55,7 @@ const providerMenuItems = [
 
 // Business management items for different provider types
 const businessManagementItems = [
-  { id: 'artistRoster', icon: 'musical-notes', label: 'Sanatçı Kadrosu', description: 'Booking sağlayıcıları için', gradient: ['#9333EA', '#C084FC'], requiredService: 'booking' },
+  { id: 'artistRoster', icon: 'musical-notes', label: 'Sanatçı Kadrosu', description: 'Booking sağlayıcıları için', gradient: ['#4b30b8', '#C084FC'], requiredService: 'booking' },
   { id: 'equipment', icon: 'hardware-chip', label: 'Ekipman Envanteri', description: 'Teknik firmalar için', gradient: ['#3B82F6', '#60A5FA'], requiredService: 'technical' },
   { id: 'menu', icon: 'restaurant', label: 'Menü Yönetimi', description: 'Catering firmaları için', gradient: ['#F59E0B', '#FBBF24'], requiredService: 'catering' },
   { id: 'fleet', icon: 'car', label: 'Filo Yönetimi', description: 'Ulaşım firmaları için', gradient: ['#10B981', '#34D399'], requiredService: 'transport' },
@@ -60,8 +66,28 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const { canSwitchMode, providerServices = [], currentAccount } = useApp();
+  const insets = useSafeAreaInsets();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
   const [isBusinessExpanded, setIsBusinessExpanded] = useState(false);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'ProfileTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   // Use currentAccount data if available, otherwise fallback to userProfile
   const profile = currentAccount?.profile || userProfile;
@@ -216,6 +242,42 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
       color: colors.textSecondary,
       marginTop: 2,
     },
+    companyCard: {
+      marginHorizontal: 20,
+      marginTop: 16,
+      backgroundColor: colors.cardBackground,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden' as const,
+      ...(isDark ? {} : {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+      }),
+    },
+    companyName: {
+      fontSize: 16,
+      fontWeight: '600' as const,
+      color: colors.text,
+    },
+    companyRating: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginLeft: 4,
+    },
+    companyCategory: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    companyEditHintText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.textMuted,
+      marginLeft: 8,
+    },
     statCard: {
       flex: 1,
       alignItems: 'center' as const,
@@ -302,15 +364,29 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
   };
 
   return (
-    <SafeAreaView style={dynamicStyles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={dynamicStyles.headerTitle}>Profil</Text>
+    <View style={dynamicStyles.container}>
+      {/* Animated Scroll Header */}
+      <ScrollHeader
+        title="Profil"
+        scrollY={scrollY}
+        threshold={60}
+        showBackButton={true}
+        rightAction={
           <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
             <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
-        </View>
+        }
+      />
+
+      <Animated.ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: insets.top + 44, paddingBottom: 100 }}
+      >
+        {/* Large Title */}
+        <LargeTitle title="Profil" />
 
         {/* Profile Card */}
         <TouchableOpacity style={dynamicStyles.profileCard} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
@@ -354,7 +430,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
                 styles.modeIcon,
                 isProviderMode
                   ? { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(16, 185, 129, 0.25)' }
-                  : { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(147, 51, 234, 0.25)' }
+                  : { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(75, 48, 184, 0.25)' }
               ]}>
                 <Ionicons
                   name={isProviderMode ? 'musical-notes' : 'people'}
@@ -380,6 +456,46 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
             />
           </View>
         )}
+
+        {/* Company Profile Card */}
+        <TouchableOpacity
+          style={dynamicStyles.companyCard}
+          onPress={() => navigation.navigate('EditCompanyProfile')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.companyCardContent}>
+            <Image
+              source={{ uri: isProviderMode
+                ? 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400'
+                : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400'
+              }}
+              style={styles.companyLogo}
+            />
+            <View style={styles.companyInfo}>
+              <Text style={dynamicStyles.companyName}>
+                {isProviderMode ? 'EventPro 360' : 'Stellar Events'}
+              </Text>
+              <View style={styles.companyMeta}>
+                <Ionicons name="star" size={12} color="#FBBF24" />
+                <Text style={dynamicStyles.companyRating}>
+                  {isProviderMode ? '4.9 (456)' : '4.8 (128)'}
+                </Text>
+                <View style={[styles.companyDot, { backgroundColor: colors.textMuted }]} />
+                <Text style={dynamicStyles.companyCategory}>
+                  {isProviderMode ? 'Teknik & Booking' : 'Etkinlik Organizasyonu'}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.companyEditIcon, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+              <Ionicons name="create-outline" size={18} color={colors.brand[400]} />
+            </View>
+          </View>
+          <View style={[styles.companyEditHint, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+            <Ionicons name="business-outline" size={14} color={colors.textMuted} />
+            <Text style={dynamicStyles.companyEditHintText}>Şirket profilini düzenle</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+          </View>
+        </TouchableOpacity>
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -451,7 +567,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
                 onPress={() => handleBusinessManagementPress(item.id)}
               >
                 <View style={styles.menuItemLeft}>
-                  <View style={[dynamicStyles.menuIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.12)' : 'rgba(147, 51, 234, 0.08)' }]}>
+                  <View style={[dynamicStyles.menuIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.12)' : 'rgba(75, 48, 184, 0.08)' }]}>
                     <Ionicons name={item.icon as any} size={18} color={colors.brand[400]} />
                   </View>
                   <View>
@@ -499,22 +615,12 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
 
         {/* Version */}
         <Text style={dynamicStyles.versionText}>Turing v1.0.0</Text>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
   settingsButton: {
     width: 40,
     height: 40,
@@ -571,6 +677,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
     marginTop: 16,
+  },
+  companyCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  companyLogo: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+  },
+  companyInfo: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  companyMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  companyDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    marginHorizontal: 8,
+  },
+  companyEditIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyEditHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
   },
   ratingRow: {
     flexDirection: 'row',

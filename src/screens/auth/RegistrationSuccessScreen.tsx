@@ -62,7 +62,7 @@ export function RegistrationSuccessScreen() {
 
   return (
     <LinearGradient
-      colors={isProvider ? ['#059669', '#10b981', '#34d399'] : ['#6366f1', '#8b5cf6', '#a78bfa']}
+      colors={isProvider ? ['#059669', '#10b981', '#34d399'] : ['#4b30b8', '#8b5cf6', '#a78bfa']}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -73,7 +73,7 @@ export function RegistrationSuccessScreen() {
               <Ionicons
                 name={isProvider ? 'briefcase' : 'checkmark'}
                 size={64}
-                color={isProvider ? '#059669' : '#6366f1'}
+                color={isProvider ? '#059669' : '#4b30b8'}
               />
             </View>
           </Animated.View>
@@ -107,13 +107,13 @@ export function RegistrationSuccessScreen() {
             onPress={handleContinue}
             activeOpacity={0.9}
           >
-            <Text style={[styles.continueButtonText, { color: isProvider ? '#059669' : '#6366f1' }]}>
+            <Text style={[styles.continueButtonText, { color: isProvider ? '#059669' : '#4b30b8' }]}>
               {isProvider ? 'Tamam' : 'Giriş Yap'}
             </Text>
             <Ionicons
               name="arrow-forward"
               size={20}
-              color={isProvider ? '#059669' : '#6366f1'}
+              color={isProvider ? '#059669' : '#4b30b8'}
             />
           </TouchableOpacity>
         </Animated.View>

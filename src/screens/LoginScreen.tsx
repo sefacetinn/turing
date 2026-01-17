@@ -132,7 +132,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              <View style={[styles.logoGlow, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)' }]} />
+              <View style={[styles.logoGlow, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]} />
               <Image
                 source={require('../../assets/turing-icon.png')}
                 style={styles.logoImage}
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 200,
     borderRadius: 125,
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.2)',
   },
   backgroundOrb2: {
     position: 'absolute',
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 150,
     borderRadius: 100,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   backgroundOrb3: {
     position: 'absolute',
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     right: -15,
     bottom: -15,
     borderRadius: 50,
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(75, 48, 184, 0.3)',
   },
   logoImage: {
     width: 100,

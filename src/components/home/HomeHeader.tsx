@@ -29,7 +29,7 @@ export function HomeHeader({
           source={{ uri: userImage }}
           style={[
             styles.avatar,
-            { borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.4)' },
+            { borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.4)' },
           ]}
         />
         <View style={styles.profileInfo}>

@@ -102,7 +102,7 @@ export function PendingReviewCard({
               <View
                 style={[
                   styles.targetAvatarPlaceholder,
-                  { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)' },
+                  { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' },
                 ]}
               >
                 <Text style={[styles.targetAvatarText, { color: colors.brand[400] }]}>
@@ -214,7 +214,7 @@ export function SinglePendingReview({
         <View
           style={[
             styles.singleAvatarPlaceholder,
-            { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)' },
+            { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' },
           ]}
         >
           <Text style={[styles.singleAvatarText, { color: colors.brand[400] }]}>
@@ -230,7 +230,7 @@ export function SinglePendingReview({
           {serviceCategory && `${serviceCategory} • `}{eventTitle}
         </Text>
       </View>
-      <View style={[styles.singleAction, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+      <View style={[styles.singleAction, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
         <Ionicons name="star-outline" size={16} color={colors.brand[400]} />
       </View>
     </TouchableOpacity>

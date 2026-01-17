@@ -31,7 +31,7 @@ export function RoleSelectionScreen() {
       title: 'Organizatör',
       description: 'Etkinlik düzenleyin, sağlayıcılardan teklif alın',
       icon: 'people',
-      gradient: ['#9333EA', '#6366f1'] as const,
+      gradient: ['#4b30b8', '#a855f7'] as const,
       features: [
         'Etkinlik oluşturma',
         'Teklif karşılaştırma',

@@ -122,7 +122,7 @@ export function ProviderReviewsScreen() {
               ]}
             >
               <View style={styles.reviewHeader}>
-                <View style={[styles.avatar, { backgroundColor: 'rgba(147, 51, 234, 0.2)' }]}>
+                <View style={[styles.avatar, { backgroundColor: 'rgba(75, 48, 184, 0.2)' }]}>
                   <Text style={[styles.avatarText, { color: colors.brand[400] }]}>
                     {review.avatar || review.name.substring(0, 2).toUpperCase()}
                   </Text>
@@ -131,7 +131,7 @@ export function ProviderReviewsScreen() {
                   <Text style={[styles.reviewerName, { color: colors.text }]}>{review.name}</Text>
                   <View style={styles.reviewMeta}>
                     {renderStars(review.rating)}
-                    <View style={[styles.eventTypeBadge, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
+                    <View style={[styles.eventTypeBadge, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}>
                       <Text style={[styles.eventTypeText, { color: colors.brand[400] }]}>
                         {review.eventType}
                       </Text>

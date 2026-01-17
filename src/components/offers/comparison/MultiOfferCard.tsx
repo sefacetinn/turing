@@ -34,7 +34,7 @@ export function MultiOfferCard({
   const { colors, isDark } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const accentColor = '#6366f1';
+  const accentColor = '#4b30b8';
   const categoryGradient = getCategoryGradient(groupedOffers.serviceCategory as string);
 
   // Calculate scores and find best offers
@@ -153,7 +153,7 @@ export function MultiOfferCard({
 
           {/* Compare All Button */}
           <TouchableOpacity
-            style={[styles.compareButton, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}
+            style={[styles.compareButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
             onPress={onCompareAll}
           >
             <Ionicons name="git-compare-outline" size={16} color={accentColor} />

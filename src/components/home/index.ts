@@ -7,3 +7,4 @@ export { CategoryCard } from './CategoryCard';
 export { ProviderCard } from './ProviderCard';
 export { ArtistCard } from './ArtistCard';
 export { StatsCard } from './StatsCard';
+export { CalendarWidget } from './CalendarWidget';

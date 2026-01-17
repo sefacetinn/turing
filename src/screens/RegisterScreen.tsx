@@ -48,10 +48,10 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Background Gradient Orbs */}
       <View style={[styles.backgroundOrb1, {
-        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)'
       }]} />
       <View style={[styles.backgroundOrb2, {
-        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)'
+        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)'
       }]} />
       <View style={[styles.backgroundOrb3, {
         backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)'
@@ -69,10 +69,10 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <View style={[styles.logoGlow, {
-                backgroundColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)'
+                backgroundColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)'
               }]} />
               <LinearGradient
-                colors={['#9333ea', '#7c3aed', '#6366f1']}
+                colors={['#4b30b8', '#7c3aed', '#4b30b8']}
                 style={styles.logoBox}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 200,
     borderRadius: 125,
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.2)',
   },
   backgroundOrb2: {
     position: 'absolute',
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 150,
     borderRadius: 100,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   backgroundOrb3: {
     position: 'absolute',
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
     right: -8,
     bottom: -8,
     borderRadius: 30,
-    backgroundColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(75, 48, 184, 0.3)',
   },
   logoBox: {
     width: 64,

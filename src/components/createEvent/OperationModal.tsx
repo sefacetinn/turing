@@ -45,7 +45,7 @@ export function OperationModal({ visible, selectedServices, onToggle, onClose }:
                       borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
                     },
                     isSelected && {
-                      backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)',
+                      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)',
                       borderColor: colors.brand[400],
                     },
                   ]}
@@ -57,7 +57,7 @@ export function OperationModal({ visible, selectedServices, onToggle, onClose }:
                         styles.iconContainer,
                         { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)' },
                         isSelected && {
-                          backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)'
+                          backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)'
                         },
                       ]}
                     >
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     paddingVertical: 16,
-    backgroundColor: '#9333ea',
+    backgroundColor: '#4b30b8',
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',

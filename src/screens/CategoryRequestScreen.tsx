@@ -210,7 +210,7 @@ export function CategoryRequestScreen() {
                       backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
                       borderColor: isSelected ? colors.brand[500] : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
                     },
-                    isSelected && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' },
+                    isSelected && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' },
                   ]}
                   onPress={() => {
                     setSelectedArtistId(isSelected ? null : artist.id);
@@ -306,7 +306,7 @@ export function CategoryRequestScreen() {
         {/* Show rider requirements summary if available */}
         {selectedArtist && riderType && selectedArtist.riders[riderType as keyof typeof selectedArtist.riders] && (
           <FormSection title="Sanatci Gereksinimleri" subtitle="Secilen sanatcinin rider bilgileri otomatik eklendi">
-            <View style={[styles.riderSummaryCard, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)', borderColor: 'rgba(99, 102, 241, 0.2)' }]}>
+            <View style={[styles.riderSummaryCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)', borderColor: 'rgba(75, 48, 184, 0.2)' }]}>
               <View style={styles.riderSummaryHeader}>
                 <Ionicons name="information-circle" size={20} color="#6366F1" />
                 <Text style={[styles.riderSummaryTitle, { color: '#6366F1' }]}>
@@ -679,7 +679,7 @@ export function CategoryRequestScreen() {
             {userEvents.map(event => (
               <TouchableOpacity
                 key={event.id}
-                style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }, selectedEvent === event.id && { borderColor: colors.brand[500], backgroundColor: isDark ? 'rgba(147, 51, 234, 0.05)' : 'rgba(147, 51, 234, 0.08)' }]}
+                style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }, selectedEvent === event.id && { borderColor: colors.brand[500], backgroundColor: isDark ? 'rgba(75, 48, 184, 0.05)' : 'rgba(75, 48, 184, 0.08)' }]}
                 onPress={() => setSelectedEvent(event.id)}
               >
                 <View style={styles.eventRadio}>
@@ -829,8 +829,8 @@ const styles = StyleSheet.create({
   eventTitle: { fontSize: 14, fontWeight: '500' },
   eventMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   eventMetaText: { fontSize: 11, marginRight: 8 },
-  newEventCard: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: 'rgba(147, 51, 234, 0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(147, 51, 234, 0.2)', borderStyle: 'dashed' },
-  newEventIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(147, 51, 234, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  newEventCard: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: 'rgba(75, 48, 184, 0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(75, 48, 184, 0.2)', borderStyle: 'dashed' },
+  newEventIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(75, 48, 184, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   newEventText: { fontSize: 14, fontWeight: '500' },
   inputContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1, marginTop: 8 },
   input: { flex: 1, fontSize: 14 },

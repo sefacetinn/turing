@@ -7,6 +7,7 @@ import {
   getVenue,
   getArtist,
 } from './mockDataCore';
+import { calculateDaysUntil } from '../utils/calendarUtils';
 
 // Artist data - mockDataCore'dan dönüştürülmüş
 export const artists = Object.values(coreArtists).map((artist) => ({
@@ -100,7 +101,7 @@ export const providerStats = {
   monthlyEarnings: 2850000,
   pendingPayments: 780000,
   completedJobs: 234,
-  upcomingJobs: 12,
+  upcomingJobs: 14, // homeData upcomingJobs array ile eşleşmeli
   pendingOffers: 18,
   rating: 4.9,
   responseRate: 98,
@@ -110,195 +111,205 @@ export const providerStats = {
 };
 
 // Upcoming jobs for provider - 2026 tarihleriyle
-// Title format: "Sanatçı Adı - Şehir" veya "Etkinlik Adı - Şehir"
+// ID'ler providerEventsData.ts ile eşleştirildi
+// Status değerleri providerEventsData ile uyumlu: 'planned' | 'active' | 'past'
 export const upcomingJobs = [
-  // TECHNICAL JOBS
+  // TECHNICAL JOBS - providerEventsData'daki EVT ID'leri kullanılıyor
   {
-    id: 'pe1',
-    title: 'Sıla & Tarkan - İstanbul',
-    date: '15-17 Temmuz 2026',
+    id: 'EVT001', // Big Bang Summer Festival
+    title: 'Big Bang Festival - İstanbul',
+    date: '10-12 Temmuz 2026',
     location: 'KüçükÇiftlik Park, İstanbul',
     role: 'Ana Sahne Ses & Işık',
     earnings: 485000,
-    daysUntil: 182,
-    status: 'confirmed',
+    daysUntil: 176,
+    status: 'active', // Etkinlik onaylı ve hazırlık devam ediyor
     image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
     serviceType: 'technical',
   },
   {
-    id: 'pe2',
-    title: 'Tarkan - İstanbul',
+    id: 'EVT002', // Sıla konseri
+    title: 'Sıla - İstanbul',
     date: '28 Ağustos 2026',
     location: 'Vodafone Park, İstanbul',
     role: 'Sahne Prodüksiyon',
     earnings: 650000,
-    daysUntil: 226,
-    status: 'confirmed',
+    daysUntil: 225,
+    status: 'planned', // Etkinlik planlandı
     image: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
     serviceType: 'technical',
   },
   {
-    id: 'pe3',
+    id: 'EVT006', // Fashion Week
     title: 'Fashion Week - İstanbul',
     date: '12-16 Ekim 2026',
     location: 'Zorlu PSM, İstanbul',
     role: 'Işık Tasarımı & Kurulum',
     earnings: 380000,
-    daysUntil: 271,
-    status: 'pending',
+    daysUntil: 270,
+    status: 'planned', // Etkinlik planlandı
     image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400',
     serviceType: 'technical',
   },
   {
-    id: 'pe4',
-    title: 'Rock Festivali - Balıkesir',
-    date: '24-26 Temmuz 2026',
-    location: 'Zeytinli, Balıkesir',
-    role: 'Ses Sistemi',
-    earnings: 320000,
-    daysUntil: 191,
-    status: 'confirmed',
+    id: 'EVT004', // Zeytinli Rock Festivali
+    title: 'Zeytinli Rock - Balıkesir',
+    date: '16-19 Temmuz 2026',
+    location: 'Zeytinli Açık Hava, Balıkesir',
+    role: 'Festival Güvenliği',
+    earnings: 380000,
+    daysUntil: 182,
+    status: 'active', // Etkinlik onaylı ve hazırlık devam ediyor
     image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400',
-    serviceType: 'technical',
+    serviceType: 'security',
   },
   {
-    id: 'pe5',
-    title: 'Garanti BBVA - İstanbul',
+    id: 'EVT008', // Kurumsal Gala
+    title: 'Garanti BBVA Gala - İstanbul',
     date: '5 Eylül 2026',
     location: 'Four Seasons Bosphorus, İstanbul',
-    role: 'Komple Teknik Prodüksiyon',
-    earnings: 275000,
-    daysUntil: 234,
-    status: 'confirmed',
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400',
-    serviceType: 'technical',
+    role: 'Premium Catering (800 kişi)',
+    earnings: 325000,
+    daysUntil: 233,
+    status: 'planned',
+    image: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400',
+    serviceType: 'catering',
   },
-  // BOOKING JOBS
+  // BOOKING JOBS - providerEventsData ile eşleşen
   {
-    id: 'pe6',
-    title: 'Sıla - İstanbul',
-    date: '22 Mart 2026',
-    location: 'Harbiye Açıkhava, İstanbul',
-    role: 'Ana Sahne Performansı',
-    earnings: 850000,
-    daysUntil: 66,
-    status: 'confirmed',
-    image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
-    serviceType: 'booking',
-  },
-  {
-    id: 'pe7',
+    id: 'EVT010', // Booking - Tarkan
     title: 'Tarkan - Ankara',
     date: '15 Nisan 2026',
     location: 'Congresium, Ankara',
-    role: 'Özel Gece Performansı',
+    role: 'Ana Sahne Performansı',
     earnings: 1200000,
-    daysUntil: 90,
-    status: 'confirmed',
+    daysUntil: 88,
+    status: 'active', // Etkinlik onaylı
     image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
     serviceType: 'booking',
   },
   {
-    id: 'pe8',
+    id: 'EVT011', // Booking - Duman
     title: 'Duman - İzmir',
     date: '8 Mayıs 2026',
     location: 'Kültürpark, İzmir',
     role: 'Festival Headliner',
     earnings: 750000,
-    daysUntil: 113,
-    status: 'pending',
+    daysUntil: 111,
+    status: 'planned', // Etkinlik planlandı
     image: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400',
     serviceType: 'booking',
   },
   {
-    id: 'pe9',
+    id: 'EVT012', // Booking - Mabel Matiz
     title: 'Mabel Matiz - İstanbul',
     date: '30 Mayıs 2026',
     location: 'Parkorman, İstanbul',
     role: 'Yaz Konseri',
     earnings: 620000,
-    daysUntil: 135,
-    status: 'confirmed',
+    daysUntil: 133,
+    status: 'active', // Etkinlik onaylı
     image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400',
     serviceType: 'booking',
   },
   {
-    id: 'pe10',
+    id: 'EVT013', // Booking - Sertab Erener
     title: 'Sertab Erener - Bodrum',
     date: '18 Temmuz 2026',
     location: 'Antik Tiyatro, Bodrum',
     role: 'Yaz Konseri Serisi',
     earnings: 680000,
     daysUntil: 184,
-    status: 'confirmed',
+    status: 'active', // Etkinlik onaylı
     image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400',
     serviceType: 'booking',
   },
   // TRANSPORT JOBS
   {
-    id: 'pe11',
+    id: 'pe_tr_01',
     title: 'Sıla - İstanbul VIP Transfer',
     date: '22 Mart 2026',
     location: 'İstanbul Havalimanı - Harbiye',
     role: 'Sanatçı VIP Transfer',
     earnings: 45000,
     daysUntil: 66,
-    status: 'confirmed',
+    status: 'active',
     image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400',
     serviceType: 'transport',
   },
   {
-    id: 'pe12',
+    id: 'pe_tr_02',
     title: 'Kongre Katılımcı Transfer - Ankara',
     date: '10-12 Nisan 2026',
     location: 'Esenboğa - Congresium',
     role: 'Shuttle Servisi',
     earnings: 125000,
     daysUntil: 85,
-    status: 'confirmed',
+    status: 'planned',
     image: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400',
     serviceType: 'transport',
   },
   // ACCOMMODATION JOBS
   {
-    id: 'pe13',
+    id: 'pe_acc_01',
     title: 'Festival VIP Konaklama - İstanbul',
     date: '15-17 Temmuz 2026',
     location: 'Four Seasons Bosphorus',
     role: 'Sanatçı Konaklama Paketi',
     earnings: 185000,
     daysUntil: 182,
-    status: 'confirmed',
+    status: 'planned',
     image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400',
     serviceType: 'accommodation',
   },
   // SECURITY JOBS
   {
-    id: 'pe14',
+    id: 'pe_sec_01',
     title: 'Tarkan Konseri Güvenlik - İstanbul',
     date: '28 Ağustos 2026',
     location: 'Vodafone Park, İstanbul',
     role: 'VIP & Genel Güvenlik',
     earnings: 280000,
     daysUntil: 226,
-    status: 'confirmed',
+    status: 'planned',
     image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400',
     serviceType: 'security',
   },
   // CATERING JOBS
   {
-    id: 'pe15',
-    title: 'Garanti Gala Catering - İstanbul',
-    date: '5 Eylül 2026',
-    location: 'Four Seasons Bosphorus',
+    id: 'pe_cat_01',
+    title: 'Kongre Catering - Ankara',
+    date: '22-23 Nisan 2026',
+    location: 'Lütfi Kırdar, İstanbul',
     role: 'Premium Catering Servisi',
     earnings: 165000,
-    daysUntil: 234,
-    status: 'confirmed',
+    daysUntil: 97,
+    status: 'active',
     image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400',
     serviceType: 'catering',
   },
 ];
+
+/**
+ * Dinamik daysUntil hesaplamasiyla upcomingJobs dondurur
+ * Her cagrildiginda guncel tarih farki hesaplanir
+ */
+export const getUpcomingJobsWithDaysUntil = () => {
+  return upcomingJobs.map(job => ({
+    ...job,
+    daysUntil: calculateDaysUntil(job.date),
+  }));
+};
+
+/**
+ * Sadece gelecekteki isleri daysUntil'e gore sirali dondurur
+ */
+export const getFutureJobsSorted = (limit?: number) => {
+  const jobs = getUpcomingJobsWithDaysUntil()
+    .filter(job => job.daysUntil >= 0)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+  return limit ? jobs.slice(0, limit) : jobs;
+};
 
 // Recent requests for provider - Yeni talepler
 // Title format: "Sanatçı Adı - Şehir" veya "Etkinlik Adı - Şehir"
@@ -529,7 +540,7 @@ export const homeStats = [
 ];
 
 // Organizer dashboard data - mockData ile uyumlu
-export const organizerDashboard = {
+const organizerDashboardData = {
   // Summary stats
   activeEvents: 4,
   upcomingEvents: 8,
@@ -543,7 +554,7 @@ export const organizerDashboard = {
     id: '1',
     title: 'Sıla & Tarkan - İstanbul',
     date: '15-17 Temmuz 2026',
-    daysUntil: 182,
+    daysUntil: 182, // Dinamik hesaplama getOrganizerDashboard() ile yapilir
     venue: 'KüçükÇiftlik Park',
     location: 'İstanbul',
     progress: 72,
@@ -706,13 +717,29 @@ export const organizerDashboard = {
   ],
 };
 
+/**
+ * Dinamik daysUntil hesaplamasiyla organizerDashboard dondurur
+ */
+export const getOrganizerDashboard = () => {
+  return {
+    ...organizerDashboardData,
+    nextEvent: {
+      ...organizerDashboardData.nextEvent,
+      daysUntil: calculateDaysUntil(organizerDashboardData.nextEvent.date),
+    },
+  };
+};
+
+// Backwards-compatible export (statik deger kullanir)
+export const organizerDashboard = organizerDashboardData;
+
 // Quick action buttons for organizer
 export const organizerQuickActions = [
   {
     id: 'create',
     label: 'Etkinlik Oluştur',
     icon: 'add-circle',
-    gradient: ['#9333ea', '#7c3aed'] as const,
+    gradient: ['#4b30b8', '#7c3aed'] as const,
     route: 'CreateEvent',
   },
   {
@@ -754,7 +781,7 @@ export const providerQuickActions = [
     id: 'offers',
     label: 'Tekliflerim',
     icon: 'pricetags',
-    gradient: ['#9333ea', '#7c3aed'] as const,
+    gradient: ['#4b30b8', '#7c3aed'] as const,
     route: 'MyOffersScreen',
     badge: 3,
   },

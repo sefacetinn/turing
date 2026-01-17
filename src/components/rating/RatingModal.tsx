@@ -177,11 +177,11 @@ export function RatingModal({
 
           <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
             {/* Target Info */}
-            <View style={[styles.targetCard, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.05)', borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)' }]}>
+            <View style={[styles.targetCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.05)', borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' }]}>
               {target.image ? (
                 <Image source={{ uri: target.image }} style={styles.targetAvatar} />
               ) : (
-                <View style={[styles.targetAvatarPlaceholder, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)' }]}>
+                <View style={[styles.targetAvatarPlaceholder, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]}>
                   <Text style={[styles.targetAvatarText, { color: colors.brand[400] }]}>
                     {getInitials(target.name)}
                   </Text>

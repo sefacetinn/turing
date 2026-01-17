@@ -187,7 +187,7 @@ export function ProviderServicesScreen() {
       </View>
 
       {/* Info Box */}
-      <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.05)', borderColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+      <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.08)' : 'rgba(75, 48, 184, 0.05)', borderColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
         <Ionicons name="information-circle" size={20} color={colors.brand[400]} />
         <Text style={[styles.infoText, { color: colors.textMuted }]}>
           Seçtiğiniz hizmet türlerine göre organizatörlerden teklif talepleri alırsınız.
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   saveButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     borderRadius: 10,
   },
   saveButtonText: {
@@ -375,10 +375,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 14,
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
+    backgroundColor: 'rgba(75, 48, 184, 0.08)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: 'rgba(75, 48, 184, 0.15)',
   },
   infoText: {
     flex: 1,
@@ -402,8 +402,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   categoryCardSelected: {
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
-    borderColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.05)',
+    borderColor: 'rgba(75, 48, 184, 0.2)',
   },
   categoryIcon: {
     width: 48,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     paddingLeft: 16,
     borderLeftWidth: 2,
-    borderLeftColor: 'rgba(147, 51, 234, 0.2)',
+    borderLeftColor: 'rgba(75, 48, 184, 0.2)',
   },
   subcategoryCard: {
     flexDirection: 'row',
@@ -469,8 +469,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.04)',
   },
   subcategoryCardSelected: {
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
-    borderColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.08)',
+    borderColor: 'rgba(75, 48, 184, 0.15)',
   },
   subcategoryIcon: {
     width: 32,
@@ -481,7 +481,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   subcategoryIconSelected: {
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   subcategoryName: {
     flex: 1,

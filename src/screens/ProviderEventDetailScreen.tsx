@@ -123,7 +123,6 @@ export function ProviderEventDetailScreen() {
   const eventId = route.params?.eventId || 'pe1';
 
   // State
-  const [activeSection, setActiveSection] = useState<'overview' | 'tasks' | 'team' | 'schedule' | 'payments' | 'documents'>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -767,565 +766,345 @@ export function ProviderEventDetailScreen() {
           />
         }
       >
-        {/* Header Image */}
-        <View style={styles.headerImage}>
-          <Image source={{ uri: event.image }} style={styles.eventImage} />
+        {/* Hero Image - Clean */}
+        <View style={styles.heroImage}>
+          <Image source={{ uri: event.image }} style={styles.heroEventImage} />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.9)']}
-            style={styles.imageGradient}
+            colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
+            locations={[0, 0.5, 1]}
+            style={styles.heroGradient}
           />
-
-          {/* Event Info */}
-          <View style={styles.headerContent}>
-            <View style={styles.roleContainer}>
-              <LinearGradient
-                colors={gradients.technical}
-                style={styles.roleBadge}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Ionicons name="volume-high" size={12} color="white" />
-                <Text style={styles.roleText}>{event.role}</Text>
-              </LinearGradient>
-            </View>
-            <Text style={styles.eventTitle}>{event.eventTitle}</Text>
-            <View style={styles.eventMeta}>
-              <View style={styles.eventMetaItem}>
-                <Ionicons name="calendar" size={14} color="white" />
-                <Text style={styles.eventMetaText}>{event.eventDate}</Text>
-              </View>
-              <View style={styles.eventMetaItem}>
-                <Ionicons name="location" size={14} color="white" />
-                <Text style={styles.eventMetaText}>{event.venue}</Text>
-              </View>
-            </View>
-          </View>
         </View>
 
-        {/* Organizer Card */}
+        {/* Event Details Card - Below Image */}
         <View style={[
-          styles.organizerCard,
+          styles.eventDetailsCard,
           {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
           },
-          ...(isDark ? [] : [helpers.getShadow('sm')]),
         ]}>
-          <Image source={{ uri: event.organizerImage }} style={styles.organizerImage} />
-          <View style={styles.organizerInfo}>
-            <Text style={[styles.organizerLabel, { color: colors.textMuted }]}>Organizatör</Text>
-            <Text style={[styles.organizerName, { color: colors.text }]}>{event.organizerName}</Text>
-          </View>
-          <View style={styles.organizerActions}>
-            <TouchableOpacity
-              style={[styles.organizerActionButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}
-              onPress={() => handleCall(event.organizerPhone)}
+          {/* Event Title & Role */}
+          <Text style={[styles.cardEventTitle, { color: colors.text }]}>{event.eventTitle}</Text>
+          <View style={styles.detailsHeader}>
+            <LinearGradient
+              colors={gradients.technical}
+              style={styles.detailsRoleBadge}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
             >
-              <Ionicons name="call" size={18} color={colors.success} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.organizerActionButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt }]}
-              onPress={() => navigation.navigate('Chat', { chatId: `org_${event.organizerId || '1'}`, recipientName: event.organizerName })}
-            >
-              <Ionicons name="chatbubble" size={18} color={colors.brand[400]} />
-            </TouchableOpacity>
+              <Ionicons name="volume-high" size={14} color="white" />
+              <Text style={styles.detailsRoleText}>{event.role}</Text>
+            </LinearGradient>
           </View>
-        </View>
 
-        {/* Earnings Summary */}
-        <View style={styles.earningsSummary}>
-          <LinearGradient
-            colors={gradients.primary}
-            style={styles.earningsGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.earningsContent}>
-              <View style={styles.earningsItem}>
-                <Text style={styles.earningsLabel}>Toplam Kazanç</Text>
-                <Text style={styles.earningsValue}>₺{event.earnings.toLocaleString('tr-TR')}</Text>
+          {/* Date, Time, Venue Grid */}
+          <View style={styles.detailsGrid}>
+            <View style={styles.detailItem}>
+              <View style={[styles.detailIconBox, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+                <Ionicons name="calendar" size={16} color={colors.brand[400]} />
               </View>
-              <View style={styles.earningsDivider} />
-              <View style={styles.earningsItem}>
-                <Text style={styles.earningsLabel}>Alınan</Text>
-                <Text style={styles.earningsValue}>₺{paymentStats.paid.toLocaleString('tr-TR')}</Text>
-              </View>
-              <View style={styles.earningsDivider} />
-              <View style={styles.earningsItem}>
-                <Text style={styles.earningsLabel}>Bekleyen</Text>
-                <Text style={styles.earningsValue}>₺{paymentStats.pending.toLocaleString('tr-TR')}</Text>
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Tarih</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{event.eventDate}</Text>
               </View>
             </View>
-          </LinearGradient>
+            <View style={styles.detailItem}>
+              <View style={[styles.detailIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="time" size={16} color="#10B981" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Saat</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>20:00 - 23:00</Text>
+              </View>
+            </View>
+            <View style={[styles.detailItem, styles.detailItemFull]}>
+              <View style={[styles.detailIconBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                <Ionicons name="location" size={16} color="#EF4444" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Mekan</Text>
+                <Text style={[styles.detailValue, { color: colors.text }]}>{event.venue}</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* Operations Button */}
+        {/* Organizer Card - Compact & Clickable */}
         <TouchableOpacity
           style={[
-            styles.operationsButton,
+            styles.organizerCardCompact,
             {
-              backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)',
-              borderColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)',
-            }
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            },
           ]}
-          onPress={() => (navigation as any).navigate('ServiceOperations', {
-            eventId: event.id,
-            serviceId: event.id,
-            serviceCategory: 'technical',
-            serviceName: event.role,
-            providerName: event.organizerName,
-          })}
+          activeOpacity={0.7}
+          onPress={() => (navigation as any).navigate('OrganizerProfile', { organizerId: event.organizerId || '1' })}
         >
-          <View style={[styles.operationsIconContainer, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-            <Ionicons name="settings-outline" size={20} color="#3B82F6" />
+          <Image source={{ uri: event.organizerImage }} style={styles.organizerImageCompact} />
+          <View style={styles.organizerInfoCompact}>
+            <Text style={[styles.organizerLabelCompact, { color: colors.textMuted }]}>Organizatör</Text>
+            <View style={styles.organizerNameRow}>
+              <Text style={[styles.organizerNameCompact, { color: colors.text }]}>{event.organizerName}</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+            </View>
           </View>
-          <View style={styles.operationsTextContainer}>
-            <Text style={[styles.operationsTitle, { color: colors.text }]}>Operasyonları Görüntüle</Text>
-            <Text style={[styles.operationsSubtitle, { color: colors.textMuted }]}>Görevler, program ve ekip yönetimi</Text>
+          <View style={styles.organizerActionsCompact}>
+            <TouchableOpacity
+              style={[styles.organizerActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
+              onPress={(e) => { e.stopPropagation(); handleCall(event.organizerPhone); }}
+            >
+              <Ionicons name="call" size={16} color="#10B981" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.organizerActionBtn, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}
+              onPress={(e) => { e.stopPropagation(); navigation.navigate('Chat', { chatId: `org_${event.organizerId || '1'}`, recipientName: event.organizerName }); }}
+            >
+              <Ionicons name="chatbubble" size={16} color={colors.brand[400]} />
+            </TouchableOpacity>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
-        {/* Section Tabs */}
-        <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabContent}
-          >
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveSection('overview')}
-            >
-              <Text style={[styles.tabText, { color: activeSection === 'overview' ? colors.brand[400] : colors.textMuted }]}>
-                Genel
+        {/* Venue Card */}
+        <View style={[
+          styles.venueCard,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+          },
+        ]}>
+          <View style={styles.venueHeader}>
+            <View style={[styles.venueIconBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)' }]}>
+              <Ionicons name="business" size={18} color="#EF4444" />
+            </View>
+            <View style={styles.venueInfo}>
+              <Text style={[styles.venueLabel, { color: colors.textMuted }]}>Mekan</Text>
+              <Text style={[styles.venueName, { color: colors.text }]}>{event.venue}</Text>
+            </View>
+          </View>
+          <View style={styles.venueDetails}>
+            <View style={styles.venueDetailRow}>
+              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.venueDetailText, { color: colors.textSecondary }]}>
+                Harbiye Mah. Taşkışla Cad. No:1, Şişli/İstanbul
               </Text>
-              {activeSection === 'overview' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+            </View>
+            <View style={styles.venueDetailRow}>
+              <Ionicons name="people-outline" size={14} color={colors.textMuted} />
+              <Text style={[styles.venueDetailText, { color: colors.textSecondary }]}>Kapasite: 12.000 kişi</Text>
+            </View>
+          </View>
+          <View style={styles.venueActions}>
+            <TouchableOpacity
+              style={[styles.venueActionBtn, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}
+              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(event.venue + ' İstanbul')}`)}
+            >
+              <Ionicons name="map-outline" size={14} color="#3B82F6" />
+              <Text style={[styles.venueActionText, { color: '#3B82F6' }]}>Haritada Gör</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveSection('tasks')}
+              style={[styles.venueActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
+              onPress={() => Linking.openURL('tel:+902122315400')}
             >
-              <Text style={[styles.tabText, { color: activeSection === 'tasks' ? colors.brand[400] : colors.textMuted }]}>
-                Görevler {taskStats.pending > 0 && `(${taskStats.pending})`}
-              </Text>
-              {activeSection === 'tasks' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
+              <Ionicons name="call-outline" size={14} color="#10B981" />
+              <Text style={[styles.venueActionText, { color: '#10B981' }]}>Mekanı Ara</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveSection('schedule')}
-            >
-              <Text style={[styles.tabText, { color: activeSection === 'schedule' ? colors.brand[400] : colors.textMuted }]}>
-                Program
-              </Text>
-              {activeSection === 'schedule' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveSection('team')}
-            >
-              <Text style={[styles.tabText, { color: activeSection === 'team' ? colors.brand[400] : colors.textMuted }]}>
-                Ekip ({team.length})
-              </Text>
-              {activeSection === 'team' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveSection('payments')}
-            >
-              <Text style={[styles.tabText, { color: activeSection === 'payments' ? colors.brand[400] : colors.textMuted }]}>
-                Ödemeler
-              </Text>
-              {activeSection === 'payments' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveSection('documents')}
-            >
-              <Text style={[styles.tabText, { color: activeSection === 'documents' ? colors.brand[400] : colors.textMuted }]}>
-                Dökümanlar ({documents.length})
-              </Text>
-              {activeSection === 'documents' && <View style={[styles.tabIndicator, { backgroundColor: colors.brand[400] }]} />}
-            </TouchableOpacity>
-          </ScrollView>
+          </View>
         </View>
 
-        {/* Overview Section */}
-        {activeSection === 'overview' && (
-          <View style={styles.overviewSection}>
-            {/* Description */}
+        {/* Performance Details Card */}
+        <View style={[
+          styles.performanceCard,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+          },
+        ]}>
+          <Text style={[styles.performanceTitle, { color: colors.textMuted }]}>PERFORMANS DETAYLARI</Text>
+
+          <View style={styles.performanceGrid}>
+            <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <View style={styles.performanceLeft}>
+                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                  <Ionicons name="time-outline" size={16} color="#6366F1" />
+                </View>
+                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Sahne Saati</Text>
+              </View>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>20:00</Text>
+            </View>
+
+            <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <View style={styles.performanceLeft}>
+                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                  <Ionicons name="hourglass-outline" size={16} color="#6366F1" />
+                </View>
+                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Performans Süresi</Text>
+              </View>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>2 saat 30 dk</Text>
+            </View>
+
+            <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <View style={styles.performanceLeft}>
+                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                  <Ionicons name="musical-notes-outline" size={16} color="#6366F1" />
+                </View>
+                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Set Sayısı</Text>
+              </View>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>2 set</Text>
+            </View>
+
+            <View style={[styles.performanceItem, { borderBottomWidth: 0 }]}>
+              <View style={styles.performanceLeft}>
+                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                  <Ionicons name="people-outline" size={16} color="#6366F1" />
+                </View>
+                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Beklenen Katılım</Text>
+              </View>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>~10.000 kişi</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Earnings Card - Compact Inline */}
+        <View style={[
+          styles.earningsCardCompact,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+          },
+        ]}>
+          <View style={styles.earningsCompactItem}>
+            <Text style={[styles.earningsCompactLabel, { color: colors.textMuted }]}>Toplam</Text>
+            <Text style={[styles.earningsCompactValue, { color: colors.text }]}>₺{event.earnings.toLocaleString('tr-TR')}</Text>
+          </View>
+          <View style={[styles.earningsCompactDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]} />
+          <View style={styles.earningsCompactItem}>
+            <Text style={[styles.earningsCompactLabel, { color: colors.textMuted }]}>Alınan</Text>
+            <Text style={[styles.earningsCompactValue, { color: '#10B981' }]}>₺{paymentStats.paid.toLocaleString('tr-TR')}</Text>
+          </View>
+          <View style={[styles.earningsCompactDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]} />
+          <View style={styles.earningsCompactItem}>
+            <Text style={[styles.earningsCompactLabel, { color: colors.textMuted }]}>Bekleyen</Text>
+            <Text style={[styles.earningsCompactValue, { color: '#F59E0B' }]}>₺{paymentStats.pending.toLocaleString('tr-TR')}</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActionsSection}>
+          <TouchableOpacity
+            style={[
+              styles.quickActionCard,
+              {
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.08)' : 'rgba(59, 130, 246, 0.06)',
+                borderColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.12)',
+              }
+            ]}
+            onPress={() => (navigation as any).navigate('ServiceOperations', {
+              eventId: event.id,
+              serviceId: event.id,
+              serviceCategory: 'technical',
+              serviceName: event.role,
+              providerName: event.organizerName,
+            })}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+              <Ionicons name="settings-outline" size={20} color="#3B82F6" />
+            </View>
+            <View style={styles.quickActionContent}>
+              <Text style={[styles.quickActionTitle, { color: colors.text }]}>Operasyonlar</Text>
+              <Text style={[styles.quickActionDesc, { color: colors.textMuted }]}>Görevler, program, ekip, ödemeler</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Content Section */}
+        <View style={styles.contentSection}>
+          {/* Description */}
+          <View style={styles.sectionBlock}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Açıklama</Text>
+            <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
+          </View>
+
+          {/* Documents - Inline */}
+          {documents.length > 0 && (
             <View style={styles.sectionBlock}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Açıklama</Text>
-              <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
-            </View>
-
-            {/* Summary Stats - Compact Cards */}
-            <View style={styles.summaryStats}>
-              <TouchableOpacity
-                style={[styles.summaryStatCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}
-                onPress={() => setActiveSection('tasks')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="checkbox-outline" size={22} color={colors.brand[400]} />
-                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{taskStats.completed}/{taskStats.total}</Text>
-                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>Görev</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.summaryStatCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}
-                onPress={() => setActiveSection('team')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="people-outline" size={22} color={colors.brand[400]} />
-                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{team.length}</Text>
-                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>Ekip</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.summaryStatCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}
-                onPress={() => setActiveSection('documents')}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="document-outline" size={22} color={colors.brand[400]} />
-                <Text style={[styles.summaryStatValue, { color: colors.text }]}>{documents.length}</Text>
-                <Text style={[styles.summaryStatLabel, { color: colors.textMuted }]}>Döküman</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Tasks Section */}
-        {activeSection === 'tasks' && (
-          <View style={styles.tasksSection}>
-            <View style={styles.taskStats}>
-              <View style={styles.taskStatItem}>
-                <View style={[styles.taskStatDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.completed} Tamamlandı</Text>
-              </View>
-              <View style={styles.taskStatItem}>
-                <View style={[styles.taskStatDot, { backgroundColor: colors.warning }]} />
-                <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.inProgress} Devam Ediyor</Text>
-              </View>
-              <View style={styles.taskStatItem}>
-                <View style={[styles.taskStatDot, { backgroundColor: colors.textMuted }]} />
-                <Text style={[styles.taskStatText, { color: colors.textSecondary }]}>{taskStats.pending} Bekliyor</Text>
-              </View>
-            </View>
-            {tasks.length > 0 ? (
-              tasks.map(task => renderTask(task))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="checkbox-outline" size={48} color={colors.textMuted} />
-                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz görev yok</Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textMuted }]}>
-                  Yeni görev ekleyerek başlayın
-                </Text>
-              </View>
-            )}
-            {/* Add Task Button */}
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}
-              onPress={() => setShowAddTaskModal(true)}
-            >
-              <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
-              <Text style={[styles.addButtonText, { color: colors.brand[400] }]}>Görev Ekle</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Team Section */}
-        {activeSection === 'team' && (
-          <View style={styles.teamSection}>
-            <View style={styles.teamStats}>
-              <View style={styles.teamStatItem}>
-                <View style={[styles.teamStatDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.teamStatText, { color: colors.textSecondary }]}>
-                  {team.filter(t => t.status === 'available').length} Müsait
-                </Text>
-              </View>
-              <View style={styles.teamStatItem}>
-                <View style={[styles.teamStatDot, { backgroundColor: colors.warning }]} />
-                <Text style={[styles.teamStatText, { color: colors.textSecondary }]}>
-                  {team.filter(t => t.status === 'busy').length} Meşgul
-                </Text>
-              </View>
-              <View style={styles.teamStatItem}>
-                <View style={[styles.teamStatDot, { backgroundColor: colors.textMuted }]} />
-                <Text style={[styles.teamStatText, { color: colors.textSecondary }]}>
-                  {team.filter(t => t.status === 'off').length} İzinli
-                </Text>
-              </View>
-            </View>
-            {team.length > 0 ? (
-              team.map(member => renderTeamMemberExtended(member))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
-                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz ekip üyesi yok</Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textMuted }]}>
-                  Ekip üyeleri organizatör tarafından atanır
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Schedule Section */}
-        {activeSection === 'schedule' && (
-          <View style={styles.scheduleSection}>
-            <View style={styles.scheduleHeader}>
-              <Text style={[styles.scheduleDate, { color: colors.text }]}>15 Temmuz 2024 - 1. Gün</Text>
-            </View>
-            {mockSchedule.map((item, index) => renderScheduleItem(item, index))}
-          </View>
-        )}
-
-        {/* Payments Section */}
-        {activeSection === 'payments' && (
-          <View style={styles.paymentsSection}>
-            {payments.length > 0 ? (
-              payments.map(payment => renderPayment(payment))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="wallet-outline" size={48} color={colors.textMuted} />
-                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz ödeme yok</Text>
-              </View>
-            )}
-
-            {/* Invoice Button */}
-            <TouchableOpacity
-              style={[styles.invoiceButton, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}
-              onPress={handleInvoice}
-            >
-              <Ionicons name="document-text-outline" size={18} color={colors.brand[400]} />
-              <Text style={[styles.invoiceButtonText, { color: colors.brand[400] }]}>Fatura Oluştur</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Documents Section */}
-        {activeSection === 'documents' && (
-          <View style={styles.documentsSection}>
-            {documents.length > 0 ? (
-              <>
-                {/* Group by type */}
-                {documents.filter(d => d.type === 'contract').length > 0 && (
-                  <View style={styles.documentGroup}>
-                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Sözleşmeler</Text>
-                    {documents.filter(d => d.type === 'contract').map(doc => renderDocument(doc))}
-                  </View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Dökümanlar</Text>
+              <View style={styles.documentsCompact}>
+                {documents.slice(0, 3).map(doc => (
+                  <TouchableOpacity
+                    key={doc.id}
+                    style={[styles.documentCompactItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.surfaceAlt, borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}
+                    onPress={() => handleDocumentDownload(doc)}
+                  >
+                    <Ionicons
+                      name={doc.type === 'contract' ? 'document-text' : doc.type === 'plan' ? 'map' : 'document'}
+                      size={18}
+                      color={colors.brand[400]}
+                    />
+                    <Text style={[styles.documentCompactName, { color: colors.text }]} numberOfLines={1}>{doc.name}</Text>
+                    <Ionicons name="download-outline" size={16} color={colors.textMuted} />
+                  </TouchableOpacity>
+                ))}
+                {documents.length > 3 && (
+                  <TouchableOpacity
+                    style={[styles.documentCompactMore, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]}
+                    onPress={() => Alert.alert('Dökümanlar', 'Tüm dökümanlar Operasyonlar sayfasında görüntülenebilir.')}
+                  >
+                    <Text style={[styles.documentCompactMoreText, { color: colors.brand[400] }]}>+{documents.length - 3} döküman daha</Text>
+                  </TouchableOpacity>
                 )}
-                {documents.filter(d => d.type === 'plan').length > 0 && (
-                  <View style={styles.documentGroup}>
-                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Planlar</Text>
-                    {documents.filter(d => d.type === 'plan').map(doc => renderDocument(doc))}
-                  </View>
-                )}
-                {documents.filter(d => d.type === 'rider').length > 0 && (
-                  <View style={styles.documentGroup}>
-                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Teknik Rider</Text>
-                    {documents.filter(d => d.type === 'rider').map(doc => renderDocument(doc))}
-                  </View>
-                )}
-                {documents.filter(d => !['contract', 'plan', 'rider'].includes(d.type)).length > 0 && (
-                  <View style={styles.documentGroup}>
-                    <Text style={[styles.documentGroupTitle, { color: colors.textMuted }]}>Diğer</Text>
-                    {documents.filter(d => !['contract', 'plan', 'rider'].includes(d.type)).map(doc => renderDocument(doc))}
-                  </View>
-                )}
-              </>
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="folder-outline" size={48} color={colors.textMuted} />
-                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz döküman yok</Text>
-                <Text style={[styles.emptyStateSubtext, { color: colors.textMuted }]}>
-                  Dökümanlar organizatör tarafından paylaşılır
-                </Text>
               </View>
-            )}
-          </View>
-        )}
+            </View>
+          )}
 
-        <View style={{ height: 180 }} />
+          {/* Support Button */}
+          <TouchableOpacity
+            style={[
+              styles.supportButtonInline,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+              },
+            ]}
+            onPress={handleSupport}
+          >
+            <Ionicons name="help-circle-outline" size={20} color={colors.textSecondary} />
+            <Text style={[styles.supportButtonInlineText, { color: colors.textSecondary }]}>Yardıma mı ihtiyacınız var?</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 120 }} />
       </Animated.ScrollView>
 
-      {/* Bottom Actions */}
-      <View style={[
-        styles.bottomActions,
-        {
-          backgroundColor: colors.background,
-          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-          paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
-        },
-      ]}>
-        {/* Check-in Status Card */}
-        {checkInStatus?.isCheckedIn && (
-          <View style={[
-            styles.checkInStatusCard,
-            {
-              backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)',
-              borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)',
-            }
-          ]}>
-            <View style={styles.checkInStatusHeader}>
-              <View style={styles.checkInStatusLeft}>
-                <View style={[styles.checkInStatusDot, { backgroundColor: checkInStatus.breaks.some(b => !b.endTime) ? colors.warning : colors.success }]} />
-                <Text style={[styles.checkInStatusText, { color: colors.text }]}>
-                  {checkInStatus.breaks.some(b => !b.endTime) ? 'Molada' : 'Çalışıyor'}
-                </Text>
-              </View>
-              <View style={styles.checkInStatusRight}>
-                <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.checkInStatusTime, { color: colors.text }]}>
-                  {formatWorkingTime(currentWorkingMinutes)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.checkInStatusDetails}>
-              <Text style={[styles.checkInStatusDetail, { color: colors.textMuted }]}>
-                Giriş: {checkInStatus.checkInTime ? formatTime(new Date(checkInStatus.checkInTime)) : '-'}
-              </Text>
-              {checkInStatus.breaks.length > 0 && (
-                <Text style={[styles.checkInStatusDetail, { color: colors.textMuted }]}>
-                  Mola: {checkInStatus.breaks.length}x
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.checkInActions}>
-          {checkInStatus?.isCheckedIn ? (
-            <>
-              {/* Break Button */}
-              <TouchableOpacity
-                style={[
-                  styles.breakButton,
-                  {
-                    backgroundColor: checkInStatus.breaks.some(b => !b.endTime)
-                      ? 'rgba(16, 185, 129, 0.15)'
-                      : isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
-                    borderColor: checkInStatus.breaks.some(b => !b.endTime)
-                      ? 'rgba(16, 185, 129, 0.3)'
-                      : isDark ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)',
-                  },
-                ]}
-                onPress={handleBreak}
-                disabled={isCheckingIn}
-              >
-                <Ionicons
-                  name={checkInStatus.breaks.some(b => !b.endTime) ? 'play' : 'pause'}
-                  size={18}
-                  color={checkInStatus.breaks.some(b => !b.endTime) ? colors.success : colors.warning}
-                />
-                <Text style={[
-                  styles.breakButtonText,
-                  { color: checkInStatus.breaks.some(b => !b.endTime) ? colors.success : colors.warning }
-                ]}>
-                  {checkInStatus.breaks.some(b => !b.endTime) ? 'Devam Et' : 'Mola'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Check-out Button */}
-              <TouchableOpacity
-                style={styles.checkOutButton}
-                onPress={handleCheckOut}
-                disabled={isCheckingIn}
-              >
-                <LinearGradient
-                  colors={['#ef4444', '#dc2626']}
-                  style={styles.checkOutGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {isCheckingIn ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <>
-                      <Ionicons name="log-out-outline" size={18} color="white" />
-                      <Text style={styles.checkOutText}>Check-out</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </>
-          ) : event?.status === 'completed' ? (
-            <>
-              {/* Support Button */}
-              <TouchableOpacity
-                style={[
-                  styles.supportButton,
-                  {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-                  },
-                ]}
-                onPress={handleSupport}
-              >
-                <Ionicons name="help-circle-outline" size={20} color={colors.text} />
-                <Text style={[styles.supportButtonText, { color: colors.text }]}>Destek</Text>
-              </TouchableOpacity>
-
-              {/* Review Organizer Button */}
-              <TouchableOpacity
-                style={styles.checkInButton}
-                onPress={() => setShowRatingModal(true)}
-              >
-                <LinearGradient
-                  colors={['#F59E0B', '#FBBF24']}
-                  style={styles.checkInGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Ionicons name="star" size={18} color="white" />
-                  <Text style={styles.checkInButtonText}>Organizatoru Degerlendir</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              {/* Support Button */}
-              <TouchableOpacity
-                style={[
-                  styles.supportButton,
-                  {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.surfaceAlt,
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-                  },
-                ]}
-                onPress={handleSupport}
-              >
-                <Ionicons name="help-circle-outline" size={20} color={colors.text} />
-                <Text style={[styles.supportButtonText, { color: colors.text }]}>Destek</Text>
-              </TouchableOpacity>
-
-              {/* Check-in Button */}
-              <TouchableOpacity
-                style={styles.checkInButton}
-                onPress={handleCheckIn}
-                disabled={isCheckingIn}
-              >
-                <LinearGradient
-                  colors={gradients.primary}
-                  style={styles.checkInGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {isCheckingIn ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <>
-                      <Ionicons name="location" size={18} color="white" />
-                      <Text style={styles.checkInButtonText}>Check-in Yap</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </>
-          )}
+      {/* Bottom Actions - Only show for completed events */}
+      {event?.status === 'completed' && (
+        <View style={[
+          styles.bottomActions,
+          {
+            backgroundColor: colors.background,
+            borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+            paddingBottom: insets.bottom + TAB_BAR_HEIGHT,
+          },
+        ]}>
+          <TouchableOpacity
+            style={[styles.reviewButton, { flex: 1 }]}
+            onPress={() => setShowRatingModal(true)}
+          >
+            <LinearGradient
+              colors={['#F59E0B', '#FBBF24']}
+              style={styles.reviewButtonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons name="star" size={18} color="white" />
+              <Text style={styles.reviewButtonText}>Organizatörü Değerlendir</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-      </View>
+      )}
 
       {/* Add Task Modal */}
       <Modal
@@ -1519,216 +1298,323 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerImage: {
-    height: 260,
+  // New Hero styles
+  heroImage: {
+    height: 180,
     position: 'relative',
   },
-  eventImage: {
+  heroEventImage: {
     width: '100%',
     height: '100%',
   },
-  imageGradient: {
+  heroGradient: {
     position: 'absolute',
+    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
-    height: 180,
   },
-  backButton: {
-    position: 'absolute',
-    top: 12,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Event Details Card
+  eventDetailsCard: {
+    marginHorizontal: 16,
+    marginTop: -24,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    zIndex: 10,
   },
-  headerActions: {
-    position: 'absolute',
-    top: 12,
-    right: 16,
-    flexDirection: 'row',
-    gap: 8,
+  cardEventTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
   },
-  headerActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerContent: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-  },
-  roleContainer: {
-    marginBottom: 10,
-  },
-  roleBadge: {
+  detailsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  detailsRoleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 8,
     gap: 6,
   },
-  roleText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'white',
-  },
-  eventTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 10,
-  },
-  eventMeta: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  eventMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  eventMetaText: {
+  detailsRoleText: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+    color: 'white',
   },
-  organizerCard: {
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: 20,
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 5,
   },
-  organizerImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  organizerInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  organizerLabel: {
+  statusText: {
     fontSize: 11,
-    marginBottom: 2,
-  },
-  organizerName: {
-    fontSize: 15,
     fontWeight: '600',
   },
-  organizerActions: {
+  detailsGrid: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  organizerActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '47%',
+    gap: 10,
+  },
+  detailItemFull: {
+    width: '100%',
+  },
+  detailIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  earningsSummary: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  earningsGradient: {
-    borderRadius: 16,
-    padding: 16,
-  },
-  earningsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  earningsItem: {
+  detailContent: {
     flex: 1,
-    alignItems: 'center',
   },
-  earningsLabel: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 4,
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
+    marginBottom: 2,
   },
-  earningsValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.white,
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
-  earningsDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  operationsButton: {
+  // Organizer Card Compact
+  organizerCardCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 14,
-    borderRadius: 14,
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  operationsIconContainer: {
+  organizerImageCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  organizerInfoCompact: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  organizerLabelCompact: {
+    fontSize: 10,
+    marginBottom: 1,
+  },
+  organizerNameCompact: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  organizerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  organizerActionsCompact: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  organizerActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Venue Card
+  venueCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  venueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  venueIconBox: {
     width: 40,
     height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
-  operationsTextContainer: {
+  venueInfo: {
     flex: 1,
+    marginLeft: 12,
   },
-  operationsTitle: {
+  venueLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 2,
+  },
+  venueName: {
     fontSize: 15,
     fontWeight: '600',
   },
-  operationsSubtitle: {
+  venueDetails: {
+    gap: 8,
+    marginBottom: 14,
+    paddingLeft: 52,
+  },
+  venueDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  venueDetailText: {
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
+  venueActions: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingLeft: 52,
+  },
+  venueActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  venueActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // Performance Details Card
+  performanceCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  performanceTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 14,
+  },
+  performanceGrid: {
+    gap: 0,
+  },
+  performanceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  performanceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  performanceIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  performanceLabel: {
+    fontSize: 13,
+  },
+  performanceValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Earnings Card Compact
+  earningsCardCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  earningsCompactItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  earningsCompactLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 3,
+  },
+  earningsCompactValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  earningsCompactDivider: {
+    width: 1,
+    height: 28,
+  },
+  // Quick Actions
+  quickActionsSection: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  quickActionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionContent: {
+    flex: 1,
+  },
+  quickActionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickActionDesc: {
     fontSize: 12,
     marginTop: 2,
   },
-  tabContainer: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderBottomWidth: 1,
-  },
-  tabContent: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tab: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    position: 'relative',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: -1,
-    left: 12,
-    right: 12,
-    height: 2,
-    borderRadius: 1,
-  },
-  overviewSection: {
-    padding: 20,
+  // Content Section
+  contentSection: {
+    padding: 16,
+    paddingTop: 20,
   },
   sectionBlock: {
     marginBottom: 24,
@@ -2112,6 +1998,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  supportButtonInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 16,
+  },
+  supportButtonInlineText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: 10,
+  },
+  // Compact Documents
+  documentsCompact: {
+    gap: 8,
+  },
+  documentCompactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 10,
+  },
+  documentCompactName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  documentCompactMore: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  documentCompactMoreText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  // Review Button
+  reviewButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  reviewButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  reviewButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
+  },
   // Check-in Status Card
   checkInStatusCard: {
     borderRadius: 12,
@@ -2322,15 +2269,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
     gap: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   teamMemberActions: {
     flexDirection: 'row',

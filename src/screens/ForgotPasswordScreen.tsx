@@ -126,7 +126,7 @@ export function ForgotPasswordScreen() {
             borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border
           }, digit && {
             borderColor: colors.brand[500],
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)'
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)'
           }]}>
             <TextInput
               style={[styles.codeInput, { color: colors.text }]}
@@ -317,10 +317,10 @@ export function ForgotPasswordScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Background Gradient Orbs */}
       <View style={[styles.backgroundOrb1, {
-        backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)'
       }]} />
       <View style={[styles.backgroundOrb2, {
-        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)'
+        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)'
       }]} />
 
       <KeyboardAvoidingView
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 200,
     borderRadius: 125,
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.2)',
   },
   backgroundOrb2: {
     position: 'absolute',
@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 150,
     borderRadius: 100,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   keyboardView: {
     flex: 1,
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
   },
   codeBoxFilled: {
     borderColor: colors.brand[500],
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
   },
   codeInput: {
     fontSize: 24,

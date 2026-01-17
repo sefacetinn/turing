@@ -75,8 +75,8 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
           borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#e5e7eb',
         },
         showActions && {
-          borderColor: 'rgba(147, 51, 234, 0.3)',
-          backgroundColor: 'rgba(147, 51, 234, 0.03)',
+          borderColor: 'rgba(75, 48, 184, 0.3)',
+          backgroundColor: 'rgba(75, 48, 184, 0.03)',
         },
         isUrgent && {
           borderColor: 'rgba(16, 185, 129, 0.4)',
@@ -179,7 +179,7 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
           <View style={styles.counterOfferHeader}>
             <View style={[
               styles.counterOfferIcon,
-              { backgroundColor: offer.counterOffer.by === 'provider' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(147, 51, 234, 0.15)' }
+              { backgroundColor: offer.counterOffer.by === 'provider' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(75, 48, 184, 0.15)' }
             ]}>
               <Ionicons
                 name={offer.counterOffer.by === 'provider' ? 'arrow-down' : 'arrow-up'}
@@ -387,9 +387,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 8,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(147, 51, 234, 0.15)',
+    borderBottomColor: 'rgba(75, 48, 184, 0.15)',
   },
   counterBannerText: {
     fontSize: 11,
@@ -527,10 +527,10 @@ const styles = StyleSheet.create({
   counterOfferSection: {
     marginHorizontal: 16,
     padding: 14,
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
+    backgroundColor: 'rgba(75, 48, 184, 0.08)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: 'rgba(75, 48, 184, 0.15)',
     marginBottom: 14,
   },
   counterOfferFromProvider: {
@@ -683,9 +683,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
+    borderColor: 'rgba(75, 48, 184, 0.2)',
   },
   actionBtnCounterText: {
     fontSize: 12,

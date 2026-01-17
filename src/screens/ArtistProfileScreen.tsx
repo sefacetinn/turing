@@ -139,7 +139,7 @@ export function ArtistProfileScreen() {
         {/* Content */}
         <View style={styles.content}>
           {/* Price Range */}
-          <View style={[styles.priceCard, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
+          <View style={[styles.priceCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}>
             <View style={styles.priceInfo}>
               <Text style={[styles.priceLabel, { color: colors.textSecondary }]}>Fiyat Aralığı</Text>
               <Text style={[styles.priceValue, { color: colors.brand[400] }]}>{artist.priceRange}</Text>

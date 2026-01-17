@@ -56,7 +56,7 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
             borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
           },
           isSelected && {
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)',
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)',
             borderColor: colors.brand[400],
           }
         ]}

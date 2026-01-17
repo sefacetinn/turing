@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { providerOffers } from '../data/offersData';
+import { OfferTimeline } from '../components/offers/OfferTimeline';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
@@ -133,6 +134,20 @@ export function ProviderRequestDetailScreen() {
     { id: 'backstage', label: 'Kulis Riderı', enabled: true },
     { id: 'pyro', label: 'Pyro/Özel Efektler', enabled: false },
   ]);
+
+  // Rejection modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [selectedRejectReason, setSelectedRejectReason] = useState<string | null>(null);
+  const [customRejectReason, setCustomRejectReason] = useState('');
+
+  const rejectionReasons = [
+    { id: 'calendar', label: 'Takvim uyuşmazlığı' },
+    { id: 'budget', label: 'Bütçe yetersiz' },
+    { id: 'concept', label: 'Etkinlik konseptine uygun değil' },
+    { id: 'other_offer', label: 'Başka bir teklif kabul edildi' },
+    { id: 'technical', label: 'Teknik gereksinimler karşılanamıyor' },
+    { id: 'other', label: 'Diğer' },
+  ];
 
   const toggleIncludedItem = (id: string) => {
     setIncludedItems(prev => prev.map(item =>
@@ -444,21 +459,28 @@ export function ProviderRequestDetailScreen() {
   };
 
   const handleRejectOffer = () => {
-    Alert.alert(
-      'Talebi Reddet',
-      'Bu talebi reddetmek istediğinize emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Reddet',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Reddedildi', 'Talep reddedildi.');
-            navigation.goBack();
-          }
-        },
-      ]
-    );
+    setSelectedRejectReason(null);
+    setCustomRejectReason('');
+    setShowRejectModal(true);
+  };
+
+  const confirmRejectOffer = () => {
+    if (!selectedRejectReason) {
+      Alert.alert('Uyarı', 'Lütfen bir red nedeni seçin.');
+      return;
+    }
+    if (selectedRejectReason === 'other' && !customRejectReason.trim()) {
+      Alert.alert('Uyarı', 'Lütfen red nedeninizi yazın.');
+      return;
+    }
+
+    const reason = selectedRejectReason === 'other'
+      ? customRejectReason.trim()
+      : rejectionReasons.find(r => r.id === selectedRejectReason)?.label || '';
+
+    setShowRejectModal(false);
+    Alert.alert('Reddedildi', `Talep reddedildi.\nNeden: ${reason}`);
+    navigation.goBack();
   };
 
   const getSeatingTypeLabel = (type: string | undefined) => {
@@ -490,6 +512,49 @@ export function ProviderRequestDetailScreen() {
       year: 'numeric'
     });
 
+    const docNumber = `TKL-${new Date().getFullYear()}-${offer.id.slice(-4).toUpperCase()}`;
+
+    // Get active included/excluded items
+    const activeIncluded = includedItems.filter(i => i.enabled).map(i => i.label);
+    const activeExcluded = excludedItems.filter(i => i.enabled).map(i => i.label);
+
+    // Get latest offer amount from history
+    const latestOffer = offer.history?.slice().reverse().find(h => h.amount);
+    const offerAmount = latestOffer?.amount || offer.amount;
+
+    // Build timeline HTML
+    const timelineHTML = offer.history?.map((item, idx) => {
+      const isLast = idx === (offer.history?.length || 0) - 1;
+      const typeLabels: Record<string, string> = {
+        'submitted': 'Teklif Gönderildi',
+        'viewed': 'Görüntülendi',
+        'counter': 'Karşı Teklif',
+        'accepted': 'Kabul Edildi',
+        'rejected': 'Reddedildi',
+      };
+      const typeColors: Record<string, string> = {
+        'submitted': '#6366F1',
+        'viewed': '#8B5CF6',
+        'counter': '#F59E0B',
+        'accepted': '#10B981',
+        'rejected': '#EF4444',
+      };
+      return `
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background: ${typeColors[item.type] || '#6B7280'}"></div>
+          ${!isLast ? '<div class="timeline-line"></div>' : ''}
+          <div class="timeline-content">
+            <div class="timeline-header">
+              <span class="timeline-actor">${item.by === 'provider' ? 'Siz' : 'Organizatör'}</span>
+              <span class="timeline-date">${item.date}</span>
+            </div>
+            <div class="timeline-action">${typeLabels[item.type] || item.type}</div>
+            ${item.amount ? `<div class="timeline-amount">₺${item.amount.toLocaleString('tr-TR')}</div>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('') || '';
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -498,413 +563,698 @@ export function ProviderRequestDetailScreen() {
         <style>
           @page { size: A4; margin: 0; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
+
           body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
-            color: #1F2937;
-            line-height: 1.4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #1a1a2e;
+            line-height: 1.35;
             background: #fff;
             width: 210mm;
-            min-height: 297mm;
-            padding: 24px 28px;
+            height: 297mm;
+            padding: 0;
+            position: relative;
           }
 
-          /* Header */
+          /* === TOP ACCENT BAR === */
+          .accent-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
+          }
+
+          /* === MAIN CONTAINER === */
+          .container {
+            padding: 20px 28px 16px;
+            height: calc(297mm - 6px);
+            display: flex;
+            flex-direction: column;
+          }
+
+          /* === HEADER === */
           .header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding-bottom: 16px;
-            border-bottom: 3px solid #6366F1;
-            margin-bottom: 20px;
+            align-items: flex-start;
+            margin-bottom: 16px;
           }
           .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
           }
-          .brand-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+          .brand-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: bold;
-            font-size: 18px;
+            font-weight: 800;
+            font-size: 20px;
+            letter-spacing: -1px;
           }
-          .brand-text h1 {
-            font-size: 22px;
+          .brand-info h1 {
+            font-size: 20px;
             font-weight: 700;
-            color: #1F2937;
+            color: #1a1a2e;
             letter-spacing: -0.5px;
           }
-          .brand-text p {
-            font-size: 10px;
-            color: #6B7280;
+          .brand-tagline {
+            font-size: 9px;
+            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            font-weight: 500;
           }
-          .doc-meta {
+          .doc-info {
             text-align: right;
           }
-          .doc-number {
-            font-size: 11px;
-            color: #9CA3AF;
+          .doc-type {
+            font-size: 8px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             margin-bottom: 2px;
           }
-          .doc-id {
-            font-size: 13px;
-            font-weight: 600;
-            color: #374151;
-            font-family: 'SF Mono', monospace;
+          .doc-number {
+            font-size: 12px;
+            font-weight: 700;
+            color: #4F46E5;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            margin-bottom: 4px;
           }
-          .status {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
+          .doc-date {
             font-size: 10px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 6px;
+            color: #64748b;
           }
-          .status-pending { background: #FEF3C7; color: #B45309; }
-          .status-accepted { background: #D1FAE5; color: #047857; }
-          .status-counter_offered { background: #DBEAFE; color: #1D4ED8; }
 
-          /* Hero Section */
+          /* === EVENT HERO === */
           .hero {
-            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
-            border-radius: 12px;
-            padding: 20px 24px;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 60%, #9333EA 100%);
+            border-radius: 14px;
+            padding: 18px 22px;
             color: white;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
             position: relative;
             overflow: hidden;
+          }
+          .hero::before {
+            content: '';
+            position: absolute;
+            top: -60%;
+            right: -15%;
+            width: 180px;
+            height: 180px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
           }
           .hero::after {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 200px;
-            height: 200px;
-            background: rgba(255,255,255,0.1);
+            bottom: -40%;
+            left: 10%;
+            width: 120px;
+            height: 120px;
+            background: rgba(255,255,255,0.05);
             border-radius: 50%;
           }
-          .hero-category {
-            font-size: 10px;
+          .hero-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 9px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            opacity: 0.85;
-            margin-bottom: 6px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
           }
-          .hero-title {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            letter-spacing: -0.3px;
+          .hero-artist {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 2px;
           }
-          .hero-subtitle {
+          .hero-event {
             font-size: 14px;
             opacity: 0.9;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
           }
-          .hero-meta {
+          .hero-details {
             display: flex;
-            gap: 20px;
-            font-size: 12px;
+            gap: 24px;
+            font-size: 11px;
+            font-weight: 500;
           }
-          .hero-meta span {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-          }
-
-          /* Two Column Layout */
-          .content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 16px;
-          }
-
-          /* Cards */
-          .card {
-            background: #F9FAFB;
-            border-radius: 10px;
-            padding: 14px 16px;
-            border: 1px solid #E5E7EB;
-          }
-          .card-title {
-            font-size: 9px;
-            font-weight: 700;
-            color: #6366F1;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin-bottom: 10px;
+          .hero-detail {
             display: flex;
             align-items: center;
             gap: 6px;
           }
-          .card-title::before {
-            content: '';
-            width: 3px;
-            height: 12px;
-            background: #6366F1;
-            border-radius: 2px;
-          }
-
-          /* Organizer */
-          .org-content {
+          .hero-icon {
+            width: 18px;
+            height: 18px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
             display: flex;
             align-items: center;
+            justify-content: center;
+            font-size: 10px;
+          }
+
+          /* === STATUS BADGE === */
+          .status-container {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+          }
+          .status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .status-pending { background: rgba(251,191,36,0.2); color: #F59E0B; }
+          .status-accepted { background: rgba(16,185,129,0.2); color: #10B981; }
+          .status-counter_offered { background: rgba(59,130,246,0.2); color: #3B82F6; }
+          .status-rejected { background: rgba(239,68,68,0.2); color: #EF4444; }
+
+          /* === MAIN CONTENT GRID === */
+          .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 12px;
+            margin-bottom: 12px;
+          }
+
+          /* === CARDS === */
+          .card {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+          }
+          .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+          }
+          .card-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+          }
+          .card-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+
+          /* Organizer Card */
+          .org-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
           }
           .org-avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            color: #6366F1;
-            font-size: 16px;
+            color: #4F46E5;
+            font-size: 14px;
           }
           .org-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            color: #1F2937;
+            color: #1e293b;
+          }
+          .org-meta {
+            font-size: 10px;
+            color: #64748b;
+            margin-top: 1px;
+          }
+          .org-meta .star { color: #FBBF24; }
+
+          /* Venue Card */
+          .venue-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
             margin-bottom: 2px;
           }
-          .org-rating {
-            font-size: 11px;
-            color: #6B7280;
-          }
-          .org-rating span { color: #F59E0B; }
-
-          /* Venue */
-          .venue-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #1F2937;
-            margin-bottom: 3px;
-          }
           .venue-address {
-            font-size: 11px;
-            color: #6B7280;
-            margin-bottom: 12px;
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 10px;
           }
           .venue-specs {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
+            display: flex;
+            gap: 6px;
           }
-          .spec-item {
-            text-align: center;
-            padding: 8px 4px;
+          .venue-spec {
+            flex: 1;
             background: white;
             border-radius: 6px;
+            padding: 6px 4px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
           }
-          .spec-value {
-            font-size: 13px;
+          .venue-spec-value {
+            font-size: 12px;
             font-weight: 700;
-            color: #6366F1;
+            color: #4F46E5;
           }
-          .spec-label {
-            font-size: 9px;
-            color: #9CA3AF;
+          .venue-spec-label {
+            font-size: 8px;
+            color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 0.3px;
           }
 
-          /* Details Grid */
-          .details-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-          }
-          .detail-item {
-            background: #F9FAFB;
-            border-radius: 8px;
-            padding: 12px;
-            text-align: center;
-            border: 1px solid #E5E7EB;
-          }
-          .detail-value {
-            font-size: 16px;
-            font-weight: 700;
-            color: #1F2937;
-            margin-bottom: 2px;
-          }
-          .detail-label {
-            font-size: 9px;
-            color: #6B7280;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          /* Budget Section */
-          .budget {
-            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+          /* === PRICE SECTION === */
+          .price-section {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border: 2px solid #a7f3d0;
             border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            border: 2px solid #A7F3D0;
-            margin-top: 16px;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
           }
-          .budget-label {
+          .price-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .price-icon {
+            width: 40px;
+            height: 40px;
+            background: #10B981;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+          }
+          .price-label {
             font-size: 10px;
             color: #047857;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 6px;
+            letter-spacing: 1px;
+            font-weight: 600;
           }
-          .budget-amount {
-            font-size: 32px;
+          .price-amount {
+            font-size: 28px;
             font-weight: 800;
             color: #047857;
             letter-spacing: -1px;
           }
-          .budget-not-set {
-            background: #F3F4F6;
-            border: 2px dashed #D1D5DB;
-          }
-          .budget-not-set .budget-label,
-          .budget-not-set .budget-amount {
-            color: #6B7280;
-          }
-          .budget-not-set .budget-amount {
-            font-size: 18px;
+          .price-status {
+            padding: 6px 14px;
+            background: white;
+            border-radius: 20px;
+            font-size: 10px;
             font-weight: 600;
+            color: #047857;
+            border: 1px solid #a7f3d0;
           }
 
-          /* Footer */
-          .footer {
-            margin-top: 20px;
-            padding-top: 14px;
-            border-top: 1px solid #E5E7EB;
+          /* === DETAILS ROW === */
+          .details-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+          }
+          .detail-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 8px;
+            text-align: center;
+          }
+          .detail-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 2px;
+          }
+          .detail-label {
+            font-size: 8px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          /* === INCLUDED/EXCLUDED === */
+          .scope-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+          }
+          .scope-card {
+            padding: 10px 12px;
+            border-radius: 8px;
+          }
+          .scope-included {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+          }
+          .scope-excluded {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+          }
+          .scope-title {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+          .scope-included .scope-title { color: #16a34a; }
+          .scope-excluded .scope-title { color: #dc2626; }
+          .scope-list {
+            font-size: 10px;
+            color: #374151;
+            line-height: 1.6;
+          }
+          .scope-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+          .scope-included .scope-item::before {
+            content: '✓';
+            color: #16a34a;
+            font-weight: 700;
+            font-size: 9px;
+          }
+          .scope-excluded .scope-item::before {
+            content: '✗';
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 9px;
+          }
+
+          /* === TIMELINE === */
+          .timeline-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+          }
+          .timeline-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+          }
+          .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+          }
+          .timeline-item {
+            display: flex;
+            gap: 10px;
+            position: relative;
+            padding-bottom: 8px;
+          }
+          .timeline-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 2px;
+          }
+          .timeline-line {
+            position: absolute;
+            left: 4px;
+            top: 14px;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+          }
+          .timeline-content {
+            flex: 1;
+          }
+          .timeline-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 1px;
+          }
+          .timeline-actor {
+            font-size: 9px;
+            color: #64748b;
+            font-weight: 500;
+          }
+          .timeline-date {
+            font-size: 9px;
+            color: #94a3b8;
+          }
+          .timeline-action {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1e293b;
+          }
+          .timeline-amount {
+            font-size: 12px;
+            font-weight: 700;
+            color: #4F46E5;
+          }
+
+          /* === FOOTER === */
+          .footer {
+            margin-top: auto;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
           }
           .footer-left {
-            font-size: 9px;
-            color: #9CA3AF;
+            font-size: 8px;
+            color: #94a3b8;
+            line-height: 1.5;
+          }
+          .footer-legal {
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 2px;
           }
           .footer-right {
-            font-size: 9px;
-            color: #9CA3AF;
             text-align: right;
           }
           .footer-brand {
-            font-weight: 600;
-            color: #6B7280;
+            font-size: 11px;
+            font-weight: 700;
+            color: #4F46E5;
+            letter-spacing: -0.3px;
+          }
+          .footer-url {
+            font-size: 9px;
+            color: #64748b;
+          }
+          .footer-qr {
+            width: 50px;
+            height: 50px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 6px;
           }
         </style>
       </head>
       <body>
-        <!-- Header -->
-        <div class="header">
-          <div class="brand">
-            <div class="brand-icon">T</div>
-            <div class="brand-text">
-              <h1>Turing</h1>
-              <p>Etkinlik Yönetim Platformu</p>
+        <div class="accent-bar"></div>
+        <div class="container">
+
+          <!-- Header -->
+          <div class="header">
+            <div class="brand">
+              <div class="brand-logo">T</div>
+              <div class="brand-info">
+                <h1>Turing</h1>
+                <div class="brand-tagline">Etkinlik Yönetim Platformu</div>
+              </div>
+            </div>
+            <div class="doc-info">
+              <div class="doc-type">Teklif Belgesi</div>
+              <div class="doc-number">${docNumber}</div>
+              <div class="doc-date">${currentDate}</div>
             </div>
           </div>
-          <div class="doc-meta">
-            <div class="doc-number">TALEP NO</div>
-            <div class="doc-id">${offer.id.toUpperCase()}</div>
-            <div class="status status-${offer.status}">${statusConfig.label}</div>
-          </div>
-        </div>
 
-        <!-- Hero -->
-        <div class="hero">
-          <div class="hero-category">🎵 Sanatçı Performansı</div>
-          <div class="hero-title">${offer.eventTitle}</div>
-          <div class="hero-subtitle">${offer.role}</div>
-          <div class="hero-meta">
-            <span>📅 ${offer.eventDate}</span>
-            <span>📍 ${offer.location}</span>
+          <!-- Event Hero -->
+          <div class="hero">
+            <div class="status-container">
+              <span class="status status-${offer.status}">${statusConfig.label}</span>
+            </div>
+            <div class="hero-badge">🎵 Sanatçı Performansı</div>
+            <div class="hero-artist">${offer.serviceCategory === 'booking' && offer.artistName ? offer.artistName : offer.role.split(' - ')[0]}</div>
+            <div class="hero-event">${offer.eventTitle}</div>
+            <div class="hero-details">
+              <div class="hero-detail">
+                <div class="hero-icon">📅</div>
+                <span>${offer.eventDate}</span>
+              </div>
+              <div class="hero-detail">
+                <div class="hero-icon">📍</div>
+                <span>${offer.location}</span>
+              </div>
+              <div class="hero-detail">
+                <div class="hero-icon">⏰</div>
+                <span>${eventDetails.concertTime} başlangıç</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <!-- Two Columns: Organizer & Venue -->
-        <div class="content">
-          <div class="card">
-            <div class="card-title">Organizatör</div>
-            <div class="org-content">
-              <div class="org-avatar">${offer.organizer.name.charAt(0)}</div>
+          <!-- Price Section -->
+          <div class="price-section">
+            <div class="price-left">
+              <div class="price-icon">₺</div>
               <div>
-                <div class="org-name">${offer.organizer.name}</div>
-                <div class="org-rating"><span>★</span> 4.7 · 45 değerlendirme</div>
+                <div class="price-label">Teklif Tutarı</div>
+                <div class="price-amount">₺${offerAmount.toLocaleString('tr-TR')}</div>
+              </div>
+            </div>
+            <div class="price-status">${offer.status === 'accepted' ? '✓ Onaylandı' : offer.status === 'counter_offered' ? '↔ Pazarlık' : 'Değerlendirmede'}</div>
+          </div>
+
+          <!-- Main Grid: Organizer & Venue -->
+          <div class="main-grid">
+            <div class="card">
+              <div class="card-header">
+                <div class="card-icon">👤</div>
+                <div class="card-title">Organizatör</div>
+              </div>
+              <div class="org-row">
+                <div class="org-avatar">${offer.organizer.name.charAt(0)}</div>
+                <div>
+                  <div class="org-name">${offer.organizer.name}</div>
+                  <div class="org-meta"><span class="star">★</span> 4.7 · 45 değerlendirme</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-icon">🏛</div>
+                <div class="card-title">Mekan</div>
+              </div>
+              <div class="venue-name">${venueInfo.name}</div>
+              <div class="venue-address">${venueInfo.district || ''}, ${venueInfo.city}</div>
+              <div class="venue-specs">
+                <div class="venue-spec">
+                  <div class="venue-spec-value">${venueInfo.capacity.toLocaleString('tr-TR')}</div>
+                  <div class="venue-spec-label">Kapasite</div>
+                </div>
+                <div class="venue-spec">
+                  <div class="venue-spec-value">${getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}</div>
+                  <div class="venue-spec-label">Tip</div>
+                </div>
+                <div class="venue-spec">
+                  <div class="venue-spec-value">${venueInfo.backstage?.hasBackstage ? 'Var' : 'Yok'}</div>
+                  <div class="venue-spec-label">Kulis</div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="card">
-            <div class="card-title">Mekan</div>
-            <div class="venue-name">${venueInfo.name}</div>
-            <div class="venue-address">${venueInfo.address}, ${venueInfo.city}</div>
-            <div class="venue-specs">
-              <div class="spec-item">
-                <div class="spec-value">${venueInfo.capacity.toLocaleString('tr-TR')}</div>
-                <div class="spec-label">Kapasite</div>
+          <!-- Performance Details -->
+          <div class="details-row">
+            <div class="detail-box">
+              <div class="detail-value">${eventDetails.concertTime}</div>
+              <div class="detail-label">Sahne Saati</div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-value">${eventDetails.eventDuration}</div>
+              <div class="detail-label">Süre</div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-value">${eventDetails.ageLimit}</div>
+              <div class="detail-label">Yaş Sınırı</div>
+            </div>
+            <div class="detail-box">
+              <div class="detail-value">${eventDetails.participantType}</div>
+              <div class="detail-label">Katılım</div>
+            </div>
+          </div>
+
+          <!-- Scope: Included/Excluded -->
+          <div class="scope-grid">
+            <div class="scope-card scope-included">
+              <div class="scope-title">✓ Dahil Olanlar</div>
+              <div class="scope-list">
+                ${activeIncluded.map(item => `<div class="scope-item">${item}</div>`).join('')}
               </div>
-              <div class="spec-item">
-                <div class="spec-value">${getSeatingTypeLabel(venueInfo.seatingType)}</div>
-                <div class="spec-label">Düzen</div>
-              </div>
-              <div class="spec-item">
-                <div class="spec-value">${getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}</div>
-                <div class="spec-label">Tip</div>
+            </div>
+            <div class="scope-card scope-excluded">
+              <div class="scope-title">✗ Dahil Olmayanlar</div>
+              <div class="scope-list">
+                ${activeExcluded.map(item => `<div class="scope-item">${item}</div>`).join('')}
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Performance Details -->
-        <div class="details-grid">
-          <div class="detail-item">
-            <div class="detail-value">${eventDetails.concertTime}</div>
-            <div class="detail-label">Sahne Saati</div>
+          <!-- Timeline -->
+          ${offer.history && offer.history.length > 0 ? `
+          <div class="timeline-section">
+            <div class="timeline-title">Teklif Geçmişi</div>
+            <div class="timeline">
+              ${timelineHTML}
+            </div>
           </div>
-          <div class="detail-item">
-            <div class="detail-value">${eventDetails.eventDuration}</div>
-            <div class="detail-label">Süre</div>
-          </div>
-          <div class="detail-item">
-            <div class="detail-value">${eventDetails.ageLimit}</div>
-            <div class="detail-label">Yaş Sınırı</div>
-          </div>
-          <div class="detail-item">
-            <div class="detail-value">${eventDetails.participantType}</div>
-            <div class="detail-label">Katılımcı</div>
-          </div>
-        </div>
+          ` : ''}
 
-        <!-- Budget -->
-        <div class="budget ${!organizerBudget ? 'budget-not-set' : ''}">
-          <div class="budget-label">${organizerBudget ? 'Organizatör Bütçe Teklifi' : 'Bütçe Bilgisi'}</div>
-          <div class="budget-amount">${organizerBudget ? '₺' + organizerBudget.toLocaleString('tr-TR') : 'Bütçe İletilmedi'}</div>
-        </div>
+          <!-- Footer -->
+          <div class="footer">
+            <div class="footer-left">
+              <div class="footer-legal">Bu belge bilgilendirme amaçlıdır.</div>
+              Belge No: ${docNumber}<br/>
+              Oluşturulma: ${currentDate}
+            </div>
+            <div class="footer-right">
+              <div class="footer-brand">Turing</div>
+              <div class="footer-url">www.turingapp.com</div>
+              <div class="footer-qr">QR<br/>Doğrulama</div>
+            </div>
+          </div>
 
-        <!-- Footer -->
-        <div class="footer">
-          <div class="footer-left">
-            Bu belge ${currentDate} tarihinde oluşturulmuştur.<br/>
-            Belge referans numarası ile doğrulanabilir.
-          </div>
-          <div class="footer-right">
-            <span class="footer-brand">Turing</span><br/>
-            www.turing.app
-          </div>
         </div>
       </body>
       </html>
@@ -1028,6 +1378,20 @@ export function ProviderRequestDetailScreen() {
           <Text style={[styles.statusTextCompact, { color: statusConfig.color }]}>{statusConfig.label}</Text>
         </View>
 
+        {/* Rejection Reason Box */}
+        {offer.status === 'rejected' && offer.rejectionReason && (
+          <View style={[styles.rejectionReasonBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.06)' }]}>
+            <View style={styles.rejectionReasonHeader}>
+              <Ionicons name="information-circle" size={18} color="#EF4444" />
+              <Text style={styles.rejectionReasonTitle}>Red Nedeni</Text>
+            </View>
+            <Text style={[styles.rejectionReasonText, { color: colors.text }]}>{offer.rejectionReason}</Text>
+            {offer.rejectedAt && (
+              <Text style={[styles.rejectionReasonDate, { color: colors.textMuted }]}>{offer.rejectedAt}</Text>
+            )}
+          </View>
+        )}
+
         {/* Organizer Card - Compact & Clickable */}
         <TouchableOpacity
           style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
@@ -1058,6 +1422,14 @@ export function ProviderRequestDetailScreen() {
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* Offer Timeline / History */}
+        {offer.history && offer.history.length > 0 && (
+          <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TEKLİF GEÇMİŞİ</Text>
+            <OfferTimeline history={offer.history} />
+          </View>
+        )}
 
         {/* Venue Summary Card - Tappable */}
         <TouchableOpacity
@@ -1272,6 +1644,11 @@ export function ProviderRequestDetailScreen() {
             <Ionicons name="calendar-outline" size={20} color="white" />
             <Text style={styles.operationsBtnText}>Etkinliği Görüntüle</Text>
           </TouchableOpacity>
+        ) : offer.status === 'rejected' ? (
+          <View style={styles.rejectedBottomInfo}>
+            <Ionicons name="close-circle" size={20} color="#EF4444" />
+            <Text style={styles.rejectedBottomText}>Bu talep reddedildi</Text>
+          </View>
         ) : (
           <>
             <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectOffer}>
@@ -1636,6 +2013,106 @@ export function ProviderRequestDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Rejection Reason Modal */}
+      <Modal visible={showRejectModal} animationType="slide" transparent onRequestClose={() => setShowRejectModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.rejectModalContent, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
+            <View style={styles.modalHandle}>
+              <View style={[styles.modalHandleBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#E2E8F0' }]} />
+            </View>
+
+            <Text style={[styles.rejectModalTitle, { color: colors.text }]}>Talebi Reddet</Text>
+            <Text style={[styles.rejectModalSubtitle, { color: colors.textSecondary }]}>
+              Lütfen red nedeninizi seçin
+            </Text>
+
+            {/* Rejection Reasons List */}
+            <View style={styles.rejectReasonsList}>
+              {rejectionReasons.map((reason) => (
+                <TouchableOpacity
+                  key={reason.id}
+                  style={[
+                    styles.rejectReasonItem,
+                    {
+                      backgroundColor: selectedRejectReason === reason.id
+                        ? (isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)')
+                        : (isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC'),
+                      borderColor: selectedRejectReason === reason.id ? '#EF4444' : (isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0'),
+                    }
+                  ]}
+                  onPress={() => setSelectedRejectReason(reason.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.rejectReasonRadio,
+                    {
+                      borderColor: selectedRejectReason === reason.id ? '#EF4444' : (isDark ? 'rgba(255,255,255,0.3)' : '#CBD5E1'),
+                      backgroundColor: selectedRejectReason === reason.id ? '#EF4444' : 'transparent',
+                    }
+                  ]}>
+                    {selectedRejectReason === reason.id && (
+                      <View style={styles.rejectReasonRadioInner} />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.rejectReasonLabel,
+                    {
+                      color: selectedRejectReason === reason.id ? '#EF4444' : colors.text,
+                      fontWeight: selectedRejectReason === reason.id ? '600' : '400',
+                    }
+                  ]}>
+                    {reason.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Custom Reason Input - Only shows when "Diğer" is selected */}
+            {selectedRejectReason === 'other' && (
+              <View style={styles.customReasonContainer}>
+                <TextInput
+                  style={[
+                    styles.customReasonInput,
+                    {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC',
+                      borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0',
+                      color: colors.text,
+                    }
+                  ]}
+                  placeholder="Red nedeninizi yazın..."
+                  placeholderTextColor={colors.textMuted}
+                  value={customRejectReason}
+                  onChangeText={setCustomRejectReason}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.rejectModalActions}>
+              <TouchableOpacity
+                style={[styles.rejectModalCancelBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]}
+                onPress={() => setShowRejectModal(false)}
+              >
+                <Text style={[styles.rejectModalCancelText, { color: colors.text }]}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.rejectModalConfirmBtn,
+                  { opacity: selectedRejectReason ? 1 : 0.5 }
+                ]}
+                onPress={confirmRejectOffer}
+                disabled={!selectedRejectReason}
+              >
+                <Text style={styles.rejectModalConfirmText}>Reddet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1739,6 +2216,35 @@ const styles = StyleSheet.create({
   statusTextCompact: {
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  // Rejection Reason Box
+  rejectionReasonBox: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  rejectionReasonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  rejectionReasonTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  rejectionReasonText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  rejectionReasonDate: {
+    fontSize: 11,
+    marginTop: 8,
   },
 
   // Status Banner
@@ -2285,6 +2791,112 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   operationsBtnText: { color: 'white', fontSize: 16, fontWeight: '600' },
+
+  // Rejected Bottom Info
+  rejectedBottomInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  rejectedBottomText: {
+    color: '#EF4444',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // Rejection Modal
+  rejectModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+  },
+  rejectModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  rejectModalSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  rejectReasonsList: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  rejectReasonItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  rejectReasonRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rejectReasonRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'white',
+  },
+  rejectReasonLabel: {
+    fontSize: 15,
+    flex: 1,
+  },
+  customReasonContainer: {
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  customReasonInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    minHeight: 80,
+  },
+  rejectModalActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 12,
+  },
+  rejectModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  rejectModalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  rejectModalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+  },
+  rejectModalConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

@@ -58,7 +58,7 @@ export function ReviewCard({ review, compact = false }: ReviewCardProps) {
             <View
               style={[
                 styles.avatarPlaceholder,
-                { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)' },
+                { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' },
               ]}
             >
               <Text style={[styles.avatarText, { color: colors.brand[400] }]}>
@@ -85,7 +85,7 @@ export function ReviewCard({ review, compact = false }: ReviewCardProps) {
             <View
               style={[
                 styles.badge,
-                { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.08)' },
+                { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' },
               ]}
             >
               <Text style={[styles.badgeText, { color: colors.brand[400] }]}>
@@ -176,7 +176,7 @@ export function MiniReviewCard({ reviewerName, reviewerImage, rating, comment, d
           <View
             style={[
               styles.miniAvatarPlaceholder,
-              { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)' },
+              { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)' },
             ]}
           >
             <Text style={[styles.miniAvatarText, { color: colors.brand[400] }]}>

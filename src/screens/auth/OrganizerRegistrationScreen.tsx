@@ -423,7 +423,7 @@ export function OrganizerRegistrationScreen() {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#6366f1', '#8b5cf6']}
+              colors={['#4b30b8', '#a855f7']}
               style={styles.nextButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}

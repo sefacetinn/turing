@@ -9,10 +9,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { darkTheme as defaultColors, gradients } from '../theme/colors';
+import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { providerEvents } from '../data/providerEventsData';
+import { events as organizerEvents } from '../data/mockData';
+import {
+  CalendarEvent,
+  transformProviderEvents,
+  transformOrganizerEvents,
+  getDaysInMonth,
+  getWeekDays,
+  isSameDay,
+  isDateInRange,
+  getCategoryColor,
+  MONTH_NAMES,
+  DAY_NAMES_SHORT,
+} from '../utils/calendarUtils';
 
 const colors = defaultColors;
 
@@ -21,140 +34,27 @@ const DAY_WIDTH = (width - 40 - 6 * 4) / 7; // 7 days with gaps
 
 type ViewMode = 'month' | 'week';
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: Date;
-  time: string;
-  category: string;
-  status: string;
-  venue: string;
-}
-
 interface CalendarViewScreenProps {
   isProviderMode?: boolean;
 }
-
-// Helper functions
-const getDaysInMonth = (year: number, month: number): Date[] => {
-  const days: Date[] = [];
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-
-  // Add days from previous month to start on Monday
-  const startDay = firstDay.getDay() || 7; // Convert Sunday (0) to 7
-  for (let i = startDay - 1; i > 0; i--) {
-    days.push(new Date(year, month, 1 - i));
-  }
-
-  // Add days of current month
-  for (let i = 1; i <= lastDay.getDate(); i++) {
-    days.push(new Date(year, month, i));
-  }
-
-  // Add days from next month to complete the grid
-  const remainingDays = 42 - days.length; // 6 weeks * 7 days
-  for (let i = 1; i <= remainingDays; i++) {
-    days.push(new Date(year, month + 1, i));
-  }
-
-  return days;
-};
-
-const getWeekDays = (date: Date): Date[] => {
-  const days: Date[] = [];
-  const day = date.getDay() || 7;
-  const monday = new Date(date);
-  monday.setDate(date.getDate() - day + 1);
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    days.push(d);
-  }
-
-  return days;
-};
-
-const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
-};
-
-const isSameDay = (d1: Date, d2: Date): boolean => {
-  return d1.getDate() === d2.getDate() &&
-         d1.getMonth() === d2.getMonth() &&
-         d1.getFullYear() === d2.getFullYear();
-};
-
-// Mock events for calendar
-// Title format: "Sanatçı Adı - Şehir" veya "Etkinlik Adı - Şehir"
-const mockCalendarEvents: CalendarEvent[] = [
-  {
-    id: '1',
-    title: 'Sıla & Tarkan - İstanbul',
-    date: new Date(2024, 6, 15),
-    time: '16:00',
-    category: 'booking',
-    status: 'confirmed',
-    venue: 'KüçükÇiftlik Park',
-  },
-  {
-    id: '2',
-    title: 'Garanti BBVA - İstanbul',
-    date: new Date(2024, 7, 22),
-    time: '19:00',
-    category: 'venue',
-    status: 'planning',
-    venue: 'JW Marriott',
-  },
-  {
-    id: '3',
-    title: 'Zeynep & Emre - İstanbul',
-    date: new Date(2024, 8, 1),
-    time: '18:00',
-    category: 'booking',
-    status: 'draft',
-    venue: 'Çırağan Palace',
-  },
-  {
-    id: '4',
-    title: 'Tech Conference - İstanbul',
-    date: new Date(2024, 9, 10),
-    time: '09:00',
-    category: 'technical',
-    status: 'planning',
-    venue: 'Haliç Kongre',
-  },
-];
-
-const MONTH_NAMES = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-];
-
-const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-
-const getCategoryColor = (category: string): string => {
-  const categoryColors: Record<string, string> = {
-    booking: '#9333ea',
-    technical: '#059669',
-    venue: '#2563eb',
-    accommodation: '#db2777',
-    transport: '#dc2626',
-    flight: '#475569',
-    operation: '#d97706',
-  };
-  return categoryColors[category] || '#9333ea';
-};
 
 export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date()); // Bugun secili
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const today = new Date();
+
+  // Mode-aware veri secimi
+  const calendarEvents = useMemo(() => {
+    if (isProviderMode) {
+      return transformProviderEvents(providerEvents);
+    }
+    return transformOrganizerEvents(organizerEvents);
+  }, [isProviderMode]);
 
   // Calculate displayed days
   const displayedDays = useMemo(() => {
@@ -165,9 +65,13 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
     }
   }, [currentDate, viewMode]);
 
-  // Get events for a specific date
+  // Get events for a specific date (multi-day event destegi)
   const getEventsForDate = (date: Date): CalendarEvent[] => {
-    return mockCalendarEvents.filter(event => isSameDay(event.date, date));
+    let filtered = calendarEvents.filter(event => isDateInRange(date, event.date, event.endDate));
+    if (selectedCategory) {
+      filtered = filtered.filter(event => event.category === selectedCategory);
+    }
+    return filtered;
   };
 
   // Navigate months/weeks
@@ -197,7 +101,66 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
   };
 
   // Get events for selected date
-  const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
+  const selectedDateEvents = getEventsForDate(selectedDate);
+
+  // Toggle category filter
+  const toggleCategoryFilter = (category: string) => {
+    if (selectedCategory === category) {
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(category);
+    }
+  };
+
+  // Status helpers
+  const getStatusLabel = (status: string): string => {
+    const labels: Record<string, string> = {
+      active: 'Aktif',
+      planned: 'Planlanan',
+      past: 'Tamamlandi',
+      confirmed: 'Onayli',
+      planning: 'Planlama',
+      draft: 'Taslak',
+      completed: 'Bitti',
+    };
+    return labels[status] || status;
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'active':
+      case 'confirmed':
+        return '#10B981';
+      case 'planned':
+      case 'planning':
+        return '#4b30b8';
+      case 'past':
+      case 'completed':
+        return '#3b82f6';
+      case 'draft':
+        return '#71717a';
+      default:
+        return '#71717a';
+    }
+  };
+
+  const getStatusBgColor = (status: string): string => {
+    switch (status) {
+      case 'active':
+      case 'confirmed':
+        return 'rgba(16, 185, 129, 0.15)';
+      case 'planned':
+      case 'planning':
+        return 'rgba(75, 48, 184, 0.15)';
+      case 'past':
+      case 'completed':
+        return 'rgba(59, 130, 246, 0.15)';
+      case 'draft':
+        return 'rgba(113, 113, 122, 0.15)';
+      default:
+        return 'rgba(113, 113, 122, 0.15)';
+    }
+  };
 
   const renderDayCell = (date: Date, index: number) => {
     const isCurrentMonth = date.getMonth() === currentDate.getMonth();
@@ -309,7 +272,7 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
 
       {/* Day Names Header */}
       <View style={styles.dayNamesContainer}>
-        {DAY_NAMES.map((name, index) => (
+        {DAY_NAMES_SHORT.map((name, index) => (
           <View key={index} style={styles.dayNameCell}>
             <Text style={[
               styles.dayNameText,
@@ -371,13 +334,13 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
                     <Text style={[styles.eventItemTime, { color: colors.brand[400] }]}>{event.time}</Text>
                     <View style={[
                       styles.eventStatusBadge,
-                      { backgroundColor: event.status === 'confirmed' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(147, 51, 234, 0.15)' }
+                      { backgroundColor: getStatusBgColor(event.status) }
                     ]}>
                       <Text style={[
                         styles.eventStatusText,
-                        { color: event.status === 'confirmed' ? colors.success : colors.brand[400] }
+                        { color: getStatusColor(event.status) }
                       ]}>
-                        {event.status === 'confirmed' ? 'Onaylı' : event.status === 'planning' ? 'Planlama' : 'Taslak'}
+                        {getStatusLabel(event.status)}
                       </Text>
                     </View>
                   </View>
@@ -394,31 +357,51 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
             <View style={styles.noEvents}>
               <Ionicons name="calendar-outline" size={32} color={colors.textSecondary} />
               <Text style={[styles.noEventsText, { color: colors.textMuted }]}>
-                {selectedDate ? 'Bu tarihte etkinlik yok' : 'Bir tarih seçin'}
+                Bu tarihte etkinlik yok
               </Text>
             </View>
           )}
         </ScrollView>
       </View>
 
-      {/* Legend */}
+      {/* Legend - Tiklanabilir filtreler */}
       <View style={[styles.legend, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#9333ea' }]} />
-          <Text style={[styles.legendText, { color: colors.textMuted }]}>Booking</Text>
-        </View>
-        <View style={styles.legendItem}>
+        <TouchableOpacity
+          style={[styles.legendItem, selectedCategory === 'booking' && styles.legendItemActive]}
+          onPress={() => toggleCategoryFilter('booking')}
+        >
+          <View style={[styles.legendDot, { backgroundColor: '#4b30b8' }]} />
+          <Text style={[styles.legendText, { color: selectedCategory === 'booking' ? colors.text : colors.textMuted }]}>Booking</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.legendItem, selectedCategory === 'technical' && styles.legendItemActive]}
+          onPress={() => toggleCategoryFilter('technical')}
+        >
           <View style={[styles.legendDot, { backgroundColor: '#059669' }]} />
-          <Text style={[styles.legendText, { color: colors.textMuted }]}>Teknik</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
-          <Text style={[styles.legendText, { color: colors.textMuted }]}>Mekan</Text>
-        </View>
-        <View style={styles.legendItem}>
+          <Text style={[styles.legendText, { color: selectedCategory === 'technical' ? colors.text : colors.textMuted }]}>Teknik</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.legendItem, selectedCategory === 'security' && styles.legendItemActive]}
+          onPress={() => toggleCategoryFilter('security')}
+        >
+          <View style={[styles.legendDot, { backgroundColor: '#7c3aed' }]} />
+          <Text style={[styles.legendText, { color: selectedCategory === 'security' ? colors.text : colors.textMuted }]}>Guvenlik</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.legendItem, selectedCategory === 'catering' && styles.legendItemActive]}
+          onPress={() => toggleCategoryFilter('catering')}
+        >
           <View style={[styles.legendDot, { backgroundColor: '#d97706' }]} />
-          <Text style={[styles.legendText, { color: colors.textMuted }]}>Operasyon</Text>
-        </View>
+          <Text style={[styles.legendText, { color: selectedCategory === 'catering' ? colors.text : colors.textMuted }]}>Catering</Text>
+        </TouchableOpacity>
+        {selectedCategory && (
+          <TouchableOpacity
+            style={styles.clearFilter}
+            onPress={() => setSelectedCategory(null)}
+          >
+            <Ionicons name="close-circle" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -447,18 +430,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerRight: {
-    width: 40,
+    minWidth: 60,
     alignItems: 'flex-end',
   },
   todayButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: 'rgba(147, 51, 234, 0.15)',
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
     borderRadius: 8,
   },
   todayButtonText: {
     fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
   },
   viewModeContainer: {
     paddingHorizontal: 20,
@@ -659,6 +643,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  legendItemActive: {
+    backgroundColor: 'rgba(75, 48, 184, 0.15)',
   },
   legendDot: {
     width: 8,
@@ -667,5 +657,8 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 11,
+  },
+  clearFilter: {
+    marginLeft: 4,
   },
 });

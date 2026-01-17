@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../theme/colors';
+import { gradients } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 interface EmptyStateProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -10,6 +11,7 @@ interface EmptyStateProps {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+  compact?: boolean;
 }
 
 export function EmptyState({
@@ -18,19 +20,30 @@ export function EmptyState({
   message,
   actionLabel,
   onAction,
+  compact = false,
 }: EmptyStateProps) {
+  const { colors, isDark } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={icon} size={48} color={colors.zinc[600]} />
+    <View style={[styles.container, compact && styles.containerCompact]}>
+      <View style={[
+        styles.iconContainer,
+        compact && styles.iconContainerCompact,
+        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)' }
+      ]}>
+        <Ionicons name={icon} size={compact ? 32 : 48} color={colors.textMuted} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.title, compact && styles.titleCompact, { color: colors.text }]}>
+        {title}
+      </Text>
+      <Text style={[styles.message, compact && styles.messageCompact, { color: colors.textMuted }]}>
+        {message}
+      </Text>
       {actionLabel && onAction && (
         <TouchableOpacity style={styles.actionButton} onPress={onAction}>
           <LinearGradient
             colors={gradients.primary}
-            style={styles.actionButtonGradient}
+            style={[styles.actionButtonGradient, compact && styles.actionButtonGradientCompact]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
@@ -49,28 +62,44 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     paddingHorizontal: 40,
   },
+  containerCompact: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
   iconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
   },
+  iconContainerCompact: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginBottom: 12,
+  },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
     marginBottom: 8,
     textAlign: 'center',
   },
+  titleCompact: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
   message: {
     fontSize: 14,
-    color: colors.zinc[500],
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
+  },
+  messageCompact: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
   },
   actionButton: {
     borderRadius: 12,
@@ -80,9 +109,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
   },
+  actionButtonGradientCompact: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.white,
+    color: '#ffffff',
   },
 });

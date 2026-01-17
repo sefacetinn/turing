@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
   },
   riderSummaryLeft: {},
   riderSummaryTitle: { fontSize: 16, fontWeight: '600' },

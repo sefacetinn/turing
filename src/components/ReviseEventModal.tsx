@@ -305,8 +305,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   typeCardActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
+    borderColor: 'rgba(75, 48, 184, 0.3)',
   },
   typeLabel: {
     fontSize: 13,

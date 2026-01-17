@@ -42,7 +42,7 @@ const categoryColors: Record<MenuCategory, [string, string]> = {
   dessert: ['#EC4899', '#F472B6'],
   beverage: ['#3B82F6', '#60A5FA'],
   snack: ['#10B981', '#34D399'],
-  special: ['#9333EA', '#C084FC'],
+  special: ['#4b30b8', '#C084FC'],
 };
 
 const dietaryColors: Record<string, { icon: string; color: string }> = {
@@ -314,8 +314,8 @@ export function MenuManagementScreen() {
           style={[
             styles.addButton,
             {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)',
-              borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)',
+              borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
             },
           ]}
           onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
@@ -438,7 +438,7 @@ export function MenuManagementScreen() {
                     styles.categoryTab,
                     {
                       backgroundColor: activeCategory === cat.key
-                        ? isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)'
+                        ? isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)'
                         : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
                       borderColor: activeCategory === cat.key
                         ? colors.brand[400]

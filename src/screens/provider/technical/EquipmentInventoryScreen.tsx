@@ -36,7 +36,7 @@ const categoryIcons: Record<EquipmentCategory, string> = {
 };
 
 const categoryColors: Record<EquipmentCategory, [string, string]> = {
-  sound: ['#9333EA', '#C084FC'],
+  sound: ['#4b30b8', '#C084FC'],
   lighting: ['#F59E0B', '#FBBF24'],
   stage: ['#10B981', '#34D399'],
   video: ['#3B82F6', '#60A5FA'],
@@ -87,7 +87,7 @@ export function EquipmentInventoryScreen() {
       case 'maintenance':
         return { label: 'Bakimda', color: '#F59E0B', icon: 'construct' as const };
       case 'reserved':
-        return { label: 'Rezerve', color: '#9333EA', icon: 'time' as const };
+        return { label: 'Rezerve', color: '#4b30b8', icon: 'time' as const };
       case 'damaged':
         return { label: 'Hasarli', color: '#EF4444', icon: 'warning' as const };
       default:
@@ -271,8 +271,8 @@ export function EquipmentInventoryScreen() {
             style={[
               styles.headerButton,
               {
-                backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)',
-                borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
+                backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)',
+                borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
               },
             ]}
             onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
@@ -299,9 +299,9 @@ export function EquipmentInventoryScreen() {
           <Text style={[styles.statCardValue, { color: '#F59E0B' }]}>{maintenanceEquipment}</Text>
           <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>Bakimda</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
-          <Ionicons name="time" size={20} color="#9333EA" />
-          <Text style={[styles.statCardValue, { color: '#9333EA' }]}>{reservedEquipment}</Text>
+        <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}>
+          <Ionicons name="time" size={20} color="#4b30b8" />
+          <Text style={[styles.statCardValue, { color: '#4b30b8' }]}>{reservedEquipment}</Text>
           <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>Rezerve</Text>
         </View>
       </View>
@@ -363,7 +363,7 @@ export function EquipmentInventoryScreen() {
                     styles.tabBadge,
                     {
                       backgroundColor: activeTab === tab.key
-                        ? 'rgba(147, 51, 234, 0.2)'
+                        ? 'rgba(75, 48, 184, 0.2)'
                         : isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
                     },
                   ]}

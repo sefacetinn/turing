@@ -99,7 +99,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#6366f1', '#8b5cf6']}
+              colors={['#4b30b8', '#a855f7']}
               style={styles.nextButtonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   nextButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#6366f1',
+    shadowColor: '#4b30b8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

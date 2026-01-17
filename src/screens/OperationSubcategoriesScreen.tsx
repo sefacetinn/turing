@@ -113,8 +113,8 @@ export function OperationSubcategoriesScreen() {
         <View style={[
           styles.infoCard,
           {
-            backgroundColor: isDark ? 'rgba(147, 51, 234, 0.05)' : 'rgba(147, 51, 234, 0.08)',
-            borderColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.2)',
+            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.05)' : 'rgba(75, 48, 184, 0.08)',
+            borderColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.2)',
             ...(isDark ? {} : helpers.getShadow('sm')),
           },
         ]}>
@@ -234,10 +234,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: 14,
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
+    backgroundColor: 'rgba(75, 48, 184, 0.05)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.15)',
+    borderColor: 'rgba(75, 48, 184, 0.15)',
     marginTop: 20,
   },
   infoIconContainer: {

@@ -230,7 +230,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
           <Text style={dynamicStyles.sectionTitle}>Gorunum</Text>
           {renderSettingItem(
             isDark ? 'moon' : 'sunny',
-            isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+            isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(251, 191, 36, 0.15)',
             isDark ? '#818cf8' : '#f59e0b',
             isDark ? 'Karanlik Mod' : 'Aydinlik Mod',
             isDark ? 'Koyu tema aktif' : 'Acik tema aktif',
@@ -244,8 +244,8 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
           <Text style={dynamicStyles.sectionTitle}>Ekip</Text>
           {renderSettingItem(
             'people',
-            'rgba(99, 102, 241, 0.15)',
-            '#6366f1',
+            'rgba(75, 48, 184, 0.15)',
+            '#4b30b8',
             'Ekip Yönetimi',
             currentOrganization ? `${currentOrganization.members.length} üye` : 'Ekibinizi yönetin',
             () => navigation.navigate('Team')
@@ -266,7 +266,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
           {renderSettingItem(
             'notifications',
-            'rgba(147, 51, 234, 0.15)',
+            'rgba(75, 48, 184, 0.15)',
             colors.brand[400],
             'Push Bildirimleri',
             'Anlik bildirimler al',
@@ -320,7 +320,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
           {renderSettingItem(
             'eye',
-            'rgba(147, 51, 234, 0.15)',
+            'rgba(75, 48, 184, 0.15)',
             colors.brand[400],
             'Profili Goster',
             'Profilin herkese acik',
@@ -345,7 +345,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
           {renderSettingItem(
             'language',
-            'rgba(147, 51, 234, 0.15)',
+            'rgba(75, 48, 184, 0.15)',
             colors.brand[400],
             'Dil',
             'Turkce',
@@ -368,7 +368,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
           {renderSettingItem(
             'help-circle',
-            'rgba(147, 51, 234, 0.15)',
+            'rgba(75, 48, 184, 0.15)',
             colors.brand[400],
             'Yardim Merkezi',
             'SSS ve rehberler',

@@ -420,7 +420,7 @@ export function ProviderRegistrationScreen() {
                       {
                         backgroundColor:
                           formData.primaryCategory === category.id
-                            ? 'rgba(99, 102, 241, 0.15)'
+                            ? 'rgba(75, 48, 184, 0.15)'
                             : isDark
                             ? colors.zinc[700]
                             : colors.zinc[200],

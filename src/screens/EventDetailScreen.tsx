@@ -114,7 +114,7 @@ const getStatusInfo = (status: string) => {
     confirmed: { color: colors.success, text: 'Onaylandı', bg: 'rgba(16, 185, 129, 0.15)' },
     pending: { color: colors.warning, text: 'Beklemede', bg: 'rgba(245, 158, 11, 0.15)' },
     offered: { color: colors.info, text: 'Teklif Var', bg: 'rgba(59, 130, 246, 0.15)' },
-    planning: { color: colors.brand[400], text: 'Planlama', bg: 'rgba(147, 51, 234, 0.15)' },
+    planning: { color: colors.brand[400], text: 'Planlama', bg: 'rgba(75, 48, 184, 0.15)' },
     draft: { color: colors.zinc[500], text: 'Taslak', bg: 'rgba(113, 113, 122, 0.15)' },
   };
   return statusMap[status] || statusMap.pending;
@@ -339,7 +339,7 @@ export function EventDetailScreen() {
               );
             })}
 
-            <TouchableOpacity style={[styles.addServiceButton, { borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : colors.brand[300] }]}>
+            <TouchableOpacity style={[styles.addServiceButton, { borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : colors.brand[300] }]}>
               <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
               <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
             </TouchableOpacity>
@@ -420,7 +420,7 @@ export function EventDetailScreen() {
             <View style={styles.ticketStatsGrid}>
               {/* Toplam Bilet */}
               <View style={[styles.ticketStatCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
-                <View style={[styles.ticketStatIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                <View style={[styles.ticketStatIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
                   <Ionicons name="ticket" size={18} color={colors.brand[400]} />
                 </View>
                 <Text style={[styles.ticketStatValue, { color: colors.text }]}>{totalTicketsSold.toLocaleString()}</Text>
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tabActive: {
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
+    backgroundColor: 'rgba(75, 48, 184, 0.2)',
   },
   tabText: {
     fontSize: 11,
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.3)',
+    borderColor: 'rgba(75, 48, 184, 0.3)',
     borderStyle: 'dashed',
     borderRadius: 14,
     marginTop: 8,

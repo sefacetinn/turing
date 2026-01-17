@@ -43,7 +43,7 @@ const roleColors: Record<PersonnelRole, [string, string]> = {
   bodyguard: ['#EF4444', '#F87171'],
   supervisor: ['#F59E0B', '#FBBF24'],
   k9_handler: ['#10B981', '#34D399'],
-  vip_protection: ['#9333EA', '#C084FC'],
+  vip_protection: ['#4b30b8', '#C084FC'],
   crowd_control: ['#6366F1', '#818CF8'],
 };
 
@@ -81,7 +81,7 @@ export function PersonnelManagementScreen() {
       case 'off_duty':
         return { label: 'Izinli', color: '#F59E0B', icon: 'moon' as const };
       case 'on_leave':
-        return { label: 'Tatilde', color: '#9333EA', icon: 'airplane' as const };
+        return { label: 'Tatilde', color: '#4b30b8', icon: 'airplane' as const };
       case 'terminated':
         return { label: 'Ayrildi', color: '#EF4444', icon: 'close-circle' as const };
       default:
@@ -92,7 +92,7 @@ export function PersonnelManagementScreen() {
   const getShiftStatusInfo = (status: Shift['status']) => {
     switch (status) {
       case 'scheduled':
-        return { label: 'Planli', color: '#9333EA', icon: 'time' as const };
+        return { label: 'Planli', color: '#4b30b8', icon: 'time' as const };
       case 'in_progress':
         return { label: 'Aktif', color: '#3B82F6', icon: 'shield' as const };
       case 'completed':
@@ -188,9 +188,9 @@ export function PersonnelManagementScreen() {
               </View>
             )}
             {personnel.qualifications.vipProtection && (
-              <View style={[styles.qualBadge, { backgroundColor: 'rgba(147, 51, 234, 0.1)' }]}>
-                <Ionicons name="diamond" size={12} color="#9333EA" />
-                <Text style={[styles.qualText, { color: '#9333EA' }]}>VIP</Text>
+              <View style={[styles.qualBadge, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}>
+                <Ionicons name="diamond" size={12} color="#4b30b8" />
+                <Text style={[styles.qualText, { color: '#4b30b8' }]}>VIP</Text>
               </View>
             )}
             {personnel.qualifications.firstAid && (
@@ -206,7 +206,7 @@ export function PersonnelManagementScreen() {
               </View>
             )}
             {personnel.qualifications.crowdManagement && (
-              <View style={[styles.qualBadge, { backgroundColor: 'rgba(99, 102, 241, 0.1)' }]}>
+              <View style={[styles.qualBadge, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}>
                 <Ionicons name="people" size={12} color="#6366F1" />
                 <Text style={[styles.qualText, { color: '#6366F1' }]}>Kalabalik</Text>
               </View>
@@ -453,8 +453,8 @@ export function PersonnelManagementScreen() {
           style={[
             styles.addButton,
             {
-              backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.1)',
-              borderColor: isDark ? 'rgba(147, 51, 234, 0.3)' : 'rgba(147, 51, 234, 0.2)',
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.1)',
+              borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
             },
           ]}
           onPress={() => Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.')}

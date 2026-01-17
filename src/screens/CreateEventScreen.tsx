@@ -58,6 +58,10 @@ export function CreateEventScreen() {
   const [customVenues, setCustomVenues] = useState<Venue[]>([]);
   const [eventData, setEventData] = useState<EventData>(initialEventData);
 
+  // Inline selection state for new venue modal
+  const [showCityList, setShowCityList] = useState(false);
+  const [showDistrictList, setShowDistrictList] = useState(false);
+
   const currentStepIndex = steps.findIndex(s => s.key === currentStep);
   const availableDistricts = useMemo(() => getAvailableDistricts(eventData.city), [eventData.city]);
   const newVenueDistricts = useMemo(() => getAvailableDistricts(newVenue.city), [newVenue.city]);
@@ -212,6 +216,8 @@ export function CreateEventScreen() {
     }));
     setNewVenue(initialNewVenueData);
     setShowAddVenue(false);
+    setShowCityList(false);
+    setShowDistrictList(false);
     setActiveDropdown(null);
   };
 
@@ -451,7 +457,7 @@ export function CreateEventScreen() {
                   </View>
                 ) : (
                   <View style={styles.imageUploadContent}>
-                    <View style={[styles.imageUploadIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                    <View style={[styles.imageUploadIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
                       <Ionicons name="image-outline" size={28} color={colors.brand[400]} />
                     </View>
                     <Text style={[styles.imageUploadText, { color: colors.text }]}>Görsel Ekle</Text>
@@ -571,7 +577,7 @@ export function CreateEventScreen() {
                 <Text style={[styles.reviewLabel, { color: colors.textSecondary }]}>Seçilen Hizmetler</Text>
                 <View style={styles.reviewServices}>
                   {selectedServices.map(service => (
-                    <View key={service.id} style={[styles.reviewServiceTag, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }]}>
+                    <View key={service.id} style={[styles.reviewServiceTag, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
                       <Ionicons name={service.icon as any} size={12} color={colors.brand[400]} />
                       <Text style={styles.reviewServiceText}>{service.name}</Text>
                     </View>
@@ -592,7 +598,7 @@ export function CreateEventScreen() {
                 </View>
               )}
             </View>
-            <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.06)' }]}>
+            <View style={[styles.infoCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.08)' : 'rgba(75, 48, 184, 0.06)' }]}>
               <Ionicons name="information-circle" size={20} color={colors.brand[400]} />
               <Text style={[styles.infoText, { color: colors.textMuted }]}>
                 Etkinlik oluşturulduktan sonra, seçtiğiniz hizmet kategorilerindeki sağlayıcılardan teklif almaya başlayabilirsiniz.
@@ -702,18 +708,26 @@ export function CreateEventScreen() {
         onClose={() => setShowOperationModal(false)}
       />
 
-      {/* Add New Venue Modal - Hide when city/district selection is open */}
+      {/* Add New Venue Modal */}
       <Modal
-        visible={showAddVenue && activeDropdown !== 'newVenueCity' && activeDropdown !== 'newVenueDistrict'}
+        visible={showAddVenue}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowAddVenue(false)}
+        onRequestClose={() => {
+          setShowAddVenue(false);
+          setShowCityList(false);
+          setShowDistrictList(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.addVenueModal, { backgroundColor: colors.background }]}>
             <View style={styles.addVenueHeader}>
               <Text style={[styles.addVenueTitle, { color: colors.text }]}>Yeni Mekan Ekle</Text>
-              <TouchableOpacity onPress={() => setShowAddVenue(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowAddVenue(false);
+                setShowCityList(false);
+                setShowDistrictList(false);
+              }}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -738,35 +752,100 @@ export function CreateEventScreen() {
                 />
               </View>
 
-              {/* City Selection */}
+              {/* City Selection - Inline Expandable */}
               <View style={styles.formGroup}>
                 <Text style={[styles.formLabel, { color: colors.textMuted }]}>İl *</Text>
                 <TouchableOpacity
                   style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: newVenue.city ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) }]}
-                  onPress={() => setActiveDropdown('newVenueCity')}
+                  onPress={() => {
+                    setShowCityList(!showCityList);
+                    setShowDistrictList(false);
+                  }}
                 >
                   <Ionicons name="location-outline" size={20} color={newVenue.city ? colors.brand[400] : colors.textMuted} />
                   <Text style={[styles.dropdownButtonText, { color: newVenue.city ? colors.text : colors.textMuted }]}>
                     {newVenue.city || 'İl seçin'}
                   </Text>
-                  <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                  <Ionicons name={showCityList ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
                 </TouchableOpacity>
+
+                {/* Inline City List */}
+                {showCityList && (
+                  <View style={[styles.inlineSelectList, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)', borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                    <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                      {cities.map(city => (
+                        <TouchableOpacity
+                          key={city}
+                          style={[
+                            styles.inlineSelectItem,
+                            { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.borderLight },
+                            newVenue.city === city && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
+                          ]}
+                          onPress={() => {
+                            setNewVenue(prev => ({ ...prev, city, district: '' }));
+                            setShowCityList(false);
+                            setShowDistrictList(false);
+                          }}
+                        >
+                          <Text style={[styles.inlineSelectItemText, { color: newVenue.city === city ? colors.text : colors.textMuted }]}>
+                            {city}
+                          </Text>
+                          {newVenue.city === city && (
+                            <Ionicons name="checkmark" size={18} color={colors.brand[400]} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
 
-              {/* District Selection */}
+              {/* District Selection - Inline Expandable */}
               {newVenue.city && (
                 <View style={styles.formGroup}>
                   <Text style={[styles.formLabel, { color: colors.textMuted }]}>İlçe *</Text>
                   <TouchableOpacity
                     style={[styles.dropdownButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: newVenue.district ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) }]}
-                    onPress={() => setActiveDropdown('newVenueDistrict')}
+                    onPress={() => {
+                      setShowDistrictList(!showDistrictList);
+                      setShowCityList(false);
+                    }}
                   >
                     <Ionicons name="navigate-outline" size={20} color={newVenue.district ? colors.brand[400] : colors.textMuted} />
                     <Text style={[styles.dropdownButtonText, { color: newVenue.district ? colors.text : colors.textMuted }]}>
                       {newVenue.district || 'İlçe seçin'}
                     </Text>
-                    <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+                    <Ionicons name={showDistrictList ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
                   </TouchableOpacity>
+
+                  {/* Inline District List */}
+                  {showDistrictList && (
+                    <View style={[styles.inlineSelectList, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)', borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                      <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                        {newVenueDistricts.map(district => (
+                          <TouchableOpacity
+                            key={district}
+                            style={[
+                              styles.inlineSelectItem,
+                              { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.borderLight },
+                              newVenue.district === district && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
+                            ]}
+                            onPress={() => {
+                              setNewVenue(prev => ({ ...prev, district }));
+                              setShowDistrictList(false);
+                            }}
+                          >
+                            <Text style={[styles.inlineSelectItemText, { color: newVenue.district === district ? colors.text : colors.textMuted }]}>
+                              {district}
+                            </Text>
+                            {newVenue.district === district && (
+                              <Ionicons name="checkmark" size={18} color={colors.brand[400]} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -810,7 +889,7 @@ export function CreateEventScreen() {
                           backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
                           borderColor: newVenue.venueType === type.id ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border)
                         },
-                        newVenue.venueType === type.id && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }
+                        newVenue.venueType === type.id && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
                       ]}
                       onPress={() => setNewVenue(prev => ({ ...prev, venueType: type.id as any }))}
                     >
@@ -849,7 +928,7 @@ export function CreateEventScreen() {
                           backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
                           borderColor: (newVenue as any)[feature.key] ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border)
                         },
-                        (newVenue as any)[feature.key] && { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.15)' : 'rgba(147, 51, 234, 0.1)' }
+                        (newVenue as any)[feature.key] && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
                       ]}
                       onPress={() => setNewVenue(prev => ({ ...prev, [feature.key]: !(prev as any)[feature.key] }))}
                     >
@@ -906,25 +985,6 @@ export function CreateEventScreen() {
         </View>
       </Modal>
 
-      {/* New Venue City Selection - Only show when Add Venue flow is active */}
-      <SelectModal
-        visible={showAddVenue && activeDropdown === 'newVenueCity'}
-        title="İl Seçin"
-        options={cities.map(c => ({ value: c, label: c }))}
-        selectedValue={newVenue.city}
-        onSelect={city => setNewVenue(prev => ({ ...prev, city, district: '' }))}
-        onClose={() => setActiveDropdown(null)}
-      />
-
-      {/* New Venue District Selection - Only show when Add Venue flow is active */}
-      <SelectModal
-        visible={showAddVenue && activeDropdown === 'newVenueDistrict'}
-        title="İlçe Seçin"
-        options={newVenueDistricts.map(d => ({ value: d, label: d }))}
-        selectedValue={newVenue.district}
-        onSelect={district => setNewVenue(prev => ({ ...prev, district }))}
-        onClose={() => setActiveDropdown(null)}
-      />
     </SafeAreaView>
   );
 }
@@ -957,10 +1017,10 @@ const styles = StyleSheet.create({
   stepSubtitle: { fontSize: 14, marginTop: 8, marginBottom: 24 },
   typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   typeCard: { width: '47%', padding: 16, borderRadius: 16, borderWidth: 2, borderColor: 'transparent', alignItems: 'center' },
-  typeCardSelected: { backgroundColor: 'rgba(147, 51, 234, 0.08)' },
+  typeCardSelected: { backgroundColor: 'rgba(75, 48, 184, 0.08)' },
   typeIconContainer: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   typeName: { fontSize: 14, fontWeight: '500' },
-  typeCheckmark: { position: 'absolute', top: 12, right: 12, width: 20, height: 20, borderRadius: 10, backgroundColor: '#9333ea', alignItems: 'center', justifyContent: 'center' },
+  typeCheckmark: { position: 'absolute', top: 12, right: 12, width: 20, height: 20, borderRadius: 10, backgroundColor: '#4b30b8', alignItems: 'center', justifyContent: 'center' },
   formGroup: { marginBottom: 20 },
   formLabel: { fontSize: 13, fontWeight: '500', marginBottom: 8 },
   input: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15 },
@@ -969,18 +1029,18 @@ const styles = StyleSheet.create({
   dropdownButtonText: { flex: 1, fontSize: 15 },
   servicesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   serviceCard: { width: '47%', padding: 14, borderRadius: 14, borderWidth: 2, borderColor: 'transparent', alignItems: 'center' },
-  serviceCardSelected: { backgroundColor: 'rgba(147, 51, 234, 0.08)' },
+  serviceCardSelected: { backgroundColor: 'rgba(75, 48, 184, 0.08)' },
   serviceIconContainer: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  serviceIconSelected: { backgroundColor: 'rgba(147, 51, 234, 0.2)' },
+  serviceIconSelected: { backgroundColor: 'rgba(75, 48, 184, 0.2)' },
   serviceName: { fontSize: 13, fontWeight: '500', textAlign: 'center' },
-  serviceCheckmark: { position: 'absolute', top: 10, right: 10, width: 18, height: 18, borderRadius: 9, backgroundColor: '#9333ea', alignItems: 'center', justifyContent: 'center' },
+  serviceCheckmark: { position: 'absolute', top: 10, right: 10, width: 18, height: 18, borderRadius: 9, backgroundColor: '#4b30b8', alignItems: 'center', justifyContent: 'center' },
   serviceArrow: { position: 'absolute', top: 10, right: 10 },
-  subServiceCountBadge: { position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#9333ea', alignItems: 'center', justifyContent: 'center' },
+  subServiceCountBadge: { position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: 10, backgroundColor: '#4b30b8', alignItems: 'center', justifyContent: 'center' },
   subServiceCountText: { fontSize: 11, fontWeight: '600', color: 'white' },
   selectedCount: { fontSize: 14, textAlign: 'center', marginTop: 20 },
   budgetOptions: { gap: 10 },
   budgetCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderRadius: 14, borderWidth: 2, borderColor: 'transparent' },
-  budgetCardSelected: { backgroundColor: 'rgba(147, 51, 234, 0.08)' },
+  budgetCardSelected: { backgroundColor: 'rgba(75, 48, 184, 0.08)' },
   budgetLabel: { fontSize: 15 },
   orDivider: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
   orLine: { flex: 1, height: 1 },
@@ -997,7 +1057,7 @@ const styles = StyleSheet.create({
   reviewServicesRow: { paddingVertical: 12 },
   reviewServices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   reviewServiceTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  reviewServiceText: { fontSize: 12, fontWeight: '500', color: '#9333ea' },
+  reviewServiceText: { fontSize: 12, fontWeight: '500', color: '#4b30b8' },
   infoCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 16, borderRadius: 14 },
   infoText: { flex: 1, fontSize: 13, lineHeight: 20 },
   bottomAction: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 34, borderTopWidth: 1 },
@@ -1049,4 +1109,8 @@ const styles = StyleSheet.create({
   // Approval Notice
   approvalNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, marginBottom: 20 },
   approvalNoticeText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  // Inline Select List
+  inlineSelectList: { marginTop: 8, borderRadius: 12, borderWidth: 1, maxHeight: 200, overflow: 'hidden' },
+  inlineSelectItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 1 },
+  inlineSelectItemText: { fontSize: 14 },
 });

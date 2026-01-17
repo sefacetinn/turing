@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
+    backgroundColor: 'rgba(75, 48, 184, 0.05)',
   },
   title: {
     fontSize: 15,
@@ -632,10 +632,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(147, 51, 234, 0.2)',
+    borderColor: 'rgba(75, 48, 184, 0.2)',
   },
   chipText: {
     fontSize: 12,

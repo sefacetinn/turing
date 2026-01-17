@@ -590,11 +590,13 @@ export type EventsStackParamList = {
 export type OffersStackParamList = {
   OffersMain: undefined;
   OfferDetail: { offerId: string };
+  ProviderRequestDetail: { offerId: string };
   CompareOffers: { quoteRequestId: string; serviceId?: string };
   Contract: { contractId: string };
   Contracts: undefined;
   EventOperations: { eventId: string };
   ServiceOperations: { eventId: string; serviceId: string; serviceCategory: ServiceCategory; serviceName: string; providerName: string };
+  Chat: { chatId: string; recipientName: string };
 };
 
 // Messages Stack Params
@@ -703,3 +705,7 @@ export type TeamStackNavigationProp = CompositeNavigationProp<
 // Team Route Props
 export type MemberDetailRouteProp = RouteProp<TeamStackParamList, 'MemberDetail'>;
 export type RolePermissionsRouteProp = RouteProp<TeamStackParamList, 'RolePermissions'>;
+
+// Re-export module types
+export * from './modules';
+export * from './serviceDefinition';

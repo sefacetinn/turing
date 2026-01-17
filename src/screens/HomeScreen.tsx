@@ -1,12 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { useTheme } from '../theme/ThemeContext';
 import { gradients } from '../theme/colors';
 import { useApp } from '../../App';
+import { scrollToTopEmitter } from '../utils/scrollToTop';
 import {
   HomeHeader,
   SearchBar,
@@ -14,7 +23,21 @@ import {
   CategoryCard,
   ProviderCard,
   ArtistCard,
+  CalendarWidget,
 } from '../components/home';
+import { transformOrganizerEvents, transformProviderEvents, CalendarEvent, isSameDay } from '../utils/calendarUtils';
+
+// Bu hafta kac etkinlik var
+function getEventsThisWeek(events: CalendarEvent[]): number {
+  const today = new Date();
+  const weekEnd = new Date(today);
+  weekEnd.setDate(today.getDate() + 7);
+
+  return events.filter((event) => {
+    const eventDate = event.date;
+    return eventDate >= today && eventDate <= weekEnd;
+  }).length;
+}
 import {
   artists,
   categories,
@@ -26,6 +49,8 @@ import {
   organizerDashboard,
   organizerQuickActions,
 } from '../data/homeData';
+import { events as organizerEvents } from '../data/mockData';
+import { providerEvents } from '../data/providerEventsData';
 import { operationSubcategories } from '../data/createEventData';
 import type { HomeStackNavigationProp } from '../types';
 
@@ -48,7 +73,55 @@ export function HomeScreen({ isProviderMode }: HomeScreenProps) {
 function OrganizerHomeContent() {
   const navigation = useNavigation<HomeStackNavigationProp>();
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [showOperationModal, setShowOperationModal] = useState(false);
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'HomeTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Animated style for avatar (hide on scroll)
+  const avatarAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 40, 80],
+      [1, 0.5, 0],
+      Extrapolation.CLAMP
+    );
+    const scale = interpolate(
+      scrollY.value,
+      [0, 40, 80],
+      [1, 0.8, 0.5],
+      Extrapolation.CLAMP
+    );
+    const width = interpolate(
+      scrollY.value,
+      [0, 40, 80],
+      [32, 20, 0],
+      Extrapolation.CLAMP
+    );
+    return {
+      opacity,
+      transform: [{ scale }],
+      width,
+      marginLeft: interpolate(scrollY.value, [0, 80], [8, 0], Extrapolation.CLAMP),
+    };
+  });
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -59,34 +132,49 @@ function OrganizerHomeContent() {
 
   const dashboard = organizerDashboard;
 
-  // Unified accent color
-  const accentColor = '#6366f1';
-  const accentBg = isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)';
+  // Unified accent color - Brand purple
+  const accentColor = colors.brand[400];
+  const accentBg = isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Clean Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.greeting, { color: colors.textMuted }]}>{getGreeting()}</Text>
-            <Text style={[styles.userName, { color: colors.text }]}>{organizerUser.name}</Text>
-          </View>
-          <View style={styles.headerRight}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollHeader
+        title={organizerUser.name}
+        scrollY={scrollY}
+        rightAction={
+          <View style={styles.headerRightCompact}>
             <TouchableOpacity
-              style={[styles.headerIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
+              style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
               onPress={() => navigation.navigate('Notifications')}
             >
               <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
               <View style={[styles.notificationDot, { backgroundColor: accentColor }]} />
             </TouchableOpacity>
-            <Image source={{ uri: organizerUser.image }} style={styles.avatar} />
+            <TouchableOpacity
+              style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
+              onPress={() => navigation.navigate('CalendarView' as any)}
+            >
+              <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
-        </View>
+        }
+      />
+      <Animated.ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: insets.top + 44 }}
+      >
+        <LargeTitle
+          title={organizerUser.name}
+          subtitle={getGreeting()}
+          scrollY={scrollY}
+        />
 
         {/* Create Event Card */}
         <TouchableOpacity
-          style={[styles.createEventCard, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.08)' }]}
+          style={[styles.createEventCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.12)' : 'rgba(75, 48, 184, 0.08)' }]}
           onPress={() => navigation.navigate('CreateEvent')}
           activeOpacity={0.7}
         >
@@ -256,7 +344,7 @@ function OrganizerHomeContent() {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Popüler Sanatçılar</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Search', { initialQuery: '' })}>
+            <TouchableOpacity onPress={() => navigation.navigate('Search', { initialFilter: 'artists' })}>
               <Text style={[styles.seeAllText, { color: accentColor }]}>Tümü</Text>
             </TouchableOpacity>
           </View>
@@ -276,7 +364,7 @@ function OrganizerHomeContent() {
         </View>
 
         <View style={{ height: 100 }} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Operation Subcategory Modal */}
       <Modal
@@ -324,7 +412,7 @@ function OrganizerHomeContent() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -334,7 +422,27 @@ function OrganizerHomeContent() {
 function ProviderHomeContent() {
   const navigation = useNavigation<HomeStackNavigationProp>();
   const { colors, isDark, helpers } = useTheme();
+  const insets = useSafeAreaInsets();
   const { providerServices } = useApp();
+  const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Animated scroll
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  // Subscribe to scroll-to-top events
+  useEffect(() => {
+    const unsubscribe = scrollToTopEmitter.subscribe((tabName) => {
+      if (tabName === 'HomeTab') {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -385,16 +493,40 @@ function ProviderHomeContent() {
   }, [providerServices]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Provider Header */}
-        <ProviderHeader
-          greeting={getGreeting()}
-          companyName="EventPro 360"
-          messageCount={5}
-          notificationCount={12}
-          onMessagesPress={() => navigation.navigate('MessagesTab' as any)}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollHeader
+        title="EventPro 360"
+        scrollY={scrollY}
+        rightAction={
+          <View style={styles.headerRightCompact}>
+            <TouchableOpacity
+              style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
+              onPress={() => navigation.navigate('MessagesTab' as any)}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
+              <View style={[styles.notificationDot, { backgroundColor: colors.brand[400] }]} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+              <View style={[styles.notificationDot, { backgroundColor: colors.brand[400] }]} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
+      <Animated.ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: insets.top + 44 }}
+      >
+        <LargeTitle
+          title="EventPro 360"
+          subtitle={getGreeting()}
+          scrollY={scrollY}
         />
 
         {/* Status Bar */}
@@ -409,14 +541,17 @@ function ProviderHomeContent() {
           monthlyEarnings={providerStats.monthlyEarnings}
           pendingPayments={providerStats.pendingPayments}
           completedJobs={providerStats.completedJobs}
+          onPress={() => navigation.navigate('ProviderFinance' as any)}
         />
 
-        {/* Quick Stats */}
+        {/* Quick Stats - 3 kolonlu: Yaklaşan İş, Teklif, Takvim */}
         <QuickStatsRow
           upcomingJobs={providerStats.upcomingJobs}
           pendingOffers={providerStats.pendingOffers}
+          eventsThisWeek={getEventsThisWeek(transformProviderEvents(providerEvents))}
           onOffersPress={() => navigation.navigate('OffersTab' as any)}
           onJobsPress={() => navigation.navigate('EventsTab' as any)}
+          onCalendarPress={() => navigation.navigate('CalendarView' as any)}
         />
 
         <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />
@@ -443,8 +578,8 @@ function ProviderHomeContent() {
         <PerformanceCard responseRate={providerStats.responseRate} />
 
         <View style={{ height: 100 }} />
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
@@ -568,80 +703,87 @@ function EarningsCard({
   monthlyEarnings,
   pendingPayments,
   completedJobs,
+  onPress,
 }: {
   monthlyEarnings: number;
   pendingPayments: number;
   completedJobs: number;
+  onPress?: () => void;
 }) {
   const { colors, isDark, helpers } = useTheme();
 
   return (
-    <View style={styles.earningsSection}>
-      <LinearGradient
-        colors={
-          isDark
-            ? ['rgba(147, 51, 234, 0.15)', 'rgba(99, 102, 241, 0.1)']
-            : ['rgba(147, 51, 234, 0.1)', 'rgba(99, 102, 241, 0.05)']
-        }
-        style={[
-          styles.earningsCard,
-          {
-            borderColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.25)',
-            ...(isDark ? {} : helpers.getShadow('md')),
-          },
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      >
-        <View style={styles.earningsHeader}>
-          <View>
-            <View style={styles.earningsLabelRow}>
-              <Ionicons name="wallet-outline" size={16} color={colors.brand[400]} />
-              <Text style={[styles.earningsLabel, { color: colors.textSecondary }]}>Bu Ay Kazanç</Text>
-            </View>
-            <Text style={[styles.earningsValue, { color: colors.text }]}>
-              ₺{monthlyEarnings.toLocaleString('tr-TR')}
-            </Text>
-            <View style={styles.earningsChange}>
-              <LinearGradient
-                colors={['rgba(16, 185, 129, 0.2)', 'rgba(16, 185, 129, 0.1)']}
-                style={styles.earningsChangeBadge}
-              >
-                <Ionicons name="trending-up" size={12} color={colors.success} />
-                <Text style={[styles.earningsChangeText, { color: colors.success }]}>+23% geçen aya göre</Text>
-              </LinearGradient>
-            </View>
+    <TouchableOpacity
+      style={[
+        styles.earningsSection,
+        {
+          backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border,
+        },
+        !isDark && helpers.getShadow('sm'),
+      ]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      {/* Header */}
+      <View style={styles.earningsHeader}>
+        <View style={styles.earningsHeaderLeft}>
+          <View style={[styles.earningsIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+            <Ionicons name="wallet-outline" size={18} color={colors.brand[400]} />
           </View>
+          <Text style={[styles.earningsLabel, { color: colors.textSecondary }]}>Bu Ay Kazanç</Text>
         </View>
+        {onPress && (
+          <TouchableOpacity style={styles.earningsDetailLink} onPress={onPress}>
+            <Text style={[styles.earningsDetailLinkText, { color: colors.brand[400] }]}>Detay</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.brand[400]} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-        <View style={[styles.earningsStatsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
-          <View style={styles.earningsStatItem}>
-            <Text style={[styles.earningsStatValue, { color: colors.text }]}>
-              ₺{pendingPayments.toLocaleString('tr-TR')}
-            </Text>
-            <Text style={[styles.earningsStatLabel, { color: colors.textMuted }]}>Bekleyen Ödeme</Text>
-          </View>
-          <View style={[styles.earningsStatDivider, { backgroundColor: colors.border }]} />
-          <View style={styles.earningsStatItem}>
-            <Text style={[styles.earningsStatValue, { color: colors.text }]}>{completedJobs}</Text>
-            <Text style={[styles.earningsStatLabel, { color: colors.textMuted }]}>Tamamlanan İş</Text>
-          </View>
+      {/* Main Amount */}
+      <View style={styles.earningsAmountRow}>
+        <Text style={[styles.earningsAmount, { color: colors.text }]}>
+          ₺{monthlyEarnings.toLocaleString('tr-TR')}
+        </Text>
+        <View style={[styles.earningsGrowth, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+          <Ionicons name="trending-up" size={12} color="#10B981" />
+          <Text style={styles.earningsGrowthText}>+23%</Text>
         </View>
-      </LinearGradient>
-    </View>
+      </View>
+
+      {/* Stats Row */}
+      <View style={[styles.earningsStats, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+        <View style={styles.earningsStatItem}>
+          <Text style={[styles.earningsStatValue, { color: colors.text }]}>
+            ₺{pendingPayments.toLocaleString('tr-TR')}
+          </Text>
+          <Text style={[styles.earningsStatLabel, { color: colors.textMuted }]}>Bekleyen Ödeme</Text>
+        </View>
+        <View style={[styles.earningsStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]} />
+        <View style={styles.earningsStatItem}>
+          <Text style={[styles.earningsStatValue, { color: colors.text }]}>{completedJobs}</Text>
+          <Text style={[styles.earningsStatLabel, { color: colors.textMuted }]}>Tamamlanan İş</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 function QuickStatsRow({
   upcomingJobs,
   pendingOffers,
+  eventsThisWeek,
   onOffersPress,
   onJobsPress,
+  onCalendarPress,
 }: {
   upcomingJobs: number;
   pendingOffers: number;
+  eventsThisWeek: number;
   onOffersPress: () => void;
   onJobsPress: () => void;
+  onCalendarPress: () => void;
 }) {
   const { colors, isDark, helpers } = useTheme();
 
@@ -649,7 +791,7 @@ function QuickStatsRow({
     <View style={styles.quickStatsRow}>
       <TouchableOpacity
         style={[
-          styles.quickStatCard,
+          styles.quickStatCardTriple,
           {
             backgroundColor: colors.cardBackground,
             borderColor: colors.border,
@@ -658,18 +800,16 @@ function QuickStatsRow({
         ]}
         onPress={onJobsPress}
       >
-        <View style={[styles.quickStatIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
-          <Ionicons name="calendar" size={20} color={colors.info} />
+        <View style={[styles.quickStatIconSmall, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}>
+          <Ionicons name="briefcase" size={16} color={colors.info} />
         </View>
-        <View>
-          <Text style={[styles.quickStatValue, { color: colors.text }]}>{upcomingJobs}</Text>
-          <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Yaklaşan İş</Text>
-        </View>
+        <Text style={[styles.quickStatValueSmall, { color: colors.text }]}>{upcomingJobs}</Text>
+        <Text style={[styles.quickStatLabelSmall, { color: colors.textMuted }]}>Yaklaşan</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={[
-          styles.quickStatCard,
+          styles.quickStatCardTriple,
           {
             backgroundColor: colors.cardBackground,
             borderColor: colors.border,
@@ -678,13 +818,29 @@ function QuickStatsRow({
         ]}
         onPress={onOffersPress}
       >
-        <View style={[styles.quickStatIcon, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
-          <Ionicons name="pricetag" size={20} color={colors.warning} />
+        <View style={[styles.quickStatIconSmall, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+          <Ionicons name="pricetag" size={16} color={colors.warning} />
         </View>
-        <View>
-          <Text style={[styles.quickStatValue, { color: colors.text }]}>{pendingOffers}</Text>
-          <Text style={[styles.quickStatLabel, { color: colors.textMuted }]}>Bekleyen Teklif</Text>
+        <Text style={[styles.quickStatValueSmall, { color: colors.text }]}>{pendingOffers}</Text>
+        <Text style={[styles.quickStatLabelSmall, { color: colors.textMuted }]}>Teklif</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.quickStatCardTriple,
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.border,
+            ...(isDark ? {} : helpers.getShadow('sm')),
+          },
+        ]}
+        onPress={onCalendarPress}
+      >
+        <View style={[styles.quickStatIconSmall, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+          <Ionicons name="calendar" size={16} color={colors.brand[400]} />
         </View>
+        <Text style={[styles.quickStatValueSmall, { color: colors.text }]}>{eventsThisWeek}</Text>
+        <Text style={[styles.quickStatLabelSmall, { color: colors.textMuted }]}>Bu Hafta</Text>
       </TouchableOpacity>
     </View>
   );
@@ -746,7 +902,7 @@ function UpcomingJobCard({
           {date} • {location}
         </Text>
         <View style={styles.jobFooter}>
-          <View style={[styles.roleBadge, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
+          <View style={[styles.roleBadge, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}>
             <Text style={[styles.roleText, { color: colors.brand[400] }]}>{role}</Text>
           </View>
           <Text style={[styles.earningsText, { color: colors.success }]}>₺{earnings.toLocaleString('tr-TR')}</Text>
@@ -825,7 +981,7 @@ function RequestCard({
       </View>
 
       <View style={styles.requestFooter}>
-        <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.08)' }]}>
+        <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}>
           <Text style={[styles.categoryText, { color: colors.brand[400] }]}>{category}</Text>
         </View>
         <Text style={[styles.budgetText, { color: colors.text }]}>{budget}</Text>
@@ -869,7 +1025,7 @@ function PerformanceCard({ responseRate }: { responseRate: number }) {
         <PerformanceCircle value={99} label="Memnuniyet" color={colors.warning} />
       </View>
 
-      <View style={[styles.performanceHint, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.08)' : 'rgba(147, 51, 234, 0.06)' }]}>
+      <View style={[styles.performanceHint, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.08)' : 'rgba(75, 48, 184, 0.06)' }]}>
         <Ionicons name="sparkles" size={14} color={colors.brand[400]} />
         <Text style={[styles.performanceHintText, { color: colors.brand[400] }]}>
           Harika gidiyorsunuz! Üst düzey sağlayıcı statüsündesiniz.
@@ -952,6 +1108,25 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+  },
+
+  // Compact Header for ScrollHeader
+  headerRightCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerIconCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarCompact: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
 
   // Create Event Card
@@ -1423,47 +1598,66 @@ const styles = StyleSheet.create({
   earningsSection: {
     marginHorizontal: 20,
     marginTop: 16,
-  },
-  earningsCard: {
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
   },
   earningsHeader: {
-    marginBottom: 20,
-  },
-  earningsLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  earningsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  earningsIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   earningsLabel: {
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  earningsValue: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  earningsChange: {
-    marginTop: 8,
-  },
-  earningsChangeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-  },
-  earningsChangeText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '500',
   },
-  earningsStatsRow: {
+  earningsDetailLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  earningsDetailLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  earningsAmountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  earningsAmount: {
+    fontSize: 34,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  earningsGrowth: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  earningsGrowthText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  earningsStats: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 16,
@@ -1474,8 +1668,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   earningsStatValue: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
   },
   earningsStatLabel: {
     fontSize: 11,
@@ -1483,7 +1677,7 @@ const styles = StyleSheet.create({
   },
   earningsStatDivider: {
     width: 1,
-    height: 30,
+    height: 32,
   },
 
   // Quick Stats
@@ -1515,6 +1709,32 @@ const styles = StyleSheet.create({
   },
   quickStatLabel: {
     fontSize: 12,
+  },
+  // Triple column layout
+  quickStatCardTriple: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  quickStatIconSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickStatValueSmall: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  quickStatLabelSmall: {
+    fontSize: 10,
+    textAlign: 'center',
   },
 
   // Job Card

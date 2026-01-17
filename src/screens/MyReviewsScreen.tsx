@@ -138,7 +138,7 @@ export function MyReviewsScreen() {
         </>
       ) : (
         <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.05)' }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.05)' }]}>
             <Ionicons name="checkmark-circle" size={48} color={colors.success} />
           </View>
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
@@ -195,7 +195,7 @@ export function MyReviewsScreen() {
         </>
       ) : (
         <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.05)' }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.05)' }]}>
             <Ionicons name="create-outline" size={48} color={colors.textMuted} />
           </View>
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
@@ -236,7 +236,7 @@ export function MyReviewsScreen() {
         </>
       ) : (
         <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.05)' }]}>
+          <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.05)' }]}>
             <Ionicons name="star-outline" size={48} color={colors.textMuted} />
           </View>
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>

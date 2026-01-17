@@ -22,7 +22,7 @@ export function StepProgress({ currentStep, onStepPress }: StepProgressProps) {
               styles.progressStep,
               { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)' },
               index <= currentStepIndex && {
-                backgroundColor: isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.15)'
+                backgroundColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)'
               },
             ]}
             onPress={() => index < currentStepIndex && onStepPress(step.key)}

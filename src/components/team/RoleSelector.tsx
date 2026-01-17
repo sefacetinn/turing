@@ -62,12 +62,12 @@ export function RoleSelector({
               {
                 backgroundColor: isSelected
                   ? isDark
-                    ? 'rgba(99, 102, 241, 0.15)'
-                    : 'rgba(99, 102, 241, 0.08)'
+                    ? 'rgba(75, 48, 184, 0.15)'
+                    : 'rgba(75, 48, 184, 0.08)'
                   : isDark
                   ? 'rgba(255,255,255,0.03)'
                   : '#f8f9fa',
-                borderColor: isSelected ? '#6366f1' : isDark ? 'transparent' : '#e5e7eb',
+                borderColor: isSelected ? '#4b30b8' : isDark ? 'transparent' : '#e5e7eb',
               },
             ]}
             onPress={() => onSelectRole(role.id)}
@@ -78,7 +78,7 @@ export function RoleSelector({
                 style={[
                   styles.radioOuter,
                   {
-                    borderColor: isSelected ? '#6366f1' : colors.textMuted,
+                    borderColor: isSelected ? '#4b30b8' : colors.textMuted,
                   },
                 ]}
               >
@@ -91,7 +91,7 @@ export function RoleSelector({
                 styles.iconContainer,
                 {
                   backgroundColor: isSelected
-                    ? 'rgba(99, 102, 241, 0.2)'
+                    ? 'rgba(75, 48, 184, 0.2)'
                     : isDark
                     ? 'rgba(255,255,255,0.05)'
                     : '#e5e7eb',
@@ -101,7 +101,7 @@ export function RoleSelector({
               <Ionicons
                 name={getRoleIcon(role.type) as any}
                 size={20}
-                color={isSelected ? '#6366f1' : colors.textMuted}
+                color={isSelected ? '#4b30b8' : colors.textMuted}
               />
             </View>
 
@@ -109,7 +109,7 @@ export function RoleSelector({
               <Text
                 style={[
                   styles.roleName,
-                  { color: isSelected ? '#6366f1' : colors.text },
+                  { color: isSelected ? '#4b30b8' : colors.text },
                 ]}
               >
                 {role.name}
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#4b30b8',
   },
   iconContainer: {
     width: 40,
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   defaultBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   defaultText: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#4b30b8',
   },
 });
 

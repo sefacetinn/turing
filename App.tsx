@@ -20,6 +20,7 @@ import { EventsScreen } from './src/screens/EventsScreen';
 import { EventDetailScreen } from './src/screens/EventDetailScreen';
 import { OrganizerEventDetailScreen } from './src/screens/OrganizerEventDetailScreen';
 import { ProviderEventDetailScreen } from './src/screens/ProviderEventDetailScreen';
+import { OrganizerProfileScreen } from './src/screens/OrganizerProfileScreen';
 import { CalendarViewScreen } from './src/screens/CalendarViewScreen';
 import { OffersScreen } from './src/screens/OffersScreen';
 import { OfferDetailScreen } from './src/screens/OfferDetailScreen';
@@ -37,6 +38,7 @@ import { OperationSubcategoriesScreen } from './src/screens/OperationSubcategori
 import { RequestOfferScreen } from './src/screens/RequestOfferScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { EditProfileScreen } from './src/screens/EditProfileScreen';
+import { EditCompanyProfileScreen } from './src/screens/EditCompanyProfileScreen';
 import { FavoritesScreen } from './src/screens/FavoritesScreen';
 import { CategoryRequestScreen } from './src/screens/CategoryRequestScreen';
 import { NotificationSettingsScreen } from './src/screens/NotificationSettingsScreen';
@@ -140,6 +142,7 @@ function HomeStack() {
       <Stack.Screen name="Contract" component={ContractScreen} />
       <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
+      <Stack.Screen name="OrganizerProfile" component={OrganizerProfileScreen} />
       <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
       <Stack.Screen name="ProviderFinance" component={ProviderFinanceScreen} />
@@ -147,6 +150,9 @@ function HomeStack() {
       <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
       <Stack.Screen name="OperationHub" component={OperationHubScreen} />
       <Stack.Screen name="OperationSectionDetail" component={OperationSectionDetailScreen} />
+      <Stack.Screen name="CalendarView">
+        {() => <CalendarViewScreen isProviderMode={isProviderMode} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }
@@ -162,6 +168,7 @@ function EventsStack() {
       <Stack.Screen name="EventDetail" component={EventDetailScreen} />
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
       <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
+      <Stack.Screen name="OrganizerProfile" component={OrganizerProfileScreen} />
       <Stack.Screen name="CalendarView">
         {() => <CalendarViewScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
@@ -199,6 +206,7 @@ function OffersStack() {
       </Stack.Screen>
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
       <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
+      <Stack.Screen name="OrganizerProfile" component={OrganizerProfileScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
@@ -220,6 +228,9 @@ function MessagesStack() {
         {() => <MessagesScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
+      <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
     </Stack.Navigator>
   );
 }
@@ -242,6 +253,7 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
         {() => <SettingsScreen onLogout={onLogout} />}
       </Stack.Screen>
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="EditCompanyProfile" component={EditCompanyProfileScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
       <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
       <Stack.Screen name="Security" component={SecurityScreen} />

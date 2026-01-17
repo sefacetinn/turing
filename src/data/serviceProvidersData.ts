@@ -40,7 +40,7 @@ export const budgetRanges = [
 
 // Category configurations
 export const categoryConfig: Record<string, { title: string; gradient: readonly [string, string, ...string[]]; icon: string }> = {
-  booking: { title: 'Booking', gradient: ['#9333ea', '#7c3aed'], icon: 'musical-notes' },
+  booking: { title: 'Booking', gradient: ['#4b30b8', '#7c3aed'], icon: 'musical-notes' },
   technical: { title: 'Teknik', gradient: ['#059669', '#34d399'], icon: 'volume-high' },
   transport: { title: 'Ulaşım', gradient: ['#dc2626', '#f87171'], icon: 'car' },
   venue: { title: 'Mekan', gradient: ['#2563eb', '#60a5fa'], icon: 'business' },
