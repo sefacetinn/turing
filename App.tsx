@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { CustomTabBar } from './src/components/navigation';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { RBACProvider } from './src/context/RBACContext';
 import { ModuleProvider } from './src/context/ModuleContext';
 import { hasCompletedOnboarding, setOnboardingCompleted } from './src/utils/storage';
@@ -520,7 +521,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <ErrorBoundary>
+          <AppContent />
+        </ErrorBoundary>
       </ThemeProvider>
     </SafeAreaProvider>
   );
