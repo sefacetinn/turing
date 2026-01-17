@@ -5,6 +5,32 @@
 
 import type { ProviderEvent } from '../data/providerEventsData';
 
+// Organizer Event tipi (mockData.ts events array icin)
+export interface OrganizerEvent {
+  id: string;
+  title: string;
+  description?: string;
+  date: string;
+  time?: string;
+  location?: string;
+  venue?: string;
+  district?: string;
+  status?: string;
+  progress?: number;
+  budget?: number;
+  spent?: number;
+  image?: string;
+  attendees?: number;
+  services?: Array<{
+    id: string;
+    category: string;
+    name: string;
+    status: string;
+    provider: string | null;
+    price: number;
+  }>;
+}
+
 // Turkce ay isimleri
 const TURKISH_MONTHS: Record<string, number> = {
   'Ocak': 0,
@@ -154,7 +180,7 @@ export function transformProviderEvents(events: ProviderEvent[]): CalendarEvent[
 /**
  * Organizer events (mockData.ts) icin donusum
  */
-export function transformOrganizerEvents(events: any[]): CalendarEvent[] {
+export function transformOrganizerEvents(events: OrganizerEvent[]): CalendarEvent[] {
   return events.map((event) => {
     const { start, end } = parseTurkishDate(event.date || '');
 

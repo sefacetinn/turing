@@ -1,3 +1,6 @@
+// Re-export navigation types
+export * from './navigation';
+
 // View Types
 export type ViewType =
   | 'home'

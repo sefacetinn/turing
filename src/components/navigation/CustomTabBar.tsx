@@ -9,14 +9,12 @@ import Animated, {
   withSpring,
   interpolate,
 } from 'react-native-reanimated';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../../theme/ThemeContext';
 import { scrollToTopEmitter } from '../../utils/scrollToTop';
+import { MainTabParamList } from '../../types/navigation';
 
-interface TabBarProps {
-  state: any;
-  descriptors: any;
-  navigation: any;
-}
+type TabBarProps = BottomTabBarProps;
 
 const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   HomeTab: { active: 'compass', inactive: 'compass-outline' },
@@ -31,8 +29,14 @@ const TAB_BADGES: Record<string, number> = {
   MessagesTab: 2,
 };
 
+interface TabRoute {
+  key: string;
+  name: keyof MainTabParamList;
+  params?: object;
+}
+
 interface TabItemProps {
-  route: any;
+  route: TabRoute;
   index: number;
   isFocused: boolean;
   onPress: () => void;
@@ -137,7 +141,7 @@ export function CustomTabBar({ state, descriptors, navigation }: TabBarProps) {
             paddingBottom: bottomPadding,
           }
         ]}>
-          {state.routes.map((route: any, index: number) => {
+          {state.routes.map((route, index: number) => {
             const { options } = descriptors[route.key];
             const label = options.tabBarLabel ?? options.title ?? route.name;
             const isFocused = state.index === index;
@@ -174,15 +178,17 @@ export function CustomTabBar({ state, descriptors, navigation }: TabBarProps) {
               });
             };
 
+            const displayLabel = typeof label === 'string' ? label.replace('Tab', '') : route.name.replace('Tab', '');
+
             return (
               <TabItem
                 key={route.key}
-                route={route}
+                route={route as TabRoute}
                 index={index}
                 isFocused={isFocused}
                 onPress={onPress}
                 onLongPress={onLongPress}
-                label={label.replace('Tab', '')}
+                label={displayLabel}
               />
             );
           })}
