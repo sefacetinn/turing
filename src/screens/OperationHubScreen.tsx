@@ -138,7 +138,6 @@ export function OperationHubScreen() {
     (sectionType: OperationSectionType) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       // TODO: Open provider assignment modal
-      console.log('Assign provider for', sectionType);
     },
     []
   );

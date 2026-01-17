@@ -203,7 +203,7 @@ export function TermsScreen() {
         title: 'Kullanım Koşulları',
       });
     } catch (error) {
-      console.log('Share error:', error);
+      console.error('Share error:', error);
     }
   };
 

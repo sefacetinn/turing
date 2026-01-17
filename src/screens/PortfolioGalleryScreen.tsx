@@ -170,7 +170,7 @@ export function PortfolioGalleryScreen() {
         url: images[currentIndex],
       });
     } catch (error) {
-      console.log('Share error:', error);
+      console.error('Share error:', error);
     }
   };
 
