@@ -131,7 +131,9 @@ function HomeStack() {
       <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="Notifications">
+        {() => <NotificationsScreen isProviderMode={isProviderMode} />}
+      </Stack.Screen>
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       <Stack.Screen name="ServiceProviders" component={ServiceProvidersScreen} />
       <Stack.Screen name="OperationSubcategories" component={OperationSubcategoriesScreen} />

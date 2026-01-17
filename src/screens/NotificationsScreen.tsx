@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  RefreshControl,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,31 +16,34 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { EmptyState } from '../components/EmptyState';
-import { darkTheme as defaultColors } from '../theme/colors';
+import { SkeletonListItem } from '../components/Skeleton';
 import { useTheme } from '../theme/ThemeContext';
+import {
+  Notification,
+  NotificationCategory,
+  notificationCategories,
+  providerNotifications,
+  organizerNotifications,
+  getNotificationStyle,
+  getNotificationCounts,
+  filterNotificationsByCategory,
+  groupNotificationsByDate,
+} from '../data/notificationsData';
 
-// Default colors for static styles (dark theme)
-const colors = defaultColors;
+interface NotificationsScreenProps {
+  isProviderMode?: boolean;
+}
 
-type NotificationTab = 'all' | 'offers' | 'messages' | 'system';
-
-// Local notification data
-const localNotifications = [
-  { id: 'n1', type: 'offer', title: 'Yeni Teklif Alındı', message: 'Pro Sound Istanbul ses sistemi için ₺85.000 teklif gönderdi.', time: '5 dk önce', date: 'Bugün', read: false, action: 'Teklifi İncele' },
-  { id: 'n2', type: 'message', title: 'Yeni Mesaj', message: 'SecurePro Güvenlik size mesaj gönderdi.', time: '1 saat önce', date: 'Bugün', read: false, action: 'Mesajı Oku' },
-  { id: 'n3', type: 'reminder', title: 'Etkinlik Hatırlatması', message: 'Yaz Festivali 2024 için 30 gün kaldı.', time: '3 saat önce', date: 'Bugün', read: true, action: 'Etkinliğe Git' },
-  { id: 'n4', type: 'offer', title: 'Teklif Kabul Edildi', message: 'SecurePro Güvenlik teklifiniz onaylandı.', time: '14:30', date: 'Dün', read: true, action: null },
-  { id: 'n5', type: 'system', title: 'Profil Tamamlama', message: 'Profilinizi %80 tamamladınız.', time: '10:00', date: 'Dün', read: true, action: 'Profili Tamamla' },
-  { id: 'n6', type: 'message', title: 'Yeni Mesaj', message: 'Elite VIP Transfer size mesaj gönderdi.', time: '09:15', date: 'Dün', read: true, action: 'Mesajı Oku' },
-  { id: 'n7', type: 'offer', title: 'Karşı Teklif', message: 'LightShow Pro ₺95.000 karşı teklif gönderdi.', time: '16:45', date: '2 gün önce', read: true, action: 'Teklifi İncele' },
-];
-
-export function NotificationsScreen() {
+export function NotificationsScreen({ isProviderMode = false }: NotificationsScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const [notificationsList, setNotificationsList] = useState(localNotifications);
-  const [activeTab, setActiveTab] = useState<NotificationTab>('all');
+
+  // State
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activeCategory, setActiveCategory] = useState<NotificationCategory>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -48,232 +53,312 @@ export function NotificationsScreen() {
     },
   });
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'offer':
-        return { name: 'document-text', color: colors.brand[400], bg: 'rgba(75, 48, 184, 0.15)' };
-      case 'message':
-        return { name: 'chatbubble', color: colors.success, bg: 'rgba(34, 197, 94, 0.15)' };
-      case 'booking':
-        return { name: 'calendar', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' };
-      case 'review':
-        return { name: 'star', color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.15)' };
-      case 'payment':
-        return { name: 'card', color: colors.success, bg: 'rgba(34, 197, 94, 0.15)' };
-      case 'reminder':
-        return { name: 'alarm', color: colors.warning, bg: 'rgba(245, 158, 11, 0.15)' };
-      case 'system':
-        return { name: 'information-circle', color: colors.textMuted, bg: isDark ? 'rgba(161, 161, 170, 0.15)' : 'rgba(113, 113, 122, 0.15)' };
-      default:
-        return { name: 'notifications', color: colors.brand[400], bg: 'rgba(75, 48, 184, 0.15)' };
-    }
+  // Initial load
+  useEffect(() => {
+    loadNotifications();
+  }, [isProviderMode]);
+
+  const loadNotifications = () => {
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      const data = isProviderMode ? providerNotifications : organizerNotifications;
+      setNotifications(data);
+      setIsLoading(false);
+    }, 600);
   };
 
-  const markAllAsRead = () => {
-    setNotificationsList(prev => prev.map(n => ({ ...n, read: true })));
-  };
+  // Pull to refresh
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => {
+      const data = isProviderMode ? providerNotifications : organizerNotifications;
+      setNotifications(data);
+      setRefreshing(false);
+    }, 800);
+  }, [isProviderMode]);
 
+  // Mark notification as read
   const markAsRead = (id: string) => {
-    setNotificationsList(prev =>
+    setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, read: true } : n))
     );
   };
 
-  const handleNotificationPress = (notification: typeof localNotifications[0]) => {
+  // Mark all as read
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  // Delete notification
+  const deleteNotification = (id: string) => {
+    Alert.alert(
+      'Bildirimi Sil',
+      'Bu bildirim silinecek. Emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => setNotifications(prev => prev.filter(n => n.id !== id)),
+        },
+      ]
+    );
+  };
+
+  // Handle notification press
+  const handleNotificationPress = (notification: Notification) => {
     markAsRead(notification.id);
 
-    // Navigate based on notification type
-    switch (notification.type) {
-      case 'offer':
-        navigation.navigate('OfferDetail', { offerId: 'o1' });
-        break;
-      case 'message':
-        navigation.navigate('Chat', { conversationId: 'c1' });
-        break;
-      case 'booking':
-        navigation.navigate('EventDetail', { eventId: 'e1' });
-        break;
-      default:
-        break;
+    if (notification.navigateTo) {
+      navigation.navigate(
+        notification.navigateTo.screen,
+        notification.navigateTo.params
+      );
     }
   };
 
-  const unreadCount = notificationsList.filter(n => !n.read).length;
+  // Handle long press
+  const handleLongPress = (notification: Notification) => {
+    const options = [
+      !notification.read && {
+        text: 'Okundu İşaretle',
+        onPress: () => markAsRead(notification.id),
+      },
+      { text: 'Sil', style: 'destructive' as const, onPress: () => deleteNotification(notification.id) },
+      { text: 'İptal', style: 'cancel' as const },
+    ].filter(Boolean) as any[];
 
-  // Filter notifications by tab
+    Alert.alert(notification.title, 'Ne yapmak istiyorsunuz?', options);
+  };
+
+  // Filtered notifications
   const filteredNotifications = useMemo(() => {
-    if (activeTab === 'all') return notificationsList;
-    if (activeTab === 'offers') return notificationsList.filter(n => n.type === 'offer');
-    if (activeTab === 'messages') return notificationsList.filter(n => n.type === 'message');
-    if (activeTab === 'system') return notificationsList.filter(n => n.type === 'system' || n.type === 'reminder');
-    return notificationsList;
-  }, [notificationsList, activeTab]);
+    return filterNotificationsByCategory(notifications, activeCategory);
+  }, [notifications, activeCategory]);
 
-  // Count by type
-  const offerCount = notificationsList.filter(n => n.type === 'offer').length;
-  const messageCount = notificationsList.filter(n => n.type === 'message').length;
-  const systemCount = notificationsList.filter(n => n.type === 'system' || n.type === 'reminder').length;
+  // Grouped notifications
+  const groupedNotifications = useMemo(() => {
+    return groupNotificationsByDate(filteredNotifications);
+  }, [filteredNotifications]);
 
-  // Group notifications by date
-  const groupedNotifications: Record<string, typeof localNotifications> = {};
-  for (const notification of filteredNotifications) {
-    const date = notification.date || 'Diğer';
-    if (!groupedNotifications[date]) {
-      groupedNotifications[date] = [];
-    }
-    groupedNotifications[date].push(notification);
-  }
+  // Counts
+  const counts = useMemo(() => {
+    return getNotificationCounts(notifications);
+  }, [notifications]);
+
+  // Render notification card
+  const renderNotificationCard = (notification: Notification) => {
+    const style = getNotificationStyle(notification.type);
+
+    return (
+      <TouchableOpacity
+        key={notification.id}
+        style={[
+          styles.notificationCard,
+          {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+          },
+          !notification.read && {
+            backgroundColor: isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
+            borderColor: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)',
+          },
+        ]}
+        onPress={() => handleNotificationPress(notification)}
+        onLongPress={() => handleLongPress(notification)}
+        delayLongPress={500}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconContainer, { backgroundColor: style.bgColor }]}>
+          <Ionicons name={style.icon as any} size={20} color={style.color} />
+        </View>
+
+        <View style={styles.notificationContent}>
+          <View style={styles.notificationHeader}>
+            <Text
+              style={[
+                styles.notificationTitle,
+                { color: colors.text },
+                !notification.read && { fontWeight: '700' },
+              ]}
+              numberOfLines={1}
+            >
+              {notification.title}
+            </Text>
+            <Text style={[styles.notificationTime, { color: colors.textMuted }]}>
+              {notification.time}
+            </Text>
+          </View>
+
+          <Text
+            style={[styles.notificationMessage, { color: colors.textSecondary }]}
+            numberOfLines={2}
+          >
+            {notification.message}
+          </Text>
+
+          {/* Amount badge */}
+          {notification.amount && (
+            <View style={[styles.amountBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+              <Text style={[styles.amountText, { color: colors.success }]}>
+                ₺{notification.amount.toLocaleString('tr-TR')}
+              </Text>
+            </View>
+          )}
+
+          {/* Action button */}
+          {notification.action && (
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}
+              onPress={() => handleNotificationPress(notification)}
+            >
+              <Text style={[styles.actionButtonText, { color: colors.brand[400] }]}>
+                {notification.action}
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.brand[400]} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {!notification.read && (
+          <View style={[styles.unreadDot, { backgroundColor: colors.brand[400] }]} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // Render skeleton loading
+  const renderSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <SkeletonListItem key={index} style={{ marginBottom: 10 }} />
+      ))}
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Animated Scroll Header */}
+      {/* Header */}
       <ScrollHeader
         title="Bildirimler"
         scrollY={scrollY}
         threshold={60}
         showBackButton={true}
         rightAction={
-          unreadCount > 0 ? (
+          counts.unread > 0 ? (
             <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
-              <Text style={[styles.markAllText, { color: colors.brand[400] }]}>Okundu</Text>
+              <Text style={[styles.markAllText, { color: colors.brand[400] }]}>
+                Tümünü Oku
+              </Text>
             </TouchableOpacity>
           ) : undefined
         }
       />
 
       <Animated.ScrollView
-        style={styles.notificationsList}
+        style={styles.scrollView}
         contentContainerStyle={{ paddingTop: insets.top + 44, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[400]}
+            colors={[colors.brand[400]]}
+            progressViewOffset={insets.top + 44}
+          />
+        }
       >
         {/* Large Title */}
         <LargeTitle
           title="Bildirimler"
-          subtitle={`${unreadCount} okunmamış bildirim`}
+          subtitle={counts.unread > 0 ? `${counts.unread} okunmamış bildirim` : 'Tüm bildirimler okundu'}
         />
 
-        {/* Tabs */}
-        <View style={styles.tabRow}>
-        <TouchableOpacity
-          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'all' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'all' && { color: colors.brand[400] }]}>
-            Tümü
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'offers' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('offers')}
-        >
-          <Ionicons
-            name="document-text"
-            size={12}
-            color={activeTab === 'offers' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'offers' && { color: colors.brand[400] }]}>
-            Teklifler
-          </Text>
-          {offerCount > 0 && (
-            <View style={[styles.tabBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }, activeTab === 'offers' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'offers' && { color: colors.brand[400] }]}>{offerCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'messages' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('messages')}
-        >
-          <Ionicons
-            name="chatbubble"
-            size={12}
-            color={activeTab === 'messages' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'messages' && { color: colors.brand[400] }]}>
-            Mesajlar
-          </Text>
-          {messageCount > 0 && (
-            <View style={[styles.tabBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }, activeTab === 'messages' && styles.tabBadgeActive]}>
-              <Text style={[styles.tabBadgeText, { color: colors.textMuted }, activeTab === 'messages' && { color: colors.brand[400] }]}>{messageCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' }, activeTab === 'system' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('system')}
-        >
-          <Ionicons
-            name="information-circle"
-            size={12}
-            color={activeTab === 'system' ? colors.brand[400] : colors.textMuted}
-          />
-          <Text style={[styles.tabButtonText, { color: colors.textMuted }, activeTab === 'system' && { color: colors.brand[400] }]}>
-            Sistem
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {/* Category Tabs */}
+        <View style={styles.categoryRow}>
+          {notificationCategories.slice(0, 5).map((category) => {
+            const isActive = activeCategory === category.key;
+            const count = category.key === 'all' ? counts.total :
+                         category.key === 'offers' ? counts.offers :
+                         category.key === 'messages' ? counts.messages :
+                         category.key === 'payments' ? counts.payments :
+                         category.key === 'events' ? counts.events : counts.system;
+
+            return (
+              <TouchableOpacity
+                key={category.key}
+                style={[
+                  styles.categoryTab,
+                  { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)' },
+                  isActive && { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)' },
+                ]}
+                onPress={() => setActiveCategory(category.key)}
+              >
+                <Ionicons
+                  name={category.icon as any}
+                  size={14}
+                  color={isActive ? colors.brand[400] : colors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.categoryTabText,
+                    { color: isActive ? colors.brand[400] : colors.textMuted },
+                  ]}
+                >
+                  {category.label}
+                </Text>
+                {count > 0 && category.key !== 'all' && (
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' },
+                      isActive && { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)' },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryBadgeText,
+                        { color: isActive ? colors.brand[400] : colors.textMuted },
+                      ]}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {/* Notifications List */}
-        {Object.entries(groupedNotifications).map(([date, notifications]) => (
-          <View key={date}>
-            <Text style={[styles.dateHeader, { color: colors.textMuted }]}>{date}</Text>
-            {notifications.map(notification => {
-              const icon = getNotificationIcon(notification.type);
-              return (
-                <TouchableOpacity
-                  key={notification.id}
-                  style={[
-                    styles.notificationCard,
-                    {
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
-                    },
-                    !notification.read && {
-                      backgroundColor: 'rgba(75, 48, 184, 0.05)',
-                      borderColor: 'rgba(75, 48, 184, 0.1)',
-                    }
-                  ]}
-                  onPress={() => handleNotificationPress(notification)}
-                >
-                  <View style={[styles.iconContainer, { backgroundColor: icon.bg }]}>
-                    <Ionicons name={icon.name as any} size={20} color={icon.color} />
-                  </View>
-
-                  <View style={styles.notificationContent}>
-                    <View style={styles.notificationHeader}>
-                      <Text style={[styles.notificationTitle, { color: colors.text }]}>{notification.title}</Text>
-                      <Text style={[styles.notificationTime, { color: colors.textMuted }]}>{notification.time}</Text>
-                    </View>
-                    <Text style={[styles.notificationMessage, { color: colors.textSecondary }]} numberOfLines={2}>
-                      {notification.message}
-                    </Text>
-
-                    {notification.action && (
-                      <TouchableOpacity style={styles.actionButton}>
-                        <Text style={[styles.actionButtonText, { color: colors.brand[400] }]}>{notification.action}</Text>
-                        <Ionicons name="arrow-forward" size={14} color={colors.brand[400]} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {!notification.read && <View style={[styles.unreadDot, { backgroundColor: colors.brand[400] }]} />}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        ))}
-
-        {filteredNotifications.length === 0 && (
-          <EmptyState
-            icon="notifications-off-outline"
-            title={activeTab === 'all' ? 'Bildirim yok' :
-                   activeTab === 'offers' ? 'Teklif bildirimi yok' :
-                   activeTab === 'messages' ? 'Mesaj bildirimi yok' : 'Sistem bildirimi yok'}
-            message="Yeni bildirimler burada görünecek."
-          />
-        )}
+        <View style={styles.notificationsList}>
+          {isLoading ? (
+            renderSkeleton()
+          ) : Object.keys(groupedNotifications).length > 0 ? (
+            Object.entries(groupedNotifications).map(([date, dateNotifications]) => (
+              <View key={date}>
+                <Text style={[styles.dateHeader, { color: colors.textMuted }]}>{date}</Text>
+                {dateNotifications.map(renderNotificationCard)}
+              </View>
+            ))
+          ) : (
+            <EmptyState
+              icon="notifications-off-outline"
+              title={
+                activeCategory === 'all' ? 'Bildirim yok' :
+                activeCategory === 'offers' ? 'Teklif bildirimi yok' :
+                activeCategory === 'messages' ? 'Mesaj bildirimi yok' :
+                activeCategory === 'payments' ? 'Ödeme bildirimi yok' :
+                activeCategory === 'events' ? 'Etkinlik bildirimi yok' : 'Sistem bildirimi yok'
+              }
+              message="Yeni bildirimler burada görünecek."
+            />
+          )}
+        </View>
       </Animated.ScrollView>
     </View>
   );
@@ -283,80 +368,66 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   markAllButton: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    flexShrink: 0,
   },
   markAllText: {
     fontSize: 13,
-    fontWeight: '500',
-    flexShrink: 0,
+    fontWeight: '600',
   },
-  tabRow: {
+  categoryRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 16,
     gap: 8,
+    flexWrap: 'wrap',
   },
-  tabButton: {
+  categoryTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
-  tabButtonActive: {
-    backgroundColor: 'rgba(75, 48, 184, 0.15)',
-  },
-  tabButtonText: {
+  categoryTabText: {
     fontSize: 12,
     fontWeight: '500',
   },
-  tabButtonTextActive: {
-  },
-  tabBadge: {
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  categoryBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 5,
   },
-  tabBadgeActive: {
-    backgroundColor: 'rgba(75, 48, 184, 0.3)',
-  },
-  tabBadgeText: {
+  categoryBadgeText: {
     fontSize: 10,
     fontWeight: '600',
   },
-  tabBadgeTextActive: {
-  },
   notificationsList: {
-    flex: 1,
     paddingHorizontal: 16,
+  },
+  skeletonContainer: {
+    paddingTop: 8,
   },
   dateHeader: {
     fontSize: 13,
     fontWeight: '600',
-    marginTop: 20,
+    marginTop: 16,
     marginBottom: 12,
   },
   notificationCard: {
     flexDirection: 'row',
     padding: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderRadius: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  notificationUnread: {
-    backgroundColor: 'rgba(75, 48, 184, 0.05)',
-    borderColor: 'rgba(75, 48, 184, 0.1)',
   },
   iconContainer: {
     width: 44,
@@ -378,15 +449,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    marginRight: 8,
   },
   notificationTime: {
     fontSize: 11,
-    marginLeft: 8,
   },
   notificationMessage: {
     fontSize: 13,
     marginTop: 4,
     lineHeight: 18,
+  },
+  amountBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  amountText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   actionButton: {
     flexDirection: 'row',
@@ -395,18 +477,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(75, 48, 184, 0.1)',
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
   actionButtonText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     marginLeft: 8,
+    marginTop: 4,
   },
 });
