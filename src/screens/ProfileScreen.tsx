@@ -69,6 +69,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
   const insets = useSafeAreaInsets();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
   const [isBusinessExpanded, setIsBusinessExpanded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
   // Animated scroll
@@ -88,6 +89,11 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     });
     return unsubscribe;
   }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   // Use currentAccount data if available, otherwise fallback to userProfile
   const profile = currentAccount?.profile || userProfile;
@@ -384,6 +390,14 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: insets.top + 44, paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[400]}
+            progressViewOffset={insets.top + 44}
+          />
+        }
       >
         {/* Large Title */}
         <LargeTitle title="Profil" />

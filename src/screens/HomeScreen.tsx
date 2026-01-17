@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,7 +74,15 @@ function OrganizerHomeContent() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [showOperationModal, setShowOperationModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Pull to refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    // Simulate data refresh
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -164,6 +172,14 @@ function OrganizerHomeContent() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: insets.top + 44 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[400]}
+            progressViewOffset={insets.top + 44}
+          />
+        }
       >
         <LargeTitle
           title={organizerUser.name}
@@ -423,7 +439,14 @@ function ProviderHomeContent() {
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
   const { providerServices } = useApp();
+  const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Pull to refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
+  };
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -521,6 +544,14 @@ function ProviderHomeContent() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: insets.top + 44 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[400]}
+            progressViewOffset={insets.top + 44}
+          />
+        }
       >
         <LargeTitle
           title="EventPro 360"
