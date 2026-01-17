@@ -23,9 +23,8 @@ import {
   CategoryCard,
   ProviderCard,
   ArtistCard,
-  CalendarWidget,
 } from '../components/home';
-import { transformOrganizerEvents, transformProviderEvents, CalendarEvent, isSameDay } from '../utils/calendarUtils';
+import { transformProviderEvents, CalendarEvent, isSameDay } from '../utils/calendarUtils';
 
 // Bu hafta kac etkinlik var
 function getEventsThisWeek(events: CalendarEvent[]): number {
@@ -131,9 +130,6 @@ function OrganizerHomeContent() {
   };
 
   const dashboard = organizerDashboard;
-
-  // Calendar events for widget
-  const calendarEvents = useMemo(() => transformOrganizerEvents(organizerEvents), []);
 
   // Unified accent color - Brand purple
   const accentColor = colors.brand[400];
@@ -252,12 +248,6 @@ function OrganizerHomeContent() {
             </View>
           </View>
         )}
-
-        {/* Calendar Widget */}
-        <CalendarWidget
-          events={calendarEvents}
-          onPress={() => navigation.navigate('CalendarView' as any)}
-        />
 
         {/* Active Events - Horizontal Scroll */}
         <View style={styles.section}>
@@ -501,9 +491,6 @@ function ProviderHomeContent() {
     });
   }, [providerServices]);
 
-  // Calendar events for widget
-  const calendarEvents = useMemo(() => transformProviderEvents(providerEvents), []);
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollHeader
@@ -564,12 +551,6 @@ function ProviderHomeContent() {
           onOffersPress={() => navigation.navigate('OffersTab' as any)}
           onJobsPress={() => navigation.navigate('EventsTab' as any)}
           onCalendarPress={() => navigation.navigate('CalendarView' as any)}
-        />
-
-        {/* Calendar Widget */}
-        <CalendarWidget
-          events={calendarEvents}
-          onPress={() => navigation.navigate('CalendarView' as any)}
         />
 
         <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />
