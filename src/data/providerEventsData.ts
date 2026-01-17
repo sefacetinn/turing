@@ -1,4 +1,4 @@
-import { gradients } from '../theme/colors';
+import { gradients, ThemeColors } from '../theme/colors';
 import {
   events as coreEvents,
   organizers as coreOrganizers,
@@ -731,7 +731,7 @@ export const getServiceTypeInfo = (serviceType: ServiceCategory) => {
 };
 
 // Get status info
-export const getStatusInfo = (status: string, themeColors: any) => {
+export const getStatusInfo = (status: string, themeColors: ThemeColors) => {
   switch (status) {
     case 'planned':
       return { label: 'Planlandı', color: themeColors.warning, icon: 'calendar' as const };
@@ -745,7 +745,7 @@ export const getStatusInfo = (status: string, themeColors: any) => {
 };
 
 // Get payment status info
-export const getPaymentInfo = (status: string, themeColors: any) => {
+export const getPaymentInfo = (status: string, themeColors: ThemeColors) => {
   switch (status) {
     case 'paid':
       return { label: 'Ödendi', color: themeColors.success };

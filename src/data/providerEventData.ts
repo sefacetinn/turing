@@ -1,4 +1,4 @@
-import { gradients } from '../theme/colors';
+import { gradients, ThemeColors } from '../theme/colors';
 import { providerEvents, ProviderEvent } from './providerEventsData';
 
 // Types
@@ -275,7 +275,7 @@ export const getDocumentsByEventId = (eventId: string): EventDocument[] => {
 };
 
 // Helper functions
-export const getStatusColor = (status: string, colors: any) => {
+export const getStatusColor = (status: string, colors: ThemeColors) => {
   switch (status) {
     case 'completed': return colors.success;
     case 'in_progress': return colors.warning;
@@ -284,7 +284,7 @@ export const getStatusColor = (status: string, colors: any) => {
   }
 };
 
-export const getPriorityColor = (priority: string, colors: any) => {
+export const getPriorityColor = (priority: string, colors: ThemeColors) => {
   switch (priority) {
     case 'high': return colors.error;
     case 'medium': return colors.warning;
@@ -293,7 +293,7 @@ export const getPriorityColor = (priority: string, colors: any) => {
   }
 };
 
-export const getPaymentStatusInfo = (status: string, colors: any) => {
+export const getPaymentStatusInfo = (status: string, colors: ThemeColors) => {
   switch (status) {
     case 'paid': return { label: 'Ödendi', color: colors.success, icon: 'checkmark-circle' as const };
     case 'pending': return { label: 'Bekliyor', color: colors.warning, icon: 'time' as const };

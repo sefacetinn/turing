@@ -1,3 +1,5 @@
+import { ThemeColors } from '../theme/colors';
+
 // Types
 export type ContractStatus = 'draft' | 'pending_organizer' | 'pending_provider' | 'signed' | 'completed' | 'cancelled';
 
@@ -291,7 +293,7 @@ export const fillTemplate = (content: string, contract: Contract) => {
 };
 
 // Get status info
-export const getContractStatusInfo = (status: ContractStatus, colors: any) => {
+export const getContractStatusInfo = (status: ContractStatus, colors: ThemeColors) => {
   switch (status) {
     case 'draft':
       return { label: 'Taslak', color: colors.textMuted, icon: 'document-outline' as const };

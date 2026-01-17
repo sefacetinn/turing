@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { gradients } from '../theme/colors';
+import { gradients, ThemeColors } from '../theme/colors';
 
 // Types
 export interface Service {
@@ -344,7 +344,7 @@ export const getTimelineTypeIcon = (type: string): keyof typeof Ionicons.glyphMa
   }
 };
 
-export const getTimelineTypeColor = (type: string, colors: any) => {
+export const getTimelineTypeColor = (type: string, colors: ThemeColors) => {
   switch (type) {
     case 'milestone': return colors.brand[500];
     case 'task': return colors.success;
@@ -355,7 +355,7 @@ export const getTimelineTypeColor = (type: string, colors: any) => {
 };
 
 // Service status info helper
-export const getServiceStatusInfo = (status: string, colors: any) => {
+export const getServiceStatusInfo = (status: string, colors: ThemeColors) => {
   switch (status) {
     case 'confirmed':
       return { label: 'Onaylandı', color: colors.success, icon: 'checkmark-circle' as const };
@@ -373,7 +373,7 @@ export const getServiceStatusInfo = (status: string, colors: any) => {
 };
 
 // Budget status helper
-export const getBudgetStatusInfo = (status: string, colors: any) => {
+export const getBudgetStatusInfo = (status: string, colors: ThemeColors) => {
   switch (status) {
     case 'under':
       return { label: 'Bütçe Altı', color: colors.success };
