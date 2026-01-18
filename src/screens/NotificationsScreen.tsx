@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
@@ -70,6 +71,7 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
 
   // Pull to refresh
   const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     setTimeout(() => {
       const data = isProviderMode ? providerNotifications : organizerNotifications;

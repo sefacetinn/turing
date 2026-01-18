@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -78,11 +79,12 @@ function OrganizerHomeContent() {
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
   // Pull to refresh
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     // Simulate data refresh
     setTimeout(() => setRefreshing(false), 800);
-  };
+  }, []);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -449,10 +451,11 @@ function ProviderHomeContent() {
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
   // Pull to refresh
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
-  };
+  }, []);
 
   // Animated scroll
   const scrollY = useSharedValue(0);

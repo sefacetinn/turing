@@ -3,6 +3,7 @@ import { View, StyleSheet, RefreshControl, Alert, TouchableOpacity, Text, Modal 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -76,6 +77,7 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   }, []);
 
   const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     setTimeout(() => {
       setRefreshing(false);
