@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
@@ -216,6 +217,7 @@ export function OrganizerEventsScreen() {
 
   // Pull to refresh
   const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     // Simulate API call
     setTimeout(() => {

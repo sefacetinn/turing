@@ -1,8 +1,9 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager, RefreshControl, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
@@ -91,10 +92,11 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     return unsubscribe;
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
-  };
+  }, []);
 
   // Use currentAccount data if available, otherwise fallback to userProfile
   const profile = currentAccount?.profile || userProfile;
