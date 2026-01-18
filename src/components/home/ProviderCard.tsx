@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
@@ -15,7 +15,7 @@ interface ProviderCardProps {
   onPress: () => void;
 }
 
-export function ProviderCard({
+export const ProviderCard = memo(function ProviderCard({
   name,
   category,
   rating,
@@ -66,7 +66,7 @@ export function ProviderCard({
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

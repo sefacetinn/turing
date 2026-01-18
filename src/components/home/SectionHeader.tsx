@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
@@ -9,7 +9,7 @@ interface SectionHeaderProps {
   viewAllText?: string;
 }
 
-export function SectionHeader({ title, onViewAll, viewAllText = 'Tümü' }: SectionHeaderProps) {
+export const SectionHeader = memo(function SectionHeader({ title, onViewAll, viewAllText = 'Tümü' }: SectionHeaderProps) {
   const { colors } = useTheme();
 
   return (
@@ -23,7 +23,7 @@ export function SectionHeader({ title, onViewAll, viewAllText = 'Tümü' }: Sect
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

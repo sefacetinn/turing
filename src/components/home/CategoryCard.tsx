@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ interface CategoryCardProps {
   onPress: () => void;
 }
 
-export function CategoryCard({
+export const CategoryCard = memo(function CategoryCard({
   name,
   description,
   icon,
@@ -42,7 +42,7 @@ export function CategoryCard({
       </LinearGradient>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

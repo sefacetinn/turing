@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -61,7 +61,7 @@ export function Skeleton({
 }
 
 // Skeleton Card - for event/offer cards
-export function SkeletonCard({ style }: { style?: ViewStyle }) {
+export const SkeletonCard = memo(function SkeletonCard({ style }: { style?: ViewStyle }) {
   const { colors, isDark } = useTheme();
 
   return (
@@ -97,10 +97,10 @@ export function SkeletonCard({ style }: { style?: ViewStyle }) {
       </View>
     </View>
   );
-}
+});
 
 // Skeleton List Item - for messages, notifications
-export function SkeletonListItem({ style }: { style?: ViewStyle }) {
+export const SkeletonListItem = memo(function SkeletonListItem({ style }: { style?: ViewStyle }) {
   const { isDark } = useTheme();
 
   return (
@@ -124,10 +124,10 @@ export function SkeletonListItem({ style }: { style?: ViewStyle }) {
       </View>
     </View>
   );
-}
+});
 
 // Skeleton Stats Row - for dashboard stats
-export function SkeletonStats({ count = 3 }: { count?: number }) {
+export const SkeletonStats = memo(function SkeletonStats({ count = 3 }: { count?: number }) {
   return (
     <View style={styles.statsRow}>
       {Array.from({ length: count }).map((_, index) => (
@@ -138,10 +138,10 @@ export function SkeletonStats({ count = 3 }: { count?: number }) {
       ))}
     </View>
   );
-}
+});
 
 // Skeleton Event List - multiple cards
-export function SkeletonEventList({ count = 3 }: { count?: number }) {
+export const SkeletonEventList = memo(function SkeletonEventList({ count = 3 }: { count?: number }) {
   return (
     <View style={styles.eventList}>
       {Array.from({ length: count }).map((_, index) => (
@@ -149,10 +149,10 @@ export function SkeletonEventList({ count = 3 }: { count?: number }) {
       ))}
     </View>
   );
-}
+});
 
 // Skeleton Message List
-export function SkeletonMessageList({ count = 5 }: { count?: number }) {
+export const SkeletonMessageList = memo(function SkeletonMessageList({ count = 5 }: { count?: number }) {
   return (
     <View>
       {Array.from({ length: count }).map((_, index) => (
@@ -160,7 +160,7 @@ export function SkeletonMessageList({ count = 5 }: { count?: number }) {
       ))}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

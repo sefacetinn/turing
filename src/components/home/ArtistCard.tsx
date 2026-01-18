@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
@@ -12,7 +12,7 @@ interface ArtistCardProps {
   onPress: () => void;
 }
 
-export function ArtistCard({ name, genre, image, rating, onPress }: ArtistCardProps) {
+export const ArtistCard = memo(function ArtistCard({ name, genre, image, rating, onPress }: ArtistCardProps) {
   const { colors, isDark, helpers } = useTheme();
 
   return (
@@ -43,7 +43,7 @@ export function ArtistCard({ name, genre, image, rating, onPress }: ArtistCardPr
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
