@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Modal, RefreshControl } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Dimensions, Modal, RefreshControl } from 'react-native';
+import { OptimizedImage, CoverImage, Thumbnail } from '../components/OptimizedImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -228,7 +229,7 @@ function OrganizerHomeContent() {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: dashboard.nextEvent.id })}
           >
-            <Image source={{ uri: dashboard.nextEvent.image }} style={styles.nextEventImage} />
+            <OptimizedImage source={dashboard.nextEvent.image} style={styles.nextEventImage} priority="high" />
             <View style={styles.nextEventContent}>
               <View style={styles.nextEventTop}>
                 <View style={[styles.countdownBadge, { backgroundColor: accentBg }]}>
@@ -298,7 +299,7 @@ function OrganizerHomeContent() {
                 style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
                 onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
               >
-                <Image source={{ uri: event.image }} style={styles.eventCardImage} />
+                <OptimizedImage source={event.image} style={styles.eventCardImage} />
                 <View style={styles.eventCardBody}>
                   <Text style={[styles.eventCardTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
                   <Text style={[styles.eventCardDate, { color: colors.textMuted }]}>{event.date}</Text>
@@ -388,7 +389,7 @@ function OrganizerHomeContent() {
                 style={styles.artistItem}
                 onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
               >
-                <Image source={{ uri: artist.image }} style={styles.artistImage} />
+                <OptimizedImage source={artist.image} style={styles.artistImage} />
                 <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
                 <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
               </TouchableOpacity>
@@ -945,7 +946,7 @@ function UpcomingJobCard({
       ]}
       onPress={onPress}
     >
-      <Image source={{ uri: image }} style={styles.jobImage} />
+      <OptimizedImage source={image} style={styles.jobImage} />
       <View style={styles.jobContent}>
         <View style={styles.jobHeader}>
           <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={1}>
@@ -1037,7 +1038,7 @@ function RequestCard({
       <Text style={[styles.requestTitle, { color: colors.text }]}>{title}</Text>
 
       <View style={styles.requestMeta}>
-        <Image source={{ uri: organizerImage }} style={styles.organizerImage} />
+        <OptimizedImage source={organizerImage} style={styles.organizerImage} />
         <Text style={[styles.organizerName, { color: colors.textSecondary }]}>{organizer}</Text>
         <Text style={[styles.requestDot, { color: colors.textMuted }]}>•</Text>
         <Ionicons name="location" size={12} color={colors.textMuted} />

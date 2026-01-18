@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   TextInput,
   FlatList,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { OptimizedImage, Thumbnail } from '../components/OptimizedImage';
 
 type SearchScreenParams = {
   Search: {
@@ -189,7 +189,7 @@ export function SearchScreen() {
       accessibilityLabel={`${item.name} ile sohbet başlat`}
       accessibilityHint="Dokunarak sohbet başlatın"
     >
-      <Image source={{ uri: item.image }} style={styles.chatItemAvatar} />
+      <OptimizedImage source={item.image} style={styles.chatItemAvatar} />
       <View style={styles.chatItemInfo}>
         <Text style={[styles.chatItemName, { color: colors.text }]}>{item.name}</Text>
         <Text style={[styles.chatItemCategory, { color: colors.textMuted }]}>
@@ -216,7 +216,7 @@ export function SearchScreen() {
       accessibilityLabel={`${item.name}, ${item.type === 'artist' ? 'Sanatçı' : 'Hizmet'}, ${item.rating} puan`}
       accessibilityHint="Detayları görmek için dokunun"
     >
-      <Image source={{ uri: item.image }} style={styles.resultImage} />
+      <Thumbnail source={item.image} width={100} height={100} borderRadius={12} />
       <View style={styles.resultInfo}>
         <View style={styles.resultHeader}>
           <View style={styles.resultNameRow}>

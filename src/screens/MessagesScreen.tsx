@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, RefreshControl, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import Animated, {
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { EmptyState } from '../components/EmptyState';
 import { SkeletonMessageList } from '../components/Skeleton';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
@@ -257,7 +258,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
               accessibilityHint="Sohbeti açmak için dokunun, seçenekler için basılı tutun"
             >
               <View style={styles.avatarContainer}>
-                <Image source={{ uri: chat.avatar }} style={styles.avatar} />
+                <OptimizedImage source={chat.avatar} style={styles.avatar} />
                 {chat.unread > 0 && (
                   <View style={styles.onlineDot} />
                 )}
