@@ -153,6 +153,9 @@ function OrganizerHomeContent() {
             <TouchableOpacity
               style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
               onPress={() => navigation.navigate('Notifications')}
+              accessibilityRole="button"
+              accessibilityLabel="Bildirimler"
+              accessibilityHint="Bildirimler ekranını aç"
             >
               <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
               <View style={[styles.notificationDot, { backgroundColor: accentColor }]} />
@@ -160,6 +163,9 @@ function OrganizerHomeContent() {
             <TouchableOpacity
               style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
               onPress={() => navigation.navigate('CalendarView')}
+              accessibilityRole="button"
+              accessibilityLabel="Takvim"
+              accessibilityHint="Takvim görünümünü aç"
             >
               <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -524,6 +530,9 @@ function ProviderHomeContent() {
             <TouchableOpacity
               style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
               onPress={() => navigation.navigate('MessagesTab' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Mesajlar"
+              accessibilityHint="Mesajlar ekranını aç"
             >
               <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
               <View style={[styles.notificationDot, { backgroundColor: colors.brand[400] }]} />
@@ -531,6 +540,9 @@ function ProviderHomeContent() {
             <TouchableOpacity
               style={[styles.headerIconCompact, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.cardBackground }]}
               onPress={() => navigation.navigate('Notifications')}
+              accessibilityRole="button"
+              accessibilityLabel="Bildirimler"
+              accessibilityHint="Bildirimler ekranını aç"
             >
               <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
               <View style={[styles.notificationDot, { backgroundColor: colors.brand[400] }]} />

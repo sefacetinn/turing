@@ -379,7 +379,13 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         threshold={60}
         showBackButton={true}
         rightAction={
-          <TouchableOpacity style={styles.settingsButton} onPress={() => navigation.navigate('Settings')}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Ayarlar"
+            accessibilityHint="Ayarlar ekranını aç"
+          >
             <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
         }
@@ -404,7 +410,14 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         <LargeTitle title="Profil" />
 
         {/* Profile Card */}
-        <TouchableOpacity style={dynamicStyles.profileCard} onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={dynamicStyles.profileCard}
+          onPress={() => navigation.navigate('EditProfile')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`${profile.name} profili`}
+          accessibilityHint="Profili düzenlemek için dokun"
+        >
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               <LinearGradient

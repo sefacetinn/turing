@@ -46,15 +46,21 @@ export function FavoritesScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Geri"
+          accessibilityHint="Önceki ekrana dön"
+        >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Favorilerim</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]} accessibilityRole="header">Favorilerim</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabContainer}>
+      <View style={styles.tabContainer} accessibilityRole="tablist">
         <TouchableOpacity
           style={[
             styles.tab,
@@ -65,6 +71,9 @@ export function FavoritesScreen() {
             activeTab === 'artists' && styles.tabActive,
           ]}
           onPress={() => setActiveTab('artists')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'artists' }}
+          accessibilityLabel={`Sanatçılar, ${favoriteArtists.length} favori`}
         >
           <Ionicons
             name={activeTab === 'artists' ? 'musical-notes' : 'musical-notes-outline'}
@@ -86,6 +95,9 @@ export function FavoritesScreen() {
             activeTab === 'providers' && styles.tabActive,
           ]}
           onPress={() => setActiveTab('providers')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'providers' }}
+          accessibilityLabel={`Sağlayıcılar, ${favoriteProviders.length} favori`}
         >
           <Ionicons
             name={activeTab === 'providers' ? 'briefcase' : 'briefcase-outline'}

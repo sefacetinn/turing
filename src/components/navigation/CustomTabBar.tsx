@@ -73,10 +73,16 @@ function TabItem({ route, index, isFocused, onPress, onLongPress, label }: TabIt
     ? TAB_ICONS[route.name]?.active
     : TAB_ICONS[route.name]?.inactive;
 
+  const accessibilityLabel = badge && badge > 0
+    ? `${label}, ${badge} yeni bildirim`
+    : label;
+
   return (
     <TouchableOpacity
-      accessibilityRole="button"
+      accessibilityRole="tab"
       accessibilityState={isFocused ? { selected: true } : {}}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={`${label} sekmesine git`}
       onPress={onPress}
       onLongPress={onLongPress}
       style={styles.tabItem}
