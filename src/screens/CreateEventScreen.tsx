@@ -7,7 +7,6 @@ import {
   StyleSheet,
   TextInput,
   Modal,
-  Image,
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import {
@@ -438,7 +438,7 @@ export function CreateEventScreen() {
               >
                 {eventData.image ? (
                   <View style={styles.imagePreviewContainer}>
-                    <Image source={{ uri: eventData.image }} style={styles.imagePreview} />
+                    <OptimizedImage source={eventData.image} style={styles.imagePreview} />
                     <View style={styles.imageOverlay}>
                       <TouchableOpacity
                         style={styles.changeImageBtn}

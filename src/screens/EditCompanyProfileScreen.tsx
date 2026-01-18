@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   Alert,
   Switch,
   KeyboardAvoidingView,
@@ -18,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeContext';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { useApp } from '../../App';
 
 // Service category type
@@ -310,7 +310,7 @@ export function EditCompanyProfileScreen() {
         >
           {/* Cover Image */}
           <TouchableOpacity style={styles.coverImageContainer} onPress={pickCoverImage}>
-            <Image source={{ uri: coverImage }} style={styles.coverImage} />
+            <OptimizedImage source={coverImage} style={styles.coverImage} />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.6)']}
               style={styles.coverGradient}
@@ -324,7 +324,7 @@ export function EditCompanyProfileScreen() {
           {/* Logo */}
           <View style={styles.logoSection}>
             <TouchableOpacity style={styles.logoContainer} onPress={pickLogo}>
-              <Image source={{ uri: companyLogo }} style={styles.logo} />
+              <OptimizedImage source={companyLogo} style={styles.logo} />
               <View style={[styles.logoEditBadge, { backgroundColor: brandColor }]}>
                 <Ionicons name="camera" size={14} color="white" />
               </View>
@@ -606,7 +606,7 @@ export function EditCompanyProfileScreen() {
                   style={styles.portfolioImageContainer}
                   onLongPress={() => removePortfolioImage(index)}
                 >
-                  <Image source={{ uri: image }} style={styles.portfolioImage} />
+                  <OptimizedImage source={image} style={styles.portfolioImage} />
                   <TouchableOpacity
                     style={styles.portfolioRemoveBtn}
                     onPress={() => removePortfolioImage(index)}

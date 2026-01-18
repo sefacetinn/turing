@@ -5,10 +5,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
-  Image,
   Dimensions,
   Modal,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -278,7 +278,7 @@ export function ProviderFinanceScreen() {
               onPress={() => handleClientPress(client)}
               activeOpacity={0.7}
             >
-              <Image source={{ uri: client.logo }} style={styles.clientLogo} />
+              <OptimizedImage source={client.logo} style={styles.clientLogo} />
               <Text style={[styles.clientName, { color: colors.text }]} numberOfLines={1}>{client.name}</Text>
               <Text style={[styles.clientRevenue, { color: accentColor }]}>{formatCurrency(client.totalRevenue)}</Text>
               <Text style={[styles.clientJobs, { color: colors.textMuted }]}>{client.jobCount} iş</Text>
@@ -436,7 +436,7 @@ export function ProviderFinanceScreen() {
             ]}
             onPress={() => setSelectedInvoice(invoice)}
           >
-            <Image source={{ uri: invoice.organizerLogo }} style={styles.invoiceLogo} />
+            <OptimizedImage source={invoice.organizerLogo} style={styles.invoiceLogo} />
             <View style={styles.invoiceContent}>
               <Text style={[styles.invoiceNumber, { color: colors.textMuted }]}>{invoice.invoiceNumber}</Text>
               <Text style={[styles.invoiceEvent, { color: colors.text }]} numberOfLines={1}>{invoice.eventName}</Text>
@@ -539,7 +539,7 @@ export function ProviderFinanceScreen() {
               <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                 {/* Invoice Header */}
                 <View style={styles.invoiceDetailHeader}>
-                  <Image source={{ uri: selectedInvoice.organizerLogo }} style={styles.invoiceDetailLogo} />
+                  <OptimizedImage source={selectedInvoice.organizerLogo} style={styles.invoiceDetailLogo} />
                   <View style={styles.invoiceDetailInfo}>
                     <Text style={[styles.invoiceDetailEvent, { color: colors.text }]}>{selectedInvoice.eventName}</Text>
                     <Text style={[styles.invoiceDetailOrganizer, { color: colors.textSecondary }]}>{selectedInvoice.organizerName}</Text>
@@ -663,7 +663,7 @@ export function ProviderFinanceScreen() {
               <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                 {/* Client Header */}
                 <View style={styles.clientDetailHeader}>
-                  <Image source={{ uri: selectedClient.logo }} style={styles.clientDetailLogo} />
+                  <OptimizedImage source={selectedClient.logo} style={styles.clientDetailLogo} />
                   <View style={styles.clientDetailInfo}>
                     <Text style={[styles.clientDetailName, { color: colors.text }]}>{selectedClient.name}</Text>
                     <Text style={[styles.clientDetailJobs, { color: colors.textSecondary }]}>

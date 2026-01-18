@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   RefreshControl,
 } from 'react-native';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -128,7 +128,7 @@ export function ArtistRosterScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarContainer}>
-          <Image source={{ uri: artist.image }} style={styles.avatar} />
+          <OptimizedImage source={artist.image} style={styles.avatar} />
           <View style={[styles.statusDot, { backgroundColor: availabilityInfo.color }]} />
         </View>
 

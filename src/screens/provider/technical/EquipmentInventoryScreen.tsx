@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   RefreshControl,
   Alert,
 } from 'react-native';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -144,7 +144,7 @@ export function EquipmentInventoryScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardImageContainer}>
-            <Image source={{ uri: equipment.image }} style={styles.cardImage} />
+            <OptimizedImage source={equipment.image} style={styles.cardImage} />
             <LinearGradient
               colors={categoryGradient}
               style={styles.categoryIconBadge}

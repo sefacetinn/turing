@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import {
   SecurityPersonnel,
   Shift,
@@ -137,7 +137,7 @@ export function PersonnelManagementScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.personnelImageContainer}>
-            <Image source={{ uri: personnel.image }} style={styles.personnelImage} />
+            <OptimizedImage source={personnel.image} style={styles.personnelImage} />
             <LinearGradient
               colors={roleGradient}
               style={styles.roleBadge}
@@ -323,9 +323,9 @@ export function PersonnelManagementScreen() {
                 const person = mockPersonnel.find(p => p.id === assignment.personnelId);
                 if (!person) return null;
                 return (
-                  <Image
+                  <OptimizedImage
                     key={i}
-                    source={{ uri: person.image }}
+                    source={person.image}
                     style={[styles.assignedPersonImage, { marginLeft: i > 0 ? -10 : 0 }]}
                   />
                 );

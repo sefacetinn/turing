@@ -5,10 +5,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Linking,
   Alert,
 } from 'react-native';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -474,7 +474,7 @@ export function ArtistDetailManageScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header with Cover Image */}
       <View style={styles.headerContainer}>
-        <Image source={{ uri: artist.coverImage }} style={styles.coverImage} />
+        <OptimizedImage source={artist.coverImage} style={styles.coverImage} />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.8)']}
           style={styles.coverGradient}
@@ -495,7 +495,7 @@ export function ArtistDetailManageScreen() {
         </TouchableOpacity>
 
         <View style={styles.artistInfoOverlay}>
-          <Image source={{ uri: artist.image }} style={styles.artistImageLarge} />
+          <OptimizedImage source={artist.image} style={styles.artistImageLarge} />
           <View style={styles.artistInfoText}>
             <Text style={styles.artistNameLarge}>{artist.stageName || artist.name}</Text>
             {artist.stageName && (

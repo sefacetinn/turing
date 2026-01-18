@@ -12,7 +12,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Dimensions,
   Linking,
@@ -21,6 +20,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -198,8 +198,8 @@ export function OperationSectionDetailScreen() {
       {hasProvider ? (
         <View style={styles.providerCard}>
           <View style={styles.providerHeader}>
-            <Image
-              source={{ uri: section?.provider?.logo }}
+            <OptimizedImage
+              source={section?.provider?.logo || ''}
               style={styles.providerLogo}
             />
             <View style={styles.providerInfo}>
@@ -426,9 +426,9 @@ export function OperationSectionDetailScreen() {
           <View style={styles.taskFooter}>
             <View style={styles.taskAssignees}>
               {task.assignedTo.slice(0, 3).map((assignee, index) => (
-                <Image
+                <OptimizedImage
                   key={assignee.id}
-                  source={{ uri: assignee.image }}
+                  source={assignee.image}
                   style={[
                     styles.taskAssigneeImage,
                     { marginLeft: index > 0 ? -8 : 0 },
@@ -476,7 +476,7 @@ export function OperationSectionDetailScreen() {
             .filter((m) => m.party === 'provider')
             .map((member) => (
               <TouchableOpacity key={member.id} style={styles.teamMemberCard}>
-                <Image source={{ uri: member.image }} style={styles.teamMemberImage} />
+                <OptimizedImage source={member.image} style={styles.teamMemberImage} />
                 <View style={styles.teamMemberInfo}>
                   <Text style={styles.teamMemberName}>{member.name}</Text>
                   <Text style={styles.teamMemberRole}>{member.role}</Text>
@@ -499,7 +499,7 @@ export function OperationSectionDetailScreen() {
           .filter((m) => m.party === 'organizer')
           .map((member) => (
             <TouchableOpacity key={member.id} style={styles.teamMemberCard}>
-              <Image source={{ uri: member.image }} style={styles.teamMemberImage} />
+              <OptimizedImage source={member.image} style={styles.teamMemberImage} />
               <View style={styles.teamMemberInfo}>
                 <Text style={styles.teamMemberName}>{member.name}</Text>
                 <Text style={styles.teamMemberRole}>{member.role}</Text>
@@ -521,7 +521,7 @@ export function OperationSectionDetailScreen() {
           .filter((m) => m.party === 'booking')
           .map((member) => (
             <TouchableOpacity key={member.id} style={styles.teamMemberCard}>
-              <Image source={{ uri: member.image }} style={styles.teamMemberImage} />
+              <OptimizedImage source={member.image} style={styles.teamMemberImage} />
               <View style={styles.teamMemberInfo}>
                 <Text style={styles.teamMemberName}>{member.name}</Text>
                 <Text style={styles.teamMemberRole}>{member.role}</Text>
@@ -569,7 +569,7 @@ export function OperationSectionDetailScreen() {
             </View>
           )}
           <View style={styles.noteHeader}>
-            <Image source={{ uri: note.author.image }} style={styles.noteAuthorImage} />
+            <OptimizedImage source={note.author.image} style={styles.noteAuthorImage} />
             <View style={styles.noteAuthorInfo}>
               <Text style={styles.noteAuthorName}>{note.author.name}</Text>
               <Text style={styles.noteDate}>{note.createdAt}</Text>

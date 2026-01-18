@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Linking,
   Dimensions,
@@ -14,6 +13,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -133,7 +133,7 @@ export function OrganizerProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Image */}
         <View style={styles.coverContainer}>
-          <Image source={{ uri: organizer.coverImage }} style={styles.coverImage} />
+          <OptimizedImage source={organizer.coverImage} style={styles.coverImage} />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.coverGradient}
@@ -143,7 +143,7 @@ export function OrganizerProfileScreen() {
         {/* Profile Info Card */}
         <View style={[styles.profileCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
           <View style={styles.profileHeader}>
-            <Image source={{ uri: organizer.image }} style={styles.profileImage} />
+            <OptimizedImage source={organizer.image} style={styles.profileImage} />
             <View style={styles.profileInfo}>
               <View style={styles.nameRow}>
                 <Text style={[styles.profileName, { color: colors.text }]}>{organizer.name}</Text>
@@ -248,7 +248,7 @@ export function OrganizerProfileScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.eventsScroll}>
             {organizer.recentEvents.map((event: any) => (
               <TouchableOpacity key={event.id} style={styles.eventCard}>
-                <Image source={{ uri: event.image }} style={styles.eventImage} />
+                <OptimizedImage source={event.image} style={styles.eventImage} />
                 <LinearGradient
                   colors={['transparent', 'rgba(0,0,0,0.8)']}
                   style={styles.eventGradient}

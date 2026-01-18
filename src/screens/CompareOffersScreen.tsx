@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +22,7 @@ import {
 import { defaultComparisonCriteria } from '../types/comparison';
 import type { EnhancedOffer, OfferSortOption } from '../types/comparison';
 import type { CompareOffersRouteProp, OffersStackNavigationProp } from '../types';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 export function CompareOffersScreen() {
   const navigation = useNavigation<OffersStackNavigationProp>();
@@ -210,7 +210,7 @@ export function CompareOffersScreen() {
                     </View>
                   )}
                   <TouchableOpacity onPress={() => handleOfferDetail(offer.id)}>
-                    <Image source={{ uri: offer.provider.image }} style={styles.providerImage} />
+                    <OptimizedImage source={offer.provider.image} style={styles.providerImage} />
                     {offer.provider.verified && (
                       <View style={[styles.verifiedIcon, { backgroundColor: colors.background }]}>
                         <Ionicons name="checkmark-circle" size={14} color={accentColor} />

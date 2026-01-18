@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -74,7 +74,7 @@ export function RequestOfferScreen() {
             },
             ...(isDark ? [] : [helpers.getShadow('sm')])
           ]}>
-            <Image source={{ uri: provider.image }} style={styles.providerImage} />
+            <OptimizedImage source={provider.image} style={styles.providerImage} />
             <View style={styles.providerInfo}>
               <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
               <Text style={[styles.providerCategory, { color: colors.textMuted }]}>{provider.description}</Text>

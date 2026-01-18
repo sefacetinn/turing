@@ -4,10 +4,10 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -135,7 +135,7 @@ export function ArtistDetailScreen() {
       >
         {/* Header Image */}
         <View style={styles.headerImage}>
-          <Image source={{ uri: artist.image }} style={styles.coverImage} />
+          <OptimizedImage source={artist.image} style={styles.coverImage} />
           <LinearGradient
             colors={['transparent', isDark ? 'rgba(9,9,11,0.9)' : 'rgba(255,255,255,0.9)', colors.background]}
             style={styles.imageGradient}
@@ -266,7 +266,7 @@ export function ArtistDetailScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {(artists || []).filter(a => a.id !== artist.id).slice(0, 3).map((similarArtist) => (
               <TouchableOpacity key={similarArtist.id} style={styles.similarCard}>
-                <Image source={{ uri: similarArtist.image }} style={styles.similarImage} />
+                <OptimizedImage source={similarArtist.image} style={styles.similarImage} />
                 <Text style={[styles.similarName, { color: colors.text }]} numberOfLines={1}>{similarArtist.name}</Text>
                 <Text style={[styles.similarGenre, { color: colors.textMuted }]} numberOfLines={1}>{similarArtist.genre}</Text>
                 <View style={styles.similarRating}>

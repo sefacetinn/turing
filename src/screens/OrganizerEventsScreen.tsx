@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   Dimensions,
   RefreshControl,
 } from 'react-native';
@@ -22,6 +21,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { EmptyState } from '../components/EmptyState';
 import { SkeletonEventList } from '../components/Skeleton';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
@@ -290,7 +290,7 @@ export function OrganizerEventsScreen() {
       >
         {/* Event Image */}
         <View style={styles.eventImageContainer}>
-          <Image source={{ uri: event.image }} style={styles.eventImage} />
+          <OptimizedImage source={event.image} style={styles.eventImage} />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.8)']}
             style={styles.eventImageGradient}
@@ -321,7 +321,7 @@ export function OrganizerEventsScreen() {
                     { marginLeft: index > 0 ? -10 : 0, zIndex: 3 - index },
                   ]}
                 >
-                  <Image source={{ uri: artist.image }} style={styles.artistAvatarImage} />
+                  <OptimizedImage source={artist.image} style={styles.artistAvatarImage} />
                 </View>
               ))}
               {eventArtists.length > 0 && (

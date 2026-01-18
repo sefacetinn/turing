@@ -5,10 +5,10 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
   Linking,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -97,7 +97,7 @@ export function ArtistProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
         {/* Cover Image */}
         <View style={styles.coverContainer}>
-          <Image source={{ uri: artist.coverImage }} style={styles.coverImage} />
+          <OptimizedImage source={artist.coverImage} style={styles.coverImage} />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.coverGradient}
@@ -123,7 +123,7 @@ export function ArtistProfileScreen() {
 
           {/* Profile Info on Cover */}
           <View style={styles.profileOverlay}>
-            <Image source={{ uri: artist.image }} style={styles.profileImage} />
+            <OptimizedImage source={artist.image} style={styles.profileImage} />
             <View style={styles.profileInfo}>
               <Text style={styles.artistName}>{artist.stageName || artist.name}</Text>
               <Text style={styles.artistGenre}>{artist.genre.join(' • ')}</Text>
@@ -246,7 +246,7 @@ export function ArtistProfileScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Booking Yönetimi</Text>
               <View style={[styles.agencyCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
                 {artist.bookingAgency.logo && (
-                  <Image source={{ uri: artist.bookingAgency.logo }} style={styles.agencyLogo} />
+                  <OptimizedImage source={artist.bookingAgency.logo} style={styles.agencyLogo} />
                 )}
                 <View style={styles.agencyInfo}>
                   <Text style={[styles.agencyName, { color: colors.text }]}>{artist.bookingAgency.name}</Text>

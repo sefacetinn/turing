@@ -5,11 +5,11 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -161,7 +161,7 @@ export default function MemberDetailScreen() {
           ]}
         >
           {member.avatar ? (
-            <Image source={{ uri: member.avatar }} style={styles.avatar} />
+            <OptimizedImage source={member.avatar} style={styles.avatar} />
           ) : (
             <View
               style={[

@@ -9,8 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -157,7 +157,7 @@ export function AddEditArtistScreen() {
               style={[styles.imageUpload, { borderColor: colors.border }]}
             >
               {existingArtist?.image ? (
-                <Image source={{ uri: existingArtist.image }} style={styles.previewImage} />
+                <OptimizedImage source={existingArtist.image} style={styles.previewImage} />
               ) : (
                 <>
                   <Ionicons name="camera-outline" size={32} color={colors.textSecondary} />
@@ -171,7 +171,7 @@ export function AddEditArtistScreen() {
               style={[styles.coverUpload, { borderColor: colors.border }]}
             >
               {existingArtist?.coverImage ? (
-                <Image source={{ uri: existingArtist.coverImage }} style={styles.coverPreviewImage} />
+                <OptimizedImage source={existingArtist.coverImage} style={styles.coverPreviewImage} />
               ) : (
                 <>
                   <Ionicons name="image-outline" size={24} color={colors.textSecondary} />

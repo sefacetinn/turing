@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import {
   MenuItem,
   MenuCategory,
@@ -123,7 +123,7 @@ export function MenuManagementScreen() {
       >
         <View style={styles.menuCardHeader}>
           <View style={styles.menuImageContainer}>
-            <Image source={{ uri: item.image }} style={styles.menuImage} />
+            <OptimizedImage source={item.image} style={styles.menuImage} />
             {!item.isAvailable && (
               <View style={styles.unavailableOverlay}>
                 <Text style={styles.unavailableText}>Mevcut Degil</Text>
@@ -233,7 +233,7 @@ export function MenuManagementScreen() {
         onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
       >
         <View style={styles.packageImageContainer}>
-          <Image source={{ uri: pkg.image }} style={styles.packageImage} />
+          <OptimizedImage source={pkg.image} style={styles.packageImage} />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.8)'] as [string, string]}
             style={styles.packageImageGradient}

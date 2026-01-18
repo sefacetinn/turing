@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
   Linking,
   Alert,
@@ -61,6 +60,7 @@ import {
   formatTime,
 } from '../services/checkInService';
 import { RatingModal } from '../components/rating';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 // Route params type
 type RootStackParamList = {
@@ -492,7 +492,7 @@ export function ProviderEventDetailScreen() {
       },
       ...(isDark ? [] : [helpers.getShadow('sm')]),
     ]}>
-      <Image source={{ uri: member.image }} style={styles.teamMemberImage} />
+      <OptimizedImage source={member.image} style={styles.teamMemberImage} />
       <View style={styles.teamMemberInfo}>
         <Text style={[styles.teamMemberName, { color: colors.text }]}>{member.name}</Text>
         <Text style={[styles.teamMemberRole, { color: colors.textMuted }]}>{member.role}</Text>
@@ -679,7 +679,7 @@ export function ProviderEventDetailScreen() {
         ...(isDark ? [] : [helpers.getShadow('sm')]),
       ]}>
         <View style={styles.teamMemberHeader}>
-          <Image source={{ uri: member.image }} style={styles.teamMemberImageLarge} />
+          <OptimizedImage source={member.image} style={styles.teamMemberImageLarge} />
           <View style={styles.teamMemberMainInfo}>
             <Text style={[styles.teamMemberName, { color: colors.text }]}>{member.name}</Text>
             <Text style={[styles.teamMemberRole, { color: colors.textMuted }]}>{member.role}</Text>
@@ -768,7 +768,7 @@ export function ProviderEventDetailScreen() {
       >
         {/* Hero Image - Clean */}
         <View style={styles.heroImage}>
-          <Image source={{ uri: event.image }} style={styles.heroEventImage} />
+          <OptimizedImage source={event.image} style={styles.heroEventImage} />
           <LinearGradient
             colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
             locations={[0, 0.5, 1]}
@@ -842,7 +842,7 @@ export function ProviderEventDetailScreen() {
           activeOpacity={0.7}
           onPress={() => (navigation as any).navigate('OrganizerProfile', { organizerId: event.organizerId || '1' })}
         >
-          <Image source={{ uri: event.organizerImage }} style={styles.organizerImageCompact} />
+          <OptimizedImage source={event.organizerImage} style={styles.organizerImageCompact} />
           <View style={styles.organizerInfoCompact}>
             <Text style={[styles.organizerLabelCompact, { color: colors.textMuted }]}>Organizatör</Text>
             <View style={styles.organizerNameRow}>

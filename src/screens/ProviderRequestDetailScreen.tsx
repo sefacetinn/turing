@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Alert,
   Modal,
   TextInput,
@@ -14,6 +13,7 @@ import {
   Share,
   Platform,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -1399,7 +1399,7 @@ export function ProviderRequestDetailScreen() {
           onPress={() => navigation.navigate('ProviderDetail', { providerId: offer.organizer.id || 'ORG001', providerName: offer.organizer.name })}
         >
           <View style={styles.organizerCompact}>
-            <Image source={{ uri: offer.organizer.image }} style={styles.organizerImageSmall} />
+            <OptimizedImage source={offer.organizer.image} style={styles.organizerImageSmall} />
             <View style={styles.organizerInfoCompact}>
               <Text style={[styles.organizerLabel, { color: colors.textSecondary }]}>ORGANİZATÖR</Text>
               <Text style={[styles.organizerNameCompact, { color: colors.text }]}>{offer.organizer.name}</Text>
@@ -1447,7 +1447,7 @@ export function ProviderRequestDetailScreen() {
 
           <View style={styles.venueSummaryContent}>
             {venueInfo.images && venueInfo.images[0] && (
-              <Image source={{ uri: venueInfo.images[0] }} style={styles.venueThumbnail} />
+              <OptimizedImage source={venueInfo.images[0]} style={styles.venueThumbnail} />
             )}
             <View style={styles.venueSummaryInfo}>
               <Text style={[styles.venueName, { color: colors.text }]}>{venueInfo.name}</Text>
@@ -1588,11 +1588,11 @@ export function ProviderRequestDetailScreen() {
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>ETKİNLİK GÖRSELLERİ</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
               {eventDetails.images.map((img, index) => (
-                <Image
+                <OptimizedImage
                   key={index}
-                  source={{ uri: img }}
+                  source={img}
                   style={styles.galleryThumbnail}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               ))}
             </ScrollView>
@@ -1819,7 +1819,7 @@ export function ProviderRequestDetailScreen() {
                     scrollEventThrottle={16}
                   >
                     {venueInfo.images.map((img, index) => (
-                      <Image key={index} source={{ uri: img }} style={styles.venueModalImage} resizeMode="cover" />
+                      <OptimizedImage key={index} source={img} style={styles.venueModalImage} contentFit="cover" />
                     ))}
                   </ScrollView>
                   {venueInfo.images.length > 1 && (

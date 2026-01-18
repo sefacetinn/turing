@@ -5,12 +5,12 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   TextInput,
   Modal,
   Linking,
   Alert,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -283,7 +283,7 @@ export function ServiceProvidersScreen() {
             <View style={styles.providerContent}>
               <View style={styles.providerTop}>
                 <View style={styles.imageContainer}>
-                  <Image source={{ uri: provider.image }} style={styles.providerImage} />
+                  <OptimizedImage source={provider.image} style={styles.providerImage} />
                   {provider.verified && (
                     <View style={styles.verifiedBadge}>
                       <Ionicons name="checkmark" size={10} color="white" />

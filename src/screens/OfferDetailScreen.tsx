@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Alert,
   Modal,
   TextInput,
@@ -22,6 +21,7 @@ import { offers } from '../data/mockData';
 import { enhancedOffers, providerOffers, organizerOffers, getCategoryGradient, OfferHistoryItem } from '../data/offersData';
 import { useApp } from '../../App';
 import { OfferTimeline } from '../components/offers/OfferTimeline';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 interface OfferData {
   id: string;
@@ -335,7 +335,7 @@ export function OfferDetailScreen() {
             onPress={() => !isProviderMode && navigation.navigate('ProviderDetail', { providerId: offer.id })}
             activeOpacity={0.7}
           >
-            <Image source={{ uri: offer.counterpartyImage }} style={styles.providerImage} />
+            <OptimizedImage source={offer.counterpartyImage} style={styles.providerImage} />
             <View style={styles.providerInfo}>
               <View style={styles.providerNameRow}>
                 <Text style={[styles.providerName, { color: colors.text }]}>{offer.counterpartyName}</Text>

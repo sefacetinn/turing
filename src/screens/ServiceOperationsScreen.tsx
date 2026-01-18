@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Linking,
   LayoutAnimation,
@@ -12,6 +11,7 @@ import {
   UIManager,
   Alert,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -428,7 +428,7 @@ export function ServiceOperationsScreen() {
             {team.map((member) => (
               <View key={member.id} style={[styles.teamCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
                 <View style={styles.teamAvatarContainer}>
-                  <Image source={{ uri: member.image }} style={styles.teamAvatar} />
+                  <OptimizedImage source={member.image} style={styles.teamAvatar} />
                   <View style={[styles.teamStatusDot, { backgroundColor: getMemberStatusColor(member.status) }]} />
                 </View>
                 <View style={styles.teamInfo}>

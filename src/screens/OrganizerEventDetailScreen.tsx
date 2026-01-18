@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
   Alert,
   Linking,
@@ -42,6 +41,7 @@ import {
 import type { TicketPlatform, TicketCategory } from '../types';
 import { PosterGenerator } from '../components/poster';
 import { RatingModal } from '../components/rating';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 // Expense Types
 interface Expense {
@@ -786,7 +786,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
       >
         {/* Header Image */}
         <View style={styles.headerImage}>
-          <Image source={{ uri: event.image }} style={styles.eventImage} />
+          <OptimizedImage source={event.image} style={styles.eventImage} />
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={styles.imageGradient} />
           {/* Event Info */}
           <View style={styles.headerContent}>

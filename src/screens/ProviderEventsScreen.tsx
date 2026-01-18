@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { EmptyState } from '../components/EmptyState';
 import { SkeletonEventList, SkeletonStats } from '../components/Skeleton';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
@@ -208,7 +208,7 @@ export function ProviderEventsScreen() {
         onPress={() => navigation.navigate('ProviderEventDetail', { eventId: event.id })}
       >
         <View style={styles.eventImageContainer}>
-          <Image source={{ uri: event.eventImage }} style={styles.eventImage} />
+          <OptimizedImage source={event.eventImage} style={styles.eventImage} />
           <LinearGradient
             colors={['rgba(0,0,0,0.7)', 'transparent', 'rgba(0,0,0,0.85)']}
             style={styles.eventImageGradient}
@@ -257,7 +257,7 @@ export function ProviderEventsScreen() {
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
             <View style={styles.organizerInfo}>
-              <Image source={{ uri: event.organizerImage }} style={styles.organizerImage} />
+              <OptimizedImage source={event.organizerImage} style={styles.organizerImage} />
               <View>
                 <Text style={[styles.organizerName, { color: colors.text }]}>{event.organizerName}</Text>
                 <View style={styles.eventDateRow}>

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Modal,
   Linking,
@@ -15,6 +14,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import * as Haptics from 'expo-haptics';
 
 // Enable LayoutAnimation on Android
@@ -365,7 +365,7 @@ export function EventOperationsScreen() {
       {/* Current User Info */}
       {currentUser && (
         <View style={[styles.currentUserCard, { borderLeftColor: getPartyColor(currentUser.party) }]}>
-          <Image source={{ uri: currentUser.image }} style={styles.currentUserImage} />
+          <OptimizedImage source={currentUser.image} style={styles.currentUserImage} />
           <View style={styles.currentUserInfo}>
             <Text style={styles.currentUserName}>{currentUser.name}</Text>
             <Text style={styles.currentUserRole}>{currentUser.roleLabel}</Text>
@@ -650,7 +650,7 @@ export function EventOperationsScreen() {
                 }}
               >
                 <View style={styles.teamMemberLeft}>
-                  <Image source={{ uri: member.image }} style={styles.teamMemberImage} />
+                  <OptimizedImage source={member.image} style={styles.teamMemberImage} />
                   <View style={[styles.onlineIndicator, { backgroundColor: member.isOnline ? '#10B981' : '#D1D5DB' }]} />
                 </View>
                 <View style={styles.teamMemberInfo}>
@@ -811,7 +811,7 @@ export function EventOperationsScreen() {
               <Text style={styles.modalSectionTitle}>Atanan Kişiler</Text>
               {assignedMembers.map((member) => (
                 <View key={member.id} style={styles.assignedMemberRow}>
-                  <Image source={{ uri: member.image }} style={styles.assignedMemberImage} />
+                  <OptimizedImage source={member.image} style={styles.assignedMemberImage} />
                   <View style={styles.assignedMemberInfo}>
                     <Text style={styles.assignedMemberName}>{member.name}</Text>
                     <Text style={styles.assignedMemberRole}>{member.roleLabel}</Text>
@@ -874,7 +874,7 @@ export function EventOperationsScreen() {
               <Text style={styles.modalSectionTitle}>Yorumlar ({selectedTask.comments.length})</Text>
               {selectedTask.comments.map((comment) => (
                 <View key={comment.id} style={styles.commentItem}>
-                  <Image source={{ uri: comment.authorImage }} style={styles.commentAuthorImage} />
+                  <OptimizedImage source={comment.authorImage} style={styles.commentAuthorImage} />
                   <View style={styles.commentContent}>
                     <View style={styles.commentHeader}>
                       <Text style={styles.commentAuthorName}>{comment.authorName}</Text>
@@ -957,7 +957,7 @@ export function EventOperationsScreen() {
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
             {/* Member Header */}
             <View style={styles.memberDetailHeader}>
-              <Image source={{ uri: selectedMember.image }} style={styles.memberDetailImage} />
+              <OptimizedImage source={selectedMember.image} style={styles.memberDetailImage} />
               <Text style={styles.memberDetailName}>{selectedMember.name}</Text>
               <Text style={styles.memberDetailRole}>{selectedMember.roleLabel}</Text>
               <View style={[styles.partyBadge, { backgroundColor: getPartyColor(selectedMember.party) + '20' }]}>
@@ -1043,19 +1043,19 @@ export function EventOperationsScreen() {
           {/* Three Parties */}
           <View style={styles.partiesRow}>
             <View style={styles.partyItem}>
-              <Image source={{ uri: operation.parties.organizer.companyLogo }} style={styles.partyLogo} />
+              <OptimizedImage source={operation.parties.organizer.companyLogo} style={styles.partyLogo} />
               <Text style={styles.partyName} numberOfLines={1}>{operation.parties.organizer.companyName}</Text>
               <Text style={styles.partyType}>Organizatör</Text>
             </View>
             <View style={styles.partyDivider} />
             <View style={styles.partyItem}>
-              <Image source={{ uri: operation.parties.provider.companyLogo }} style={styles.partyLogo} />
+              <OptimizedImage source={operation.parties.provider.companyLogo} style={styles.partyLogo} />
               <Text style={styles.partyName} numberOfLines={1}>{operation.parties.provider.companyName}</Text>
               <Text style={styles.partyType}>Teknik</Text>
             </View>
             <View style={styles.partyDivider} />
             <View style={styles.partyItem}>
-              <Image source={{ uri: operation.parties.artist.artistImage }} style={styles.partyLogo} />
+              <OptimizedImage source={operation.parties.artist.artistImage} style={styles.partyLogo} />
               <Text style={styles.partyName} numberOfLines={1}>{operation.parties.artist.artistName}</Text>
               <Text style={styles.partyType}>Sanatçı</Text>
             </View>

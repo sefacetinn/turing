@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
+import { OptimizedImage } from '../../../components/OptimizedImage';
 import {
   Vehicle,
   Driver,
@@ -162,7 +162,7 @@ export function FleetManagementScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.vehicleImageContainer}>
-            <Image source={{ uri: vehicle.image }} style={styles.vehicleImage} />
+            <OptimizedImage source={vehicle.image} style={styles.vehicleImage} />
             <LinearGradient
               colors={typeGradient}
               style={styles.vehicleTypeBadge}
@@ -286,7 +286,7 @@ export function FleetManagementScreen() {
       >
         <View style={styles.cardHeader}>
           <View style={styles.driverImageContainer}>
-            <Image source={{ uri: driver.image }} style={styles.driverImage} />
+            <OptimizedImage source={driver.image} style={styles.driverImage} />
             <View style={[styles.onlineIndicator, { backgroundColor: statusInfo.color }]} />
           </View>
 
@@ -460,7 +460,7 @@ export function FleetManagementScreen() {
         <View style={styles.tripFooter}>
           {vehicle && driver && (
             <View style={styles.tripAssignment}>
-              <Image source={{ uri: driver.image }} style={styles.tripDriverImage} />
+              <OptimizedImage source={driver.image} style={styles.tripDriverImage} />
               <Text style={[styles.tripAssignmentText, { color: colors.textMuted }]}>
                 {driver.name} - {vehicle.plate}
               </Text>
