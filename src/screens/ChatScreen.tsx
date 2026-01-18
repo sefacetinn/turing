@@ -87,7 +87,7 @@ const conversations = [
 ];
 
 export function ChatScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const route = useRoute();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();

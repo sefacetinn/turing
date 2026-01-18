@@ -16,6 +16,7 @@ export interface OrganizerEvent {
   venue?: string;
   district?: string;
   status?: string;
+  category?: string;
   progress?: number;
   budget?: number;
   spent?: number;

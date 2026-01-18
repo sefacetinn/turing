@@ -196,16 +196,27 @@ export interface ProviderStats {
   completionRate: number;
 }
 
+// Generic stats type (matches actual data from testAccounts)
+export interface GenericStats {
+  totalEvents?: number;
+  totalOffers?: number;
+  completedJobs?: number;
+  activeJobs?: number;
+  rating: number;
+  completionRate?: number;
+  responseTime?: string;
+}
+
 // Combined profile stats (union type)
-export type ProfileStats = OrganizerStats | ProviderStats;
+export type ProfileStats = OrganizerStats | ProviderStats | GenericStats;
 
 // Type guards for profile stats
 export function isOrganizerStats(stats: ProfileStats): stats is OrganizerStats {
-  return 'totalEvents' in stats;
+  return 'totalEvents' in stats && typeof (stats as OrganizerStats).totalEvents === 'number';
 }
 
 export function isProviderStats(stats: ProfileStats): stats is ProviderStats {
-  return 'completedJobs' in stats;
+  return 'completedJobs' in stats && typeof (stats as ProviderStats).completedJobs === 'number';
 }
 
 // User Profile Interface
@@ -603,10 +614,10 @@ export type HomeStackParamList = {
   HomeMain: undefined;
   ArtistDetail: { artistId: string };
   ProviderDetail: { providerId: string; category?: ServiceCategory };
-  Search: { initialQuery?: string };
+  Search: { initialQuery?: string; initialFilter?: string };
   Notifications: undefined;
   CreateEvent: undefined;
-  ServiceProviders: { category: ServiceCategory | OperationSubCategory };
+  ServiceProviders: { category: ServiceCategory | OperationSubCategory | string };
   OperationSubcategories: undefined;
   RequestOffer: { providerId: string; category: ServiceCategory };
   CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string };
@@ -632,7 +643,7 @@ export type EventsStackParamList = {
   CalendarView: undefined;
   ProviderDetail: { providerId: string; category?: ServiceCategory };
   CreateEvent: undefined;
-  ServiceProviders: { category: ServiceCategory | OperationSubCategory };
+  ServiceProviders: { category: ServiceCategory | OperationSubCategory | string };
   CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string; provider?: { id: string; name: string; rating: number; image: string; } };
   Chat: { chatId: string; recipientName: string };
   PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
