@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { CustomTabBar } from './src/components/navigation';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -451,6 +452,7 @@ function AppContent() {
   }, []);
 
   const toggleMode = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsProviderMode(prev => !prev);
     // Increment key to force NavigationContainer to remount and reset all stacks
     setNavigationKey(prev => prev + 1);
