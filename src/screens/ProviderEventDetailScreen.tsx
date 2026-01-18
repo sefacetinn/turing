@@ -14,6 +14,7 @@ import {
   Share,
   ScrollView,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -251,6 +252,7 @@ export function ProviderEventDetailScreen() {
   }
 
   const handleCompleteTask = (taskId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTasks(prev => prev.map(task =>
       task.id === taskId
         ? { ...task, status: 'completed' as const }
@@ -259,6 +261,7 @@ export function ProviderEventDetailScreen() {
   };
 
   const handleStartTask = (taskId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTasks(prev => prev.map(task =>
       task.id === taskId && task.status === 'pending'
         ? { ...task, status: 'in_progress' as const }
@@ -268,11 +271,14 @@ export function ProviderEventDetailScreen() {
 
   // Handler functions
   const handleCall = (phone: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL(`tel:${phone}`);
   };
 
   const handleAddTask = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!newTaskTitle.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Görev başlığı gereklidir');
       return;
     }
@@ -296,6 +302,7 @@ export function ProviderEventDetailScreen() {
   };
 
   const handleDeleteTask = (taskId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Görevi Sil',
       'Bu görevi silmek istediğinizden emin misiniz?',
@@ -316,6 +323,7 @@ export function ProviderEventDetailScreen() {
   // Check-in handler
   const handleCheckIn = async () => {
     if (!event) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     setIsCheckingIn(true);
 
@@ -342,6 +350,7 @@ export function ProviderEventDetailScreen() {
 
   // Check-out handler
   const handleCheckOut = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Check-out',
       'Çalışmanızı bitirmek istediğinizden emin misiniz?',

@@ -13,6 +13,7 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -199,6 +200,7 @@ export function OrganizerEventDetailScreen() {
 
   // Handle price increase for tickets
   const handlePriceIncrease = (categoryId: string, increase: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setTicketCategories(prev => prev.map(cat =>
       cat.id === categoryId
         ? { ...cat, newPrice: (cat.newPrice || cat.price) + increase }
@@ -217,8 +219,10 @@ export function OrganizerEventDetailScreen() {
 
   // Send price change notification
   const handleSendPriceChange = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const changedCategories = ticketCategories.filter(c => c.newPrice);
     if (changedCategories.length === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Uyarı', 'Fiyat değişikliği yapılmadı.');
       return;
     }
@@ -305,6 +309,7 @@ export function OrganizerEventDetailScreen() {
 
   // Handle call
   const handleCall = (phone?: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (phone) {
       Linking.openURL(`tel:${phone}`);
     } else {
@@ -341,7 +346,9 @@ export function OrganizerEventDetailScreen() {
 
   // Expense handlers
   const handleAddExpense = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!expenseForm.title || !expenseForm.amount) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen gider adı ve tutarı girin');
       return;
     }
@@ -378,6 +385,7 @@ export function OrganizerEventDetailScreen() {
   };
 
   const handleDeleteExpense = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert('Gideri Sil', 'Bu gideri silmek istediğinize emin misiniz?', [
       { text: 'İptal', style: 'cancel' },
       { text: 'Sil', style: 'destructive', onPress: () => {
@@ -388,6 +396,7 @@ export function OrganizerEventDetailScreen() {
   };
 
   const handleToggleExpenseStatus = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setExpenses(expenses.map(e => e.id === id ? { ...e, status: e.status === 'paid' ? 'pending' : 'paid' } : e));
   };
 

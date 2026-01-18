@@ -14,6 +14,7 @@ import {
   Platform,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -411,10 +412,12 @@ export function ProviderRequestDetailScreen() {
   };
 
   const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL('tel:+905329876543');
   };
 
   const handleChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate('Chat', {
       chatId: `organizer_${offer.id}`,
       recipientName: offer.organizer.name
@@ -433,11 +436,14 @@ export function ProviderRequestDetailScreen() {
   };
 
   const handleSubmitOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const amount = parseInt(offerAmount.replace(/\./g, ''));
     if (!amount || amount <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen geçerli bir tutar girin');
       return;
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowOfferModal(false);
     Alert.alert(
       'Teklif Gönderildi',
@@ -447,6 +453,7 @@ export function ProviderRequestDetailScreen() {
   };
 
   const handleAcceptCounterOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (offer.counterOffer) {
       Alert.alert(
         'Karşı Teklifi Kabul Et',
@@ -466,17 +473,21 @@ export function ProviderRequestDetailScreen() {
   };
 
   const handleRejectOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedRejectReason(null);
     setCustomRejectReason('');
     setShowRejectModal(true);
   };
 
   const confirmRejectOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!selectedRejectReason) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Uyarı', 'Lütfen bir red nedeni seçin.');
       return;
     }
     if (selectedRejectReason === 'other' && !customRejectReason.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert('Uyarı', 'Lütfen red nedeninizi yazın.');
       return;
     }

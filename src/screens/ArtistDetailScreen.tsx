@@ -12,6 +12,7 @@ import { OptimizedImage } from '../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute, NavigationProp } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
@@ -121,7 +122,10 @@ export function ArtistDetailScreen() {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => setIsFavorite(!isFavorite)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setIsFavorite(!isFavorite);
+            }}
           >
             <Ionicons
               name={isFavorite ? "heart" : "heart-outline"}

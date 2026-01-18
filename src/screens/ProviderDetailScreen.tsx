@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
@@ -86,6 +87,7 @@ export function ProviderDetailScreen() {
   });
 
   const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
       'Ara',
       `${provider.name} ile iletişime geçmek istiyor musunuz?`,
@@ -120,10 +122,12 @@ export function ProviderDetailScreen() {
   };
 
   const handleEmail = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL(`mailto:${provider.email}`);
   };
 
   const handleWebsite = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL(`https://${provider.website}`);
   };
 
@@ -152,7 +156,10 @@ export function ProviderDetailScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => setIsFavorite(!isFavorite)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setIsFavorite(!isFavorite);
+            }}
           >
             <Ionicons
               name={isFavorite ? 'heart' : 'heart-outline'}

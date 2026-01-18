@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { providerEvents } from '../data/providerEventsData';
@@ -183,7 +184,10 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
           styles.dayCell,
           viewMode === 'week' && styles.dayCellWeek,
         ]}
-        onPress={() => setSelectedDate(date)}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setSelectedDate(date);
+        }}
         activeOpacity={0.7}
       >
         <View
@@ -247,7 +251,10 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
         <View style={[styles.viewModeToggle, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]}>
           <TouchableOpacity
             style={[styles.viewModeButton, viewMode === 'month' && styles.viewModeButtonActive]}
-            onPress={() => setViewMode('month')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setViewMode('month');
+            }}
           >
             <Text style={[styles.viewModeText, { color: viewMode === 'month' ? colors.white : colors.textMuted }]}>
               Ay
@@ -255,7 +262,10 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.viewModeButton, viewMode === 'week' && styles.viewModeButtonActive]}
-            onPress={() => setViewMode('week')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setViewMode('week');
+            }}
           >
             <Text style={[styles.viewModeText, { color: viewMode === 'week' ? colors.white : colors.textMuted }]}>
               Hafta
@@ -266,13 +276,19 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
 
       {/* Month/Week Navigation */}
       <View style={styles.navigationContainer}>
-        <TouchableOpacity style={[styles.navButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]} onPress={navigatePrevious}>
+        <TouchableOpacity style={[styles.navButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          navigatePrevious();
+        }}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.monthYearText, { color: colors.text }]}>
           {MONTH_NAMES[currentDate.getMonth()]} {currentDate.getFullYear()}
         </Text>
-        <TouchableOpacity style={[styles.navButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]} onPress={navigateNext}>
+        <TouchableOpacity style={[styles.navButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground }]} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          navigateNext();
+        }}>
           <Ionicons name="chevron-forward" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>

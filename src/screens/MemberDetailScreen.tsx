@@ -10,6 +10,7 @@ import {
   Modal,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -61,6 +62,7 @@ export default function MemberDetailScreen() {
       setShowRoleModal(false);
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     Alert.alert(
       'Rol Değiştir',
@@ -87,6 +89,7 @@ export default function MemberDetailScreen() {
 
   const handleRemoveMember = useCallback(() => {
     if (!member) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     Alert.alert(
       'Ekipten Çıkar',
@@ -113,6 +116,7 @@ export default function MemberDetailScreen() {
 
   const openRoleModal = useCallback(() => {
     if (member) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setSelectedRoleId(member.role.id);
       setShowRoleModal(true);
     }

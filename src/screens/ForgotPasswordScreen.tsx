@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,20 +35,25 @@ export function ForgotPasswordScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSendCode = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // API call to send verification code
     setStep('code');
   };
 
   const handleVerifyCode = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // API call to verify code
     setStep('newPassword');
   };
 
   const handleResetPassword = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (newPassword !== confirmPassword) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     // API call to reset password
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setStep('success');
   };
 

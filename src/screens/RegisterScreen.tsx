@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
@@ -38,6 +39,9 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   const handleSubmit = () => {
+    // Haptic feedback on button press
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     if (password !== confirmPassword) {
       // Show error
       return;

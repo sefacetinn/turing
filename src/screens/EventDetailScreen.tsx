@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
@@ -212,10 +213,10 @@ export function EventDetailScreen() {
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
               <Ionicons name="share-outline" size={22} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity style={styles.headerButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
               <Ionicons name="ellipsis-horizontal" size={22} color="white" />
             </TouchableOpacity>
           </View>
@@ -309,7 +310,10 @@ export function EventDetailScreen() {
               <TouchableOpacity
                 key={tab}
                 style={[styles.tab, activeTab === tab && styles.tabActive]}
-                onPress={() => setActiveTab(tab)}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setActiveTab(tab);
+                }}
               >
                 <Ionicons
                   name={(activeTab === tab ? config.iconActive : config.icon) as any}
@@ -357,7 +361,7 @@ export function EventDetailScreen() {
               );
             })}
 
-            <TouchableOpacity style={[styles.addServiceButton, { borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : colors.brand[300] }]}>
+            <TouchableOpacity style={[styles.addServiceButton, { borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : colors.brand[300] }]} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
               <Ionicons name="add-circle-outline" size={20} color={colors.brand[400]} />
               <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
             </TouchableOpacity>
@@ -557,7 +561,10 @@ export function EventDetailScreen() {
                     {category.newPrice ? (
                       <TouchableOpacity
                         style={[styles.priceResetBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
-                        onPress={() => handleResetPrice(category.id)}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          handleResetPrice(category.id);
+                        }}
                       >
                         <Ionicons name="close" size={16} color={colors.error} />
                       </TouchableOpacity>
@@ -565,13 +572,19 @@ export function EventDetailScreen() {
                       <View style={styles.priceButtons}>
                         <TouchableOpacity
                           style={[styles.priceBtn, { borderColor: colors.brand[400] }]}
-                          onPress={() => handlePriceIncrease(category.id, 25)}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            handlePriceIncrease(category.id, 25);
+                          }}
                         >
                           <Text style={[styles.priceBtnText, { color: colors.brand[400] }]}>+₺25</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.priceBtn, { borderColor: colors.brand[400] }]}
-                          onPress={() => handlePriceIncrease(category.id, 50)}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            handlePriceIncrease(category.id, 50);
+                          }}
                         >
                           <Text style={[styles.priceBtnText, { color: colors.brand[400] }]}>+₺50</Text>
                         </TouchableOpacity>
@@ -584,7 +597,10 @@ export function EventDetailScreen() {
               {ticketCategories.some(c => c.newPrice) && (
                 <TouchableOpacity
                   style={styles.sendPriceChangeBtn}
-                  onPress={handleSendPriceChange}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    handleSendPriceChange();
+                  }}
                 >
                   <LinearGradient
                     colors={gradients.primary}
@@ -605,28 +621,40 @@ export function EventDetailScreen() {
               <View style={styles.quickActionsGrid}>
                 <TouchableOpacity
                   style={[styles.quickActionBtn, { borderColor: colors.brand[300] }]}
-                  onPress={() => Alert.alert('Fiyat Güncelle', 'Yukarıdaki kategorilerden fiyat güncelleyebilirsiniz.')}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    Alert.alert('Fiyat Güncelle', 'Yukarıdaki kategorilerden fiyat güncelleyebilirsiniz.');
+                  }}
                 >
                   <Ionicons name="trending-up" size={22} color={colors.brand[400]} />
                   <Text style={[styles.quickActionText, { color: colors.text }]}>Fiyat Güncelle</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.quickActionBtn, { borderColor: colors.info }]}
-                  onPress={() => Alert.alert('Ertele', 'Etkinlik erteleme işlemi yapılacak.')}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    Alert.alert('Ertele', 'Etkinlik erteleme işlemi yapılacak.');
+                  }}
                 >
                   <Ionicons name="time" size={22} color={colors.info} />
                   <Text style={[styles.quickActionText, { color: colors.text }]}>Ertele</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.quickActionBtn, { borderColor: colors.error }]}
-                  onPress={() => Alert.alert('İptal Et', 'Etkinlik iptal edilecek.')}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    Alert.alert('İptal Et', 'Etkinlik iptal edilecek.');
+                  }}
                 >
                   <Ionicons name="close-circle" size={22} color={colors.error} />
                   <Text style={[styles.quickActionText, { color: colors.text }]}>İptal Et</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.quickActionBtn, { borderColor: colors.textMuted }]}
-                  onPress={() => Alert.alert('Mail Gönder', 'Platformlara toplu mail gönderilecek.')}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    Alert.alert('Mail Gönder', 'Platformlara toplu mail gönderilecek.');
+                  }}
                 >
                   <Ionicons name="mail" size={22} color={colors.textSecondary} />
                   <Text style={[styles.quickActionText, { color: colors.text }]}>Mail Gönder</Text>
@@ -641,11 +669,11 @@ export function EventDetailScreen() {
 
       {/* Bottom Actions */}
       <View style={[styles.bottomActions, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background, borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
-        <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.cardBackground, borderColor: isDark ? 'transparent' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
+        <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.cardBackground, borderColor: isDark ? 'transparent' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
           <Ionicons name="create-outline" size={20} color={colors.text} />
           <Text style={[styles.secondaryButtonText, { color: colors.text }]}>Düzenle</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.primaryButton}>
+        <TouchableOpacity style={styles.primaryButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}>
           <LinearGradient
             colors={gradients.primary}
             style={styles.primaryButtonGradient}

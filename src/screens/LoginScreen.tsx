@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -54,6 +55,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   const handleSubmit = async () => {
+    // Haptic feedback on button press
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     // Validate
     const newErrors: { email?: string; password?: string } = {};
 
@@ -101,6 +105,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     } else {
       await clearRememberedEmail();
     }
+
+    // Haptic feedback for successful login
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     onLogin(selectedMode === 'provider', account);
   };

@@ -12,6 +12,7 @@ import {
   Share,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -197,6 +198,7 @@ export function OfferDetailScreen() {
   }, []);
 
   const handleAcceptOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Teklifi Kabul Et',
       `${offer.counterpartyName} firmasinin ₺${offer.amount.toLocaleString('tr-TR')} tutarindaki teklifini kabul etmek istediginize emin misiniz?`,
@@ -214,6 +216,7 @@ export function OfferDetailScreen() {
   };
 
   const handleRejectOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Teklifi Reddet',
       'Bu teklifi reddetmek istediginize emin misiniz?',
@@ -232,18 +235,27 @@ export function OfferDetailScreen() {
   };
 
   const handleSendCounterOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const amount = selectedQuickAmount || parseInt(counterOfferAmount.replace(/\./g, ''));
     if (!amount || amount <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lutfen gecerli bir tutar girin');
       return;
     }
     setShowNegotiate(false);
     setOffer({ ...offer, status: 'counter_offered' as any });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert('Karsi Teklif Gonderildi', `₺${amount.toLocaleString('tr-TR')} tutarindaki teklifiniz iletildi.`);
   };
 
-  const handleCall = () => Linking.openURL(`tel:${offer.counterpartyPhone}`);
-  const handleChat = () => navigation.navigate('Chat', { chatId: `provider_${offer.id}`, recipientName: offer.counterpartyName });
+  const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL(`tel:${offer.counterpartyPhone}`);
+  };
+  const handleChat = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate('Chat', { chatId: `provider_${offer.id}`, recipientName: offer.counterpartyName });
+  };
   const handleShare = async () => {
     try {
       await Share.share({ message: `${offer.counterpartyName} - ${offer.service}\n₺${offer.amount.toLocaleString('tr-TR')}` });
