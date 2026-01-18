@@ -1,5 +1,9 @@
 import React, { useState, useCallback, createContext, useContext, useEffect, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme, CommonActions, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -10,6 +14,8 @@ import * as Haptics from 'expo-haptics';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { CustomTabBar } from './src/components/navigation';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ToastProvider } from './src/components/Toast';
+import { NetworkStatusBar } from './src/components/NetworkStatusBar';
 import { RBACProvider } from './src/context/RBACContext';
 import { ModuleProvider } from './src/context/ModuleContext';
 import { hasCompletedOnboarding, setOnboardingCompleted } from './src/utils/storage';
@@ -411,9 +417,16 @@ function AppContent() {
   }, []);
 
   const checkOnboardingStatus = async () => {
-    const completed = await hasCompletedOnboarding();
-    setHasOnboarded(completed);
-    setIsLoading(false);
+    try {
+      const completed = await hasCompletedOnboarding();
+      setHasOnboarded(completed);
+    } catch (e) {
+      console.warn('Error checking onboarding status:', e);
+    } finally {
+      setIsLoading(false);
+      // Hide splash screen after loading is complete
+      await SplashScreen.hideAsync();
+    }
   };
 
   const handleOnboardingComplete = useCallback(() => {
@@ -513,6 +526,7 @@ function AppContent() {
             >
               <MainTabs onLogout={handleLogout} />
             </NavigationContainer>
+            <NetworkStatusBar />
           </ModuleProvider>
         </RBACProvider>
       </AppContext.Provider>
@@ -525,7 +539,9 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <ErrorBoundary>
-          <AppContent />
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
         </ErrorBoundary>
       </ThemeProvider>
     </SafeAreaProvider>

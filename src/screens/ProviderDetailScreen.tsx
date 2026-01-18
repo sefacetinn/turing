@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Linking,
   Alert,
   Dimensions,
@@ -25,6 +24,7 @@ import { BlurView } from 'expo-blur';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { getProviderDetail } from '../data/providerDetailData';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 const { width } = Dimensions.get('window');
 
@@ -166,14 +166,14 @@ export function ProviderDetailScreen() {
       >
         {/* Hero Image */}
         <View style={styles.heroContainer}>
-          <Image source={{ uri: provider.coverImage }} style={styles.heroImage} />
+          <OptimizedImage source={provider.coverImage} style={styles.heroImage} priority="high" />
           <LinearGradient
             colors={['transparent', isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)', colors.background]}
             style={styles.heroGradient}
           />
           {/* Provider Badge on Hero */}
           <View style={styles.heroBadge}>
-            <Image source={{ uri: provider.image }} style={[styles.heroAvatar, { borderColor: colors.background }]} />
+            <OptimizedImage source={provider.image} style={[styles.heroAvatar, { borderColor: colors.background }]} priority="high" />
             {provider.verified && (
               <View style={[styles.verifiedBadge, { backgroundColor: colors.brand[500], borderColor: colors.background }]}>
                 <Ionicons name="checkmark" size={12} color="white" />
@@ -305,7 +305,7 @@ export function ProviderDetailScreen() {
                   style={[styles.artistCard, ...(isDark ? [] : [helpers.getShadow('sm')])]}
                   onPress={() => navigation.navigate('ArtistProfile', { artistId: artist.id })}
                 >
-                  <Image source={{ uri: artist.image }} style={styles.artistImage} />
+                  <OptimizedImage source={artist.image} style={styles.artistImage} />
                   <LinearGradient
                     colors={['transparent', 'rgba(0,0,0,0.9)']}
                     style={styles.artistGradient}
@@ -352,7 +352,7 @@ export function ProviderDetailScreen() {
                   providerName: provider.name,
                 })}
               >
-                <Image source={{ uri: image }} style={styles.portfolioImage} />
+                <OptimizedImage source={image} style={styles.portfolioImage} />
               </TouchableOpacity>
             ))}
           </ScrollView>

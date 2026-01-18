@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager, RefreshControl, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +10,7 @@ import Animated, {
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { userProfile } from '../data/mockData';
@@ -494,11 +495,11 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           activeOpacity={0.8}
         >
           <View style={styles.companyCardContent}>
-            <Image
-              source={{ uri: isProviderMode
+            <OptimizedImage
+              source={isProviderMode
                 ? 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400'
                 : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400'
-              }}
+              }
               style={styles.companyLogo}
             />
             <View style={styles.companyInfo}>

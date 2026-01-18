@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { OptimizedImage } from '../components/OptimizedImage';
 
 const colors = defaultColors;
 
@@ -141,7 +141,7 @@ export function FavoritesScreen() {
                 onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
               >
                 <View style={styles.artistImageContainer}>
-                  <Image source={{ uri: artist.image }} style={styles.artistImage} />
+                  <OptimizedImage source={artist.image} style={styles.artistImage} />
                   <TouchableOpacity style={styles.favoriteButton}>
                     <Ionicons name="heart" size={18} color={colors.error} />
                   </TouchableOpacity>
@@ -174,7 +174,7 @@ export function FavoritesScreen() {
                 onPress={() => navigation.navigate('ProviderDetail', { providerId: provider.id })}
               >
                 <View style={styles.providerImageContainer}>
-                  <Image source={{ uri: provider.image }} style={styles.providerImage} />
+                  <OptimizedImage source={provider.image} style={styles.providerImage} />
                   {provider.verified && (
                     <View style={[styles.verifiedBadge, { borderColor: colors.background, backgroundColor: colors.brand[500] }]}>
                       <Ionicons name="checkmark" size={10} color="white" />

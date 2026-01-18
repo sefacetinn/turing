@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   Pressable,
   StyleSheet,
-  Image,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   Modal,
   Alert,
 } from 'react-native';
+import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -537,7 +537,7 @@ export function ChatScreen() {
           onPress={() => navigation.navigate('ProviderDetail', { providerId: conversation.id })}
           activeOpacity={0.7}
         >
-          <Image source={{ uri: conversation.participantImage }} style={styles.headerAvatar} />
+          <OptimizedImage source={conversation.participantImage} style={styles.headerAvatar} />
           <View>
             <Text style={[styles.headerName, { color: colors.text }]}>{conversation.participantName}</Text>
             <View style={styles.onlineStatus}>
@@ -596,7 +596,7 @@ export function ChatScreen() {
               return (
                 <View key={msg.id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
                   {!isMe && showAvatar && (
-                    <Image source={{ uri: conversation.participantImage }} style={styles.messageAvatar} />
+                    <OptimizedImage source={conversation.participantImage} style={styles.messageAvatar} />
                   )}
                   {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
                   {renderOfferMessage(msg, isMe)}
@@ -608,7 +608,7 @@ export function ChatScreen() {
               return (
                 <View key={msg.id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
                   {!isMe && showAvatar && (
-                    <Image source={{ uri: conversation.participantImage }} style={styles.messageAvatar} />
+                    <OptimizedImage source={conversation.participantImage} style={styles.messageAvatar} />
                   )}
                   {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
                   {renderMeetingMessage(msg, isMe)}
@@ -620,7 +620,7 @@ export function ChatScreen() {
               return (
                 <View key={msg.id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
                   {!isMe && showAvatar && (
-                    <Image source={{ uri: conversation.participantImage }} style={styles.messageAvatar} />
+                    <OptimizedImage source={conversation.participantImage} style={styles.messageAvatar} />
                   )}
                   {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
                   {renderFileMessage(msg, isMe)}
@@ -634,8 +634,8 @@ export function ChatScreen() {
                 style={[styles.messageRow, isMe && styles.messageRowMe]}
               >
                 {!isMe && showAvatar && (
-                  <Image
-                    source={{ uri: conversation.participantImage }}
+                  <OptimizedImage
+                    source={conversation.participantImage}
                     style={styles.messageAvatar}
                   />
                 )}

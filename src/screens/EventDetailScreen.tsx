@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -15,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { OptimizedImage } from '../components/OptimizedImage';
 import type { TicketPlatform, TicketCategory } from '../types';
 
 // Default colors for static styles
@@ -195,7 +195,7 @@ export function EventDetailScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header Image */}
       <View style={styles.headerImage}>
-        <Image source={{ uri: event.image }} style={styles.coverImage} />
+        <OptimizedImage source={event.image} style={styles.coverImage} priority="high" />
         <LinearGradient
           colors={isDark ? ['transparent', 'rgba(9,9,11,0.8)', colors.background] : ['transparent', 'rgba(255,255,255,0.8)', colors.background]}
           style={styles.imageGradient}
