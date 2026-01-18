@@ -144,3 +144,206 @@ export const getValidationError = (field: string, value: string): string | null 
       return null;
   }
 };
+
+// ===============================
+// Form Validation Hook & Types
+// ===============================
+
+export type ValidationRule<T> = {
+  validate: (value: T, formValues?: Record<string, any>) => boolean;
+  message: string;
+};
+
+export type FieldConfig<T> = {
+  initialValue: T;
+  rules?: ValidationRule<T>[];
+  validateOnChange?: boolean;
+  validateOnBlur?: boolean;
+};
+
+export type FormConfig = Record<string, FieldConfig<any>>;
+
+export type FormErrors = Record<string, string | null>;
+export type FormTouched = Record<string, boolean>;
+export type FormValues = Record<string, any>;
+
+export interface FormState {
+  values: FormValues;
+  errors: FormErrors;
+  touched: FormTouched;
+  isValid: boolean;
+  isSubmitting: boolean;
+  isDirty: boolean;
+}
+
+// Common validation rules
+export const rules = {
+  required: (message = 'Bu alan zorunludur'): ValidationRule<any> => ({
+    validate: (value) => {
+      if (typeof value === 'string') return value.trim().length > 0;
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== null && value !== undefined;
+    },
+    message,
+  }),
+
+  email: (message = 'Geçerli bir email adresi girin'): ValidationRule<string> => ({
+    validate: (value) => !value || validateEmail(value),
+    message,
+  }),
+
+  phone: (message = 'Geçerli bir telefon numarası girin'): ValidationRule<string> => ({
+    validate: (value) => !value || validatePhone(value),
+    message,
+  }),
+
+  minLength: (min: number, message?: string): ValidationRule<string> => ({
+    validate: (value) => !value || value.length >= min,
+    message: message || `En az ${min} karakter olmalı`,
+  }),
+
+  maxLength: (max: number, message?: string): ValidationRule<string> => ({
+    validate: (value) => !value || value.length <= max,
+    message: message || `En fazla ${max} karakter olmalı`,
+  }),
+
+  min: (min: number, message?: string): ValidationRule<number> => ({
+    validate: (value) => value === undefined || value === null || value >= min,
+    message: message || `En az ${min} olmalı`,
+  }),
+
+  max: (max: number, message?: string): ValidationRule<number> => ({
+    validate: (value) => value === undefined || value === null || value <= max,
+    message: message || `En fazla ${max} olmalı`,
+  }),
+
+  pattern: (regex: RegExp, message: string): ValidationRule<string> => ({
+    validate: (value) => !value || regex.test(value),
+    message,
+  }),
+
+  match: (fieldName: string, message?: string): ValidationRule<string> => ({
+    validate: (value, formValues) => !value || value === formValues?.[fieldName],
+    message: message || 'Alanlar eşleşmiyor',
+  }),
+
+  password: (message = 'Şifre gereksinimleri karşılanmıyor'): ValidationRule<string> => ({
+    validate: (value) => !value || isPasswordValid(value),
+    message,
+  }),
+
+  fullName: (message = 'Ad ve soyad girin'): ValidationRule<string> => ({
+    validate: (value) => !value || validateFullName(value),
+    message,
+  }),
+
+  taxId: (message = 'Vergi numarası 10 haneli olmalı'): ValidationRule<string> => ({
+    validate: (value) => !value || validateTaxId(value),
+    message,
+  }),
+
+  iban: (message = 'Geçerli bir IBAN girin'): ValidationRule<string> => ({
+    validate: (value) => !value || validateIBAN(value),
+    message,
+  }),
+
+  url: (message = 'Geçerli bir URL girin'): ValidationRule<string> => ({
+    validate: (value) => {
+      if (!value) return true;
+      try {
+        new URL(value);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    message,
+  }),
+
+  numeric: (message = 'Sadece rakam girin'): ValidationRule<string> => ({
+    validate: (value) => !value || /^[0-9]+$/.test(value),
+    message,
+  }),
+
+  alphanumeric: (message = 'Sadece harf ve rakam girin'): ValidationRule<string> => ({
+    validate: (value) => !value || /^[a-zA-Z0-9]+$/.test(value),
+    message,
+  }),
+
+  custom: <T>(validate: (value: T, formValues?: Record<string, any>) => boolean, message: string): ValidationRule<T> => ({
+    validate,
+    message,
+  }),
+};
+
+// Validate a single field
+export function validateField<T>(
+  value: T,
+  fieldRules: ValidationRule<T>[] = [],
+  formValues?: Record<string, any>
+): string | null {
+  for (const rule of fieldRules) {
+    if (!rule.validate(value, formValues)) {
+      return rule.message;
+    }
+  }
+  return null;
+}
+
+// Validate entire form
+export function validateForm(
+  values: FormValues,
+  config: FormConfig
+): FormErrors {
+  const errors: FormErrors = {};
+
+  for (const [fieldName, fieldConfig] of Object.entries(config)) {
+    const error = validateField(
+      values[fieldName],
+      fieldConfig.rules,
+      values
+    );
+    errors[fieldName] = error;
+  }
+
+  return errors;
+}
+
+// Check if form has any errors
+export function hasErrors(errors: FormErrors): boolean {
+  return Object.values(errors).some((error) => error !== null);
+}
+
+// Format credit card number
+export function formatCardNumber(value: string): string {
+  const cleaned = value.replace(/\D/g, '').slice(0, 16);
+  const parts = cleaned.match(/.{1,4}/g) || [];
+  return parts.join(' ');
+}
+
+// Format expiry date (MM/YY)
+export function formatExpiryDate(value: string): string {
+  const cleaned = value.replace(/\D/g, '').slice(0, 4);
+  if (cleaned.length >= 2) {
+    return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  }
+  return cleaned;
+}
+
+// Format CVV
+export function formatCVV(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 4);
+}
+
+// Format amount with thousand separators
+export function formatAmount(value: string): string {
+  const cleaned = value.replace(/\D/g, '');
+  if (!cleaned) return '';
+  return parseInt(cleaned, 10).toLocaleString('tr-TR');
+}
+
+// Parse formatted amount to number
+export function parseAmount(value: string): number {
+  const cleaned = value.replace(/\./g, '').replace(/,/g, '.');
+  return parseFloat(cleaned) || 0;
+}
