@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -159,6 +160,7 @@ export function CustomTabBar({ state, descriptors, navigation }: TabBarProps) {
               // Check for double-tap on already focused tab
               if (isFocused && now - lastTap < DOUBLE_TAP_DELAY) {
                 // Double-tap detected - emit scroll to top event
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 scrollToTopEmitter.emit(route.name);
                 lastTapTime.current[route.name] = 0; // Reset to prevent triple-tap
                 return;
@@ -173,6 +175,7 @@ export function CustomTabBar({ state, descriptors, navigation }: TabBarProps) {
               });
 
               if (!isFocused && !event.defaultPrevented) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 navigation.navigate(route.name, route.params);
               }
             };

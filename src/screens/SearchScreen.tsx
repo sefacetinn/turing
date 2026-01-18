@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -155,20 +155,22 @@ export function SearchScreen() {
 
   const results = getFilteredResults();
 
-  const renderResultItem = ({ item }: { item: any }) => (
+  const handleItemPress = useCallback((item: any) => {
+    if (item.type === 'artist') {
+      navigation.navigate('ArtistDetail', { artistId: item.id });
+    } else {
+      navigation.navigate('ProviderDetail', { providerId: item.id });
+    }
+  }, [navigation]);
+
+  const renderResultItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity
       style={[styles.resultCard, {
         backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
         borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
         ...(isDark ? {} : helpers.getShadow('sm'))
       }]}
-      onPress={() => {
-        if (item.type === 'artist') {
-          navigation.navigate('ArtistDetail', { artistId: item.id });
-        } else {
-          navigation.navigate('ProviderDetail', { providerId: item.id });
-        }
-      }}
+      onPress={() => handleItemPress(item)}
     >
       <Image source={{ uri: item.image }} style={styles.resultImage} />
       <View style={styles.resultInfo}>
@@ -217,7 +219,9 @@ export function SearchScreen() {
         </View>
       </View>
     </TouchableOpacity>
-  );
+  ), [isDark, colors, helpers, handleItemPress]);
+
+  const keyExtractor = useCallback((item: any) => `${item.type}-${item.id}`, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -418,9 +422,13 @@ export function SearchScreen() {
       <FlatList
         data={results}
         renderItem={renderResultItem}
-        keyExtractor={item => `${item.type}-${item.id}`}
+        keyExtractor={keyExtractor}
         contentContainerStyle={styles.resultsList}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={48} color={colors.textMuted} />
