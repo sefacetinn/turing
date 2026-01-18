@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Modal, StyleSheet, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Modal, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -96,7 +96,11 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
       transparent={true}
       onRequestClose={handleClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        style={styles.modalOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
@@ -138,6 +142,7 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
             style={styles.optionsList}
             contentContainerStyle={styles.optionsListContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             initialNumToRender={15}
             maxToRenderPerBatch={10}
             windowSize={5}
@@ -152,7 +157,7 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
             }
           />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -166,8 +171,8 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '70%',
-    paddingBottom: 34,
+    maxHeight: '80%',
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',
