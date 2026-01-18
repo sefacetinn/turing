@@ -28,6 +28,7 @@ import {
   validateFullName,
   isPasswordValid,
   getValidationError,
+  sanitizeEmail,
 } from '../../utils/validation';
 import { OrganizerRegistrationData } from '../../types/auth';
 
@@ -194,7 +195,7 @@ export function OrganizerRegistrationScreen() {
               <TextInput
                 style={[inputStyle, errors.email && { borderColor: colors.error }]}
                 value={formData.email}
-                onChangeText={(text) => updateFormData('email', text)}
+                onChangeText={(text) => updateFormData('email', sanitizeEmail(text))}
                 placeholder="ornek@email.com"
                 placeholderTextColor={colors.textMuted}
                 keyboardType="email-address"

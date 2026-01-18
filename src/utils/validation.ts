@@ -6,6 +6,25 @@ export const validateEmail = (email: string): boolean => {
   return regex.test(email);
 };
 
+// Sanitize email - remove Turkish characters
+export const sanitizeEmail = (email: string): string => {
+  // Turkish character mapping
+  const turkishChars: Record<string, string> = {
+    'ç': 'c', 'Ç': 'C',
+    'ğ': 'g', 'Ğ': 'G',
+    'ı': 'i', 'İ': 'I',
+    'ö': 'o', 'Ö': 'O',
+    'ş': 's', 'Ş': 'S',
+    'ü': 'u', 'Ü': 'U',
+  };
+
+  return email
+    .split('')
+    .map(char => turkishChars[char] || char)
+    .join('')
+    .toLowerCase();
+};
+
 // Turkish phone validation (05XXXXXXXXX)
 export const validatePhone = (phone: string): boolean => {
   const cleaned = phone.replace(/\s/g, '');

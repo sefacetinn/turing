@@ -23,7 +23,7 @@ import {
   saveRememberedEmail,
   clearRememberedEmail,
 } from '../utils/storage';
-import { validateEmail } from '../utils/validation';
+import { validateEmail, sanitizeEmail } from '../utils/validation';
 import { validateCredentials, TestAccount, testAccounts } from '../data/testAccounts';
 
 interface LoginScreenProps {
@@ -218,7 +218,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   style={[styles.input, { color: colors.text }]}
                   value={email}
                   onChangeText={(text) => {
-                    setEmail(text);
+                    setEmail(sanitizeEmail(text));
                     if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                   }}
                   placeholder="ornek@email.com"

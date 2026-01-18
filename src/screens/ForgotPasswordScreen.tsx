@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { sanitizeEmail } from '../utils/validation';
 
 // Default colors for static styles
 const colors = defaultColors;
@@ -78,7 +79,7 @@ export function ForgotPasswordScreen() {
           <TextInput
             style={[styles.input, { color: colors.text }]}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => setEmail(sanitizeEmail(text))}
             placeholder="ornek@email.com"
             placeholderTextColor={colors.textMuted}
             keyboardType="email-address"
