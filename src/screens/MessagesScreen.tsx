@@ -151,7 +151,10 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
         rightAction={
           <TouchableOpacity
             style={styles.newMessageButton}
-            onPress={() => navigation.navigate('Search', { initialFilter: 'providers' })}
+            onPress={() => navigation.navigate('Search', { initialFilter: 'providers', mode: 'newChat' })}
+            accessibilityRole="button"
+            accessibilityLabel="Yeni mesaj oluştur"
+            accessibilityHint="Yeni bir sohbet başlatmak için firma arayın"
           >
             <Ionicons name="create-outline" size={22} color={colors.brand[400]} />
           </TouchableOpacity>
@@ -181,9 +184,15 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
             value={searchQuery}
             onChangeText={setSearchQuery}
             returnKeyType="search"
+            accessibilityLabel="Mesajlarda ara"
+            accessibilityHint="Sohbetleri ada veya içeriğe göre filtreleyin"
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Aramayı temizle"
+            >
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
@@ -195,6 +204,9 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
             <TouchableOpacity
               style={styles.tab}
               onPress={() => setActiveTab('all')}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'all' }}
+              accessibilityLabel="Tüm mesajlar"
             >
               <Text style={[styles.tabText, { color: activeTab === 'all' ? colors.brand[400] : colors.textMuted }]}>
                 Tümü
@@ -204,6 +216,9 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
             <TouchableOpacity
               style={styles.tab}
               onPress={() => setActiveTab('unread')}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'unread' }}
+              accessibilityLabel={`Okunmamış mesajlar, ${unreadCount} adet`}
             >
               <Text style={[styles.tabText, { color: activeTab === 'unread' ? colors.brand[400] : colors.textMuted }]}>
                 Okunmamış {unreadCount > 0 && `(${unreadCount})`}
@@ -213,6 +228,9 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
             <TouchableOpacity
               style={styles.tab}
               onPress={() => setActiveTab('archived')}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'archived' }}
+              accessibilityLabel={`Arşivlenmiş mesajlar, ${archivedCount} adet`}
             >
               <Text style={[styles.tabText, { color: activeTab === 'archived' ? colors.brand[400] : colors.textMuted }]}>
                 Arşiv {archivedCount > 0 && `(${archivedCount})`}
@@ -234,6 +252,9 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
               onPress={() => navigation.navigate('Chat', { conversationId: chat.id })}
               onLongPress={() => handleLongPress(chat)}
               delayLongPress={500}
+              accessibilityRole="button"
+              accessibilityLabel={`${chat.name} ile sohbet${chat.unread > 0 ? `, ${chat.unread} okunmamış mesaj` : ''}`}
+              accessibilityHint="Sohbeti açmak için dokunun, seçenekler için basılı tutun"
             >
               <View style={styles.avatarContainer}>
                 <Image source={{ uri: chat.avatar }} style={styles.avatar} />

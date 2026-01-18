@@ -188,7 +188,7 @@ export function PortfolioGalleryScreen() {
 
       const imageUrl = images[currentIndex];
       const filename = `portfolio_${Date.now()}.jpg`;
-      const fileUri = FileSystem.documentDirectory + filename;
+      const fileUri = (FileSystem.cacheDirectory || '') + filename;
 
       const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri);
 

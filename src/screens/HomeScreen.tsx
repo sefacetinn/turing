@@ -24,8 +24,9 @@ import {
   CategoryCard,
   ProviderCard,
   ArtistCard,
+  CalendarWidget,
 } from '../components/home';
-import { transformProviderEvents, CalendarEvent, isSameDay } from '../utils/calendarUtils';
+import { transformProviderEvents, transformOrganizerEvents, CalendarEvent, isSameDay } from '../utils/calendarUtils';
 
 // Bu hafta kac etkinlik var
 function getEventsThisWeek(events: CalendarEvent[]): number {
@@ -141,6 +142,9 @@ function OrganizerHomeContent() {
 
   const dashboard = organizerDashboard;
 
+  // Calendar events for widget
+  const calendarEvents = useMemo(() => transformOrganizerEvents(organizerEvents), []);
+
   // Unified accent color - Brand purple
   const accentColor = colors.brand[400];
   const accentBg = isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)';
@@ -210,6 +214,12 @@ function OrganizerHomeContent() {
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </TouchableOpacity>
+
+        {/* Calendar Widget */}
+        <CalendarWidget
+          events={calendarEvents}
+          onPress={() => navigation.navigate('CalendarView')}
+        />
 
         {/* Next Event Card - Minimal */}
         {dashboard.nextEvent && (
@@ -523,6 +533,9 @@ function ProviderHomeContent() {
     });
   }, [providerServices]);
 
+  // Calendar events for widget
+  const calendarEvents = useMemo(() => transformProviderEvents(providerEvents), []);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollHeader
@@ -618,6 +631,12 @@ function ProviderHomeContent() {
             onPress={() => navigation.navigate('OfferDetail', { offerId: request.id })}
           />
         ))}
+
+        {/* Calendar Widget */}
+        <CalendarWidget
+          events={calendarEvents}
+          onPress={() => navigation.navigate('CalendarView')}
+        />
 
         {/* Performance Card */}
         <PerformanceCard responseRate={providerStats.responseRate} />

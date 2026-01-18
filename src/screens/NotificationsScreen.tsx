@@ -171,6 +171,9 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
         onLongPress={() => handleLongPress(notification)}
         delayLongPress={500}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${notification.title}${!notification.read ? ', okunmadı' : ''}`}
+        accessibilityHint="Detay için dokunun, seçenekler için basılı tutun"
       >
         <View style={[styles.iconContainer, { backgroundColor: style.bgColor }]}>
           <Ionicons name={style.icon as any} size={20} color={style.color} />
@@ -249,7 +252,12 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
         showBackButton={true}
         rightAction={
           counts.unread > 0 ? (
-            <TouchableOpacity style={styles.markAllButton} onPress={markAllAsRead}>
+            <TouchableOpacity
+              style={styles.markAllButton}
+              onPress={markAllAsRead}
+              accessibilityRole="button"
+              accessibilityLabel="Tüm bildirimleri okundu işaretle"
+            >
               <Text style={[styles.markAllText, { color: colors.brand[400] }]}>
                 Tümünü Oku
               </Text>
@@ -299,6 +307,9 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
                   isActive && { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)' },
                 ]}
                 onPress={() => setActiveCategory(category.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`${category.label}${count > 0 ? `, ${count} bildirim` : ''}`}
               >
                 <Ionicons
                   name={category.icon as any}

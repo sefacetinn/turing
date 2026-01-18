@@ -20,6 +20,7 @@ type SearchScreenParams = {
   Search: {
     initialFilter?: 'all' | 'artists' | 'providers' | 'venues';
     initialQuery?: string;
+    mode?: 'default' | 'newChat';
   };
 };
 
@@ -65,9 +66,10 @@ export function SearchScreen() {
   // Get initial values from route params
   const initialFilter = route.params?.initialFilter || 'all';
   const initialQuery = route.params?.initialQuery || '';
+  const isNewChatMode = route.params?.mode === 'newChat';
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [activeFilter, setActiveFilter] = useState<FilterType>(initialFilter);
+  const [activeFilter, setActiveFilter] = useState<FilterType>(isNewChatMode ? 'providers' : initialFilter);
   const [sortBy, setSortBy] = useState<SortType>('relevance');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -76,13 +78,15 @@ export function SearchScreen() {
 
   // Update filter when route params change
   useEffect(() => {
-    if (route.params?.initialFilter) {
+    if (isNewChatMode) {
+      setActiveFilter('providers');
+    } else if (route.params?.initialFilter) {
       setActiveFilter(route.params.initialFilter);
     }
     if (route.params?.initialQuery !== undefined) {
       setSearchQuery(route.params.initialQuery);
     }
-  }, [route.params]);
+  }, [route.params, isNewChatMode]);
 
   const filters: { key: FilterType; label: string; icon: string }[] = [
     { key: 'all', label: 'Tümü', icon: 'apps' },
@@ -156,12 +160,49 @@ export function SearchScreen() {
   const results = getFilteredResults();
 
   const handleItemPress = useCallback((item: any) => {
-    if (item.type === 'artist') {
-      navigation.navigate('ArtistDetail', { artistId: item.id });
+    if (isNewChatMode) {
+      // In new chat mode, directly start a chat with this person/provider
+      navigation.navigate('Chat', {
+        providerId: item.id,
+        providerName: item.name,
+        providerImage: item.image,
+      });
     } else {
-      navigation.navigate('ProviderDetail', { providerId: item.id });
+      // Default mode - navigate to profile
+      if (item.type === 'artist') {
+        navigation.navigate('ArtistDetail', { artistId: item.id });
+      } else {
+        navigation.navigate('ProviderDetail', { providerId: item.id });
+      }
     }
-  }, [navigation]);
+  }, [navigation, isNewChatMode]);
+
+  // Simple chat item for newChat mode
+  const renderChatItem = useCallback(({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[styles.chatItem, {
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border,
+      }]}
+      onPress={() => handleItemPress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name} ile sohbet başlat`}
+      accessibilityHint="Dokunarak sohbet başlatın"
+    >
+      <Image source={{ uri: item.image }} style={styles.chatItemAvatar} />
+      <View style={styles.chatItemInfo}>
+        <Text style={[styles.chatItemName, { color: colors.text }]}>{item.name}</Text>
+        <Text style={[styles.chatItemCategory, { color: colors.textMuted }]}>
+          {item.genre || item.subcategory || item.category}
+        </Text>
+      </View>
+      <View style={[styles.chatItemAction, {
+        backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
+      }]}>
+        <Ionicons name="chatbubble-outline" size={18} color={colors.brand[400]} />
+      </View>
+    </TouchableOpacity>
+  ), [isDark, colors, handleItemPress]);
 
   const renderResultItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity
@@ -171,6 +212,9 @@ export function SearchScreen() {
         ...(isDark ? {} : helpers.getShadow('sm'))
       }]}
       onPress={() => handleItemPress(item)}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ${item.type === 'artist' ? 'Sanatçı' : 'Hizmet'}, ${item.rating} puan`}
+      accessibilityHint="Detayları görmek için dokunun"
     >
       <Image source={{ uri: item.image }} style={styles.resultImage} />
       <View style={styles.resultInfo}>
@@ -230,6 +274,8 @@ export function SearchScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Geri dön"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -240,67 +286,82 @@ export function SearchScreen() {
           <Ionicons name="search" size={20} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Sanatçı, hizmet veya mekan ara..."
+            placeholder={isNewChatMode ? "Firma ara..." : "Sanatçı, hizmet veya mekan ara..."}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoFocus
+            accessibilityLabel={isNewChatMode ? "Firma ara" : "Sanatçı, hizmet veya mekan ara"}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              accessibilityRole="button"
+              accessibilityLabel="Aramayı temizle"
+            >
               <Ionicons name="close-circle" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.filterButton, {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
-          }, showFilters && {
-            backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
-          }]}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <Ionicons
-            name="options-outline"
-            size={22}
-            color={showFilters ? colors.brand[400] : colors.text}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.filterTabs}>
-        {filters.map(filter => (
+        {!isNewChatMode && (
           <TouchableOpacity
-            key={filter.key}
-            style={[styles.filterTab, {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
-            }, activeFilter === filter.key && {
+            style={[styles.filterButton, {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+            }, showFilters && {
               backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
             }]}
-            onPress={() => setActiveFilter(filter.key)}
+            onPress={() => setShowFilters(!showFilters)}
+            accessibilityRole="button"
+            accessibilityLabel={showFilters ? "Filtreleri gizle" : "Filtreleri göster"}
+            accessibilityState={{ expanded: showFilters }}
           >
             <Ionicons
-              name={filter.icon as any}
-              size={14}
-              color={activeFilter === filter.key ? colors.brand[400] : colors.textMuted}
+              name="options-outline"
+              size={22}
+              color={showFilters ? colors.brand[400] : colors.text}
             />
-            <Text
-              style={[
-                styles.filterTabText,
-                { color: colors.textMuted },
-                activeFilter === filter.key && { color: colors.brand[400], fontWeight: '500' },
-              ]}
-            >
-              {filter.label}
-            </Text>
           </TouchableOpacity>
-        ))}
+        )}
       </View>
 
-      {/* Advanced Filters Panel */}
-      {showFilters && (
+      {/* Filter Tabs - hide in newChat mode */}
+      {!isNewChatMode && (
+        <View style={styles.filterTabs} accessibilityRole="tablist">
+          {filters.map(filter => (
+            <TouchableOpacity
+              key={filter.key}
+              style={[styles.filterTab, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)'
+              }, activeFilter === filter.key && {
+                backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
+              }]}
+              onPress={() => setActiveFilter(filter.key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeFilter === filter.key }}
+              accessibilityLabel={filter.label}
+            >
+              <Ionicons
+                name={filter.icon as any}
+                size={14}
+                color={activeFilter === filter.key ? colors.brand[400] : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.filterTabText,
+                  { color: colors.textMuted },
+                  activeFilter === filter.key && { color: colors.brand[400], fontWeight: '500' },
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Advanced Filters Panel - hide in newChat mode */}
+      {showFilters && !isNewChatMode && (
         <View style={[styles.filtersPanel, {
           backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.surface,
           borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border
@@ -406,8 +467,10 @@ export function SearchScreen() {
 
       {/* Results Count */}
       <View style={styles.resultsHeader}>
-        <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>{results.length} sonuç bulundu</Text>
-        {selectedCategories.length > 0 && (
+        <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>
+          {isNewChatMode ? `${results.length} firma` : `${results.length} sonuç bulundu`}
+        </Text>
+        {!isNewChatMode && selectedCategories.length > 0 && (
           <View style={[styles.activeFiltersCount, {
             backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
           }]}>
@@ -421,7 +484,7 @@ export function SearchScreen() {
       {/* Results List */}
       <FlatList
         data={results}
-        renderItem={renderResultItem}
+        renderItem={isNewChatMode ? renderChatItem : renderResultItem}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.resultsList}
         showsVerticalScrollIndicator={false}
@@ -725,5 +788,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
     textAlign: 'center',
+  },
+  // Chat item styles for newChat mode
+  chatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  chatItemAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+  },
+  chatItemInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  chatItemName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  chatItemCategory: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  chatItemAction: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
