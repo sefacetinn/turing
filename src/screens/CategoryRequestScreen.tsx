@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,10 +120,13 @@ export function CategoryRequestScreen() {
   }, [selectedDates]);
 
   const handleSubmit = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!selectedEvent) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Uyarı', 'Lütfen bir etkinlik seçin');
       return;
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
       'Teklif Talebi Gönderildi',
       'Talebiniz ilgili sağlayıcılara iletildi. En kısa sürede teklifler alacaksınız.',
@@ -131,7 +135,9 @@ export function CategoryRequestScreen() {
   };
 
   const handleSaveDraft = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!selectedEvent) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Uyarı', 'Taslak kaydetmek için lütfen bir etkinlik seçin');
       return;
     }

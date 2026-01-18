@@ -12,6 +12,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -157,6 +158,7 @@ export function ChatScreen() {
 
   // Handle call button
   const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
       'Sesli Arama',
       `${conversation.participantName} ile sesli arama başlatılsın mı?`,
@@ -217,6 +219,7 @@ export function ChatScreen() {
 
   const sendMessage = () => {
     if (!message.trim()) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const newMessage: ChatMessage = {
       id: `m${messages.length + 1}`,
@@ -236,7 +239,9 @@ export function ChatScreen() {
 
   // Send Offer
   const handleSendOffer = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!selectedEvent || !offerAmount) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen etkinlik seçin ve teklif tutarı girin.');
       return;
     }
@@ -278,7 +283,9 @@ export function ChatScreen() {
 
   // Send Meeting Request
   const handleSendMeeting = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!meetingTitle || !meetingDate || !meetingTime) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen toplantı başlığı, tarih ve saat girin.');
       return;
     }

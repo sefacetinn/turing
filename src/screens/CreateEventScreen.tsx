@@ -9,6 +9,7 @@ import {
   Modal,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -118,6 +119,7 @@ export function CreateEventScreen() {
 
   // Handle venue selection with auto-fill capacity
   const handleVenueSelect = (venueName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const selectedVenue = availableVenues.find(v => v.name === venueName);
     if (selectedVenue) {
       // Parse capacity (e.g., "15.000" -> "15000")
@@ -144,6 +146,7 @@ export function CreateEventScreen() {
   };
 
   const nextStep = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const nextIndex = currentStepIndex + 1;
     if (nextIndex < steps.length) {
       setCurrentStep(steps[nextIndex].key);
@@ -160,6 +163,7 @@ export function CreateEventScreen() {
   };
 
   const toggleService = (serviceId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (serviceId === 'operation') {
       setShowOperationModal(true);
     } else {
@@ -185,7 +189,11 @@ export function CreateEventScreen() {
   };
 
   const handleAddVenue = () => {
-    if (!newVenue.name.trim() || !newVenue.venueType || !newVenue.city || !newVenue.district || !newVenue.capacity) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!newVenue.name.trim() || !newVenue.venueType || !newVenue.city || !newVenue.district || !newVenue.capacity) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
     const features: string[] = [];
     if (newVenue.hasBackstage) features.push('Kulis');
     if (newVenue.hasParking) features.push('Otopark');
