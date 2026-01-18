@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Dimensions,
   Share,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,6 +118,12 @@ export function ProviderRequestDetailScreen() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [venueImageIndex, setVenueImageIndex] = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Included/Excluded items for offer
   const [includedItems, setIncludedItems] = useState([
@@ -1324,6 +1331,14 @@ export function ProviderRequestDetailScreen() {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 20 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
       >
         {/* Hero Header Card */}
         <View style={[styles.heroCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -130,6 +131,12 @@ export function EventDetailScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'budget' | 'tickets'>('overview');
   const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>(mockCategories);
   const [platforms] = useState<TicketPlatform[]>(mockPlatforms);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Ticketing calculations
   const totalTicketsSold = platforms.reduce((sum, p) => sum + p.ticketsSold, 0);
@@ -215,7 +222,18 @@ export function EventDetailScreen() {
         </SafeAreaView>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {/* Event Info */}
         <View style={styles.eventInfo}>
           <View style={[styles.statusBadge, { backgroundColor: getStatusInfo(event.status).bg }]}>

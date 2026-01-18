@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   Dimensions,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,13 @@ export function ProviderDetailScreen() {
 
   const provider = getProviderDetail(providerId);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Simulate refresh
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -163,6 +171,14 @@ export function ProviderDetailScreen() {
         bounces={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
       >
         {/* Hero Image */}
         <View style={styles.heroContainer}>

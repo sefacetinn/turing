@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +35,12 @@ export function ProviderReviewsScreen() {
   const route = useRoute();
   const { providerName, reviews, rating, reviewCount } = route.params as RouteParams;
   const { colors, isDark, helpers } = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const renderStars = (starRating: number) => {
     return (
@@ -71,7 +78,17 @@ export function ProviderReviewsScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {/* Summary Section */}
         <View style={[styles.summarySection, { backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground }]}>
           <View style={styles.summaryMain}>

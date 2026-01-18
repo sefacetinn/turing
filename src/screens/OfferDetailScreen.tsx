@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Linking,
   Share,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -188,6 +189,12 @@ export function OfferDetailScreen() {
   const [counterOfferAmount, setCounterOfferAmount] = useState('');
   const [counterOfferNote, setCounterOfferNote] = useState('');
   const [selectedQuickAmount, setSelectedQuickAmount] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const handleAcceptOffer = () => {
     Alert.alert(
@@ -278,7 +285,18 @@ export function OfferDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {/* Status & Amount Card */}
         <View style={[styles.amountCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
           <View style={styles.amountHeader}>

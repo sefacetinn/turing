@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   Text,
   Dimensions,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,6 +50,12 @@ export function ProviderFinanceScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedClient, setSelectedClient] = useState<typeof topClients[0] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -476,6 +483,14 @@ export function ProviderFinanceScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: insets.top + 44 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
       >
         <LargeTitle title="Finans Yönetimi" subtitle="Gelir, gider ve fatura takibi" scrollY={scrollY} />
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   Linking,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,6 +47,12 @@ export function ServiceProvidersScreen() {
     minRating: null,
     budgetRange: null,
   });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const config = categoryConfig[category] || categoryConfig.booking;
   const allProviders = getProvidersByCategory(category);
@@ -254,7 +261,18 @@ export function ServiceProvidersScreen() {
       </View>
 
       {/* Provider List */}
-      <ScrollView style={styles.providerList} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.providerList}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {filteredProviders.map(provider => (
           <TouchableOpacity
             key={provider.id}

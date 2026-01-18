@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,6 +46,13 @@ export function ArtistDetailScreen() {
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Simulate refresh
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -132,6 +140,14 @@ export function ArtistDetailScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
       >
         {/* Header Image */}
         <View style={styles.headerImage}>

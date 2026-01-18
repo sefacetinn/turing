@@ -10,6 +10,7 @@ import {
   Platform,
   UIManager,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
@@ -223,6 +224,12 @@ export function ServiceOperationsScreen() {
   const config = serviceConfigs[serviceCategory] || serviceConfigs.technical;
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team' | 'payments'>('tasks');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Mutable tasks state
   const [tasks, setTasks] = useState<OperationTask[]>(() => generateTasks(serviceCategory));
@@ -345,7 +352,18 @@ export function ServiceOperationsScreen() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <View style={styles.list}>

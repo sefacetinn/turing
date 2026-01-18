@@ -13,6 +13,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import * as Haptics from 'expo-haptics';
@@ -108,6 +109,7 @@ export function EventOperationsScreen() {
   const [currentUserId] = useState('prov2'); // Serkan Aydın - Teknik Direktör (Provider)
 
   const [activeTab, setActiveTab] = useState<OperationTab>('overview');
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedTask, setSelectedTask] = useState<OperationTask | null>(null);
   const [selectedMember, setSelectedMember] = useState<OperationTeamMember | null>(null);
   const [taskModalVisible, setTaskModalVisible] = useState(false);
@@ -317,6 +319,11 @@ export function EventOperationsScreen() {
       scrollY.value = event.contentOffset.y;
     },
   });
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const handleBack = useCallback(() => {
     navigation.goBack();
@@ -1024,6 +1031,14 @@ export function EventOperationsScreen() {
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#4B30B8"
+            colors={['#4B30B8']}
+          />
+        }
       >
         {/* Large Title */}
         <LargeTitle scrollY={scrollY} title={operation.eventTitle} subtitle={operation.eventVenue} />

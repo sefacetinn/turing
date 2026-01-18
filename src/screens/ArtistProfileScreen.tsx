@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +31,13 @@ export function ArtistProfileScreen() {
   const { artistId } = route.params;
 
   const artist = useMemo(() => getArtistById(artistId), [artistId]);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   if (!artist) {
     return (
@@ -94,7 +102,18 @@ export function ArtistProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {/* Cover Image */}
         <View style={styles.coverContainer}>
           <OptimizedImage source={artist.coverImage} style={styles.coverImage} />
