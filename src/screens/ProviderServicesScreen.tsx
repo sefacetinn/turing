@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -112,6 +113,12 @@ export function ProviderServicesScreen() {
     providerServices && providerServices.length > 0 ? providerServices : initialSelectedServices
   );
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['operation']);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const toggleService = (serviceId: string) => {
     setSelectedServices(prev =>
@@ -194,7 +201,18 @@ export function ProviderServicesScreen() {
         </Text>
       </View>
 
-      <ScrollView style={styles.servicesList} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.servicesList}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         {serviceCategories.map(category => (
           <View key={category.id} style={styles.categoryContainer}>
             {/* Main Category */}

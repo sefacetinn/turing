@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TextInput,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -75,6 +76,12 @@ export function SearchScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [minRating, setMinRating] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Update filter when route params change
   useEffect(() => {
@@ -492,6 +499,14 @@ export function SearchScreen() {
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={48} color={colors.textMuted} />

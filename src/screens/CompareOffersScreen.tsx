@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -32,6 +33,12 @@ export function CompareOffersScreen() {
   const { quoteRequestId } = route.params;
   const [sortBy, setSortBy] = useState<OfferSortOption>('score');
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const accentColor = colors.brand[400];
 
@@ -183,7 +190,18 @@ export function CompareOffersScreen() {
       </View>
 
       {/* Comparison Table */}
-      <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.tableContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View>
             {/* Provider Headers */}

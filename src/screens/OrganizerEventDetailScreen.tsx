@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Share,
   Modal,
   TextInput,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -174,6 +175,14 @@ export function OrganizerEventDetailScreen() {
     type: 'provider' | 'organizer';
     serviceCategory?: string;
   } | null>(null);
+
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   // Get event data first
   const event = useMemo(() => mockEvents.find(e => e.id === eventId), [eventId]);
@@ -783,6 +792,14 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.brand[500]}
+            colors={[colors.brand[500]]}
+          />
+        }
       >
         {/* Header Image */}
         <View style={styles.headerImage}>
