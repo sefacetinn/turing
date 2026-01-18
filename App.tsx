@@ -231,6 +231,7 @@ function MessagesStack() {
         {() => <MessagesScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
