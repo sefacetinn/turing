@@ -200,21 +200,32 @@ function OrganizerHomeContent() {
           scrollY={scrollY}
         />
 
-        {/* Create Event Card */}
-        <TouchableOpacity
-          style={[styles.createEventCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.12)' : 'rgba(75, 48, 184, 0.08)' }]}
-          onPress={() => navigation.navigate('CreateEvent')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.createEventIcon, { backgroundColor: accentColor }]}>
-            <Ionicons name="add" size={24} color="white" />
-          </View>
-          <View style={styles.createEventContent}>
-            <Text style={[styles.createEventTitle, { color: colors.text }]}>Yeni Etkinlik Oluştur</Text>
-            <Text style={[styles.createEventSubtitle, { color: colors.textMuted }]}>Sanatçı, mekan ve hizmet seçin</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </TouchableOpacity>
+        {/* Quick Actions Row */}
+        <View style={styles.quickActionsRow}>
+          {/* Create Event Card */}
+          <TouchableOpacity
+            style={[styles.quickActionCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.12)' : 'rgba(75, 48, 184, 0.08)' }]}
+            onPress={() => navigation.navigate('CreateEvent')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: accentColor }]}>
+              <Ionicons name="add" size={20} color="white" />
+            </View>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Etkinlik Oluştur</Text>
+          </TouchableOpacity>
+
+          {/* Analytics Card */}
+          <TouchableOpacity
+            style={[styles.quickActionCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)' }]}
+            onPress={() => navigation.navigate('AnalyticsDashboard')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.success }]}>
+              <Ionicons name="analytics" size={20} color="white" />
+            </View>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Analizler</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Calendar Widget */}
         <CalendarWidget
@@ -595,13 +606,34 @@ function ProviderHomeContent() {
           reviewCount={providerStats.reviewCount}
         />
 
-        {/* Earnings Card */}
-        <EarningsCard
-          monthlyEarnings={providerStats.monthlyEarnings}
-          pendingPayments={providerStats.pendingPayments}
-          completedJobs={providerStats.completedJobs}
-          onPress={() => navigation.navigate('ProviderFinance')}
-        />
+        {/* Quick Actions - Finance & Analytics */}
+        <View style={styles.providerQuickActions}>
+          {/* Earnings Card */}
+          <TouchableOpacity
+            style={[styles.providerQuickCard, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.08)' }]}
+            onPress={() => navigation.navigate('ProviderFinance')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.providerQuickIcon, { backgroundColor: colors.brand[400] }]}>
+              <Ionicons name="wallet" size={18} color="white" />
+            </View>
+            <Text style={[styles.providerQuickLabel, { color: colors.textMuted }]}>Bu Ay</Text>
+            <Text style={[styles.providerQuickValue, { color: colors.text }]}>₺{(providerStats.monthlyEarnings / 1000).toFixed(0)}K</Text>
+          </TouchableOpacity>
+
+          {/* Analytics Card */}
+          <TouchableOpacity
+            style={[styles.providerQuickCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
+            onPress={() => navigation.navigate('AnalyticsDashboard')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.providerQuickIcon, { backgroundColor: colors.success }]}>
+              <Ionicons name="analytics" size={18} color="white" />
+            </View>
+            <Text style={[styles.providerQuickLabel, { color: colors.textMuted }]}>Analizler</Text>
+            <Text style={[styles.providerQuickValue, { color: colors.text }]}>Detay</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Quick Stats - 3 kolonlu: Yaklaşan İş, Teklif, Takvim */}
         <QuickStatsRow
@@ -1194,7 +1226,64 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
-  // Create Event Card
+  // Quick Actions Row (Organizer)
+  quickActionsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  quickActionCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    gap: 10,
+  },
+  quickActionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Provider Quick Actions
+  providerQuickActions: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 16,
+    gap: 12,
+  },
+  providerQuickCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 14,
+    gap: 6,
+  },
+  providerQuickIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  providerQuickLabel: {
+    fontSize: 11,
+    marginTop: 4,
+  },
+  providerQuickValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // Create Event Card (kept for compatibility)
   createEventCard: {
     flexDirection: 'row',
     alignItems: 'center',

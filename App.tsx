@@ -73,6 +73,7 @@ import { MyReviewsScreen } from './src/screens/MyReviewsScreen';
 import { PortfolioGalleryScreen } from './src/screens/PortfolioGalleryScreen';
 import { ProviderReviewsScreen } from './src/screens/ProviderReviewsScreen';
 import { ProviderFinanceScreen } from './src/screens/ProviderFinanceScreen';
+import { AnalyticsDashboardScreen } from './src/screens/AnalyticsDashboardScreen';
 import { EventOperationsScreen } from './src/screens/EventOperationsScreen';
 import { ServiceOperationsScreen } from './src/screens/ServiceOperationsScreen';
 import { ProviderRequestDetailScreen } from './src/screens/ProviderRequestDetailScreen';
@@ -163,6 +164,7 @@ function HomeStack() {
       <Stack.Screen name="CalendarView">
         {() => <CalendarViewScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
+      <Stack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />
     </Stack.Navigator>
   );
 }

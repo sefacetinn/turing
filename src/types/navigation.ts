@@ -42,6 +42,7 @@ export type HomeStackParamList = {
   HomeMain: undefined;
   ArtistDetail: { artistId: string };
   ArtistProfile: { artistId: string };
+  ArtistTeamManagement: { artistId: string };
   ProviderDetail: { providerId: string };
   Search: { initialFilter?: string };
   Notifications: undefined;
@@ -62,6 +63,7 @@ export type HomeStackParamList = {
   EventOperations: { eventId: string };
   ServiceOperations: { eventId: string; serviceId: string };
   CalendarView: undefined;
+  AnalyticsDashboard: undefined;
 };
 
 // ============================================
