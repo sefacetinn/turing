@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Turing",
-    "slug": "turing",
+    "name": "EventApp",
+    "slug": "eventapp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/turing-icon.png",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -15,26 +15,61 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.turing.app",
-      "backgroundColor": "#09090b"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eventapp.mobile",
+      "backgroundColor": "#09090b",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Profil fotoğrafı ve etkinlik görselleri için kamera erişimi gereklidir.",
+        "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve etkinlik görselleri yüklemek için galeri erişimi gereklidir.",
+        "NSLocationWhenInUseUsageDescription": "Yakındaki etkinlikleri ve mekanları göstermek için konum erişimi gereklidir."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/turing-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090b"
       },
-      "package": "com.turing.app"
+      "package": "com.eventapp.mobile",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
     },
     "extra": {
       "eas": {
-        "projectId": "turing-app"
+        "projectId": "your-eas-project-id"
       }
     },
+    "owner": "your-expo-username",
     "plugins": [
       "expo-asset",
       "expo-font",
-      "expo-splash-screen"
-    ]
+      "expo-splash-screen",
+      "expo-image-picker",
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#7c3aed"
+        }
+      ]
+    ],
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-eas-project-id"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
