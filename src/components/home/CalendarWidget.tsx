@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   CalendarEvent,
   getNextDays,
+  isDateInRange,
   isSameDay,
-  getCategoryColor,
   DAY_NAMES_SHORT,
 } from '../../utils/calendarUtils';
 
@@ -18,33 +19,32 @@ interface CalendarWidgetProps {
 export function CalendarWidget({ events, onPress }: CalendarWidgetProps) {
   const { colors, isDark, helpers } = useTheme();
 
-  const today = new Date();
-  const next7Days = useMemo(() => getNextDays(7, today), []);
+  // Get next 7 days
+  const nextDays = useMemo(() => getNextDays(7), []);
 
-  // Belirli bir gun icin etkinlik sayisi
-  const getEventCountForDate = (date: Date): number => {
-    return events.filter((event) => {
-      if (event.endDate) {
-        const dateTime = date.getTime();
-        const startTime = new Date(event.date.getFullYear(), event.date.getMonth(), event.date.getDate()).getTime();
-        const endTime = new Date(event.endDate.getFullYear(), event.endDate.getMonth(), event.endDate.getDate()).getTime();
-        return dateTime >= startTime && dateTime <= endTime;
-      }
-      return isSameDay(event.date, date);
-    }).length;
+  // Check if a day has events
+  const hasEventsOnDay = (date: Date): boolean => {
+    return events.some(event => isDateInRange(date, event.date, event.endDate));
   };
 
-  // Bu haftaki toplam etkinlik sayisi
-  const totalEventsThisWeek = useMemo(() => {
-    return next7Days.reduce((sum, day) => sum + getEventCountForDate(day), 0);
-  }, [events, next7Days]);
+  // Get events count for next 7 days
+  const upcomingEventsCount = useMemo(() => {
+    const uniqueEvents = new Set<string>();
+    nextDays.forEach(day => {
+      events.forEach(event => {
+        if (isDateInRange(day, event.date, event.endDate)) {
+          uniqueEvents.add(event.id);
+        }
+      });
+    });
+    return uniqueEvents.size;
+  }, [events, nextDays]);
 
-  // Gun ismini al (Pzt, Sal, vb.)
-  const getDayName = (date: Date): string => {
-    const dayIndex = date.getDay();
-    // Sunday (0) -> index 6 (Paz), Monday (1) -> index 0 (Pzt)
-    const adjustedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
-    return DAY_NAMES_SHORT[adjustedIndex];
+  const today = new Date();
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onPress();
   };
 
   return (
@@ -52,119 +52,105 @@ export function CalendarWidget({ events, onPress }: CalendarWidgetProps) {
       style={[
         styles.container,
         {
-          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.cardBackground,
-          borderColor: colors.border,
-          ...(isDark ? {} : helpers.getShadow('sm')),
+          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
         },
+        !isDark && helpers.getShadow('sm'),
       ]}
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-            <Ionicons name="calendar" size={16} color="#3b82f6" />
-          </View>
+        <View style={styles.titleRow}>
+          <Ionicons name="calendar" size={20} color={colors.brand[400]} />
           <Text style={[styles.title, { color: colors.text }]}>Takvim</Text>
         </View>
         <View style={styles.headerRight}>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Bu Hafta ({totalEventsThisWeek} etkinlik)
+            {upcomingEventsCount > 0 ? `${upcomingEventsCount} etkinlik` : 'Bu hafta'}
           </Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </View>
       </View>
 
-      {/* Days Row */}
-      <View style={styles.daysRow}>
-        {next7Days.map((day, index) => {
-          const eventCount = getEventCountForDate(day);
+      {/* Days Grid */}
+      <View style={styles.daysContainer}>
+        {nextDays.map((day, index) => {
           const isToday = isSameDay(day, today);
+          const hasEvents = hasEventsOnDay(day);
+          const dayIndex = (day.getDay() + 6) % 7; // Monday = 0
 
           return (
             <View key={index} style={styles.dayItem}>
               <Text
                 style={[
                   styles.dayName,
-                  { color: colors.textMuted },
-                  isToday && { color: colors.brand[400] },
+                  { color: isToday ? colors.brand[400] : colors.textMuted },
                 ]}
               >
-                {getDayName(day)}
+                {DAY_NAMES_SHORT[dayIndex]}
               </Text>
               <View
                 style={[
                   styles.dayNumber,
-                  isToday && { backgroundColor: colors.brand[600] },
+                  isToday && { backgroundColor: colors.brand[400] },
                 ]}
               >
                 <Text
                   style={[
                     styles.dayNumberText,
-                    { color: colors.text },
-                    isToday && { color: colors.white },
+                    { color: isToday ? 'white' : colors.text },
                   ]}
                 >
                   {day.getDate()}
                 </Text>
               </View>
-              {eventCount > 0 && (
-                <View style={styles.eventDots}>
-                  {eventCount === 1 && (
-                    <View style={[styles.eventDot, { backgroundColor: colors.brand[500] }]} />
-                  )}
-                  {eventCount === 2 && (
-                    <>
-                      <View style={[styles.eventDot, { backgroundColor: colors.brand[500] }]} />
-                      <View style={[styles.eventDot, { backgroundColor: '#059669' }]} />
-                    </>
-                  )}
-                  {eventCount >= 3 && (
-                    <>
-                      <View style={[styles.eventDot, { backgroundColor: colors.brand[500] }]} />
-                      <View style={[styles.eventDot, { backgroundColor: '#059669' }]} />
-                      <View style={[styles.eventDot, { backgroundColor: '#d97706' }]} />
-                    </>
-                  )}
-                </View>
+              {hasEvents && (
+                <View
+                  style={[
+                    styles.eventDot,
+                    { backgroundColor: isToday ? colors.brand[300] : colors.brand[400] },
+                  ]}
+                />
               )}
             </View>
           );
         })}
       </View>
+
+      {/* Upcoming Events Preview */}
+      {upcomingEventsCount > 0 && (
+        <View style={[styles.previewContainer, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+          <Text style={[styles.previewText, { color: colors.textSecondary }]}>
+            {`${upcomingEventsCount} etkinlik yaklasiyor`}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 20,
-    marginTop: 16,
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
+    marginBottom: 16,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  headerLeft: {
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
   },
   title: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   headerRight: {
@@ -173,40 +159,46 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 13,
   },
-  daysRow: {
+  daysContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   dayItem: {
-    flex: 1,
     alignItems: 'center',
-    gap: 4,
+    flex: 1,
   },
   dayName: {
     fontSize: 11,
     fontWeight: '500',
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   dayNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   dayNumberText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
-  eventDots: {
-    flexDirection: 'row',
-    gap: 2,
-    marginTop: 2,
-  },
   eventDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 4,
+  },
+  previewContainer: {
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
+  },
+  previewText: {
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

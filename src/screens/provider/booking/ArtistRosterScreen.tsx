@@ -165,7 +165,10 @@ export function ArtistRosterScreen() {
         rightAction={
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.brand[500] }]}
-            onPress={() => navigation.navigate('AddEditArtist')}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              navigation.navigate('AddEditArtist');
+            }}
           >
             <Ionicons name="add" size={20} color="white" />
           </TouchableOpacity>
@@ -222,7 +225,10 @@ export function ArtistRosterScreen() {
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <TouchableOpacity onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSearchQuery('');
+              }}>
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
               </TouchableOpacity>
             )}

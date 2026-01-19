@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -17,7 +18,12 @@ import { useTheme } from '../../../theme/ThemeContext';
 import {
   getArtistById,
   CrewMember,
+  CrewRole,
+  RoleCategory,
   crewRoleLabels,
+  roleCategoryLabels,
+  roleCategoryIcons,
+  getRolesForCategory,
 } from '../../../data/provider/artistData';
 import { CrewMemberItem } from '../../../components/artist';
 
@@ -25,19 +31,46 @@ type RouteParams = {
   CrewManagement: { artistId: string; memberId?: string };
 };
 
-type CrewRole = CrewMember['role'];
-
-const roleOptions: { key: CrewRole; label: string; icon: string }[] = [
-  { key: 'manager', label: 'Menajer', icon: 'briefcase-outline' },
-  { key: 'sound_engineer', label: 'Ses Muhendisi', icon: 'volume-high-outline' },
-  { key: 'lighting_designer', label: 'Isik Tasarimcisi', icon: 'bulb-outline' },
-  { key: 'tour_manager', label: 'Tur Menajeri', icon: 'airplane-outline' },
-  { key: 'stage_manager', label: 'Sahne Amiri', icon: 'albums-outline' },
-  { key: 'musician', label: 'Muzisyen', icon: 'musical-notes-outline' },
-  { key: 'backup_vocal', label: 'Backing Vokal', icon: 'mic-outline' },
-  { key: 'technician', label: 'Teknisyen', icon: 'construct-outline' },
-  { key: 'security', label: 'Guvenlik', icon: 'shield-outline' },
-  { key: 'other', label: 'Diger', icon: 'person-outline' },
+// Group roles by category for display
+const roleOptionsByCategory: { category: RoleCategory; roles: { key: CrewRole; label: string }[] }[] = [
+  {
+    category: 'management',
+    roles: [
+      { key: 'manager', label: 'Menajer' },
+      { key: 'tour_manager', label: 'Tur Menajeri' },
+      { key: 'road_manager', label: 'Road Manager' },
+      { key: 'assistant', label: 'Asistan' },
+    ],
+  },
+  {
+    category: 'musician',
+    roles: [
+      { key: 'lead_vocal', label: 'Lead Vokal' },
+      { key: 'backing_vocal', label: 'Backing Vokal' },
+      { key: 'keyboard', label: 'Klavye' },
+      { key: 'lead_guitar', label: 'Solo Gitar' },
+      { key: 'bass', label: 'Bas Gitar' },
+      { key: 'drums', label: 'Davul' },
+      { key: 'dj', label: 'DJ' },
+    ],
+  },
+  {
+    category: 'technical',
+    roles: [
+      { key: 'foh_engineer', label: 'FOH Ses Mühendisi' },
+      { key: 'monitor_engineer', label: 'Monitor Mühendisi' },
+      { key: 'lighting_op', label: 'Işık Operatörü' },
+      { key: 'stage_tech', label: 'Sahne Teknisyeni' },
+    ],
+  },
+  {
+    category: 'other',
+    roles: [
+      { key: 'security', label: 'Güvenlik' },
+      { key: 'driver', label: 'Şoför' },
+      { key: 'photographer', label: 'Fotoğrafçı' },
+    ],
+  },
 ];
 
 export function CrewManagementScreen() {
@@ -65,9 +98,11 @@ export function CrewManagementScreen() {
 
   const handleSave = () => {
     if (!name.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Isim gereklidir.');
       return;
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     Alert.alert(
       'Basarili',
@@ -89,6 +124,7 @@ export function CrewManagementScreen() {
   };
 
   const handleDelete = (member: CrewMember) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       'Silme Onayı',
       `${member.name} ekipten cikarilsin mi?`,
@@ -106,6 +142,7 @@ export function CrewManagementScreen() {
   };
 
   const handleEdit = (member: CrewMember) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setEditingMember(member);
     setName(member.name);
     setRole(member.role);
@@ -160,39 +197,51 @@ export function CrewManagementScreen() {
         {/* Role Selection */}
         <View style={styles.inputGroup}>
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Rol *</Text>
-          <View style={styles.roleGrid}>
-            {roleOptions.map((option) => {
-              const isSelected = role === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.roleOption,
-                    {
-                      backgroundColor: isSelected ? colors.primary + '20' : colors.background,
-                      borderColor: isSelected ? colors.primary : colors.border,
-                    },
-                  ]}
-                  onPress={() => setRole(option.key)}
-                >
-                  <Ionicons
-                    name={option.icon as any}
-                    size={18}
-                    color={isSelected ? colors.primary : colors.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      styles.roleOptionText,
-                      { color: isSelected ? colors.primary : colors.textSecondary },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {roleOptionsByCategory.map((categoryGroup) => (
+            <View key={categoryGroup.category} style={styles.roleCategorySection}>
+              <View style={styles.roleCategoryHeader}>
+                <Ionicons
+                  name={roleCategoryIcons[categoryGroup.category] as any}
+                  size={14}
+                  color={colors.textMuted}
+                />
+                <Text style={[styles.roleCategoryLabel, { color: colors.textMuted }]}>
+                  {roleCategoryLabels[categoryGroup.category]}
+                </Text>
+              </View>
+              <View style={styles.roleGrid}>
+                {categoryGroup.roles.map((option) => {
+                  const isSelected = role === option.key;
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      style={[
+                        styles.roleOption,
+                        {
+                          backgroundColor: isSelected ? colors.primary + '20' : colors.background,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setRole(option.key);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.roleOptionText,
+                          { color: isSelected ? colors.primary : colors.textSecondary },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
         </View>
 
         {/* Contact Info */}
@@ -308,6 +357,7 @@ export function CrewManagementScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             if (showForm && !memberId) {
               resetForm();
               setShowForm(false);
@@ -334,6 +384,7 @@ export function CrewManagementScreen() {
           <TouchableOpacity
             style={[styles.addButton, { backgroundColor: colors.primary + '20' }]}
             onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               resetForm();
               setShowForm(true);
             }}
@@ -403,6 +454,19 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
 
+  roleCategorySection: {
+    marginBottom: 12,
+  },
+  roleCategoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  roleCategoryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   roleGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -416,9 +480,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    width: '48%',
   },
-  roleOptionText: { fontSize: 13, flex: 1 },
+  roleOptionText: { fontSize: 13 },
 
   section: {
     padding: 16,

@@ -8,6 +8,10 @@ import {
   TextInput,
   Modal,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  Pressable,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -631,10 +635,21 @@ export function CreateEventScreen() {
 
       <StepProgress currentStep={currentStep} onStepPress={setCurrentStep} />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderStepContent()}
-        <View style={{ height: 180 }} />
-      </ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {renderStepContent()}
+          <View style={{ height: 180 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
         {currentStep !== 'review' ? (
@@ -722,16 +737,30 @@ export function CreateEventScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => {
+          Keyboard.dismiss();
           setShowAddVenue(false);
           setShowCityList(false);
           setShowDistrictList(false);
         }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowAddVenue(false);
+              setShowCityList(false);
+              setShowDistrictList(false);
+            }}
+          />
           <View style={[styles.addVenueModal, { backgroundColor: colors.background }]}>
             <View style={styles.addVenueHeader}>
               <Text style={[styles.addVenueTitle, { color: colors.text }]}>Yeni Mekan Ekle</Text>
               <TouchableOpacity onPress={() => {
+                Keyboard.dismiss();
                 setShowAddVenue(false);
                 setShowCityList(false);
                 setShowDistrictList(false);
@@ -740,7 +769,12 @@ export function CreateEventScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.addVenueContent} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.addVenueContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
               {/* Approval Notice */}
               <View style={[styles.approvalNotice, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}>
                 <Ionicons name="information-circle" size={20} color={colors.info} />
@@ -990,7 +1024,7 @@ export function CreateEventScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>

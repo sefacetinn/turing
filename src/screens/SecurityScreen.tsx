@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -99,6 +100,7 @@ export function SecurityScreen() {
 
   // Biometric toggle
   const handleBiometricToggle = async (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (value) {
       // Try to authenticate
       const result = await LocalAuthentication.authenticateAsync({
@@ -142,6 +144,7 @@ export function SecurityScreen() {
 
   // Handle password change
   const handleChangePassword = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setPasswordError('');
 
     if (!currentPassword) {
@@ -175,6 +178,7 @@ export function SecurityScreen() {
 
   // Handle 2FA setup
   const handle2FAToggle = (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (value) {
       setShow2FAModal(true);
     } else {

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,6 +48,7 @@ export function RegistrationSuccessScreen() {
   const isProvider = role === 'provider';
 
   const handleContinue = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (isProvider) {
       navigation.reset({
         index: 0,

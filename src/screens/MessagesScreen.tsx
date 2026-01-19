@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, TextInput, Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +15,7 @@ import { OptimizedImage } from '../components/OptimizedImage';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
+import { getConversationList } from '../data/messagesData';
 
 // Default colors for static styles (dark theme)
 const colors = defaultColors;
@@ -24,15 +26,8 @@ interface MessagesScreenProps {
   isProviderMode: boolean;
 }
 
-const initialConversations = [
-  { id: 'c1', name: 'Pro Sound Istanbul', message: 'Teknik detayları görüşmek isteriz...', time: '2 dk', unread: 3, avatar: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=100', archived: false },
-  { id: 'c2', name: 'Elite Transfer', message: 'Araç hazır, onayınızı bekliyoruz.', time: '1 saat', unread: 0, avatar: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=100', archived: false },
-  { id: 'c3', name: 'Grand Hotel', message: 'Oda rezervasyonu tamamlandı.', time: '3 saat', unread: 1, avatar: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=100', archived: false },
-  { id: 'c4', name: 'Dream Decor', message: 'Renk paletiyle ilgili sorunuz var mı?', time: 'Dün', unread: 0, avatar: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=100', archived: false },
-  { id: 'c5', name: 'SecurePro Güvenlik', message: 'Güvenlik planı hazır.', time: '2 gün', unread: 2, avatar: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=100', archived: false },
-  { id: 'c6', name: 'Lezzet Catering', message: 'Menü seçeneklerini gönderdik.', time: '3 gün', unread: 0, avatar: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=100', archived: true },
-  { id: 'c7', name: 'Stage Tech', message: 'Sahne kurulumu tamamlandı.', time: '1 hafta', unread: 0, avatar: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=100', archived: true },
-];
+// Get initial conversations from data file
+const initialConversations = getConversationList();
 
 export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const navigation = useNavigation<any>();
@@ -72,6 +67,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
 
   // Handle long press on conversation
   const handleLongPress = (chat: typeof conversations[0]) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const options = chat.archived
       ? [
           { text: 'Arşivden Çıkar', onPress: () => toggleArchive(chat.id) },
@@ -90,6 +86,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
 
   // Toggle archive status
   const toggleArchive = (id: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setConversations(prev =>
       prev.map(c => c.id === id ? { ...c, archived: !c.archived } : c)
     );

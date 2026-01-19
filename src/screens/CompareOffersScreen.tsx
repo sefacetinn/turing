@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,15 +75,18 @@ export function CompareOffersScreen() {
   ];
 
   const handleSelectOffer = (offerId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedOfferId(offerId);
   };
 
   const handleOfferDetail = (offerId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('OfferDetail', { offerId });
   };
 
   const handleAcceptSelected = () => {
     if (!selectedOfferId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const selectedOffer = offers.find((o) => o.id === selectedOfferId);
     if (!selectedOffer) return;

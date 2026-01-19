@@ -9,6 +9,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -37,6 +38,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   const [showLocation, setShowLocation] = useState(false);
 
   const handleLogout = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       'Cikis Yap',
       'Hesabinizdan cikis yapmak istediginize emin misiniz?',
@@ -52,6 +54,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   };
 
   const handleDeleteAccount = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
       'Hesabi Sil',
       'Bu islem geri alinamaz. Hesabiniz ve tum verileriniz kalici olarak silinecektir.',
@@ -69,6 +72,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   };
 
   const handleRateApp = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Uygulamayi Degerlendir',
       'Bizi degerlendirmek icin App Store\'a yonlendirileceksiniz.',

@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -119,7 +120,10 @@ export function MenuManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.');
+        }}
       >
         <View style={styles.menuCardHeader}>
           <View style={styles.menuImageContainer}>
@@ -230,7 +234,10 @@ export function MenuManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.');
+        }}
       >
         <View style={styles.packageImageContainer}>
           <OptimizedImage source={pkg.image} style={styles.packageImage} />
@@ -299,7 +306,10 @@ export function MenuManagementScreen() {
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.goBack();
+            }}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -318,7 +328,10 @@ export function MenuManagementScreen() {
               borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
             },
           ]}
-          onPress={() => Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.')}
+          onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Menu Detayi', 'Bu ozellik yakinda aktif olacak.');
+        }}
         >
           <Ionicons name="add" size={22} color={colors.brand[400]} />
         </TouchableOpacity>
@@ -352,7 +365,10 @@ export function MenuManagementScreen() {
       <View style={[styles.mainTabs, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
         <TouchableOpacity
           style={styles.mainTab}
-          onPress={() => setActiveTab('items')}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setActiveTab('items');
+          }}
         >
           <View style={styles.mainTabContent}>
             <Ionicons
@@ -376,7 +392,10 @@ export function MenuManagementScreen() {
 
         <TouchableOpacity
           style={styles.mainTab}
-          onPress={() => setActiveTab('packages')}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setActiveTab('packages');
+          }}
         >
           <View style={styles.mainTabContent}>
             <Ionicons
@@ -421,7 +440,10 @@ export function MenuManagementScreen() {
                 onChangeText={setSearchQuery}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <TouchableOpacity onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSearchQuery('');
+                }}>
                   <Ionicons name="close-circle" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               )}
@@ -445,7 +467,10 @@ export function MenuManagementScreen() {
                         : 'transparent',
                     },
                   ]}
-                  onPress={() => setActiveCategory(cat.key)}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setActiveCategory(cat.key);
+                  }}
                 >
                   {cat.key !== 'all' && (
                     <Ionicons

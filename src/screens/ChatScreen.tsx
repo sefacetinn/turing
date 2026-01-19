@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,12 @@ import {
   Platform,
   Modal,
   Alert,
+  Keyboard,
+  Animated,
+  Dimensions,
 } from 'react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,36 +27,14 @@ import { useTheme } from '../theme/ThemeContext';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { gradients } from '../theme/colors';
+import { getConversationById, createNewConversation, ChatMessage } from '../data/messagesData';
 
 interface ChatParams {
   conversationId?: string;
   providerId?: string;
   providerName?: string;
   providerImage?: string;
-}
-
-interface ChatMessage {
-  id: string;
-  senderId: string;
-  text?: string;
-  time: string;
-  type: 'text' | 'offer' | 'meeting' | 'file';
-  // Offer specific
-  offerAmount?: number;
-  offerDescription?: string;
-  offerStatus?: 'pending' | 'accepted' | 'rejected';
-  eventTitle?: string;
-  // Meeting specific
-  meetingTitle?: string;
-  meetingDate?: string;
-  meetingTime?: string;
-  meetingLocation?: string;
-  meetingStatus?: 'pending' | 'accepted' | 'rejected';
-  // File specific
-  fileName?: string;
-  fileSize?: string;
-  fileType?: string;
-  fileUri?: string;
+  serviceCategory?: string;
 }
 
 // Mock events for offer selection
@@ -59,32 +42,6 @@ const mockEvents = [
   { id: 'e1', title: 'Yaz Festivali 2026', date: '15 Temmuz 2026' },
   { id: 'e2', title: 'Kurumsal Lansman', date: '22 Ağustos 2026' },
   { id: 'e3', title: 'Düğün Organizasyonu', date: '5 Eylül 2026' },
-];
-
-// Local conversations data
-const conversations = [
-  {
-    id: 'c1',
-    participantName: 'Pro Sound Istanbul',
-    participantImage: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400',
-    online: true,
-    messages: [
-      { id: 'm1', senderId: 'provider', text: 'Merhaba! Etkinliğiniz için ses sistemi hizmeti konusunda size yardımcı olabilirim.', time: '10:30', type: 'text' as const },
-      { id: 'm2', senderId: 'me', text: 'Merhaba, 500 kişilik açık alan için profesyonel ses sistemi arıyoruz.', time: '10:32', type: 'text' as const },
-      { id: 'm3', senderId: 'provider', text: 'Harika! Bu tarz etkinliklerde deneyimli ekibimiz var. Line array sistemimiz 1000 kişiye kadar açık alanları rahatlıkla karşılayabilir.', time: '10:35', type: 'text' as const },
-      { id: 'm4', senderId: 'me', text: 'Fiyat teklifinizi alabilir miyim?', time: '10:36', type: 'text' as const },
-    ],
-  },
-  {
-    id: 'c2',
-    participantName: 'Elite VIP Transfer',
-    participantImage: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400',
-    online: false,
-    messages: [
-      { id: 'm1', senderId: 'provider', text: 'VIP transfer hizmetlerimiz hakkında bilgi almak ister misiniz?', time: '09:00', type: 'text' as const },
-      { id: 'm2', senderId: 'me', text: 'Evet, 20 kişilik VIP konuk grubumuz için havalimanı transferi gerekiyor.', time: '09:15', type: 'text' as const },
-    ],
-  },
 ];
 
 export function ChatScreen() {
@@ -98,37 +55,99 @@ export function ChatScreen() {
   const getConversationData = React.useMemo(() => {
     // First check for conversationId
     if (params?.conversationId) {
-      const found = conversations.find(c => c.id === params.conversationId);
-      if (found) return found;
+      const found = getConversationById(params.conversationId);
+      if (found) {
+        return {
+          id: found.id,
+          participantName: found.participantName,
+          participantImage: found.participantImage,
+          online: found.online,
+          messages: found.messages,
+        };
+      }
     }
 
     // If providerId is passed, create a new conversation
     if (params?.providerId && params?.providerName) {
+      const newConv = createNewConversation(
+        params.providerId,
+        params.providerName,
+        params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
+        params.serviceCategory || 'provider'
+      );
       return {
-        id: `new_${params.providerId}`,
-        participantName: params.providerName,
-        participantImage: params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
-        online: true,
-        messages: [
-          {
-            id: 'm1',
-            senderId: 'provider' as const,
-            text: `Merhaba! ${params.providerName} olarak size nasıl yardımcı olabiliriz?`,
-            time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-            type: 'text' as const
-          },
-        ],
+        id: newConv.id,
+        participantName: newConv.participantName,
+        participantImage: newConv.participantImage,
+        online: newConv.online,
+        messages: newConv.messages,
       };
     }
 
-    // Default fallback
-    return conversations[0];
-  }, [params?.conversationId, params?.providerId, params?.providerName, params?.providerImage]);
+    // Default fallback - get first conversation
+    const defaultConv = getConversationById('c1');
+    if (defaultConv) {
+      return {
+        id: defaultConv.id,
+        participantName: defaultConv.participantName,
+        participantImage: defaultConv.participantImage,
+        online: defaultConv.online,
+        messages: defaultConv.messages,
+      };
+    }
+
+    // Ultimate fallback
+    return {
+      id: 'fallback',
+      participantName: 'Bilinmeyen',
+      participantImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
+      online: false,
+      messages: [],
+    };
+  }, [params?.conversationId, params?.providerId, params?.providerName, params?.providerImage, params?.serviceCategory]);
 
   const conversation = getConversationData;
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(conversation.messages as ChatMessage[]);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Keyboard state
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardPadding = useRef(new Animated.Value(0)).current;
+
+  // Handle keyboard events
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+      Animated.timing(keyboardPadding, {
+        toValue: Platform.OS === 'ios' ? 0 : event.endCoordinates.height,
+        duration: event.duration || 250,
+        useNativeDriver: false,
+      }).start();
+
+      // Scroll to bottom when keyboard appears
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+
+    const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
+      setKeyboardHeight(0);
+      Animated.timing(keyboardPadding, {
+        toValue: 0,
+        duration: event.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [keyboardPadding]);
 
   // Modal states
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -712,10 +731,10 @@ export function ChatScreen() {
         </View>
 
         {/* Input Area */}
-        <View style={[styles.inputContainer, {
+        <Animated.View style={[styles.inputContainer, {
           backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : colors.background,
           borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-          paddingBottom: Math.max(insets.bottom, 12) + 80,
+          paddingBottom: keyboardHeight > 0 ? 12 : Math.max(insets.bottom, 12) + 80,
         }]}>
           <TouchableOpacity
             style={[styles.attachButton, {
@@ -756,7 +775,7 @@ export function ChatScreen() {
               color={message.trim() ? 'white' : colors.textMuted}
             />
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
 
       {/* Send Offer Modal */}
@@ -764,18 +783,38 @@ export function ChatScreen() {
         visible={showOfferModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowOfferModal(false)}
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowOfferModal(false);
+        }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowOfferModal(false);
+            }}
+          />
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Teklif Gönder</Text>
-              <TouchableOpacity onPress={() => setShowOfferModal(false)}>
+              <TouchableOpacity onPress={() => {
+                Keyboard.dismiss();
+                setShowOfferModal(false);
+              }}>
                 <Ionicons name="close" size={24} color={colors.zinc[400]} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
               {/* Event Selection */}
               <View style={styles.formSection}>
                 <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Seçin</Text>
@@ -843,7 +882,10 @@ export function ChatScreen() {
               </View>
             </ScrollView>
 
-            <TouchableOpacity style={styles.submitButton} onPress={handleSendOffer}>
+            <TouchableOpacity style={styles.submitButton} onPress={() => {
+              Keyboard.dismiss();
+              handleSendOffer();
+            }}>
               <LinearGradient
                 colors={gradients.primary}
                 style={styles.submitButtonGradient}
@@ -855,7 +897,7 @@ export function ChatScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Schedule Meeting Modal */}
@@ -863,18 +905,38 @@ export function ChatScreen() {
         visible={showMeetingModal}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowMeetingModal(false)}
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setShowMeetingModal(false);
+        }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowMeetingModal(false);
+            }}
+          />
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Toplantı Planla</Text>
-              <TouchableOpacity onPress={() => setShowMeetingModal(false)}>
+              <TouchableOpacity onPress={() => {
+                Keyboard.dismiss();
+                setShowMeetingModal(false);
+              }}>
                 <Ionicons name="close" size={24} color={colors.zinc[400]} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
               {/* Meeting Title */}
               <View style={styles.formSection}>
                 <Text style={[styles.formLabel, { color: colors.textMuted }]}>Toplantı Başlığı</Text>
@@ -956,7 +1018,10 @@ export function ChatScreen() {
               </View>
             </ScrollView>
 
-            <TouchableOpacity style={styles.submitButton} onPress={handleSendMeeting}>
+            <TouchableOpacity style={styles.submitButton} onPress={() => {
+              Keyboard.dismiss();
+              handleSendMeeting();
+            }}>
               <LinearGradient
                 colors={['#3b82f6', '#2563eb']}
                 style={styles.submitButtonGradient}
@@ -968,7 +1033,7 @@ export function ChatScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* File Options Modal */}

@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -58,14 +59,17 @@ export function AddEditArtistScreen() {
   const handleSave = () => {
     // Validation
     if (!name.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Sanatci adi gereklidir.');
       return;
     }
     if (selectedGenres.length === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'En az bir tur secmelisiniz.');
       return;
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
       'Basarili',
       isEditing ? 'Sanatci bilgileri guncellendi.' : 'Yeni sanatci eklendi.',
@@ -74,6 +78,7 @@ export function AddEditArtistScreen() {
   };
 
   const toggleGenre = (genre: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (selectedGenres.includes(genre)) {
       setSelectedGenres(selectedGenres.filter((g) => g !== genre));
     } else {
@@ -128,7 +133,10 @@ export function AddEditArtistScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={[styles.header, { borderColor: colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.goBack();
+        }}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>

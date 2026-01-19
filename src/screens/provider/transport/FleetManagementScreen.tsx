@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -150,6 +151,7 @@ export function FleetManagementScreen() {
         ]}
         activeOpacity={0.8}
         onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           Alert.alert(
             `${vehicle.brand} ${vehicle.model}`,
             `Plaka: ${vehicle.plate}\nKapasite: ${vehicle.capacity} kisi\nYakıt: ${vehicle.fuelType}\nSaatlik: ${vehicle.hourlyRate.toLocaleString('tr-TR')} TL`,
@@ -273,6 +275,7 @@ export function FleetManagementScreen() {
         ]}
         activeOpacity={0.8}
         onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           Alert.alert(
             driver.name,
             `Telefon: ${driver.phone}\nTecrube: ${driver.experience} yil\nEhliyet: ${driver.licenseType}\nPuan: ${driver.rating}`,
@@ -391,6 +394,7 @@ export function FleetManagementScreen() {
         ]}
         activeOpacity={0.8}
         onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           const driverName = driver?.name || 'Atanmadi';
           const vehiclePlate = vehicle?.plate || 'Atanmadi';
           Alert.alert(
@@ -481,7 +485,10 @@ export function FleetManagementScreen() {
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.goBack();
+            }}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -501,6 +508,7 @@ export function FleetManagementScreen() {
             },
           ]}
           onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             Alert.alert(
               'Yeni Ekle',
               'Ne eklemek istiyorsunuz?',
@@ -543,7 +551,10 @@ export function FleetManagementScreen() {
 
       {/* Tabs */}
       <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('vehicles')}>
+        <TouchableOpacity style={styles.tab} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setActiveTab('vehicles');
+        }}>
           <View style={styles.tabContent}>
             <Ionicons
               name="car"
@@ -564,7 +575,10 @@ export function FleetManagementScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('drivers')}>
+        <TouchableOpacity style={styles.tab} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setActiveTab('drivers');
+        }}>
           <View style={styles.tabContent}>
             <Ionicons
               name="people"
@@ -585,7 +599,10 @@ export function FleetManagementScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('trips')}>
+        <TouchableOpacity style={styles.tab} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setActiveTab('trips');
+        }}>
           <View style={styles.tabContent}>
             <Ionicons
               name="navigate"
@@ -633,7 +650,10 @@ export function FleetManagementScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSearchQuery('');
+            }}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}

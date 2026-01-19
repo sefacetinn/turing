@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -133,8 +135,17 @@ export function EditProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Photo & Completion */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* Profile Photo & Completion */}
         <View style={styles.heroSection}>
           <TouchableOpacity style={styles.photoContainer} onPress={handleChangePhoto} activeOpacity={0.8}>
             <Image
@@ -479,7 +490,8 @@ export function EditProfileScreen() {
         )}
 
         <View style={{ height: 100 }} />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

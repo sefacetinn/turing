@@ -22,6 +22,7 @@ export { OptimizedImage, Avatar, Thumbnail, CoverImage } from './OptimizedImage'
 export { ToastProvider, useToast, type ToastType, type ToastConfig } from './Toast';
 export { NetworkStatusBar } from './NetworkStatusBar';
 export { DismissKeyboardView, KeyboardAwareView } from './DismissKeyboardView';
+export { KeyboardAwareScrollView, KeyboardAwareContainer } from './KeyboardAwareScrollView';
 export {
   AnimatedFadeIn,
   AnimatedSlideIn,

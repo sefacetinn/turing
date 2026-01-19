@@ -9,6 +9,7 @@ import {
   FlatList,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -167,6 +168,7 @@ export function SearchScreen() {
   const results = getFilteredResults();
 
   const handleItemPress = useCallback((item: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (isNewChatMode) {
       // In new chat mode, directly start a chat with this person/provider
       navigation.navigate('Chat', {
@@ -318,7 +320,10 @@ export function SearchScreen() {
             }, showFilters && {
               backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
             }]}
-            onPress={() => setShowFilters(!showFilters)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowFilters(!showFilters);
+            }}
             accessibilityRole="button"
             accessibilityLabel={showFilters ? "Filtreleri gizle" : "Filtreleri göster"}
             accessibilityState={{ expanded: showFilters }}
@@ -343,7 +348,10 @@ export function SearchScreen() {
               }, activeFilter === filter.key && {
                 backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)'
               }]}
-              onPress={() => setActiveFilter(filter.key)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setActiveFilter(filter.key);
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected: activeFilter === filter.key }}
               accessibilityLabel={filter.label}

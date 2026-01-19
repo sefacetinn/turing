@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,7 +141,10 @@ export function EquipmentInventoryScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.');
+        }}
       >
         <View style={styles.cardHeader}>
           <View style={styles.cardImageContainer}>
@@ -243,7 +247,10 @@ export function EquipmentInventoryScreen() {
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.goBack();
+            }}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -263,7 +270,10 @@ export function EquipmentInventoryScreen() {
                 borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
               },
             ]}
-            onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
+            onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.');
+        }}
           >
             <Ionicons name="qr-code-outline" size={20} color={colors.text} />
           </TouchableOpacity>
@@ -275,7 +285,10 @@ export function EquipmentInventoryScreen() {
                 borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
               },
             ]}
-            onPress={() => Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.')}
+            onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Ekipman Detayi', 'Bu ozellik yakinda aktif olacak.');
+        }}
           >
             <Ionicons name="add" size={22} color={colors.brand[400]} />
           </TouchableOpacity>
@@ -326,7 +339,10 @@ export function EquipmentInventoryScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSearchQuery('');
+            }}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
@@ -340,7 +356,10 @@ export function EquipmentInventoryScreen() {
             <TouchableOpacity
               key={tab.key}
               style={styles.tab}
-              onPress={() => setActiveTab(tab.key)}
+              onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setActiveTab(tab.key);
+            }}
             >
               <View style={styles.tabContent}>
                 {tab.key !== 'all' && (

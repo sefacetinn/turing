@@ -1381,7 +1381,9 @@ export function ProviderRequestDetailScreen() {
           </View>
 
           <Text style={[styles.heroArtist, { color: colors.text }]}>
-            {offer.serviceCategory === 'booking' && offer.artistName ? offer.artistName : offer.role}
+            {offer.serviceCategory === 'booking' && offer.artistName
+              ? offer.artistName
+              : (offer.role.includes(' - ') ? offer.role.split(' - ')[0].trim() : offer.role)}
           </Text>
           <Text style={[styles.heroEvent, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
 

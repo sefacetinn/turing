@@ -1,7 +1,22 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Modal, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Modal,
+  StyleSheet,
+  TextInput,
+  Platform,
+  Keyboard,
+  Animated,
+  Dimensions,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface SelectOption {
   value: string;
@@ -22,6 +37,53 @@ interface SelectModalProps {
 export function SelectModal({ visible, title, options, selectedValue, onSelect, onClose, searchable = true }: SelectModalProps) {
   const { colors, isDark } = useTheme();
   const [searchText, setSearchText] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const modalHeightAnim = useRef(new Animated.Value(SCREEN_HEIGHT * 0.8)).current;
+  const searchInputRef = useRef<TextInput>(null);
+
+  // Handle keyboard events
+  useEffect(() => {
+    if (!visible) return;
+
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      const kbHeight = event.endCoordinates.height;
+      setKeyboardHeight(kbHeight);
+
+      // Animate modal to make room for keyboard
+      Animated.timing(modalHeightAnim, {
+        toValue: SCREEN_HEIGHT - kbHeight - 50, // Leave some space at top
+        duration: event.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    const hideSubscription = Keyboard.addListener(hideEvent, (event) => {
+      setKeyboardHeight(0);
+
+      Animated.timing(modalHeightAnim, {
+        toValue: SCREEN_HEIGHT * 0.8,
+        duration: event.duration || 250,
+        useNativeDriver: false,
+      }).start();
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [visible, modalHeightAnim]);
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!visible) {
+      setSearchText('');
+      setKeyboardHeight(0);
+      modalHeightAnim.setValue(SCREEN_HEIGHT * 0.8);
+    }
+  }, [visible, modalHeightAnim]);
 
   // Filter options based on search text
   const filteredOptions = useMemo(() => {
@@ -35,15 +97,22 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
 
   // Reset search when modal closes
   const handleClose = useCallback(() => {
+    Keyboard.dismiss();
     setSearchText('');
     onClose();
   }, [onClose]);
 
   const handleSelect = useCallback((value: string) => {
+    Keyboard.dismiss();
     setSearchText('');
     onSelect(value);
     onClose();
   }, [onSelect, onClose]);
+
+  const handleOverlayPress = useCallback(() => {
+    Keyboard.dismiss();
+    handleClose();
+  }, [handleClose]);
 
   const renderItem = useCallback(({ item }: { item: SelectOption }) => {
     const isSelected = selectedValue === item.value;
@@ -61,6 +130,7 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
           }
         ]}
         onPress={() => handleSelect(item.value)}
+        activeOpacity={0.7}
       >
         <View style={styles.optionContent}>
           <Text
@@ -96,68 +166,90 @@ export function SelectModal({ visible, title, options, selectedValue, onSelect, 
       transparent={true}
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        style={styles.modalOverlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <Ionicons name="close" size={24} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Search Input */}
-          {showSearch && (
-            <View style={styles.searchContainer}>
-              <View style={[styles.searchInputContainer, {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
-              }]}>
-                <Ionicons name="search" size={18} color={colors.textMuted} />
-                <TextInput
-                  style={[styles.searchInput, { color: colors.text }]}
-                  placeholder="Ara..."
-                  placeholderTextColor={colors.textMuted}
-                  value={searchText}
-                  onChangeText={setSearchText}
-                  autoCorrect={false}
-                />
-                {searchText.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchText('')}>
-                    <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-                  </TouchableOpacity>
-                )}
+      <TouchableWithoutFeedback onPress={handleOverlayPress}>
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback>
+            <Animated.View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: colors.background,
+                  maxHeight: modalHeightAnim,
+                }
+              ]}
+            >
+              {/* Drag Handle */}
+              <View style={styles.dragHandleContainer}>
+                <View style={[styles.dragHandle, { backgroundColor: colors.textMuted }]} />
               </View>
-            </View>
-          )}
 
-          {/* Options List with FlatList for better performance */}
-          <FlatList
-            data={filteredOptions}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            style={styles.optionsList}
-            contentContainerStyle={styles.optionsListContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            initialNumToRender={15}
-            maxToRenderPerBatch={10}
-            windowSize={5}
-            removeClippedSubviews={true}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="search-outline" size={32} color={colors.textMuted} />
-                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                  Sonuç bulunamadı
-                </Text>
+              {/* Header */}
+              <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+                <TouchableOpacity onPress={handleClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </TouchableOpacity>
               </View>
-            }
-          />
+
+              {/* Search Input */}
+              {showSearch && (
+                <View style={styles.searchContainer}>
+                  <View style={[styles.searchInputContainer, {
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border,
+                  }]}>
+                    <Ionicons name="search" size={18} color={colors.textMuted} />
+                    <TextInput
+                      ref={searchInputRef}
+                      style={[styles.searchInput, { color: colors.text }]}
+                      placeholder="Ara..."
+                      placeholderTextColor={colors.textMuted}
+                      value={searchText}
+                      onChangeText={setSearchText}
+                      autoCorrect={false}
+                      autoCapitalize="none"
+                      returnKeyType="search"
+                      blurOnSubmit={false}
+                    />
+                    {searchText.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchText('')}>
+                        <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Options List */}
+              <FlatList
+                data={filteredOptions}
+                renderItem={renderItem}
+                keyExtractor={keyExtractor}
+                style={styles.optionsList}
+                contentContainerStyle={[
+                  styles.optionsListContent,
+                  { paddingBottom: Math.max(20, keyboardHeight > 0 ? 20 : 40) }
+                ]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                initialNumToRender={15}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="search-outline" size={32} color={colors.textMuted} />
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                      Sonuç bulunamadı
+                    </Text>
+                  </View>
+                }
+              />
+            </Animated.View>
+          </TouchableWithoutFeedback>
         </View>
-      </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
@@ -171,16 +263,25 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '80%',
-    paddingBottom: 20,
+    overflow: 'hidden',
+  },
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.3,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   modalTitle: {
     fontSize: 18,
@@ -188,14 +289,14 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 8,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
     gap: 8,
@@ -209,8 +310,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   optionsListContent: {
-    paddingTop: 4,
-    paddingBottom: 20,
+    paddingTop: 8,
   },
   optionItem: {
     flexDirection: 'row',

@@ -225,7 +225,9 @@ export function ProviderEventsScreen() {
               >
                 <Ionicons name={serviceInfo.icon as any} size={12} color="white" />
               </LinearGradient>
-              <Text style={styles.serviceLabelText} numberOfLines={1}>{event.serviceLabel}</Text>
+              <Text style={styles.serviceLabelText} numberOfLines={1}>
+                {event.serviceLabel.includes(' - ') ? event.serviceLabel.split(' - ')[0].trim() : event.serviceLabel}
+              </Text>
             </View>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={11} color="rgba(255,255,255,0.9)" />

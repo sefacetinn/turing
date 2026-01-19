@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ export function RoleSelectionScreen() {
   const { colors, isDark } = useTheme();
 
   const handleSelectRole = (role: UserRole) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (role === 'organizer') {
       navigation.navigate('OrganizerRegistration');
     } else {

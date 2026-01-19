@@ -20,7 +20,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as MediaLibrary from 'expo-media-library';
-import { cacheDirectory, downloadAsync } from 'expo-file-system/build/legacy/FileSystem';
+import * as FileSystem from 'expo-file-system';
 import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
@@ -188,9 +188,9 @@ export function PortfolioGalleryScreen() {
 
       const imageUrl = images[currentIndex];
       const filename = `portfolio_${Date.now()}.jpg`;
-      const fileUri = (cacheDirectory || '') + filename;
+      const fileUri = (FileSystem.cacheDirectory || '') + filename;
 
-      const downloadResult = await downloadAsync(imageUrl, fileUri);
+      const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri);
 
       await MediaLibrary.saveToLibraryAsync(downloadResult.uri);
 

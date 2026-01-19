@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -48,14 +49,17 @@ export function RequestProviderModeScreen() {
 
   const handleSubmit = () => {
     if (!reason.trim()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen hizmet sağlayıcı modunu neden kullanmak istediğinizi açıklayın.');
       return;
     }
     if (!serviceType) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen sunmak istediğiniz hizmet türünü seçin.');
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSubmitting(true);
 
     // Simulate API call
@@ -79,7 +83,10 @@ export function RequestProviderModeScreen() {
       {/* Header */}
       <SafeAreaView edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.goBack();
+          }}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Hizmet Sağlayıcı Modu</Text>

@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -660,8 +662,19 @@ export function CategoryRequestScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 180 }} showsVerticalScrollIndicator={false}>
-        <View style={styles.categoryBadge}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 180 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={styles.categoryBadge}>
           <LinearGradient colors={config.gradient} style={styles.categoryIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Ionicons name={config.icon as any} size={24} color="white" />
           </LinearGradient>
@@ -762,6 +775,7 @@ export function CategoryRequestScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
         <View style={styles.bottomButtonsRow}>

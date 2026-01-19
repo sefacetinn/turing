@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -133,7 +134,10 @@ export function PersonnelManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.');
+        }}
       >
         <View style={styles.cardHeader}>
           <View style={styles.personnelImageContainer}>
@@ -262,7 +266,10 @@ export function PersonnelManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.');
+        }}
       >
         <View style={styles.shiftHeader}>
           <View style={styles.shiftInfo}>
@@ -365,7 +372,10 @@ export function PersonnelManagementScreen() {
           },
         ]}
         activeOpacity={0.8}
-        onPress={() => Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.')}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.');
+        }}
       >
         <View style={styles.incidentHeader}>
           <View style={styles.incidentInfo}>
@@ -438,7 +448,10 @@ export function PersonnelManagementScreen() {
         <View style={styles.headerLeft}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.goBack();
+            }}
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -457,7 +470,10 @@ export function PersonnelManagementScreen() {
               borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)',
             },
           ]}
-          onPress={() => Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.')}
+          onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          Alert.alert('Detay', 'Bu ozellik yakinda aktif olacak.');
+        }}
         >
           <Ionicons name="add" size={22} color={colors.brand[400]} />
         </TouchableOpacity>
@@ -489,7 +505,10 @@ export function PersonnelManagementScreen() {
 
       {/* Tabs */}
       <View style={[styles.tabContainer, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-        <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('personnel')}>
+        <TouchableOpacity style={styles.tab} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setActiveTab('personnel');
+        }}>
           <View style={styles.tabContent}>
             <Ionicons
               name="people"
@@ -510,7 +529,10 @@ export function PersonnelManagementScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('shifts')}>
+        <TouchableOpacity style={styles.tab} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setActiveTab('shifts');
+        }}>
           <View style={styles.tabContent}>
             <Ionicons
               name="calendar"
@@ -531,7 +553,10 @@ export function PersonnelManagementScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('incidents')}>
+        <TouchableOpacity style={styles.tab} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setActiveTab('incidents');
+        }}>
           <View style={styles.tabContent}>
             <Ionicons
               name="alert-circle"
@@ -584,7 +609,10 @@ export function PersonnelManagementScreen() {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSearchQuery('');
+            }}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}

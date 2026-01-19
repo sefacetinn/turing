@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
@@ -12,6 +13,7 @@ export function AccountPendingScreen({ onLogout }: AccountPendingScreenProps) {
   const { colors, isDark } = useTheme();
 
   const handleContactSupport = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
       'Destek',
       'Nasıl yardımcı olabiliriz?',
@@ -26,6 +28,7 @@ export function AccountPendingScreen({ onLogout }: AccountPendingScreenProps) {
   };
 
   const handleLogout = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Çıkış Yap',
       'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',

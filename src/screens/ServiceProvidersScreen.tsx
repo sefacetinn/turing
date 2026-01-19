@@ -11,6 +11,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -100,10 +101,12 @@ export function ServiceProvidersScreen() {
   };
 
   const handleProviderDetail = (provider: Provider) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('ProviderDetail', { providerId: provider.id });
   };
 
   const handleRequestOffer = (provider: Provider) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('CategoryRequest', {
       category: category,
       provider: {
@@ -116,6 +119,7 @@ export function ServiceProvidersScreen() {
   };
 
   const handleBulkOfferRequest = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('CategoryRequest', {
       category: category,
       bulkProviders: selectedProviders.map(id => {
@@ -128,6 +132,7 @@ export function ServiceProvidersScreen() {
   };
 
   const handleCall = (provider: Provider) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       'Ara',
       `${provider.name} ile iletişime geçmek istiyor musunuz?`,
@@ -142,6 +147,7 @@ export function ServiceProvidersScreen() {
   };
 
   const handleMessage = (provider: Provider) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('Chat', {
       providerId: provider.id,
       providerName: provider.name,

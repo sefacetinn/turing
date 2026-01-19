@@ -8,6 +8,7 @@ import {
   FlatList,
   ViewToken,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,11 +39,13 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }).current;
 
   const handleSkip = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await setOnboardingCompleted();
     onComplete();
   };
 
   const handleNext = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (activeIndex < ONBOARDING_SLIDES.length - 1) {
       flatListRef.current?.scrollToIndex({
         index: activeIndex + 1,

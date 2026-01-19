@@ -1,7 +1,97 @@
 // Artist Roster Data for Booking Providers
 
-// Ekip Üyesi Arayüzü
+// ============================================
+// ROL TİPLERİ
+// ============================================
+
+// Müzisyen Rolleri
+export type MusicianRole =
+  | 'lead_vocal'      // Lead Vokal
+  | 'backing_vocal'   // Backing Vokal
+  | 'bass'            // Bas Gitar
+  | 'drums'           // Davul
+  | 'keyboard'        // Klavye
+  | 'lead_guitar'     // Solo Gitar
+  | 'rhythm_guitar'   // Ritim Gitar
+  | 'saxophone'       // Saksafon
+  | 'trumpet'         // Trompet
+  | 'violin'          // Keman
+  | 'percussion'      // Perküsyon
+  | 'dj';             // DJ
+
+// Teknik Ekip Rolleri
+export type TechnicalRole =
+  | 'foh_engineer'    // FOH Ses Mühendisi
+  | 'monitor_engineer'// Monitor Mühendisi
+  | 'lighting_op'     // Işık Operatörü
+  | 'video_op'        // Video Operatörü
+  | 'stage_tech'      // Sahne Teknisyeni
+  | 'backline_tech'   // Backline Teknisyeni
+  | 'rigger'          // Rigger
+  | 'roadie'          // Rodi
+  | 'production_mgr'; // Prodüksiyon Amiri
+
+// Yönetim Rolleri
+export type ManagementRole =
+  | 'manager'         // Menajer
+  | 'tour_manager'    // Tur Menajeri
+  | 'road_manager'    // Road Manager
+  | 'pr_manager'      // PR Sorumlusu
+  | 'social_media'    // Sosyal Medya Sorumlusu
+  | 'assistant';      // Asistan
+
+// Diğer Roller
+export type OtherRole =
+  | 'security'        // Güvenlik
+  | 'stylist'         // Stylist
+  | 'makeup'          // Makyöz
+  | 'driver'          // Şoför
+  | 'photographer'    // Fotoğrafçı
+  | 'videographer';   // Kameraman
+
+// Tüm Roller
+export type CrewRole = MusicianRole | TechnicalRole | ManagementRole | OtherRole;
+
+// Rol Kategorisi
+export type RoleCategory = 'musician' | 'technical' | 'management' | 'other';
+
+// ============================================
+// EKIP ÜYESİ ARAYÜZÜ
+// ============================================
+
+// Banka Bilgileri
+export interface BankInfo {
+  bankName: string;
+  iban: string;
+  accountHolder: string;
+}
+
+// Ekip Üyesi Arayüzü (Genişletilmiş)
 export interface CrewMember {
+  id: string;
+  name: string;
+  role: CrewRole;
+  roleCategory: RoleCategory;
+  phone?: string;
+  email?: string;
+  image?: string;
+  notes?: string;
+
+  // Ücret Bilgileri
+  defaultFee: number;           // Varsayılan iş başı ücreti
+  feeType: 'per_show' | 'per_day' | 'monthly';
+  currency: 'TRY';
+
+  // Banka Bilgileri
+  bankInfo?: BankInfo;
+
+  // Durum
+  status: 'active' | 'inactive' | 'on_leave';
+  joinedAt: string;
+}
+
+// Eski format için geriye uyumluluk (migration için)
+export interface LegacyCrewMember {
   id: string;
   name: string;
   role: 'manager' | 'sound_engineer' | 'lighting_designer' | 'tour_manager' |
@@ -10,6 +100,39 @@ export interface CrewMember {
   email?: string;
   image?: string;
   notes?: string;
+}
+
+// ============================================
+// ETKİNLİK ATAMASI ARAYÜZÜ
+// ============================================
+
+export interface CrewAssignment {
+  id: string;
+  crewMemberId: string;
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  venue: string;
+  city: string;
+
+  // Atama Detayları
+  role: CrewRole;               // Bu iş için rol (farklı olabilir)
+  fee: number;                  // Bu iş için ücret
+  feeType: 'per_show' | 'per_day';
+
+  // Durum
+  assignmentStatus: 'confirmed' | 'pending' | 'cancelled';
+
+  // Ödeme Durumu
+  paymentStatus: 'paid' | 'pending' | 'overdue' | 'partial';
+  paidAmount: number;
+  totalAmount: number;
+  paymentDate?: string;
+  dueDate: string;
+
+  // Notlar
+  notes?: string;
+  createdAt: string;
 }
 
 // Teknik Rider Arayüzü
@@ -220,18 +343,132 @@ export interface ArtistContract {
   signedAt?: string;
 }
 
-// Rol etiketleri
-export const crewRoleLabels: Record<CrewMember['role'], string> = {
+// ============================================
+// ROL ETİKETLERİ
+// ============================================
+
+// Müzisyen Rol Etiketleri
+export const musicianRoleLabels: Record<MusicianRole, string> = {
+  lead_vocal: 'Lead Vokal',
+  backing_vocal: 'Backing Vokal',
+  bass: 'Bas Gitar',
+  drums: 'Davul',
+  keyboard: 'Klavye',
+  lead_guitar: 'Solo Gitar',
+  rhythm_guitar: 'Ritim Gitar',
+  saxophone: 'Saksafon',
+  trumpet: 'Trompet',
+  violin: 'Keman',
+  percussion: 'Perküsyon',
+  dj: 'DJ',
+};
+
+// Teknik Rol Etiketleri
+export const technicalRoleLabels: Record<TechnicalRole, string> = {
+  foh_engineer: 'FOH Ses Mühendisi',
+  monitor_engineer: 'Monitor Mühendisi',
+  lighting_op: 'Işık Operatörü',
+  video_op: 'Video Operatörü',
+  stage_tech: 'Sahne Teknisyeni',
+  backline_tech: 'Backline Teknisyeni',
+  rigger: 'Rigger',
+  roadie: 'Rodi',
+  production_mgr: 'Prodüksiyon Amiri',
+};
+
+// Yönetim Rol Etiketleri
+export const managementRoleLabels: Record<ManagementRole, string> = {
   manager: 'Menajer',
-  sound_engineer: 'Ses Mühendisi',
-  lighting_designer: 'Işık Tasarımcısı',
   tour_manager: 'Tur Menajeri',
-  stage_manager: 'Sahne Amiri',
-  musician: 'Müzisyen',
-  backup_vocal: 'Backing Vokal',
-  technician: 'Teknisyen',
+  road_manager: 'Road Manager',
+  pr_manager: 'PR Sorumlusu',
+  social_media: 'Sosyal Medya Sorumlusu',
+  assistant: 'Asistan',
+};
+
+// Diğer Rol Etiketleri
+export const otherRoleLabels: Record<OtherRole, string> = {
   security: 'Güvenlik',
+  stylist: 'Stylist',
+  makeup: 'Makyöz',
+  driver: 'Şoför',
+  photographer: 'Fotoğrafçı',
+  videographer: 'Kameraman',
+};
+
+// Tüm Rol Etiketleri
+export const crewRoleLabels: Record<CrewRole, string> = {
+  ...musicianRoleLabels,
+  ...technicalRoleLabels,
+  ...managementRoleLabels,
+  ...otherRoleLabels,
+};
+
+// Kategori Etiketleri
+export const roleCategoryLabels: Record<RoleCategory, string> = {
+  musician: 'Müzisyenler',
+  technical: 'Teknik Ekip',
+  management: 'Yönetim',
   other: 'Diğer',
+};
+
+// Kategori İkonları
+export const roleCategoryIcons: Record<RoleCategory, string> = {
+  musician: 'musical-notes-outline',
+  technical: 'construct-outline',
+  management: 'briefcase-outline',
+  other: 'people-outline',
+};
+
+// Rol'dan Kategori'ye Mapping
+export function getRoleCategoryForRole(role: CrewRole): RoleCategory {
+  if (Object.keys(musicianRoleLabels).includes(role)) return 'musician';
+  if (Object.keys(technicalRoleLabels).includes(role)) return 'technical';
+  if (Object.keys(managementRoleLabels).includes(role)) return 'management';
+  return 'other';
+}
+
+// Kategoriye göre roller
+export function getRolesForCategory(category: RoleCategory): CrewRole[] {
+  switch (category) {
+    case 'musician':
+      return Object.keys(musicianRoleLabels) as MusicianRole[];
+    case 'technical':
+      return Object.keys(technicalRoleLabels) as TechnicalRole[];
+    case 'management':
+      return Object.keys(managementRoleLabels) as ManagementRole[];
+    case 'other':
+      return Object.keys(otherRoleLabels) as OtherRole[];
+  }
+}
+
+// Fee Type Etiketleri
+export const feeTypeLabels: Record<CrewMember['feeType'], string> = {
+  per_show: 'İş Başı',
+  per_day: 'Günlük',
+  monthly: 'Aylık',
+};
+
+// Payment Status Etiketleri
+export const paymentStatusLabels: Record<CrewAssignment['paymentStatus'], string> = {
+  paid: 'Ödendi',
+  pending: 'Bekliyor',
+  overdue: 'Gecikmiş',
+  partial: 'Kısmi Ödeme',
+};
+
+// Assignment Status Etiketleri
+export const assignmentStatusLabels: Record<CrewAssignment['assignmentStatus'], string> = {
+  confirmed: 'Onaylandı',
+  pending: 'Bekliyor',
+  cancelled: 'İptal',
+};
+
+// Crew Member Status Etiketleri
+export const crewMemberStatusLabels: Record<CrewMember['status'], string> = {
+  active: 'Aktif',
+  inactive: 'Pasif',
+  on_leave: 'İzinde',
 };
 
 // Rider tipi etiketleri
@@ -288,17 +525,60 @@ export const mockArtists: Artist[] = [
       backlineRequired: false,
     },
     upcomingShows: [
-      { id: 'sh1', eventName: 'Summer Fest 2024', venue: 'KüsarArena', city: 'İstanbul', date: '15 Temmuz 2024', status: 'confirmed', fee: 120000 },
-      { id: 'sh2', eventName: 'Beach Party', venue: 'Sunset Beach', city: 'Bodrum', date: '22 Temmuz 2024', status: 'pending', fee: 90000 },
+      { id: 'sh1', eventName: 'Summer Fest 2025', venue: 'KüçükÇiftlik Park', city: 'İstanbul', date: '15 Temmuz 2025', status: 'confirmed', fee: 120000 },
+      { id: 'sh2', eventName: 'Beach Party', venue: 'Sunset Beach', city: 'Bodrum', date: '22 Temmuz 2025', status: 'pending', fee: 90000 },
+      { id: 'sh3', eventName: 'Club Night', venue: 'Klein Garten', city: 'İstanbul', date: '5 Ağustos 2025', status: 'pending', fee: 85000 },
     ],
     pastShows: [
-      { id: 'sh3', eventName: 'New Year Party', venue: 'Zorlu PSM', city: 'İstanbul', date: '31 Aralık 2023', status: 'completed', fee: 150000 },
+      { id: 'sh100', eventName: 'New Year Party', venue: 'Zorlu PSM', city: 'İstanbul', date: '31 Aralık 2024', status: 'completed', fee: 150000 },
+      { id: 'sh101', eventName: 'Spring Festival', venue: 'Life Park', city: 'İstanbul', date: '15 Nisan 2024', status: 'completed', fee: 110000 },
     ],
     // YENİ: Ekip Üyeleri
     crew: [
-      { id: 'cr1', name: 'Murat Özkan', role: 'manager', phone: '+90 532 111 2233', email: 'murat@djphantom.com' },
-      { id: 'cr2', name: 'Ali Kaya', role: 'sound_engineer', phone: '+90 533 222 3344', email: 'ali@djphantom.com' },
-      { id: 'cr3', name: 'Zeynep Demir', role: 'tour_manager', phone: '+90 534 333 4455', email: 'zeynep@djphantom.com' },
+      {
+        id: 'cr1',
+        name: 'Murat Özkan',
+        role: 'manager',
+        roleCategory: 'management',
+        phone: '+90 532 111 2233',
+        email: 'murat@djphantom.com',
+        defaultFee: 5000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2020-01-15',
+      },
+      {
+        id: 'cr2',
+        name: 'Ali Kaya',
+        role: 'foh_engineer',
+        roleCategory: 'technical',
+        phone: '+90 533 222 3344',
+        email: 'ali@djphantom.com',
+        defaultFee: 3500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2021-03-10',
+        bankInfo: {
+          bankName: 'Garanti BBVA',
+          iban: 'TR33 0006 1005 1978 6457 8413 26',
+          accountHolder: 'Ali Kaya',
+        },
+      },
+      {
+        id: 'cr3',
+        name: 'Zeynep Demir',
+        role: 'tour_manager',
+        roleCategory: 'management',
+        phone: '+90 534 333 4455',
+        email: 'zeynep@djphantom.com',
+        defaultFee: 4500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2019-06-20',
+      },
     ],
     // YENİ: Rider'lar
     riders: {
@@ -377,8 +657,8 @@ export const mockArtists: Artist[] = [
       },
     },
     riderDocuments: [
-      { id: 'rd1', type: 'technical', fileName: 'DJ_Phantom_Technical_Rider_v3.pdf', fileSize: 1250000, fileType: 'pdf', uploadedAt: '2024-03-15', version: 3, url: '/documents/rd1.pdf' },
-      { id: 'rd2', type: 'transport', fileName: 'DJ_Phantom_Transport_Requirements.pdf', fileSize: 450000, fileType: 'pdf', uploadedAt: '2024-03-15', version: 1, url: '/documents/rd2.pdf' },
+      { id: 'rd1', type: 'technical', fileName: 'DJ_Phantom_Technical_Rider_v3.pdf', fileSize: 1250000, fileType: 'pdf', uploadedAt: '2025-03-15', version: 3, url: '/documents/rd1.pdf' },
+      { id: 'rd2', type: 'transport', fileName: 'DJ_Phantom_Transport_Requirements.pdf', fileSize: 450000, fileType: 'pdf', uploadedAt: '2025-03-15', version: 1, url: '/documents/rd2.pdf' },
     ],
   },
   {
@@ -423,19 +703,117 @@ export const mockArtists: Artist[] = [
       backlineRequired: true,
     },
     upcomingShows: [
-      { id: 'sh4', eventName: 'Yaz Konserleri', venue: 'Harbiye Açıkhava', city: 'İstanbul', date: '20 Ağustos 2024', status: 'confirmed', fee: 350000 },
+      { id: 'sh4', eventName: 'Yaz Konserleri', venue: 'Harbiye Açıkhava', city: 'İstanbul', date: '20 Ağustos 2025', status: 'confirmed', fee: 350000 },
+      { id: 'sh5', eventName: 'Açık Hava Festivali', venue: 'Cemil Topuzlu', city: 'İstanbul', date: '5 Eylül 2025', status: 'pending', fee: 320000 },
     ],
-    pastShows: [],
+    pastShows: [
+      { id: 'sh102', eventName: 'Kış Konseri', venue: 'Volkswagen Arena', city: 'İstanbul', date: '14 Şubat 2025', status: 'completed', fee: 380000 },
+      { id: 'sh103', eventName: 'Yılbaşı Gecesi', venue: 'Four Seasons Bosphorus', city: 'İstanbul', date: '31 Aralık 2024', status: 'completed', fee: 400000 },
+    ],
     // YENİ: Ekip Üyeleri
     crew: [
-      { id: 'cr4', name: 'Selin Arslan', role: 'manager', phone: '+90 535 111 2233', email: 'selin@elifdeniz.com' },
-      { id: 'cr5', name: 'Burak Yıldız', role: 'sound_engineer', phone: '+90 536 222 3344', email: 'burak@elifdeniz.com' },
-      { id: 'cr6', name: 'Ayşe Korkmaz', role: 'lighting_designer', phone: '+90 537 333 4455', email: 'ayse@elifdeniz.com' },
-      { id: 'cr7', name: 'Emre Tan', role: 'tour_manager', phone: '+90 538 444 5566', email: 'emre@elifdeniz.com' },
-      { id: 'cr8', name: 'Deniz Çelik', role: 'musician', phone: '+90 539 555 6677', notes: 'Klavyeci' },
-      { id: 'cr9', name: 'Can Öztürk', role: 'musician', phone: '+90 530 666 7788', notes: 'Gitarist' },
-      { id: 'cr10', name: 'Merve Acar', role: 'backup_vocal', phone: '+90 531 777 8899' },
-      { id: 'cr11', name: 'Gizem Şen', role: 'backup_vocal', phone: '+90 532 888 9900' },
+      {
+        id: 'cr4',
+        name: 'Selin Arslan',
+        role: 'manager',
+        roleCategory: 'management',
+        phone: '+90 535 111 2233',
+        email: 'selin@elifdeniz.com',
+        defaultFee: 8000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2018-05-01',
+      },
+      {
+        id: 'cr5',
+        name: 'Burak Yıldız',
+        role: 'foh_engineer',
+        roleCategory: 'technical',
+        phone: '+90 536 222 3344',
+        email: 'burak@elifdeniz.com',
+        defaultFee: 4500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2019-02-15',
+      },
+      {
+        id: 'cr6',
+        name: 'Ayşe Korkmaz',
+        role: 'lighting_op',
+        roleCategory: 'technical',
+        phone: '+90 537 333 4455',
+        email: 'ayse@elifdeniz.com',
+        defaultFee: 4000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2019-02-15',
+      },
+      {
+        id: 'cr7',
+        name: 'Emre Tan',
+        role: 'tour_manager',
+        roleCategory: 'management',
+        phone: '+90 538 444 5566',
+        email: 'emre@elifdeniz.com',
+        defaultFee: 6000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2020-01-10',
+      },
+      {
+        id: 'cr8',
+        name: 'Deniz Çelik',
+        role: 'keyboard',
+        roleCategory: 'musician',
+        phone: '+90 539 555 6677',
+        notes: 'Ana klavyeci',
+        defaultFee: 5500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2018-05-01',
+      },
+      {
+        id: 'cr9',
+        name: 'Can Öztürk',
+        role: 'lead_guitar',
+        roleCategory: 'musician',
+        phone: '+90 530 666 7788',
+        notes: 'Solo gitar',
+        defaultFee: 5500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2018-05-01',
+      },
+      {
+        id: 'cr10',
+        name: 'Merve Acar',
+        role: 'backing_vocal',
+        roleCategory: 'musician',
+        phone: '+90 531 777 8899',
+        defaultFee: 4000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2019-08-20',
+      },
+      {
+        id: 'cr11',
+        name: 'Gizem Şen',
+        role: 'backing_vocal',
+        roleCategory: 'musician',
+        phone: '+90 532 888 9900',
+        defaultFee: 4000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2019-08-20',
+      },
     ],
     // YENİ: Rider'lar
     riders: {
@@ -544,10 +922,10 @@ export const mockArtists: Artist[] = [
       },
     },
     riderDocuments: [
-      { id: 'rd3', type: 'technical', fileName: 'Elif_Deniz_Technical_Rider_2024.pdf', fileSize: 2500000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 2, url: '/documents/rd3.pdf' },
-      { id: 'rd4', type: 'accommodation', fileName: 'Elif_Deniz_Hospitality_Rider.pdf', fileSize: 800000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 1, url: '/documents/rd4.pdf' },
-      { id: 'rd5', type: 'backstage', fileName: 'Elif_Deniz_Backstage_Requirements.pdf', fileSize: 650000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 1, url: '/documents/rd5.pdf' },
-      { id: 'rd6', type: 'transport', fileName: 'Elif_Deniz_Transport_Rider.pdf', fileSize: 500000, fileType: 'pdf', uploadedAt: '2024-01-10', version: 1, url: '/documents/rd6.pdf' },
+      { id: 'rd3', type: 'technical', fileName: 'Elif_Deniz_Technical_Rider_2025.pdf', fileSize: 2500000, fileType: 'pdf', uploadedAt: '2025-01-10', version: 2, url: '/documents/rd3.pdf' },
+      { id: 'rd4', type: 'accommodation', fileName: 'Elif_Deniz_Hospitality_Rider.pdf', fileSize: 800000, fileType: 'pdf', uploadedAt: '2025-01-10', version: 1, url: '/documents/rd4.pdf' },
+      { id: 'rd5', type: 'backstage', fileName: 'Elif_Deniz_Backstage_Requirements.pdf', fileSize: 650000, fileType: 'pdf', uploadedAt: '2025-01-10', version: 1, url: '/documents/rd5.pdf' },
+      { id: 'rd6', type: 'transport', fileName: 'Elif_Deniz_Transport_Rider.pdf', fileSize: 500000, fileType: 'pdf', uploadedAt: '2025-01-10', version: 1, url: '/documents/rd6.pdf' },
     ],
   },
   {
@@ -592,15 +970,90 @@ export const mockArtists: Artist[] = [
       technicalRider: true,
       backlineRequired: true,
     },
-    upcomingShows: [],
-    pastShows: [],
+    upcomingShows: [
+      { id: 'sh6', eventName: 'Rock Festivali 2025', venue: 'İstanbul Park', city: 'İstanbul', date: '12 Temmuz 2025', status: 'confirmed', fee: 750000 },
+      { id: 'sh7', eventName: 'Ankara Konseri', venue: 'Congresium', city: 'Ankara', date: '25 Temmuz 2025', status: 'confirmed', fee: 650000 },
+      { id: 'sh8', eventName: 'İzmir Açıkhava', venue: 'Kültürpark', city: 'İzmir', date: '8 Ağustos 2025', status: 'pending', fee: 600000 },
+    ],
+    pastShows: [
+      { id: 'sh104', eventName: 'Yılbaşı Rock Party', venue: 'Volkswagen Arena', city: 'İstanbul', date: '31 Aralık 2024', status: 'completed', fee: 800000 },
+      { id: 'sh105', eventName: '25. Yıl Konseri', venue: 'BJK İnönü Stadı', city: 'İstanbul', date: '15 Kasım 2024', status: 'completed', fee: 1200000 },
+      { id: 'sh106', eventName: 'Antalya Festivali', venue: 'Expo Antalya', city: 'Antalya', date: '20 Ekim 2024', status: 'completed', fee: 700000 },
+    ],
     crew: [
-      { id: 'cr12', name: 'Ozan Baysal', role: 'manager', phone: '+90 532 999 1122', email: 'ozan@duman.com' },
-      { id: 'cr13', name: 'Batuhan Mutlugil', role: 'musician', notes: 'Gitarist - Grup üyesi' },
-      { id: 'cr14', name: 'Ari Barokas', role: 'musician', notes: 'Basçı - Grup üyesi' },
-      { id: 'cr15', name: 'Cengiz Baysal', role: 'sound_engineer', phone: '+90 533 888 2233' },
-      { id: 'cr16', name: 'Hakan Yılmaz', role: 'lighting_designer', phone: '+90 534 777 3344' },
-      { id: 'cr17', name: 'Serkan Aksu', role: 'tour_manager', phone: '+90 535 666 4455' },
+      {
+        id: 'cr12',
+        name: 'Ozan Baysal',
+        role: 'manager',
+        roleCategory: 'management',
+        phone: '+90 532 999 1122',
+        email: 'ozan@duman.com',
+        defaultFee: 15000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2005-01-01',
+      },
+      {
+        id: 'cr13',
+        name: 'Batuhan Mutlugil',
+        role: 'lead_guitar',
+        roleCategory: 'musician',
+        notes: 'Gitarist - Grup üyesi',
+        defaultFee: 0,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '1999-01-01',
+      },
+      {
+        id: 'cr14',
+        name: 'Ari Barokas',
+        role: 'bass',
+        roleCategory: 'musician',
+        notes: 'Basçı - Grup üyesi',
+        defaultFee: 0,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '1999-01-01',
+      },
+      {
+        id: 'cr15',
+        name: 'Cengiz Baysal',
+        role: 'foh_engineer',
+        roleCategory: 'technical',
+        phone: '+90 533 888 2233',
+        defaultFee: 6000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2010-03-15',
+      },
+      {
+        id: 'cr16',
+        name: 'Hakan Yılmaz',
+        role: 'lighting_op',
+        roleCategory: 'technical',
+        phone: '+90 534 777 3344',
+        defaultFee: 5500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2012-06-20',
+      },
+      {
+        id: 'cr17',
+        name: 'Serkan Aksu',
+        role: 'tour_manager',
+        roleCategory: 'management',
+        phone: '+90 535 666 4455',
+        defaultFee: 8000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2008-09-01',
+      },
     ],
     riders: {
       technical: {
@@ -642,7 +1095,7 @@ export const mockArtists: Artist[] = [
       },
     },
     riderDocuments: [
-      { id: 'rd7', type: 'technical', fileName: 'Duman_Technical_Rider_2024.pdf', fileSize: 3200000, fileType: 'pdf', uploadedAt: '2024-02-20', version: 4, url: '/documents/rd7.pdf' },
+      { id: 'rd7', type: 'technical', fileName: 'Duman_Technical_Rider_2025.pdf', fileSize: 3200000, fileType: 'pdf', uploadedAt: '2025-02-20', version: 4, url: '/documents/rd7.pdf' },
     ],
   },
   {
@@ -687,12 +1140,28 @@ export const mockArtists: Artist[] = [
       backlineRequired: false,
     },
     upcomingShows: [
-      { id: 'sh5', eventName: 'Rooftop Sessions', venue: 'W Hotel Terrace', city: 'İstanbul', date: '28 Haziran 2024', status: 'confirmed', fee: 45000 },
-      { id: 'sh6', eventName: 'Sunset Party', venue: 'Macakizi', city: 'Bodrum', date: '5 Temmuz 2024', status: 'pending', fee: 60000 },
+      { id: 'sh9', eventName: 'Rooftop Sessions', venue: 'W Hotel Terrace', city: 'İstanbul', date: '28 Haziran 2025', status: 'confirmed', fee: 45000 },
+      { id: 'sh10', eventName: 'Sunset Party', venue: 'Macakizi', city: 'Bodrum', date: '5 Temmuz 2025', status: 'pending', fee: 60000 },
+      { id: 'sh11', eventName: 'Beach Club Opening', venue: 'Lujo Hotel', city: 'Bodrum', date: '15 Temmuz 2025', status: 'pending', fee: 55000 },
     ],
-    pastShows: [],
+    pastShows: [
+      { id: 'sh107', eventName: 'Opening Party', venue: 'Sortie', city: 'İstanbul', date: '1 Mayıs 2025', status: 'completed', fee: 40000 },
+      { id: 'sh108', eventName: 'Fashion Week After Party', venue: 'St. Regis', city: 'İstanbul', date: '18 Mart 2025', status: 'completed', fee: 50000 },
+    ],
     crew: [
-      { id: 'cr18', name: 'Ceren Yıldırım', role: 'manager', phone: '+90 536 111 5566', email: 'ceren@djmerva.com' },
+      {
+        id: 'cr18',
+        name: 'Ceren Yıldırım',
+        role: 'manager',
+        roleCategory: 'management',
+        phone: '+90 536 111 5566',
+        email: 'ceren@djmerva.com',
+        defaultFee: 2500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2022-06-01',
+      },
     ],
     riders: {
       technical: {
@@ -729,7 +1198,7 @@ export const mockArtists: Artist[] = [
       },
     },
     riderDocuments: [
-      { id: 'rd8', type: 'technical', fileName: 'DJ_Merva_Technical_Rider.pdf', fileSize: 680000, fileType: 'pdf', uploadedAt: '2024-04-01', version: 1, url: '/documents/rd8.pdf' },
+      { id: 'rd8', type: 'technical', fileName: 'DJ_Merva_Technical_Rider.pdf', fileSize: 680000, fileType: 'pdf', uploadedAt: '2025-04-01', version: 1, url: '/documents/rd8.pdf' },
     ],
   },
   {
@@ -769,12 +1238,52 @@ export const mockArtists: Artist[] = [
       technicalRider: false,
       backlineRequired: true,
     },
-    upcomingShows: [],
-    pastShows: [],
+    upcomingShows: [
+      { id: 'sh12', eventName: 'Özel Düğün', venue: 'Çırağan Palace', city: 'İstanbul', date: '20 Haziran 2025', status: 'confirmed', fee: 35000 },
+      { id: 'sh13', eventName: 'Kurumsal Gala', venue: 'Hilton Bomonti', city: 'İstanbul', date: '28 Haziran 2025', status: 'pending', fee: 40000 },
+    ],
+    pastShows: [
+      { id: 'sh109', eventName: 'Nişan Töreni', venue: 'The Marmara', city: 'İstanbul', date: '10 Mayıs 2025', status: 'completed', fee: 30000 },
+      { id: 'sh110', eventName: 'Şirket Yemeği', venue: 'Swissotel', city: 'İstanbul', date: '15 Nisan 2025', status: 'completed', fee: 28000 },
+      { id: 'sh111', eventName: 'Düğün', venue: 'Esma Sultan Yalısı', city: 'İstanbul', date: '22 Mart 2025', status: 'completed', fee: 38000 },
+    ],
     crew: [
-      { id: 'cr19', name: 'Mehmet Demir', role: 'manager', phone: '+90 537 222 6677', email: 'mehmet@coverband.com' },
-      { id: 'cr20', name: 'Kemal Yılmaz', role: 'musician', notes: 'Klavyeci' },
-      { id: 'cr21', name: 'Sevgi Arslan', role: 'backup_vocal' },
+      {
+        id: 'cr19',
+        name: 'Mehmet Demir',
+        role: 'manager',
+        roleCategory: 'management',
+        phone: '+90 537 222 6677',
+        email: 'mehmet@coverband.com',
+        defaultFee: 1500,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2020-03-15',
+      },
+      {
+        id: 'cr20',
+        name: 'Kemal Yılmaz',
+        role: 'keyboard',
+        roleCategory: 'musician',
+        notes: 'Ana klavyeci',
+        defaultFee: 2000,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2020-03-15',
+      },
+      {
+        id: 'cr21',
+        name: 'Sevgi Arslan',
+        role: 'backing_vocal',
+        roleCategory: 'musician',
+        defaultFee: 1800,
+        feeType: 'per_show',
+        currency: 'TRY',
+        status: 'active',
+        joinedAt: '2021-01-10',
+      },
     ],
     riders: {},
     riderDocuments: [],
@@ -787,35 +1296,382 @@ export const mockContracts: ArtistContract[] = [
     id: 'con1',
     artistId: 'art1',
     artistName: 'DJ Phantom',
-    eventName: 'Summer Fest 2024',
-    eventDate: '15 Temmuz 2024',
-    venue: 'KüsarArena',
+    eventName: 'Summer Fest 2025',
+    eventDate: '15 Temmuz 2025',
+    venue: 'KüçükÇiftlik Park',
     fee: 120000,
     status: 'signed',
-    createdAt: '2024-05-15',
-    signedAt: '2024-05-20',
+    createdAt: '2025-05-15',
+    signedAt: '2025-05-20',
   },
   {
     id: 'con2',
     artistId: 'art2',
     artistName: 'Elif Deniz',
     eventName: 'Yaz Konserleri',
-    eventDate: '20 Ağustos 2024',
+    eventDate: '20 Ağustos 2025',
     venue: 'Harbiye Açıkhava',
     fee: 350000,
     status: 'sent',
-    createdAt: '2024-06-01',
+    createdAt: '2025-06-01',
   },
   {
     id: 'con3',
     artistId: 'art4',
     artistName: 'DJ Merva',
     eventName: 'Rooftop Sessions',
-    eventDate: '28 Haziran 2024',
+    eventDate: '28 Haziran 2025',
     venue: 'W Hotel Terrace',
     fee: 45000,
-    status: 'draft',
-    createdAt: '2024-06-10',
+    status: 'signed',
+    createdAt: '2025-06-10',
+    signedAt: '2025-06-12',
+  },
+  {
+    id: 'con4',
+    artistId: 'art3',
+    artistName: 'Duman',
+    eventName: 'Rock Festivali 2025',
+    eventDate: '12 Temmuz 2025',
+    venue: 'İstanbul Park',
+    fee: 750000,
+    status: 'signed',
+    createdAt: '2025-04-01',
+    signedAt: '2025-04-10',
+  },
+  {
+    id: 'con5',
+    artistId: 'art5',
+    artistName: 'Sertab Erener Cover',
+    eventName: 'Özel Düğün',
+    eventDate: '20 Haziran 2025',
+    venue: 'Çırağan Palace',
+    fee: 35000,
+    status: 'signed',
+    createdAt: '2025-05-01',
+    signedAt: '2025-05-05',
+  },
+];
+
+// Mock Crew Assignments
+export const mockCrewAssignments: CrewAssignment[] = [
+  // DJ Phantom (art1) - Summer Fest 2025 (sh1)
+  {
+    id: 'assign1',
+    crewMemberId: 'cr1',
+    eventId: 'sh1',
+    eventName: 'Summer Fest 2025',
+    eventDate: '2025-07-15',
+    venue: 'KüçükÇiftlik Park',
+    city: 'İstanbul',
+    role: 'manager',
+    fee: 5000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 5000,
+    dueDate: '2025-07-20',
+    createdAt: '2025-06-01',
+  },
+  {
+    id: 'assign2',
+    crewMemberId: 'cr2',
+    eventId: 'sh1',
+    eventName: 'Summer Fest 2025',
+    eventDate: '2025-07-15',
+    venue: 'KüçükÇiftlik Park',
+    city: 'İstanbul',
+    role: 'foh_engineer',
+    fee: 3500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'paid',
+    paidAmount: 3500,
+    totalAmount: 3500,
+    paymentDate: '2025-06-15',
+    dueDate: '2025-07-20',
+    createdAt: '2025-06-01',
+  },
+  {
+    id: 'assign3',
+    crewMemberId: 'cr3',
+    eventId: 'sh1',
+    eventName: 'Summer Fest 2025',
+    eventDate: '2025-07-15',
+    venue: 'KüçükÇiftlik Park',
+    city: 'İstanbul',
+    role: 'tour_manager',
+    fee: 4500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'overdue',
+    paidAmount: 0,
+    totalAmount: 4500,
+    dueDate: '2025-06-30',
+    createdAt: '2025-06-01',
+  },
+  // DJ Phantom (art1) - Beach Party (sh2)
+  {
+    id: 'assign4',
+    crewMemberId: 'cr1',
+    eventId: 'sh2',
+    eventName: 'Beach Party',
+    eventDate: '2025-07-22',
+    venue: 'Sunset Beach',
+    city: 'Bodrum',
+    role: 'manager',
+    fee: 5000,
+    feeType: 'per_show',
+    assignmentStatus: 'pending',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 5000,
+    dueDate: '2025-07-27',
+    createdAt: '2025-06-10',
+  },
+  // Elif Deniz (art2) - Yaz Konserleri (sh4)
+  {
+    id: 'assign5',
+    crewMemberId: 'cr4',
+    eventId: 'sh4',
+    eventName: 'Yaz Konserleri',
+    eventDate: '2025-08-20',
+    venue: 'Harbiye Açıkhava',
+    city: 'İstanbul',
+    role: 'manager',
+    fee: 8000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'partial',
+    paidAmount: 4000,
+    totalAmount: 8000,
+    dueDate: '2025-08-25',
+    createdAt: '2025-07-01',
+  },
+  {
+    id: 'assign6',
+    crewMemberId: 'cr5',
+    eventId: 'sh4',
+    eventName: 'Yaz Konserleri',
+    eventDate: '2025-08-20',
+    venue: 'Harbiye Açıkhava',
+    city: 'İstanbul',
+    role: 'foh_engineer',
+    fee: 4500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 4500,
+    dueDate: '2025-08-25',
+    createdAt: '2025-07-01',
+  },
+  {
+    id: 'assign7',
+    crewMemberId: 'cr8',
+    eventId: 'sh4',
+    eventName: 'Yaz Konserleri',
+    eventDate: '2025-08-20',
+    venue: 'Harbiye Açıkhava',
+    city: 'İstanbul',
+    role: 'keyboard',
+    fee: 5500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 5500,
+    dueDate: '2025-08-25',
+    createdAt: '2025-07-01',
+  },
+  {
+    id: 'assign8',
+    crewMemberId: 'cr9',
+    eventId: 'sh4',
+    eventName: 'Yaz Konserleri',
+    eventDate: '2025-08-20',
+    venue: 'Harbiye Açıkhava',
+    city: 'İstanbul',
+    role: 'lead_guitar',
+    fee: 5500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'paid',
+    paidAmount: 5500,
+    totalAmount: 5500,
+    paymentDate: '2025-07-15',
+    dueDate: '2025-08-25',
+    createdAt: '2025-07-01',
+  },
+  {
+    id: 'assign9',
+    crewMemberId: 'cr10',
+    eventId: 'sh4',
+    eventName: 'Yaz Konserleri',
+    eventDate: '2025-08-20',
+    venue: 'Harbiye Açıkhava',
+    city: 'İstanbul',
+    role: 'backing_vocal',
+    fee: 4000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 4000,
+    dueDate: '2025-08-25',
+    createdAt: '2025-07-01',
+  },
+  // Duman (art3) - Rock Festivali 2025 (sh6)
+  {
+    id: 'assign10',
+    crewMemberId: 'cr12',
+    eventId: 'sh6',
+    eventName: 'Rock Festivali 2025',
+    eventDate: '2025-07-12',
+    venue: 'İstanbul Park',
+    city: 'İstanbul',
+    role: 'manager',
+    fee: 15000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'paid',
+    paidAmount: 15000,
+    totalAmount: 15000,
+    paymentDate: '2025-06-01',
+    dueDate: '2025-07-17',
+    createdAt: '2025-05-15',
+  },
+  {
+    id: 'assign11',
+    crewMemberId: 'cr15',
+    eventId: 'sh6',
+    eventName: 'Rock Festivali 2025',
+    eventDate: '2025-07-12',
+    venue: 'İstanbul Park',
+    city: 'İstanbul',
+    role: 'foh_engineer',
+    fee: 6000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 6000,
+    dueDate: '2025-07-17',
+    createdAt: '2025-05-15',
+  },
+  {
+    id: 'assign12',
+    crewMemberId: 'cr16',
+    eventId: 'sh6',
+    eventName: 'Rock Festivali 2025',
+    eventDate: '2025-07-12',
+    venue: 'İstanbul Park',
+    city: 'İstanbul',
+    role: 'lighting_op',
+    fee: 5500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 5500,
+    dueDate: '2025-07-17',
+    createdAt: '2025-05-15',
+  },
+  {
+    id: 'assign13',
+    crewMemberId: 'cr17',
+    eventId: 'sh6',
+    eventName: 'Rock Festivali 2025',
+    eventDate: '2025-07-12',
+    venue: 'İstanbul Park',
+    city: 'İstanbul',
+    role: 'tour_manager',
+    fee: 8000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'paid',
+    paidAmount: 8000,
+    totalAmount: 8000,
+    paymentDate: '2025-06-01',
+    dueDate: '2025-07-17',
+    createdAt: '2025-05-15',
+  },
+  // DJ Merva (art4) - Rooftop Sessions (sh9)
+  {
+    id: 'assign14',
+    crewMemberId: 'cr18',
+    eventId: 'sh9',
+    eventName: 'Rooftop Sessions',
+    eventDate: '2025-06-28',
+    venue: 'W Hotel Terrace',
+    city: 'İstanbul',
+    role: 'manager',
+    fee: 2500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'paid',
+    paidAmount: 2500,
+    totalAmount: 2500,
+    paymentDate: '2025-06-20',
+    dueDate: '2025-07-03',
+    createdAt: '2025-06-15',
+  },
+  // Cover Band (art5) - Özel Düğün (sh12)
+  {
+    id: 'assign15',
+    crewMemberId: 'cr19',
+    eventId: 'sh12',
+    eventName: 'Özel Düğün',
+    eventDate: '2025-06-20',
+    venue: 'Çırağan Palace',
+    city: 'İstanbul',
+    role: 'manager',
+    fee: 1500,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'paid',
+    paidAmount: 1500,
+    totalAmount: 1500,
+    paymentDate: '2025-06-15',
+    dueDate: '2025-06-25',
+    createdAt: '2025-05-20',
+  },
+  {
+    id: 'assign16',
+    crewMemberId: 'cr20',
+    eventId: 'sh12',
+    eventName: 'Özel Düğün',
+    eventDate: '2025-06-20',
+    venue: 'Çırağan Palace',
+    city: 'İstanbul',
+    role: 'keyboard',
+    fee: 2000,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 2000,
+    dueDate: '2025-06-25',
+    createdAt: '2025-05-20',
+  },
+  {
+    id: 'assign17',
+    crewMemberId: 'cr21',
+    eventId: 'sh12',
+    eventName: 'Özel Düğün',
+    eventDate: '2025-06-20',
+    venue: 'Çırağan Palace',
+    city: 'İstanbul',
+    role: 'backing_vocal',
+    fee: 1800,
+    feeType: 'per_show',
+    assignmentStatus: 'confirmed',
+    paymentStatus: 'pending',
+    paidAmount: 0,
+    totalAmount: 1800,
+    dueDate: '2025-06-25',
+    createdAt: '2025-05-20',
   },
 ];
 
@@ -899,4 +1755,79 @@ export function getArtistStats() {
     pendingContracts: mockContracts.filter(c => c.status === 'sent').length,
     riderStats,
   };
+}
+
+// ============================================
+// CREW ASSIGNMENT HELPER FUNCTIONS
+// ============================================
+
+// Get all assignments for a specific crew member
+export function getAssignmentsForCrewMember(crewMemberId: string): CrewAssignment[] {
+  return mockCrewAssignments.filter(a => a.crewMemberId === crewMemberId);
+}
+
+// Get all assignments for an event
+export function getAssignmentsForEvent(eventId: string): CrewAssignment[] {
+  return mockCrewAssignments.filter(a => a.eventId === eventId);
+}
+
+// Get assignments by payment status
+export function getAssignmentsByPaymentStatus(status: CrewAssignment['paymentStatus']): CrewAssignment[] {
+  return mockCrewAssignments.filter(a => a.paymentStatus === status);
+}
+
+// Get crew member by ID from any artist
+export function getCrewMemberById(crewMemberId: string): CrewMember | undefined {
+  for (const artist of mockArtists) {
+    const member = artist.crew.find(c => c.id === crewMemberId);
+    if (member) return member;
+  }
+  return undefined;
+}
+
+// Get crew payment summary for an artist
+export function getCrewPaymentSummary(artistId: string): {
+  totalDue: number;
+  totalPaid: number;
+  totalPending: number;
+  totalOverdue: number;
+  assignmentCount: number;
+} {
+  const artist = getArtistById(artistId);
+  if (!artist) {
+    return { totalDue: 0, totalPaid: 0, totalPending: 0, totalOverdue: 0, assignmentCount: 0 };
+  }
+
+  const crewIds = artist.crew.map(c => c.id);
+  const assignments = mockCrewAssignments.filter(a => crewIds.includes(a.crewMemberId));
+
+  return assignments.reduce((acc, a) => ({
+    totalDue: acc.totalDue + a.totalAmount,
+    totalPaid: acc.totalPaid + a.paidAmount,
+    totalPending: acc.totalPending + (a.paymentStatus === 'pending' ? a.totalAmount - a.paidAmount : 0),
+    totalOverdue: acc.totalOverdue + (a.paymentStatus === 'overdue' ? a.totalAmount - a.paidAmount : 0),
+    assignmentCount: acc.assignmentCount + 1,
+  }), { totalDue: 0, totalPaid: 0, totalPending: 0, totalOverdue: 0, assignmentCount: 0 });
+}
+
+// Group crew members by category
+export function groupCrewByCategory(crew: CrewMember[]): Record<RoleCategory, CrewMember[]> {
+  return crew.reduce((acc, member) => {
+    const category = member.roleCategory;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(member);
+    return acc;
+  }, {} as Record<RoleCategory, CrewMember[]>);
+}
+
+// Format currency
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }

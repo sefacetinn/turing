@@ -469,7 +469,7 @@ export function ProviderEventDetailScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${event.eventTitle}\n📅 ${event.eventDate}\n📍 ${event.venue}\n🎯 Rolüm: ${event.role}\n\nTuring ile yönetiyorum.`,
+        message: `${event.eventTitle}\n📅 ${event.eventDate}\n📍 ${event.venue}\n🎯 Rolüm: ${event.role.includes(' - ') ? event.role.split(' - ')[0].trim() : event.role}\n\nTuring ile yönetiyorum.`,
         title: event.eventTitle,
       });
     } catch (error) {
@@ -803,7 +803,9 @@ export function ProviderEventDetailScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Ionicons name="volume-high" size={14} color="white" />
-              <Text style={styles.detailsRoleText}>{event.role}</Text>
+              <Text style={styles.detailsRoleText}>
+                {event.role.includes(' - ') ? event.role.split(' - ')[0].trim() : event.role}
+              </Text>
             </LinearGradient>
           </View>
 
@@ -1013,7 +1015,7 @@ export function ProviderEventDetailScreen() {
               eventId: event.id,
               serviceId: event.id,
               serviceCategory: 'technical',
-              serviceName: event.role,
+              serviceName: event.role.includes(' - ') ? event.role.split(' - ')[0].trim() : event.role,
               providerName: event.organizerName,
             })}
           >

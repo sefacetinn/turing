@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -91,6 +92,7 @@ export function MyReviewsScreen() {
     type: 'provider' | 'organizer';
     serviceCategory?: string;
   }, eventId: string, eventTitle: string, eventDate: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedTarget({
       id: target.id,
       name: target.name,

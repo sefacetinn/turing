@@ -9,6 +9,7 @@ import {
   Dimensions,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,18 +109,22 @@ export function OrganizerProfileScreen() {
   }, []);
 
   const handleCall = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.openURL(`tel:${organizer.phone}`);
   };
 
   const handleEmail = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.openURL(`mailto:${organizer.email}`);
   };
 
   const handleWebsite = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.openURL(`https://${organizer.website}`);
   };
 
   const handleMessage = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('Chat', {
       chatId: `org_${organizer.id}`,
       recipientName: organizer.name
@@ -130,7 +135,10 @@ export function OrganizerProfileScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.goBack();
+        }}>
           <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuButton}>

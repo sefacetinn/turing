@@ -11,7 +11,12 @@ import {
   UIManager,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Pressable,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -42,6 +47,16 @@ interface OperationTask {
   status: TaskStatus;
   assignee: string;
   time: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
+}
+
+interface OperationNote {
+  id: string;
+  text: string;
+  author: string;
+  timestamp: string;
+  isPinned?: boolean;
 }
 
 interface TeamMember {
@@ -214,6 +229,13 @@ const getPaymentStatusInfo = (status: PaymentItem['status']) => {
   }
 };
 
+// Generate notes
+const generateNotes = (): OperationNote[] => [
+  { id: '1', text: 'Sanatçı ekibi 14:00\'te gelecek, backstage hazır olmalı.', author: 'Cem K.', timestamp: '10:30', isPinned: true },
+  { id: '2', text: 'Ses sisteminde feedback sorunu çözüldü.', author: 'Serkan A.', timestamp: '09:15', isPinned: false },
+  { id: '3', text: 'VIP misafirler için özel giriş ayarlandı.', author: 'Ayşe Y.', timestamp: '08:45', isPinned: false },
+];
+
 export function ServiceOperationsScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: ServiceOperationsParams }, 'params'>>();
@@ -223,19 +245,52 @@ export function ServiceOperationsScreen() {
   const { serviceCategory, serviceName, providerName } = route.params;
   const config = serviceConfigs[serviceCategory] || serviceConfigs.technical;
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team' | 'payments'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team' | 'payments' | 'notes'>('tasks');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Modal states
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<OperationTask | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<ScheduleItem | null>(null);
+  const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null);
+  const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
+
+  // Form states - Task
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskAssignee, setTaskAssignee] = useState('');
+  const [taskTime, setTaskTime] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [newNoteText, setNewNoteText] = useState('');
+
+  // Form states - Schedule
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [scheduleTitle, setScheduleTitle] = useState('');
+
+  // Form states - Team
+  const [teamName, setTeamName] = useState('');
+  const [teamRole, setTeamRole] = useState('');
+  const [teamPhone, setTeamPhone] = useState('');
+
+  // Form states - Payment
+  const [paymentTitle, setPaymentTitle] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDueDate, setPaymentDueDate] = useState('');
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Mutable tasks state
+  // Mutable states
   const [tasks, setTasks] = useState<OperationTask[]>(() => generateTasks(serviceCategory));
-  const team = useMemo(() => generateTeam(serviceCategory), [serviceCategory]);
-  const schedule = useMemo(() => generateSchedule(serviceCategory), [serviceCategory]);
-  const payments = useMemo(() => generatePayments(), []);
+  const [notes, setNotes] = useState<OperationNote[]>(() => generateNotes());
+  const [schedule, setSchedule] = useState<ScheduleItem[]>(() => generateSchedule(serviceCategory));
+  const [team, setTeam] = useState<TeamMember[]>(() => generateTeam(serviceCategory));
+  const [payments, setPayments] = useState<PaymentItem[]>(() => generatePayments());
 
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const progress = Math.round((completedTasks / tasks.length) * 100);
@@ -270,11 +325,369 @@ export function ServiceOperationsScreen() {
     ));
   }, []);
 
+  // Open add task modal
+  const handleAddTask = useCallback(() => {
+    setEditingTask(null);
+    setTaskTitle('');
+    setTaskAssignee('');
+    setTaskTime('');
+    setTaskDescription('');
+    setShowTaskModal(true);
+  }, []);
+
+  // Open edit task modal
+  const handleEditTask = useCallback((task: OperationTask) => {
+    setEditingTask(task);
+    setTaskTitle(task.title);
+    setTaskAssignee(task.assignee);
+    setTaskTime(task.time);
+    setTaskDescription(task.description || '');
+    setShowTaskModal(true);
+  }, []);
+
+  // Save task (add or edit)
+  const handleSaveTask = useCallback(() => {
+    if (!taskTitle.trim() || !taskAssignee.trim() || !taskTime.trim()) {
+      Alert.alert('Hata', 'Lütfen tüm zorunlu alanları doldurun.');
+      return;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    if (editingTask) {
+      // Edit existing task
+      setTasks(prevTasks => prevTasks.map(task =>
+        task.id === editingTask.id
+          ? { ...task, title: taskTitle, assignee: taskAssignee, time: taskTime, description: taskDescription }
+          : task
+      ));
+    } else {
+      // Add new task
+      const newTask: OperationTask = {
+        id: Date.now().toString(),
+        title: taskTitle,
+        assignee: taskAssignee,
+        time: taskTime,
+        description: taskDescription,
+        status: 'pending',
+      };
+      setTasks(prevTasks => [...prevTasks, newTask]);
+    }
+
+    setShowTaskModal(false);
+  }, [taskTitle, taskAssignee, taskTime, taskDescription, editingTask]);
+
+  // Delete task
+  const handleDeleteTask = useCallback((taskId: string) => {
+    Alert.alert(
+      'Görevi Sil',
+      'Bu görevi silmek istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+          },
+        },
+      ]
+    );
+  }, []);
+
+  // Long press on task - show options
+  const handleTaskLongPress = useCallback((task: OperationTask) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      task.title,
+      'Ne yapmak istiyorsunuz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Düzenle', onPress: () => handleEditTask(task) },
+        { text: 'Sil', style: 'destructive', onPress: () => handleDeleteTask(task.id) },
+      ]
+    );
+  }, [handleEditTask, handleDeleteTask]);
+
+  // Add note
+  const handleAddNote = useCallback(() => {
+    if (!newNoteText.trim()) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    const newNote: OperationNote = {
+      id: Date.now().toString(),
+      text: newNoteText,
+      author: 'Ben',
+      timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      isPinned: false,
+    };
+
+    setNotes(prevNotes => [newNote, ...prevNotes]);
+    setNewNoteText('');
+    setShowNoteModal(false);
+  }, [newNoteText]);
+
+  // Toggle note pin
+  const handleToggleNotePin = useCallback((noteId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setNotes(prevNotes => prevNotes.map(note =>
+      note.id === noteId ? { ...note, isPinned: !note.isPinned } : note
+    ));
+  }, []);
+
+  // Delete note
+  const handleDeleteNote = useCallback((noteId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+  }, []);
+
+  // Sort notes - pinned first
+  const sortedNotes = useMemo(() => {
+    return [...notes].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0;
+    });
+  }, [notes]);
+
+  // ========== SCHEDULE HANDLERS ==========
+  const handleAddSchedule = useCallback(() => {
+    setEditingSchedule(null);
+    setScheduleTime('');
+    setScheduleTitle('');
+    setShowScheduleModal(true);
+  }, []);
+
+  const handleEditSchedule = useCallback((item: ScheduleItem) => {
+    setEditingSchedule(item);
+    setScheduleTime(item.time);
+    setScheduleTitle(item.title);
+    setShowScheduleModal(true);
+  }, []);
+
+  const handleSaveSchedule = useCallback(() => {
+    if (!scheduleTime.trim() || !scheduleTitle.trim()) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    if (editingSchedule) {
+      setSchedule(prev => prev.map(item =>
+        item.id === editingSchedule.id
+          ? { ...item, time: scheduleTime, title: scheduleTitle }
+          : item
+      ));
+    } else {
+      const newItem: ScheduleItem = {
+        id: Date.now().toString(),
+        time: scheduleTime,
+        title: scheduleTitle,
+        status: 'upcoming',
+      };
+      setSchedule(prev => [...prev, newItem].sort((a, b) => a.time.localeCompare(b.time)));
+    }
+
+    setShowScheduleModal(false);
+  }, [scheduleTime, scheduleTitle, editingSchedule]);
+
+  const handleDeleteSchedule = useCallback((itemId: string) => {
+    Alert.alert('Programı Sil', 'Bu program öğesini silmek istediğinizden emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setSchedule(prev => prev.filter(item => item.id !== itemId));
+        },
+      },
+    ]);
+  }, []);
+
+  const handleScheduleLongPress = useCallback((item: ScheduleItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(item.title, 'Ne yapmak istiyorsunuz?', [
+      { text: 'İptal', style: 'cancel' },
+      { text: 'Düzenle', onPress: () => handleEditSchedule(item) },
+      { text: 'Sil', style: 'destructive', onPress: () => handleDeleteSchedule(item.id) },
+    ]);
+  }, [handleEditSchedule, handleDeleteSchedule]);
+
+  // ========== TEAM HANDLERS ==========
+  const handleAddTeamMember = useCallback(() => {
+    setEditingTeamMember(null);
+    setTeamName('');
+    setTeamRole('');
+    setTeamPhone('');
+    setShowTeamModal(true);
+  }, []);
+
+  const handleEditTeamMember = useCallback((member: TeamMember) => {
+    setEditingTeamMember(member);
+    setTeamName(member.name);
+    setTeamRole(member.role);
+    setTeamPhone(member.phone);
+    setShowTeamModal(true);
+  }, []);
+
+  const handleSaveTeamMember = useCallback(() => {
+    if (!teamName.trim() || !teamRole.trim() || !teamPhone.trim()) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    if (editingTeamMember) {
+      setTeam(prev => prev.map(member =>
+        member.id === editingTeamMember.id
+          ? { ...member, name: teamName, role: teamRole, phone: teamPhone }
+          : member
+      ));
+    } else {
+      const newMember: TeamMember = {
+        id: Date.now().toString(),
+        name: teamName,
+        role: teamRole,
+        phone: teamPhone,
+        image: `https://i.pravatar.cc/100?u=${Date.now()}`,
+        status: 'online',
+      };
+      setTeam(prev => [...prev, newMember]);
+    }
+
+    setShowTeamModal(false);
+  }, [teamName, teamRole, teamPhone, editingTeamMember]);
+
+  const handleDeleteTeamMember = useCallback((memberId: string) => {
+    Alert.alert('Ekip Üyesini Çıkar', 'Bu ekip üyesini çıkarmak istediğinizden emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Çıkar',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setTeam(prev => prev.filter(member => member.id !== memberId));
+        },
+      },
+    ]);
+  }, []);
+
+  const handleTeamLongPress = useCallback((member: TeamMember) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(member.name, 'Ne yapmak istiyorsunuz?', [
+      { text: 'İptal', style: 'cancel' },
+      { text: 'Ara', onPress: () => handleCall(member.phone) },
+      { text: 'Düzenle', onPress: () => handleEditTeamMember(member) },
+      { text: 'Çıkar', style: 'destructive', onPress: () => handleDeleteTeamMember(member.id) },
+    ]);
+  }, [handleCall, handleEditTeamMember, handleDeleteTeamMember]);
+
+  // ========== PAYMENT HANDLERS ==========
+  const handleAddPayment = useCallback(() => {
+    setEditingPayment(null);
+    setPaymentTitle('');
+    setPaymentAmount('');
+    setPaymentDueDate('');
+    setShowPaymentModal(true);
+  }, []);
+
+  const handleEditPayment = useCallback((payment: PaymentItem) => {
+    setEditingPayment(payment);
+    setPaymentTitle(payment.title);
+    setPaymentAmount(payment.amount.toString());
+    setPaymentDueDate(payment.dueDate);
+    setShowPaymentModal(true);
+  }, []);
+
+  const handleSavePayment = useCallback(() => {
+    if (!paymentTitle.trim() || !paymentAmount.trim() || !paymentDueDate.trim()) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+      return;
+    }
+
+    const amount = parseFloat(paymentAmount.replace(/[^\d]/g, ''));
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert('Hata', 'Geçerli bir tutar girin.');
+      return;
+    }
+
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    if (editingPayment) {
+      setPayments(prev => prev.map(p =>
+        p.id === editingPayment.id
+          ? { ...p, title: paymentTitle, amount, dueDate: paymentDueDate }
+          : p
+      ));
+    } else {
+      const newPayment: PaymentItem = {
+        id: Date.now().toString(),
+        title: paymentTitle,
+        amount,
+        dueDate: paymentDueDate,
+        status: 'pending',
+      };
+      setPayments(prev => [...prev, newPayment]);
+    }
+
+    setShowPaymentModal(false);
+  }, [paymentTitle, paymentAmount, paymentDueDate, editingPayment]);
+
+  const handleDeletePayment = useCallback((paymentId: string) => {
+    Alert.alert('Ödemeyi Sil', 'Bu ödemeyi silmek istediğinizden emin misiniz?', [
+      { text: 'İptal', style: 'cancel' },
+      {
+        text: 'Sil',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          setPayments(prev => prev.filter(p => p.id !== paymentId));
+        },
+      },
+    ]);
+  }, []);
+
+  const handlePaymentLongPress = useCallback((payment: PaymentItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(payment.title, 'Ne yapmak istiyorsunuz?', [
+      { text: 'İptal', style: 'cancel' },
+      { text: 'Düzenle', onPress: () => handleEditPayment(payment) },
+      { text: 'Ödendi Olarak İşaretle', onPress: () => handleMarkPaymentPaid(payment.id) },
+      { text: 'Sil', style: 'destructive', onPress: () => handleDeletePayment(payment.id) },
+    ]);
+  }, [handleEditPayment, handleDeletePayment]);
+
+  const handleMarkPaymentPaid = useCallback((paymentId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setPayments(prev => prev.map(p =>
+      p.id === paymentId
+        ? { ...p, status: 'paid' as const, paidDate: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) }
+        : p
+    ));
+  }, []);
+
   const tabs = [
     { key: 'tasks', label: 'Görevler', count: tasks.length },
     { key: 'schedule', label: 'Program', count: schedule.length },
     { key: 'team', label: 'Ekip', count: team.length },
     { key: 'payments', label: 'Ödemeler', count: payments.length },
+    { key: 'notes', label: 'Notlar', count: notes.length },
   ];
 
   const getStatusStyle = (status: TaskStatus) => {
@@ -367,10 +780,25 @@ export function ServiceOperationsScreen() {
         {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <View style={styles.list}>
+            {/* Add Task Button */}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)', borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]}
+              onPress={handleAddTask}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#4B30B8" />
+              <Text style={styles.addButtonText}>Yeni Görev Ekle</Text>
+            </TouchableOpacity>
+
             {tasks.map((task) => {
               const statusStyle = getStatusStyle(task.status);
               return (
-                <View key={task.id} style={[styles.taskCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                <TouchableOpacity
+                  key={task.id}
+                  style={[styles.taskCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                  onLongPress={() => handleTaskLongPress(task)}
+                  activeOpacity={0.9}
+                  delayLongPress={300}
+                >
                   {/* Interactive Checkbox */}
                   <TouchableOpacity
                     style={styles.taskLeft}
@@ -405,17 +833,36 @@ export function ServiceOperationsScreen() {
                   >
                     <Text style={[styles.taskStatusText, { color: statusStyle.text }]}>{getStatusLabel(task.status)}</Text>
                   </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               );
             })}
+
+            <Text style={[styles.hintText, { color: colors.textMuted }]}>
+              İpucu: Düzenlemek veya silmek için göreve uzun basın
+            </Text>
           </View>
         )}
 
         {/* Schedule Tab */}
         {activeTab === 'schedule' && (
           <View style={styles.list}>
+            {/* Add Schedule Button */}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)', borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]}
+              onPress={handleAddSchedule}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#4B30B8" />
+              <Text style={styles.addButtonText}>Yeni Program Ekle</Text>
+            </TouchableOpacity>
+
             {schedule.map((item, index) => (
-              <View key={item.id} style={styles.scheduleRow}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.scheduleRow}
+                onLongPress={() => handleScheduleLongPress(item)}
+                activeOpacity={0.9}
+                delayLongPress={300}
+              >
                 <View style={styles.scheduleTimeline}>
                   <View style={[
                     styles.scheduleTimelineDot,
@@ -435,16 +882,35 @@ export function ServiceOperationsScreen() {
                     </View>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
+
+            <Text style={[styles.hintText, { color: colors.textMuted }]}>
+              İpucu: Düzenlemek veya silmek için programa uzun basın
+            </Text>
           </View>
         )}
 
         {/* Team Tab */}
         {activeTab === 'team' && (
           <View style={styles.list}>
+            {/* Add Team Member Button */}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)', borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]}
+              onPress={handleAddTeamMember}
+            >
+              <Ionicons name="person-add-outline" size={20} color="#4B30B8" />
+              <Text style={styles.addButtonText}>Ekip Üyesi Ekle</Text>
+            </TouchableOpacity>
+
             {team.map((member) => (
-              <View key={member.id} style={[styles.teamCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+              <TouchableOpacity
+                key={member.id}
+                style={[styles.teamCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                onLongPress={() => handleTeamLongPress(member)}
+                activeOpacity={0.9}
+                delayLongPress={300}
+              >
                 <View style={styles.teamAvatarContainer}>
                   <OptimizedImage source={member.image} style={styles.teamAvatar} />
                   <View style={[styles.teamStatusDot, { backgroundColor: getMemberStatusColor(member.status) }]} />
@@ -459,14 +925,27 @@ export function ServiceOperationsScreen() {
                 >
                   <Ionicons name="call-outline" size={18} color="#10B981" />
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))}
+
+            <Text style={[styles.hintText, { color: colors.textMuted }]}>
+              İpucu: Düzenlemek veya çıkarmak için ekip üyesine uzun basın
+            </Text>
           </View>
         )}
 
         {/* Payments Tab */}
         {activeTab === 'payments' && (
           <View style={styles.list}>
+            {/* Add Payment Button */}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)', borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]}
+              onPress={handleAddPayment}
+            >
+              <Ionicons name="wallet-outline" size={20} color="#4B30B8" />
+              <Text style={styles.addButtonText}>Ödeme Ekle</Text>
+            </TouchableOpacity>
+
             {/* Payment Summary */}
             <View style={[styles.paymentSummary, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
               <View style={styles.paymentSummaryItem}>
@@ -495,7 +974,13 @@ export function ServiceOperationsScreen() {
             {payments.map((payment) => {
               const statusInfo = getPaymentStatusInfo(payment.status);
               return (
-                <View key={payment.id} style={[styles.paymentCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                <TouchableOpacity
+                  key={payment.id}
+                  style={[styles.paymentCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                  onLongPress={() => handlePaymentLongPress(payment)}
+                  activeOpacity={0.9}
+                  delayLongPress={300}
+                >
                   <View style={styles.paymentHeader}>
                     <View style={styles.paymentInfo}>
                       <Text style={[styles.paymentTitle, { color: colors.text }]}>{payment.title}</Text>
@@ -509,9 +994,13 @@ export function ServiceOperationsScreen() {
                     </View>
                   </View>
                   <Text style={[styles.paymentAmount, { color: colors.text }]}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
+
+            <Text style={[styles.hintText, { color: colors.textMuted }]}>
+              İpucu: Düzenlemek veya silmek için ödemeye uzun basın
+            </Text>
 
             {/* Invoice Button */}
             <TouchableOpacity
@@ -524,8 +1013,441 @@ export function ServiceOperationsScreen() {
           </View>
         )}
 
+        {/* Notes Tab */}
+        {activeTab === 'notes' && (
+          <View style={styles.list}>
+            {/* Add Note Button */}
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)', borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)' }]}
+              onPress={() => setShowNoteModal(true)}
+            >
+              <Ionicons name="create-outline" size={20} color="#4B30B8" />
+              <Text style={styles.addButtonText}>Not Ekle</Text>
+            </TouchableOpacity>
+
+            {sortedNotes.map((note) => (
+              <View
+                key={note.id}
+                style={[
+                  styles.noteCard,
+                  { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' },
+                  note.isPinned && { borderLeftWidth: 3, borderLeftColor: '#F59E0B' }
+                ]}
+              >
+                <View style={styles.noteHeader}>
+                  <View style={styles.noteAuthorRow}>
+                    {note.isPinned && (
+                      <Ionicons name="pin" size={14} color="#F59E0B" style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={[styles.noteAuthor, { color: colors.text }]}>{note.author}</Text>
+                    <Text style={[styles.noteTime, { color: colors.textMuted }]}>{note.timestamp}</Text>
+                  </View>
+                  <View style={styles.noteActions}>
+                    <TouchableOpacity
+                      style={styles.noteActionBtn}
+                      onPress={() => handleToggleNotePin(note.id)}
+                    >
+                      <Ionicons
+                        name={note.isPinned ? 'pin' : 'pin-outline'}
+                        size={16}
+                        color={note.isPinned ? '#F59E0B' : colors.textMuted}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.noteActionBtn}
+                      onPress={() => handleDeleteNote(note.id)}
+                    >
+                      <Ionicons name="trash-outline" size={16} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <Text style={[styles.noteText, { color: colors.textSecondary }]}>{note.text}</Text>
+              </View>
+            ))}
+
+            {notes.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz not yok</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
+
+      {/* Add/Edit Task Modal */}
+      <Modal
+        visible={showTaskModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTaskModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowTaskModal(false)} />
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalDragHandle}>
+              <View style={[styles.dragHandle, { backgroundColor: colors.textMuted }]} />
+            </View>
+
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {editingTask ? 'Görevi Düzenle' : 'Yeni Görev'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowTaskModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Görev Adı *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Görev adını girin"
+                  placeholderTextColor={colors.textMuted}
+                  value={taskTitle}
+                  onChangeText={setTaskTitle}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Sorumlu Kişi *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Sorumlu kişiyi girin"
+                  placeholderTextColor={colors.textMuted}
+                  value={taskAssignee}
+                  onChangeText={setTaskAssignee}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Saat *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Örn: 14:00"
+                  placeholderTextColor={colors.textMuted}
+                  value={taskTime}
+                  onChangeText={setTaskTime}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Açıklama (Opsiyonel)</Text>
+                <TextInput
+                  style={[styles.formInput, styles.formTextArea, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Görev detayları..."
+                  placeholderTextColor={colors.textMuted}
+                  value={taskDescription}
+                  onChangeText={setTaskDescription}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveTask}>
+                <LinearGradient
+                  colors={['#4B30B8', '#6366F1']}
+                  style={styles.saveButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name={editingTask ? 'checkmark' : 'add'} size={18} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {editingTask ? 'Kaydet' : 'Görev Ekle'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add Note Modal */}
+      <Modal
+        visible={showNoteModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowNoteModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNoteModal(false)} />
+          <View style={[styles.modalContent, styles.noteModalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalDragHandle}>
+              <View style={[styles.dragHandle, { backgroundColor: colors.textMuted }]} />
+            </View>
+
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Not Ekle</Text>
+              <TouchableOpacity onPress={() => setShowNoteModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <TextInput
+                style={[styles.noteInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                placeholder="Notunuzu yazın..."
+                placeholderTextColor={colors.textMuted}
+                value={newNoteText}
+                onChangeText={setNewNoteText}
+                multiline
+                numberOfLines={4}
+                autoFocus
+              />
+
+              <TouchableOpacity
+                style={[styles.saveButton, !newNoteText.trim() && { opacity: 0.5 }]}
+                onPress={handleAddNote}
+                disabled={!newNoteText.trim()}
+              >
+                <LinearGradient
+                  colors={['#4B30B8', '#6366F1']}
+                  style={styles.saveButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="add" size={18} color="white" />
+                  <Text style={styles.saveButtonText}>Not Ekle</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add/Edit Schedule Modal */}
+      <Modal
+        visible={showScheduleModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowScheduleModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowScheduleModal(false)} />
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalDragHandle}>
+              <View style={[styles.dragHandle, { backgroundColor: colors.textMuted }]} />
+            </View>
+
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {editingSchedule ? 'Programı Düzenle' : 'Yeni Program'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Saat *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Örn: 14:00"
+                  placeholderTextColor={colors.textMuted}
+                  value={scheduleTime}
+                  onChangeText={setScheduleTime}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Başlık *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Program öğesi adı"
+                  placeholderTextColor={colors.textMuted}
+                  value={scheduleTitle}
+                  onChangeText={setScheduleTitle}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveSchedule}>
+                <LinearGradient
+                  colors={['#4B30B8', '#6366F1']}
+                  style={styles.saveButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name={editingSchedule ? 'checkmark' : 'add'} size={18} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {editingSchedule ? 'Kaydet' : 'Program Ekle'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add/Edit Team Member Modal */}
+      <Modal
+        visible={showTeamModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTeamModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowTeamModal(false)} />
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalDragHandle}>
+              <View style={[styles.dragHandle, { backgroundColor: colors.textMuted }]} />
+            </View>
+
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {editingTeamMember ? 'Ekip Üyesini Düzenle' : 'Yeni Ekip Üyesi'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowTeamModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Ad Soyad *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Ad ve soyad girin"
+                  placeholderTextColor={colors.textMuted}
+                  value={teamName}
+                  onChangeText={setTeamName}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Rol *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Örn: Teknik Direktör"
+                  placeholderTextColor={colors.textMuted}
+                  value={teamRole}
+                  onChangeText={setTeamRole}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Telefon *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="+90 5XX XXX XX XX"
+                  placeholderTextColor={colors.textMuted}
+                  value={teamPhone}
+                  onChangeText={setTeamPhone}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveTeamMember}>
+                <LinearGradient
+                  colors={['#4B30B8', '#6366F1']}
+                  style={styles.saveButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name={editingTeamMember ? 'checkmark' : 'person-add'} size={18} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {editingTeamMember ? 'Kaydet' : 'Ekip Üyesi Ekle'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Add/Edit Payment Modal */}
+      <Modal
+        visible={showPaymentModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPaymentModal(false)} />
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.modalDragHandle}>
+              <View style={[styles.dragHandle, { backgroundColor: colors.textMuted }]} />
+            </View>
+
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>
+                {editingPayment ? 'Ödemeyi Düzenle' : 'Yeni Ödeme'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Ödeme Adı *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Örn: Ön Ödeme, Ara Ödeme"
+                  placeholderTextColor={colors.textMuted}
+                  value={paymentTitle}
+                  onChangeText={setPaymentTitle}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Tutar (₺) *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Örn: 25000"
+                  placeholderTextColor={colors.textMuted}
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: colors.textMuted }]}>Vade Tarihi *</Text>
+                <TextInput
+                  style={[styles.formInput, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6', color: colors.text, borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]}
+                  placeholder="Örn: 15 Ocak 2026"
+                  placeholderTextColor={colors.textMuted}
+                  value={paymentDueDate}
+                  onChangeText={setPaymentDueDate}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.saveButton} onPress={handleSavePayment}>
+                <LinearGradient
+                  colors={['#4B30B8', '#6366F1']}
+                  style={styles.saveButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name={editingPayment ? 'checkmark' : 'wallet'} size={18} color="white" />
+                  <Text style={styles.saveButtonText}>
+                    {editingPayment ? 'Kaydet' : 'Ödeme Ekle'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -858,6 +1780,155 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#4B30B8',
+  },
+  // Add Button
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    gap: 8,
+    marginBottom: 16,
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B30B8',
+  },
+  hintText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  // Notes
+  noteCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  noteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  noteAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  noteAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  noteTime: {
+    fontSize: 12,
+  },
+  noteActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  noteActionBtn: {
+    padding: 4,
+  },
+  noteText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyStateText: {
+    fontSize: 14,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+  },
+  noteModalContent: {
+    maxHeight: '50%',
+  },
+  modalDragHandle: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.3,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+    fontSize: 15,
+  },
+  formTextArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 15,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 16,
+  },
+  saveButton: {
+    marginTop: 8,
+  },
+  saveButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
   },
 });
 

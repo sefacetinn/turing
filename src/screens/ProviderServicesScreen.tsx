@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -145,9 +146,11 @@ export function ProviderServicesScreen() {
 
   const handleSave = () => {
     if (selectedServices.length === 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Uyarı', 'En az bir hizmet türü seçmelisiniz.');
       return;
     }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     // Update context with selected services (if available)
     if (setProviderServices && typeof setProviderServices === 'function') {
       setProviderServices(selectedServices);
@@ -166,7 +169,10 @@ export function ProviderServicesScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.goBack();
+        }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Verdiğim Hizmetler</Text>

@@ -13,6 +13,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -328,8 +329,17 @@ export function ContactSupportScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero Section with Online Status */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* Hero Section with Online Status */}
         <LinearGradient
           colors={gradients.primary}
           style={styles.heroSection}
@@ -644,7 +654,8 @@ export function ContactSupportScreen() {
         </View>
 
         <View style={{ height: 100 }} />
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

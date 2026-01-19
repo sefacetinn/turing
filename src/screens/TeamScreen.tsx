@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -42,6 +43,7 @@ export default function TeamScreen() {
 
   const handleCancelInvitation = useCallback(
     async (invitationId: string) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert(
         'Daveti İptal Et',
         'Bu daveti iptal etmek istediğinize emin misiniz?',
@@ -68,6 +70,7 @@ export default function TeamScreen() {
 
   const handleResendInvitation = useCallback(
     async (invitationId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       try {
         await resendInvitation(invitationId);
         Alert.alert('Başarılı', 'Davet tekrar gönderildi.');
@@ -80,6 +83,7 @@ export default function TeamScreen() {
 
   const handleMemberPress = useCallback(
     (memberId: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       if (memberId !== currentUser?.id) {
         navigation.navigate('MemberDetail', { memberId });
       }

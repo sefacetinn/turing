@@ -8,6 +8,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -482,14 +483,20 @@ export function ArtistDetailManageScreen() {
 
         <TouchableOpacity
           style={styles.backButtonHeader}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.goBack();
+          }}
         >
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.editButtonHeader}
-          onPress={() => navigation.navigate('AddEditArtist', { artistId: artist.id })}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            navigation.navigate('AddEditArtist', { artistId: artist.id });
+          }}
         >
           <Ionicons name="create-outline" size={22} color="white" />
         </TouchableOpacity>
@@ -530,7 +537,10 @@ export function ArtistDetailManageScreen() {
                 styles.tabItem,
                 activeTab === tab.key && { borderBottomColor: colors.primary, borderBottomWidth: 2 },
               ]}
-              onPress={() => setActiveTab(tab.key)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setActiveTab(tab.key);
+              }}
             >
               <Ionicons
                 name={tab.icon as any}

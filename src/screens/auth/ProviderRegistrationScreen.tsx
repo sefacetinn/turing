@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -163,7 +164,11 @@ export function ProviderRegistrationScreen() {
   };
 
   const handleNext = () => {
-    if (!validateStep(currentStep)) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!validateStep(currentStep)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
     if (currentStep < PROVIDER_STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -179,6 +184,7 @@ export function ProviderRegistrationScreen() {
   };
 
   const handleBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     } else {
@@ -187,12 +193,17 @@ export function ProviderRegistrationScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep(currentStep)) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!validateStep(currentStep)) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
     setIsLoading(true);
 
     setTimeout(() => {
       setIsLoading(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate('RegistrationSuccess', { role: 'provider' });
     }, 1500);
   };
