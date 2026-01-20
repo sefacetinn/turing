@@ -157,6 +157,10 @@ export interface OrganizerOffer {
   id: string;
   eventId: string; // mockDataCore events ile uyumlu (EVT001, EVT002, vb.)
   eventTitle: string;
+  eventCity?: string;
+  eventDistrict?: string;
+  eventVenue?: string;
+  eventDate?: string;
   serviceCategory: string;
   serviceName: string;
   provider: {
@@ -1166,6 +1170,7 @@ export const getStatusInfo = (
   const statusConfig: Record<OfferStatus, { color: string; text: string; icon: string }> = {
     accepted: { color: 'success', text: 'Onaylandı', icon: 'checkmark-circle' },
     pending: { color: 'warning', text: 'Beklemede', icon: 'time' },
+    quoted: { color: 'brand', text: 'Teklif Geldi', icon: 'document-text' },
     rejected: { color: 'error', text: 'Reddedildi', icon: 'close-circle' },
     counter_offered: { color: 'brand', text: 'Pazarlık Devam Ediyor', icon: 'swap-horizontal' },
     expired: { color: 'textMuted', text: 'Süresi Doldu', icon: 'timer-outline' },

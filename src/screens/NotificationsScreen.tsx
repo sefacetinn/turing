@@ -19,12 +19,11 @@ import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { EmptyState } from '../components/EmptyState';
 import { SkeletonListItem } from '../components/Skeleton';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Notification,
   NotificationCategory,
   notificationCategories,
-  providerNotifications,
-  organizerNotifications,
   getNotificationStyle,
   getNotificationCounts,
   filterNotificationsByCategory,
@@ -39,6 +38,9 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Auth hook - check if user is logged in
+  const { user } = useAuth();
 
   // State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -57,14 +59,14 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
   // Initial load
   useEffect(() => {
     loadNotifications();
-  }, [isProviderMode]);
+  }, [isProviderMode, user]);
 
   const loadNotifications = () => {
     setIsLoading(true);
-    // Simulate API call
+    // TODO: Fetch from Firebase when notifications collection is implemented
     setTimeout(() => {
-      const data = isProviderMode ? providerNotifications : organizerNotifications;
-      setNotifications(data);
+      // Empty notifications for now - will be populated from Firebase
+      setNotifications([]);
       setIsLoading(false);
     }, 600);
   };
@@ -73,12 +75,12 @@ export function NotificationsScreen({ isProviderMode = false }: NotificationsScr
   const onRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
+    // TODO: Refresh from Firebase when notifications collection is implemented
     setTimeout(() => {
-      const data = isProviderMode ? providerNotifications : organizerNotifications;
-      setNotifications(data);
+      setNotifications([]);
       setRefreshing(false);
     }, 800);
-  }, [isProviderMode]);
+  }, []);
 
   // Mark notification as read
   const markAsRead = (id: string) => {

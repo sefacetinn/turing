@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Dimensions, Modal, RefreshControl } from 'react-native';
+import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Dimensions, Modal, RefreshControl, ActivityIndicator } from 'react-native';
 import { OptimizedImage, CoverImage, Thumbnail } from '../components/OptimizedImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,8 @@ import { useTheme } from '../theme/ThemeContext';
 import { gradients } from '../theme/colors';
 import { useApp } from '../../App';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
+import { useAuth } from '../context/AuthContext';
+import { useOrganizerDashboard, useProviderDashboard, useUserEvents } from '../hooks';
 import {
   HomeHeader,
   SearchBar,
@@ -27,7 +29,11 @@ import {
   ArtistCard,
   CalendarWidget,
 } from '../components/home';
-import { transformProviderEvents, transformOrganizerEvents, CalendarEvent, isSameDay } from '../utils/calendarUtils';
+import { EmptyState } from '../components/EmptyState';
+import { CalendarEvent, isSameDay } from '../utils/calendarUtils';
+import { categories } from '../data/homeData'; // Static service categories for UI
+import { operationSubcategories } from '../data/createEventData'; // Static operation subcategories
+import type { HomeStackNavigationProp } from '../types';
 
 // Bu hafta kac etkinlik var
 function getEventsThisWeek(events: CalendarEvent[]): number {
@@ -40,21 +46,6 @@ function getEventsThisWeek(events: CalendarEvent[]): number {
     return eventDate >= today && eventDate <= weekEnd;
   }).length;
 }
-import {
-  artists,
-  categories,
-  recentProviders,
-  organizerUser,
-  providerStats,
-  upcomingJobs,
-  recentRequests,
-  organizerDashboard,
-  organizerQuickActions,
-} from '../data/homeData';
-import { events as organizerEvents } from '../data/mockData';
-import { providerEvents } from '../data/providerEventsData';
-import { operationSubcategories } from '../data/createEventData';
-import type { HomeStackNavigationProp } from '../types';
 
 const { width } = Dimensions.get('window');
 
@@ -80,13 +71,27 @@ function OrganizerHomeContent() {
   const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
+  // Auth & Data hooks
+  const { user, userProfile } = useAuth();
+  const { stats: realStats, upcomingEvents: realUpcomingEvents, loading: dashboardLoading, refresh: refreshDashboard } = useOrganizerDashboard(user?.uid);
+  const { events: realEvents, loading: eventsLoading } = useUserEvents(user?.uid);
+
+  // Check if user has real data (registered user vs demo)
+  const hasRealData = user && realEvents.length > 0;
+  const isLoading = dashboardLoading || eventsLoading;
+
+  // Check if user is logged in but has no events (new user)
+  const isNewUser = user && !eventsLoading && realEvents.length === 0;
+
   // Pull to refresh
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    // Simulate data refresh
-    setTimeout(() => setRefreshing(false), 800);
-  }, []);
+    if (user) {
+      await refreshDashboard();
+    }
+    setRefreshing(false);
+  }, [user, refreshDashboard]);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -141,19 +146,104 @@ function OrganizerHomeContent() {
     return 'İyi akşamlar';
   };
 
-  const dashboard = organizerDashboard;
+  // User name from Firebase profile
+  const userName = userProfile?.displayName || (user?.email?.split('@')[0]) || 'Kullanıcı';
 
-  // Calendar events for widget
-  const calendarEvents = useMemo(() => transformOrganizerEvents(organizerEvents), []);
+  // Dashboard types
+  interface PendingAction {
+    id: string;
+    type: 'offer' | 'service';
+    title: string;
+    subtitle: string;
+    offerId?: string;
+    serviceCategory?: string;
+  }
+  interface ActivityItem {
+    id: string;
+    message: string;
+    time: string;
+  }
+
+  // Dashboard data - always from Firebase, empty for new users
+  const dashboard: {
+    activeEvents: number;
+    totalEvents: number;
+    pendingOffers: number;
+    activeEventsList: { id: string; title: string; date: string; image: string; progress: number }[];
+    nextEvent: { id: string; title: string; date: string; venue: string; image: string; daysUntil: number; progress: number } | null;
+    pendingActions: PendingAction[];
+    recentActivity: ActivityItem[];
+  } = hasRealData ? {
+    // Real data for logged-in users with events
+    activeEvents: realStats.activeEvents,
+    totalEvents: realStats.totalEvents,
+    pendingOffers: realStats.pendingOffers,
+    activeEventsList: realEvents.filter(e => e.status === 'planning' || e.status === 'confirmed').map(e => ({
+      id: e.id,
+      title: e.title,
+      date: e.date,
+      image: e.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
+      progress: 50,
+    })),
+    nextEvent: realUpcomingEvents[0] ? {
+      id: realUpcomingEvents[0].id,
+      title: realUpcomingEvents[0].title,
+      date: realUpcomingEvents[0].date,
+      venue: realUpcomingEvents[0].venue,
+      image: realUpcomingEvents[0].image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
+      daysUntil: Math.ceil((new Date(realUpcomingEvents[0].date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+      progress: 50,
+    } : null,
+    pendingActions: [],
+    recentActivity: [],
+  } : {
+    // Empty dashboard for new users or not logged in
+    activeEvents: 0,
+    totalEvents: 0,
+    pendingOffers: 0,
+    activeEventsList: [],
+    nextEvent: null,
+    pendingActions: [],
+    recentActivity: [],
+  };
+
+  // Calendar events for widget - only from Firebase
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    if (hasRealData && realEvents.length > 0) {
+      return realEvents.map(e => ({
+        id: e.id,
+        title: e.title,
+        date: new Date(e.date),
+        endDate: e.endDate ? new Date(e.endDate) : undefined,
+        time: e.time || '10:00',
+        venue: e.venue,
+        location: `${e.city}${e.district ? `, ${e.district}` : ''}`,
+        status: e.status,
+        category: 'booking',
+      }));
+    }
+    // Empty calendar for new users
+    return [];
+  }, [hasRealData, realEvents]);
 
   // Unified accent color - Brand purple
   const accentColor = colors.brand[400];
   const accentBg = isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)';
 
+  // Show loading state
+  if (isLoading && !refreshing) {
+    return (
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.brand[400]} />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Yükleniyor...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollHeader
-        title={organizerUser.name}
+        title={userName}
         scrollY={scrollY}
         rightAction={
           <View style={styles.headerRightCompact}>
@@ -195,10 +285,31 @@ function OrganizerHomeContent() {
         }
       >
         <LargeTitle
-          title={organizerUser.name}
+          title={userName}
           subtitle={getGreeting()}
           scrollY={scrollY}
         />
+
+        {/* Welcome Card for New Users */}
+        {isNewUser && (
+          <View style={[styles.welcomeCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.06)' }]}>
+            <View style={[styles.welcomeIconContainer, { backgroundColor: accentColor }]}>
+              <Ionicons name="sparkles" size={28} color="white" />
+            </View>
+            <Text style={[styles.welcomeTitle, { color: colors.text }]}>Hoş geldiniz!</Text>
+            <Text style={[styles.welcomeMessage, { color: colors.textMuted }]}>
+              İlk etkinliğinizi oluşturarak başlayın. Sanatçılar, mekanlar ve hizmet sağlayıcılarla kolayca çalışın.
+            </Text>
+            <TouchableOpacity
+              style={[styles.welcomeButton, { backgroundColor: accentColor }]}
+              onPress={() => navigation.navigate('CreateEvent')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={20} color="white" />
+              <Text style={styles.welcomeButtonText}>İlk Etkinliğimi Oluştur</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Quick Actions Row */}
         <View style={styles.quickActionsRow}>
@@ -238,7 +349,7 @@ function OrganizerHomeContent() {
           <TouchableOpacity
             style={[styles.nextEventCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: dashboard.nextEvent.id })}
+            onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: dashboard.nextEvent!.id })}
           >
             <OptimizedImage source={dashboard.nextEvent.image} style={styles.nextEventImage} priority="high" />
             <View style={styles.nextEventContent}>
@@ -385,28 +496,7 @@ function OrganizerHomeContent() {
           </View>
         </View>
 
-        {/* Popular Artists - Simple */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Popüler Sanatçılar</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Search', { initialFilter: 'artists' })}>
-              <Text style={[styles.seeAllText, { color: accentColor }]}>Tümü</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.artistsScroll}>
-            {artists.slice(0, 4).map((artist) => (
-              <TouchableOpacity
-                key={artist.id}
-                style={styles.artistItem}
-                onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
-              >
-                <OptimizedImage source={artist.image} style={styles.artistImage} />
-                <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
-                <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {/* TODO: Popular Artists section - will be populated from Firebase catalog */}
 
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
@@ -472,12 +562,24 @@ function ProviderHomeContent() {
   const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
+  // Auth & Data hooks for provider
+  const { user, userProfile } = useAuth();
+  const { stats: realStats, upcomingJobs: realJobs, pendingOffers: realOffers, loading: dashboardLoading, refresh: refreshDashboard } = useProviderDashboard(user?.uid);
+
+  // Check if user has real data (registered provider vs demo)
+  const hasRealData = user && (realJobs.length > 0 || realOffers.length > 0);
+  const isLoading = dashboardLoading;
+  const isNewUser = user && !dashboardLoading && realJobs.length === 0 && realOffers.length === 0;
+
   // Pull to refresh
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
+    if (user) {
+      await refreshDashboard();
+    }
     setTimeout(() => setRefreshing(false), 800);
-  }, []);
+  }, [user, refreshDashboard]);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -517,41 +619,114 @@ function ProviderHomeContent() {
     'operation': ['operation', 'security', 'catering'],
   };
 
-  // Filter upcoming jobs based on provider services
+  // Provider stats - always from Firebase, empty for new users
+  const stats = useMemo(() => {
+    if (hasRealData) {
+      return {
+        monthlyEarnings: realStats.totalEarnings || 0,
+        pendingPayments: 0,
+        completedJobs: realStats.completedJobs || 0,
+        upcomingJobs: realStats.activeJobs || 0,
+        pendingOffers: realStats.pendingRequests || 0,
+        profileViews: 0,
+        rating: realStats.rating || 0,
+        reviewCount: realStats.reviewCount || 0,
+        responseRate: realStats.responseRate || 0,
+        completionRate: realStats.completionRate || 0,
+        satisfactionRate: realStats.satisfactionRate || 0,
+      };
+    }
+    // Empty stats for new users
+    return {
+      monthlyEarnings: 0,
+      pendingPayments: 0,
+      completedJobs: 0,
+      upcomingJobs: 0,
+      pendingOffers: 0,
+      profileViews: 0,
+      rating: 0,
+      reviewCount: 0,
+      responseRate: 0,
+      completionRate: 0,
+      satisfactionRate: 0,
+    };
+  }, [hasRealData, realStats]);
+
+  // Convert real jobs to upcoming jobs format
+  const convertedRealJobs = useMemo(() => {
+    if (!realJobs.length) return [];
+    const now = new Date();
+    return realJobs.map(job => ({
+      id: job.id,
+      title: job.title,
+      date: job.date,
+      location: job.venue,
+      role: 'Hizmet',
+      earnings: job.budget || 0,
+      daysUntil: Math.max(0, Math.ceil((new Date(job.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+      status: job.status,
+      image: job.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
+      serviceType: 'technical',
+    }));
+  }, [realJobs]);
+
+  // Convert real offers to recent requests format
+  const convertedRealOffers = useMemo(() => {
+    if (!realOffers.length) return [];
+    return realOffers.map(offer => ({
+      id: offer.id,
+      title: offer.eventTitle || 'Yeni Talep',
+      category: offer.serviceCategory || 'Hizmet',
+      organizer: offer.organizerName || 'Organizatör',
+      organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+      location: 'İstanbul', // Would need to be fetched from event
+      date: '', // Would need to be fetched from event
+      budget: `₺${(offer.amount || 0).toLocaleString('tr-TR')}`,
+      isNew: offer.status === 'pending',
+      isHot: false,
+      timeAgo: '1s önce',
+      matchScore: 85,
+      serviceType: offer.serviceCategory || 'technical',
+    }));
+  }, [realOffers]);
+
+  // Upcoming jobs - only from Firebase
   const filteredUpcomingJobs = useMemo(() => {
-    if (!providerServices || providerServices.length === 0) {
-      return upcomingJobs;
-    }
-    return upcomingJobs.filter((job: any) => {
-      if (!job.serviceType) return true;
-      const mappedTypes = serviceTypeMap[job.serviceType] || [job.serviceType];
-      return providerServices.some(ps =>
-        mappedTypes.includes(ps) || ps === job.serviceType
-      );
-    });
-  }, [providerServices]);
+    if (hasRealData) return convertedRealJobs;
+    return []; // Empty for new users
+  }, [hasRealData, convertedRealJobs]);
 
-  // Filter recent requests based on provider services
+  // Recent requests - only from Firebase
   const filteredRecentRequests = useMemo(() => {
-    if (!providerServices || providerServices.length === 0) {
-      return recentRequests;
-    }
-    return recentRequests.filter((request: any) => {
-      if (!request.serviceType) return true;
-      const mappedTypes = serviceTypeMap[request.serviceType] || [request.serviceType];
-      return providerServices.some(ps =>
-        mappedTypes.includes(ps) || ps === request.serviceType
-      );
-    });
-  }, [providerServices]);
+    if (hasRealData) return convertedRealOffers;
+    return []; // Empty for new users
+  }, [hasRealData, convertedRealOffers]);
 
-  // Calendar events for widget
-  const calendarEvents = useMemo(() => transformProviderEvents(providerEvents), []);
+  // Calendar events for widget - only from Firebase
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    if (hasRealData && realJobs.length > 0) {
+      return realJobs.map(job => ({
+        id: job.id,
+        title: job.title,
+        date: new Date(job.date),
+        endDate: job.endDate ? new Date(job.endDate) : undefined,
+        time: job.time || '10:00',
+        venue: job.venue,
+        location: `${job.city}${job.district ? `, ${job.district}` : ''}`,
+        status: job.status,
+        category: 'technical',
+      }));
+    }
+    return []; // Empty for new users
+  }, [hasRealData, realJobs]);
+
+  // Get provider company name from userProfile
+  const providerCompanyName = userProfile?.companyName || userProfile?.displayName || 'Provider';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollHeader
-        title="EventPro 360"
+        title={providerCompanyName}
         scrollY={scrollY}
         rightAction={
           <View style={styles.headerRightCompact}>
@@ -594,16 +769,37 @@ function ProviderHomeContent() {
         }
       >
         <LargeTitle
-          title="EventPro 360"
+          title={userProfile?.companyName || "EventPro 360"}
           subtitle={getGreeting()}
           scrollY={scrollY}
         />
 
+        {/* Welcome Card for New Provider Users */}
+        {isNewUser && (
+          <View style={[styles.welcomeCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
+            <View style={[styles.welcomeIconContainer, { backgroundColor: colors.success }]}>
+              <Ionicons name="briefcase" size={28} color="white" />
+            </View>
+            <Text style={[styles.welcomeTitle, { color: colors.text }]}>Hoş geldiniz!</Text>
+            <Text style={[styles.welcomeMessage, { color: colors.textMuted }]}>
+              Profilinizi tamamlayın ve organizatörlerden iş teklifleri almaya başlayın. Yeni teklifleriniz burada görünecek.
+            </Text>
+            <TouchableOpacity
+              style={[styles.welcomeButton, { backgroundColor: colors.success }]}
+              onPress={() => navigation.navigate('ProfileTab', { screen: 'EditProfile' })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="person" size={20} color="white" />
+              <Text style={styles.welcomeButtonText}>Profilimi Tamamla</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Status Bar */}
         <ProviderStatusBar
-          profileViews={providerStats.profileViews}
-          rating={providerStats.rating}
-          reviewCount={providerStats.reviewCount}
+          profileViews={stats.profileViews}
+          rating={stats.rating}
+          reviewCount={stats.reviewCount}
         />
 
         {/* Quick Actions - Finance & Analytics */}
@@ -618,7 +814,7 @@ function ProviderHomeContent() {
               <Ionicons name="wallet" size={18} color="white" />
             </View>
             <Text style={[styles.providerQuickLabel, { color: colors.textMuted }]}>Bu Ay</Text>
-            <Text style={[styles.providerQuickValue, { color: colors.text }]}>₺{(providerStats.monthlyEarnings / 1000).toFixed(0)}K</Text>
+            <Text style={[styles.providerQuickValue, { color: colors.text }]}>₺{(stats.monthlyEarnings / 1000).toFixed(0)}K</Text>
           </TouchableOpacity>
 
           {/* Analytics Card */}
@@ -637,9 +833,9 @@ function ProviderHomeContent() {
 
         {/* Quick Stats - 3 kolonlu: Yaklaşan İş, Teklif, Takvim */}
         <QuickStatsRow
-          upcomingJobs={providerStats.upcomingJobs}
-          pendingOffers={providerStats.pendingOffers}
-          eventsThisWeek={getEventsThisWeek(transformProviderEvents(providerEvents))}
+          upcomingJobs={stats.upcomingJobs}
+          pendingOffers={stats.pendingOffers}
+          eventsThisWeek={getEventsThisWeek(calendarEvents)}
           onOffersPress={() => navigation.navigate('OffersTab' as any)}
           onJobsPress={() => navigation.navigate('EventsTab' as any)}
           onCalendarPress={() => navigation.navigate('CalendarView')}
@@ -672,7 +868,11 @@ function ProviderHomeContent() {
         />
 
         {/* Performance Card */}
-        <PerformanceCard responseRate={providerStats.responseRate} />
+        <PerformanceCard
+          responseRate={stats.responseRate}
+          completionRate={stats.completionRate}
+          satisfactionRate={stats.satisfactionRate}
+        />
 
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
@@ -1097,8 +1297,33 @@ function RequestCard({
   );
 }
 
-function PerformanceCard({ responseRate }: { responseRate: number }) {
+function PerformanceCard({
+  responseRate,
+  completionRate,
+  satisfactionRate
+}: {
+  responseRate: number;
+  completionRate: number;
+  satisfactionRate: number;
+}) {
   const { colors, isDark, helpers } = useTheme();
+  const hasData = responseRate > 0 || completionRate > 0 || satisfactionRate > 0;
+
+  // Calculate average for hint message
+  const avgPerformance = hasData ? Math.round((responseRate + completionRate + satisfactionRate) / 3) : 0;
+
+  const getHintMessage = () => {
+    if (!hasData) {
+      return 'İş tamamladıkça performans istatistikleriniz burada görünecek.';
+    }
+    if (avgPerformance >= 90) {
+      return 'Harika gidiyorsunuz! Üst düzey sağlayıcı statüsündesiniz.';
+    }
+    if (avgPerformance >= 70) {
+      return 'İyi performans! Biraz daha çaba ile üst seviyeye ulaşabilirsiniz.';
+    }
+    return 'Performansınızı artırmak için müşteri memnuniyetine odaklanın.';
+  };
 
   return (
     <View
@@ -1118,14 +1343,14 @@ function PerformanceCard({ responseRate }: { responseRate: number }) {
 
       <View style={styles.performanceCircles}>
         <PerformanceCircle value={responseRate} label="Yanıt Oranı" color={colors.success} />
-        <PerformanceCircle value={96} label="Tamamlama" color={colors.brand[500]} />
-        <PerformanceCircle value={99} label="Memnuniyet" color={colors.warning} />
+        <PerformanceCircle value={completionRate} label="Tamamlama" color={colors.brand[500]} />
+        <PerformanceCircle value={satisfactionRate} label="Memnuniyet" color={colors.warning} />
       </View>
 
       <View style={[styles.performanceHint, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.08)' : 'rgba(75, 48, 184, 0.06)' }]}>
-        <Ionicons name="sparkles" size={14} color={colors.brand[400]} />
+        <Ionicons name={hasData ? 'sparkles' : 'information-circle-outline'} size={14} color={colors.brand[400]} />
         <Text style={[styles.performanceHintText, { color: colors.brand[400] }]}>
-          Harika gidiyorsunuz! Üst düzey sağlayıcı statüsündesiniz.
+          {getHintMessage()}
         </Text>
       </View>
     </View>
@@ -1161,6 +1386,56 @@ function PerformanceCircle({ value, label, color }: { value: number; label: stri
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+
+  // Welcome Card for New Users
+  welcomeCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  welcomeIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  welcomeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  welcomeMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  welcomeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+  },
+  welcomeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
   },
 
   // Header - Clean

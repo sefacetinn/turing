@@ -31,7 +31,7 @@ const privacyContent: PrivacySection[] = [
     id: 'collected',
     title: 'Toplanan Veriler',
     icon: 'folder-open',
-    content: `Turing uygulaması aşağıdaki verileri toplar:
+    content: `turing uygulaması aşağıdaki verileri toplar:
 
 • Kimlik Bilgileri: Ad, soyad, e-posta adresi, telefon numarası
 • Profil Bilgileri: Profil fotoğrafı, iş tanımı, hizmet alanları
@@ -227,7 +227,7 @@ export function PrivacyPolicyScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await Share.share({
-        message: 'Turing Gizlilik Politikası: https://turing.app/privacy',
+        message: 'turing Gizlilik Politikası: https://turing.app/privacy',
         title: 'Gizlilik Politikası',
       });
     } catch (error) {
@@ -382,7 +382,7 @@ export function PrivacyPolicyScreen() {
             <Text style={[styles.summaryTitle, { color: colors.text }]}>Özet</Text>
           </View>
           <Text style={[styles.summaryText, { color: colors.textSecondary }]}>
-            Turing, kullanıcı gizliliğine önem verir. Verilerinizi yalnızca hizmet sunumu için toplar,
+            turing, kullanıcı gizliliğine önem verir. Verilerinizi yalnızca hizmet sunumu için toplar,
             güvenli bir şekilde saklar ve izniniz olmadan üçüncü taraflarla paylaşmaz.
           </Text>
         </View>
@@ -537,7 +537,7 @@ export function PrivacyPolicyScreen() {
 
           <View style={styles.footerMeta}>
             <Text style={[styles.footerMetaText, { color: colors.textMuted }]}>
-              Turing Technologies A.Ş. • 2026
+              turing Technologies A.Ş. • 2026
             </Text>
             <Text style={[styles.footerMetaText, { color: colors.textMuted }]}>
               Tüm hakları saklıdır.

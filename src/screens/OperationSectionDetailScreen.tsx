@@ -53,6 +53,8 @@ import {
   currentOperationUser,
   sampleSectionTeams,
 } from '../data/operationSectionsData';
+import { ProviderAssignmentModal } from '../components/operation';
+import { SectionProvider } from '../types/operationSection';
 
 const { width } = Dimensions.get('window');
 
@@ -62,7 +64,7 @@ type RootStackParamList = {
     eventId: string;
     sectionType: OperationSectionType;
   };
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
 };
 
 type OperationSectionDetailRouteProp = RouteProp<RootStackParamList, 'OperationSectionDetail'>;
@@ -102,6 +104,7 @@ export function OperationSectionDetailScreen() {
   const [showAddRequirementModal, setShowAddRequirementModal] = useState(false);
   const [newRequirementTitle, setNewRequirementTitle] = useState('');
   const [newRequirementDescription, setNewRequirementDescription] = useState('');
+  const [showProviderModal, setShowProviderModal] = useState(false);
 
   // Derived data
   const hasProvider = section?.provider !== null;
@@ -160,9 +163,17 @@ export function OperationSectionDetailScreen() {
 
   const handleAssignProvider = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Open provider assignment modal
-    Alert.alert('Provider Ata', 'Provider seçme ekranı açılacak');
+    setShowProviderModal(true);
   }, []);
+
+  const handleProviderAssigned = useCallback(
+    (provider: SectionProvider) => {
+      // In production, this would make an API call to update the section
+      console.log('Provider assigned:', provider.name, 'to section:', sectionType);
+      Alert.alert('Başarılı', `${provider.name} bu bölüme atandı.`);
+    },
+    [sectionType]
+  );
 
   // Tab configuration
   const tabs: { key: SectionTab; label: string; icon: string }[] = [
@@ -875,6 +886,15 @@ export function OperationSectionDetailScreen() {
       {/* Modals */}
       {renderAddNoteModal()}
       {renderAddRequirementModal()}
+
+      {/* Provider Assignment Modal */}
+      <ProviderAssignmentModal
+        visible={showProviderModal}
+        sectionType={sectionType}
+        currentProvider={section?.provider}
+        onAssign={handleProviderAssigned}
+        onClose={() => setShowProviderModal(false)}
+      />
     </View>
   );
 }

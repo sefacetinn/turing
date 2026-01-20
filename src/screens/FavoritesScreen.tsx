@@ -18,17 +18,10 @@ import { OptimizedImage } from '../components/OptimizedImage';
 
 const colors = defaultColors;
 
-// Mock favorites data
-const favoriteArtists = [
-  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9 },
-  { id: '2', name: 'Duman', genre: 'Rock', image: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400', rating: 4.9 },
-];
-
-const favoriteProviders = [
-  { id: '1', name: 'Pro Sound Istanbul', category: 'Teknik', rating: 4.9, reviews: 128, location: 'İstanbul', verified: true, image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200&h=200&fit=crop' },
-  { id: '2', name: 'Elite Transfer', category: 'Ulaşım', rating: 4.8, reviews: 89, location: 'İstanbul', verified: true, image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=200&h=200&fit=crop' },
-  { id: '3', name: 'LightShow Pro', category: 'Teknik', rating: 4.7, reviews: 156, location: 'İstanbul', verified: true, image: 'https://images.unsplash.com/photo-1504501650895-2441b7915699?w=400' },
-];
+// TODO: Fetch favorites from Firebase
+// Empty arrays for production - will be populated from user's favorites
+const favoriteArtists: { id: string; name: string; genre: string; image: string; rating: number }[] = [];
+const favoriteProviders: { id: string; name: string; category: string; rating: number; reviews: number; location: string; verified: boolean; image: string }[] = [];
 
 type TabType = 'artists' | 'providers';
 

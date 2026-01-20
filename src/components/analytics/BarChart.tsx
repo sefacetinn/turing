@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { MonthlyData, formatCompactCurrency, analyticsColors } from '../../data/analyticsData';
 
+const CHART_HEIGHT = 120;
+
 interface BarChartProps {
   data: MonthlyData[];
   showExpenses?: boolean;
@@ -30,8 +32,10 @@ export function BarChart({ data, showExpenses = false, title }: BarChartProps) {
     Animated.parallel(animations).start();
   }, [data]);
 
+  // Handle edge case where all values might be 0
   const maxValue = Math.max(
-    ...data.map((item) => (showExpenses ? Math.max(item.income, item.expenses) : item.income))
+    ...data.map((item) => (showExpenses ? Math.max(item.income, item.expenses) : item.expenses > 0 ? item.expenses : item.income)),
+    1 // Ensure we never divide by 0
   );
 
   const accentColor = colors.brand[400];
@@ -44,8 +48,11 @@ export function BarChart({ data, showExpenses = false, title }: BarChartProps) {
 
       <View style={styles.chartContainer}>
         {data.map((item, index) => {
-          const incomeHeight = (item.income / maxValue) * 100;
-          const expenseHeight = showExpenses ? (item.expenses / maxValue) * 100 : 0;
+          // For organizer (showExpenses=false), show expenses as the main bar
+          // For provider (showExpenses=true), show both income and expenses
+          const mainValue = showExpenses ? item.income : item.expenses;
+          const mainBarHeight = (mainValue / maxValue) * CHART_HEIGHT;
+          const expenseBarHeight = showExpenses ? (item.expenses / maxValue) * CHART_HEIGHT : 0;
 
           return (
             <View key={index} style={styles.barGroup}>
@@ -58,7 +65,7 @@ export function BarChart({ data, showExpenses = false, title }: BarChartProps) {
                       {
                         height: animatedValues[index].interpolate({
                           inputRange: [0, 1],
-                          outputRange: ['0%', `${expenseHeight}%`],
+                          outputRange: [4, Math.max(expenseBarHeight, 4)],
                         }),
                         backgroundColor: analyticsColors.expense,
                       },
@@ -71,7 +78,7 @@ export function BarChart({ data, showExpenses = false, title }: BarChartProps) {
                     {
                       height: animatedValues[index].interpolate({
                         inputRange: [0, 1],
-                        outputRange: ['0%', `${incomeHeight}%`],
+                        outputRange: [4, Math.max(mainBarHeight, 4)],
                       }),
                     },
                   ]}

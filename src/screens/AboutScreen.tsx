@@ -50,8 +50,8 @@ export function AboutScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await Share.share({
-        message: 'Turing - Etkinlik & Müzik Sektörü Platformu\n\nKonserler, festivaller ve etkinlikler için en iyi hizmetleri keşfet!\n\nhttps://turing.app/download',
-        title: 'Turing',
+        message: 'turing - Etkinlik & Müzik Sektörü Platformu\n\nKonserler, festivaller ve etkinlikler için en iyi hizmetleri keşfet!\n\nhttps://turing.app/download',
+        title: 'turing',
       });
     } catch (error) {
       console.error('Share error:', error);
@@ -107,7 +107,7 @@ export function AboutScreen() {
             />
           </Animated.View>
 
-          <Text style={[styles.appName, { color: colors.text }]}>TURING</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>turing</Text>
           <Text style={[styles.appTagline, { color: colors.textMuted }]}>
             Etkinlik & Müzik Sektörü Platformu
           </Text>
@@ -304,7 +304,7 @@ export function AboutScreen() {
             <Text style={[styles.footerLocationText, { color: colors.textMuted }]}>İstanbul, Türkiye</Text>
           </View>
           <Text style={[styles.footerCopyright, { color: colors.textMuted }]}>
-            © 2025 Turing. Tüm hakları saklıdır.
+            © 2025 turing. Tüm hakları saklıdır.
           </Text>
         </View>
 

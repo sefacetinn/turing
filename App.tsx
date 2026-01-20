@@ -18,7 +18,10 @@ import { ToastProvider } from './src/components/Toast';
 import { NetworkStatusBar } from './src/components/NetworkStatusBar';
 import { RBACProvider } from './src/context/RBACContext';
 import { ModuleProvider } from './src/context/ModuleContext';
+import { AuthProvider } from './src/context/AuthContext';
 import { hasCompletedOnboarding, setOnboardingCompleted } from './src/utils/storage';
+import { onAuthChange, getUserProfile, logoutUser, updateUserProfile, UserProfile } from './src/services/firebase';
+import { User } from 'firebase/auth';
 
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
@@ -37,6 +40,7 @@ import { ChatScreen } from './src/screens/ChatScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ArtistDetailScreen } from './src/screens/ArtistDetailScreen';
 import { ArtistProfileScreen } from './src/screens/ArtistProfileScreen';
+import { BookingProviderProfileScreen } from './src/screens/BookingProviderProfileScreen';
 import { ProviderDetailScreen } from './src/screens/ProviderDetailScreen';
 import { SearchScreen } from './src/screens/SearchScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
@@ -138,6 +142,7 @@ function HomeStack() {
       </Stack.Screen>
       <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
       <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
+      <Stack.Screen name="BookingProviderProfile" component={BookingProviderProfileScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Notifications">
@@ -185,6 +190,8 @@ function EventsStack() {
         {() => <CalendarViewScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="BookingProviderProfile" component={BookingProviderProfileScreen} />
+      <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
       <Stack.Screen name="ServiceProviders" component={ServiceProvidersScreen} />
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
@@ -402,6 +409,8 @@ function AppContent() {
   const { colors: themeColors, isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [hasOnboarded, setHasOnboarded] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isProviderMode, setIsProviderMode] = useState(false);
   const [accountStatus, setAccountStatus] = useState<'pending' | 'approved'>('approved');
@@ -412,6 +421,46 @@ function AppContent() {
   ]); // Default: all services enabled
   const [currentAccount, setCurrentAccount] = useState<TestAccount | null>(null);
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Listen to Firebase Auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthChange(async (user) => {
+      setFirebaseUser(user);
+
+      if (user) {
+        try {
+          const profile = await getUserProfile(user.uid);
+          setUserProfile(profile);
+
+          // Auto-login if Firebase user exists
+          if (profile) {
+            setIsLoggedIn(true);
+            // Use preferredMode if set, otherwise default to isProvider
+            const initialMode = profile.preferredMode
+              ? profile.preferredMode === 'provider'
+              : profile.isProvider;
+            setIsProviderMode(initialMode);
+            setAccountStatus(profile.isVerified ? 'approved' : 'pending');
+            if (profile.providerServices) {
+              setProviderServices(profile.providerServices);
+            }
+            setCanSwitchMode(profile.isProvider && profile.isOrganizer);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      } else {
+        // User logged out
+        setUserProfile(null);
+        // Don't auto-logout - let the demo mode work
+      }
+
+      setIsCheckingAuth(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Check onboarding status on mount
   useEffect(() => {
@@ -456,25 +505,46 @@ function AppContent() {
     }
   }, []);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    try {
+      // Sign out from Firebase if logged in
+      if (firebaseUser) {
+        await logoutUser();
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+
     setIsLoggedIn(false);
     setIsProviderMode(false);
     setAccountStatus('approved');
     setCurrentAccount(null);
+    setUserProfile(null);
     setProviderServices(['booking', 'technical', 'transport', 'catering', 'security']);
     setCanSwitchMode(true);
     setNavigationKey(prev => prev + 1); // Reset navigation on logout
-  }, []);
+  }, [firebaseUser]);
 
-  const toggleMode = useCallback(() => {
+  const toggleMode = useCallback(async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setIsProviderMode(prev => !prev);
+    setIsProviderMode(prev => {
+      const newMode = !prev;
+      // Persist preference to Firebase if user is logged in
+      if (firebaseUser?.uid) {
+        updateUserProfile(firebaseUser.uid, {
+          preferredMode: newMode ? 'provider' : 'organizer'
+        }).catch(error => {
+          console.error('Error saving mode preference:', error);
+        });
+      }
+      return newMode;
+    });
     // Increment key to force NavigationContainer to remount and reset all stacks
     setNavigationKey(prev => prev + 1);
-  }, []);
+  }, [firebaseUser?.uid]);
 
-  // Loading state
-  if (isLoading) {
+  // Loading state - wait for both onboarding check and auth check
+  if (isLoading || isCheckingAuth) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#09090b' : '#ffffff' }}>
         <ActivityIndicator size="large" color={isDark ? '#9333ea' : '#7c3aed'} />
@@ -519,18 +589,20 @@ function AppContent() {
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode, providerServices, setProviderServices, currentAccount }}>
-        <RBACProvider isProvider={isProviderMode}>
-          <ModuleProvider>
-            <NavigationContainer
-              ref={navigationRef}
-              key={navigationKey}
-              theme={isDark ? CustomDarkTheme : CustomLightTheme}
-            >
-              <MainTabs onLogout={handleLogout} />
-            </NavigationContainer>
-            <NetworkStatusBar />
-          </ModuleProvider>
-        </RBACProvider>
+        <AuthProvider>
+          <RBACProvider isProvider={isProviderMode}>
+            <ModuleProvider>
+              <NavigationContainer
+                ref={navigationRef}
+                key={navigationKey}
+                theme={isDark ? CustomDarkTheme : CustomLightTheme}
+              >
+                <MainTabs onLogout={handleLogout} />
+              </NavigationContainer>
+              <NetworkStatusBar />
+            </ModuleProvider>
+          </RBACProvider>
+        </AuthProvider>
       </AppContext.Provider>
     </>
   );

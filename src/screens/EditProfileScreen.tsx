@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Switch,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +19,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { useApp } from '../../App';
+import { useAuth } from '../context/AuthContext';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 
 interface SocialAccount {
   id: string;
@@ -33,19 +36,37 @@ export function EditProfileScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const { isProviderMode, canSwitchMode } = useApp();
+  const { user, userProfile, updateProfile, refreshProfile } = useAuth();
+  const [saving, setSaving] = useState(false);
 
-  // Profile state
-  const [name, setName] = useState('Sefa Çetin');
-  const [email, setEmail] = useState('sefa@example.com');
-  const [phone, setPhone] = useState('+90 555 123 4567');
-  const [bio, setBio] = useState('Etkinlik organizatörü ve müzik tutkunu.');
-  const [company, setCompany] = useState('Turing Events');
-  const [location, setLocation] = useState('İstanbul, Türkiye');
-  const [website, setWebsite] = useState('www.turing.app');
+  // Profile state - initialized from Firebase data
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [bio, setBio] = useState('');
+  const [company, setCompany] = useState('');
+  const [location, setLocation] = useState('');
+  const [website, setWebsite] = useState('');
+  const [userPhoto, setUserPhoto] = useState<string | null>(null);
 
-  // Verification status
-  const [emailVerified] = useState(true);
-  const [phoneVerified] = useState(true);
+  // Initialize form with user data
+  useEffect(() => {
+    if (user && userProfile) {
+      setName(userProfile.displayName || '');
+      setEmail(user.email || '');
+      setPhone(userProfile.phoneNumber || user.phoneNumber || '');
+      setBio(userProfile.bio || '');
+      setCompany(userProfile.companyName || '');
+      setLocation(userProfile.city || '');
+      setWebsite(userProfile.website || '');
+      // Load user photo - prefer userPhotoURL, fallback to user.photoURL
+      setUserPhoto(userProfile.userPhotoURL || user.photoURL || null);
+    }
+  }, [user, userProfile]);
+
+  // Verification status - from Firebase
+  const emailVerified = user?.emailVerified || false;
+  const phoneVerified = !!userProfile?.phoneNumber;
   const [identityVerified] = useState(false);
 
   // Preferences
@@ -55,9 +76,9 @@ export function EditProfileScreen() {
 
   // Social accounts
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([
-    { id: '1', platform: 'Instagram', icon: 'logo-instagram', color: '#E4405F', connected: true, username: '@sefacetin' },
+    { id: '1', platform: 'Instagram', icon: 'logo-instagram', color: '#E4405F', connected: false },
     { id: '2', platform: 'Twitter', icon: 'logo-twitter', color: '#1DA1F2', connected: false },
-    { id: '3', platform: 'LinkedIn', icon: 'logo-linkedin', color: '#0A66C2', connected: true, username: 'sefacetin' },
+    { id: '3', platform: 'LinkedIn', icon: 'logo-linkedin', color: '#0A66C2', connected: false },
   ]);
 
   // Calculate profile completion
@@ -75,13 +96,86 @@ export function EditProfileScreen() {
     return Math.min(score, 100);
   }, [name, email, phone, bio, company, location, emailVerified, phoneVerified, socialAccounts]);
 
-  const handleSave = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      'Başarılı',
-      'Profil bilgileriniz güncellendi.',
-      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
-    );
+  const handleSave = async () => {
+    if (!user) {
+      Alert.alert('Hata', 'Oturum açmanız gerekiyor.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Build profile data, only include userPhotoURL if it has a value
+      const profileData: Record<string, any> = {
+        displayName: name,
+        phoneNumber: phone,
+        bio: bio,
+        companyName: company,
+        city: location,
+        website: website,
+      };
+
+      // Only add userPhotoURL if it has a value (avoid Firebase undefined error)
+      if (userPhoto) {
+        profileData.userPhotoURL = userPhoto;
+      }
+
+      // Update user profile via AuthContext
+      await updateProfile(profileData);
+
+      // Refresh profile to get updated data
+      await refreshProfile();
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Başarılı',
+        'Profil bilgileriniz güncellendi.',
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Profil güncellenirken bir hata oluştu.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const pickImageFromGallery = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setUserPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin vermeniz gerekiyor.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setUserPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu.');
+    }
   };
 
   const handleChangePhoto = () => {
@@ -91,8 +185,8 @@ export function EditProfileScreen() {
       'Profil fotoğrafınızı nasıl değiştirmek istersiniz?',
       [
         { text: 'İptal', style: 'cancel' },
-        { text: 'Kamera', onPress: () => {} },
-        { text: 'Galeri', onPress: () => {} },
+        { text: 'Kamera', onPress: takePhotoWithCamera },
+        { text: 'Galeri', onPress: pickImageFromGallery },
       ]
     );
   };
@@ -128,10 +222,15 @@ export function EditProfileScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Profili Düzenle</Text>
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: colors.brand[500] }]}
+          style={[styles.saveButton, { backgroundColor: colors.brand[500], opacity: saving ? 0.7 : 1 }]}
           onPress={handleSave}
+          disabled={saving}
         >
-          <Text style={styles.saveButtonText}>Kaydet</Text>
+          {saving ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text style={styles.saveButtonText}>Kaydet</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -148,10 +247,21 @@ export function EditProfileScreen() {
           {/* Profile Photo & Completion */}
         <View style={styles.heroSection}>
           <TouchableOpacity style={styles.photoContainer} onPress={handleChangePhoto} activeOpacity={0.8}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop' }}
-              style={styles.profilePhoto}
-            />
+            {userPhoto ? (
+              <Image
+                source={{ uri: userPhoto }}
+                style={styles.profilePhoto}
+              />
+            ) : (
+              <LinearGradient
+                colors={['#4b30b8', '#8b5cf6']}
+                style={[styles.profilePhoto, styles.avatarGradient]}
+              >
+                <Text style={styles.avatarInitials}>
+                  {name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'KU'}
+                </Text>
+              </LinearGradient>
+            )}
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.7)']}
               style={styles.photoOverlay}
@@ -542,6 +652,15 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
+  },
+  avatarGradient: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: 'white',
   },
   photoOverlay: {
     position: 'absolute',

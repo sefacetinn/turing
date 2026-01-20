@@ -25,9 +25,12 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'accepted': return colors.success;
-      case 'pending': return colors.warning;
+      case 'pending': return '#3B82F6'; // Mavi - yeni talep, aksiyon gerekiyor
+      case 'quoted': return colors.warning; // Sarı - yanıt bekleniyor
       case 'counter_offered': return colors.brand[400];
       case 'rejected': return colors.error;
+      case 'expired': return colors.textMuted;
+      case 'cancelled': return colors.textMuted;
       default: return colors.textMuted;
     }
   };
@@ -36,28 +39,42 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
   const getStatusStripeColors = (status: string): readonly [string, string] => {
     switch (status) {
       case 'pending':
+        return ['#3B82F6', '#60a5fa'] as const; // Mavi - Yeni talep, aksiyon gerekiyor
+      case 'quoted':
+        return ['#F59E0B', '#fbbf24'] as const; // Sarı - Yanıt bekleniyor
       case 'counter_offered':
-        return ['#4B30B8', '#7c6cd9'] as const; // Purple - Active
+        return ['#4B30B8', '#7c6cd9'] as const; // Mor - Pazarlık
       case 'accepted':
-        return ['#10B981', '#34d399'] as const; // Green - Approved
+        return ['#10B981', '#34d399'] as const; // Yeşil - Onaylandı
       case 'rejected':
-        return ['#EF4444', '#f87171'] as const; // Red - Rejected
+        return ['#EF4444', '#f87171'] as const; // Kırmızı - Reddedildi
+      case 'expired':
+      case 'cancelled':
+        return ['#6B7280', '#9ca3af'] as const; // Gri - Pasif
       default:
         return ['#4B30B8', '#7c6cd9'] as const;
     }
   };
 
+  // Provider perspektifinden status metni
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'accepted': return 'Kabul Edildi';
-      case 'pending': return 'Beklemede';
+      case 'accepted': return 'Onaylandı';
+      case 'pending':
+        // Provider henüz fiyat vermedi - teklif talebi geldi
+        return 'Teklif Talebi';
+      case 'quoted':
+        // Provider fiyat verdi, organizatör inceliyor
+        return 'Yanıt Bekleniyor';
       case 'counter_offered':
         if (offer.counterOffer) {
-          if (offer.counterOffer.by === 'provider') return 'Cevap Bekleniyor';
+          if (offer.counterOffer.by === 'provider') return 'Yanıt Bekleniyor';
           return 'Karşı Teklif Geldi';
         }
         return 'Pazarlık';
       case 'rejected': return 'Reddedildi';
+      case 'expired': return 'Süresi Doldu';
+      case 'cancelled': return 'İptal Edildi';
       default: return status;
     }
   };
@@ -65,9 +82,12 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
   const getStatusIcon = (status: string): keyof typeof Ionicons.glyphMap => {
     switch (status) {
       case 'accepted': return 'checkmark-circle';
-      case 'pending': return 'time';
+      case 'pending': return 'mail-unread'; // Yeni talep geldi
+      case 'quoted': return 'time'; // Yanıt bekleniyor
       case 'counter_offered': return 'swap-horizontal';
       case 'rejected': return 'close-circle';
+      case 'expired': return 'alarm-outline';
+      case 'cancelled': return 'ban-outline';
       default: return 'help-circle';
     }
   };
@@ -209,19 +229,19 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           </View>
           <View style={styles.counterOfferAmountRow}>
             <Text style={[styles.counterOfferAmount, { color: colors.text }]}>
-              ₺{offer.counterOffer.amount.toLocaleString('tr-TR')}
+              ₺{(offer.counterOffer?.amount ?? 0).toLocaleString('tr-TR')}
             </Text>
-            {offer.counterOffer.amount !== offer.amount && (
+            {(offer.counterOffer?.amount ?? 0) !== (offer.amount ?? 0) && (
               <View style={[
                 styles.counterOfferDiff,
-                { backgroundColor: offer.counterOffer.amount < offer.amount ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' }
+                { backgroundColor: (offer.counterOffer?.amount ?? 0) < (offer.amount ?? 0) ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)' }
               ]}>
                 <Text style={[
                   styles.counterOfferDiffText,
-                  { color: offer.counterOffer.amount < offer.amount ? colors.error : colors.success }
+                  { color: (offer.counterOffer?.amount ?? 0) < (offer.amount ?? 0) ? colors.error : colors.success }
                 ]}>
-                  {offer.counterOffer.amount < offer.amount ? '-' : '+'}
-                  ₺{Math.abs(offer.counterOffer.amount - offer.amount).toLocaleString('tr-TR')}
+                  {(offer.counterOffer?.amount ?? 0) < (offer.amount ?? 0) ? '-' : '+'}
+                  ₺{Math.abs((offer.counterOffer?.amount ?? 0) - (offer.amount ?? 0)).toLocaleString('tr-TR')}
                 </Text>
               </View>
             )}
@@ -244,7 +264,7 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
             { color: colors.success },
             offer.counterOffer && [styles.amountValueOld, { color: colors.textMuted }]
           ]}>
-            ₺{offer.amount.toLocaleString('tr-TR')}
+            ₺{(offer.amount ?? 0).toLocaleString('tr-TR')}
           </Text>
         </View>
         {!offer.counterOffer && (
@@ -293,7 +313,13 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
           </View>
         )}
 
-        {offer.status === 'pending' && (
+        {offer.status === 'pending' && !showActions && (
+          <View style={styles.waitingStatus}>
+            <View style={[styles.waitingDot, { backgroundColor: '#3B82F6' }]} />
+            <Text style={[styles.waitingText, { color: colors.textMuted }]}>Fiyat teklifi verin</Text>
+          </View>
+        )}
+        {offer.status === 'quoted' && (
           <View style={styles.waitingStatus}>
             <View style={[styles.waitingDot, { backgroundColor: colors.warning }]} />
             <Text style={[styles.waitingText, { color: colors.textMuted }]}>Organizatör inceliyor</Text>

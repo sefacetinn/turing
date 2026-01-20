@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "EventApp",
-    "slug": "eventapp",
+    "name": "turing",
+    "slug": "turing",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.eventapp.mobile",
+      "bundleIdentifier": "com.turing.mobile",
       "backgroundColor": "#09090b",
       "buildNumber": "1",
       "infoPlist": {
@@ -30,7 +30,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090b"
       },
-      "package": "com.eventapp.mobile",
+      "package": "com.turing.mobile",
       "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",

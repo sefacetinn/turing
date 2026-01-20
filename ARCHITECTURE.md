@@ -1,11 +1,11 @@
-# 🎵 TURING UYGULAMASI - REACT NATIVE EXPO
+# 🎵 turing UYGULAMASI - REACT NATIVE EXPO
 ## Genel Çalışma Mantığı ve Mimari Dokümantasyonu
 
 ---
 
 ## 🎯 UYGULAMA TANIMI
 
-**Turing**, etkinlik ve müzik sektöründe organizatörleri ve hizmet sağlayıcıları (provider) bir araya getiren, teklif bazlı işleyişe sahip mobil uygulamadır.
+**turing**, etkinlik ve müzik sektöründe organizatörleri ve hizmet sağlayıcıları (provider) bir araya getiren, teklif bazlı işleyişe sahip mobil uygulamadır.
 
 ### Temel İşlev
 ```
@@ -1085,4 +1085,4 @@ caption: 10,          // Tab label, badge
 
 ---
 
-*Bu dokümantasyon Turing React Native uygulamasının mimarisini ve çalışma mantığını açıklar. Güncellemeler için CHANGELOG.md dosyasını kontrol edin.*
+*Bu dokümantasyon turing React Native uygulamasının mimarisini ve çalışma mantığını açıklar. Güncellemeler için CHANGELOG.md dosyasını kontrol edin.*

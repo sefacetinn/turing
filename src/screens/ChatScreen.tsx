@@ -24,10 +24,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import {
+  useChatMessages,
+  sendChatMessage,
+  createOrGetConversation,
+  getConversationById,
+  markMessagesAsRead,
+  FirestoreChatMessage,
+} from '../hooks';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { gradients } from '../theme/colors';
-import { getConversationById, createNewConversation, ChatMessage } from '../data/messagesData';
 
 interface ChatParams {
   conversationId?: string;
@@ -37,79 +45,105 @@ interface ChatParams {
   serviceCategory?: string;
 }
 
-// Mock events for offer selection
-const mockEvents = [
-  { id: 'e1', title: 'Yaz Festivali 2026', date: '15 Temmuz 2026' },
-  { id: 'e2', title: 'Kurumsal Lansman', date: '22 Ağustos 2026' },
-  { id: 'e3', title: 'Düğün Organizasyonu', date: '5 Eylül 2026' },
-];
+// TODO: Fetch user's events from Firebase for offer selection
+// Empty initial state for production
 
 export function ChatScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const params = (route.params || {}) as ChatParams;
 
-  // Support both conversationId and providerId/providerName/providerImage
-  const getConversationData = React.useMemo(() => {
-    // First check for conversationId
-    if (params?.conversationId) {
-      const found = getConversationById(params.conversationId);
-      if (found) {
-        return {
-          id: found.id,
-          participantName: found.participantName,
-          participantImage: found.participantImage,
-          online: found.online,
-          messages: found.messages,
-        };
-      }
-    }
+  // Conversation state
+  const [conversationId, setConversationId] = useState<string | undefined>(params?.conversationId);
+  const [participantId, setParticipantId] = useState<string | undefined>(params?.providerId);
+  const [participantName, setParticipantName] = useState(params?.providerName || 'Bilinmeyen');
+  const [participantImage, setParticipantImage] = useState(params?.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+  const [isOnline, setIsOnline] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
-    // If providerId is passed, create a new conversation
-    if (params?.providerId && params?.providerName) {
-      const newConv = createNewConversation(
-        params.providerId,
-        params.providerName,
-        params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
-        params.serviceCategory || 'provider'
-      );
-      return {
-        id: newConv.id,
-        participantName: newConv.participantName,
-        participantImage: newConv.participantImage,
-        online: newConv.online,
-        messages: newConv.messages,
-      };
-    }
+  // Fetch messages from Firebase
+  const { messages: firebaseMessages, loading: messagesLoading } = useChatMessages(conversationId);
 
-    // Default fallback - get first conversation
-    const defaultConv = getConversationById('c1');
-    if (defaultConv) {
-      return {
-        id: defaultConv.id,
-        participantName: defaultConv.participantName,
-        participantImage: defaultConv.participantImage,
-        online: defaultConv.online,
-        messages: defaultConv.messages,
-      };
-    }
-
-    // Ultimate fallback
-    return {
-      id: 'fallback',
-      participantName: 'Bilinmeyen',
-      participantImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400',
-      online: false,
-      messages: [],
-    };
-  }, [params?.conversationId, params?.providerId, params?.providerName, params?.providerImage, params?.serviceCategory]);
-
-  const conversation = getConversationData;
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>(conversation.messages as ChatMessage[]);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Create or get conversation when component mounts
+  useEffect(() => {
+    const initConversation = async () => {
+      if (!user?.uid) return;
+
+      // If we already have a conversationId, fetch conversation details to get participant info
+      if (params?.conversationId) {
+        setConversationId(params.conversationId);
+
+        // If we don't have participant info, fetch it from Firebase
+        if (!params?.providerName) {
+          try {
+            const conversation = await getConversationById(params.conversationId);
+            if (conversation) {
+              // Find the other participant (not the current user)
+              const otherParticipantId = conversation.participantIds.find(id => id !== user.uid);
+              if (otherParticipantId) {
+                const name = conversation.participantNames[otherParticipantId] || 'Kullanıcı';
+                const image = conversation.participantImages[otherParticipantId] || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400';
+                setParticipantId(otherParticipantId);
+                setParticipantName(name);
+                setParticipantImage(image);
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching conversation details:', error);
+          }
+        } else {
+          // We have provider info from params
+          setParticipantId(params.providerId);
+          setParticipantName(params.providerName);
+          setParticipantImage(params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+        }
+        return;
+      }
+
+      // If providerId is passed, create/get conversation
+      if (params?.providerId && params?.providerName) {
+        setIsCreatingConversation(true);
+        try {
+          const convId = await createOrGetConversation(
+            user.uid,
+            user.displayName || 'Kullanıcı',
+            user.photoURL || '',
+            params.providerId,
+            params.providerName,
+            params.providerImage || '',
+            params.serviceCategory
+          );
+          setConversationId(convId);
+          setParticipantId(params.providerId);
+          setParticipantName(params.providerName);
+          setParticipantImage(params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+        } catch (error) {
+          console.error('Error creating conversation:', error);
+          Alert.alert('Hata', 'Sohbet başlatılamadı');
+        } finally {
+          setIsCreatingConversation(false);
+        }
+      }
+    };
+
+    initConversation();
+  }, [user?.uid, params?.conversationId, params?.providerId, params?.providerName]);
+
+  // Mark messages as read when viewing
+  useEffect(() => {
+    if (conversationId && user?.uid) {
+      markMessagesAsRead(conversationId, user.uid);
+    }
+  }, [conversationId, user?.uid, firebaseMessages.length]);
+
+  // User's events for offer selection - TODO: Fetch from Firebase
+  const [userEvents, setUserEvents] = useState<{ id: string; title: string; date: string }[]>([]);
 
   // Keyboard state
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -170,17 +204,21 @@ export function ChatScreen() {
   const [meetingTime, setMeetingTime] = useState('');
   const [meetingLocation, setMeetingLocation] = useState('');
 
-  // Update messages when conversation changes
-  React.useEffect(() => {
-    setMessages(conversation.messages as ChatMessage[]);
-  }, [conversation]);
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (firebaseMessages.length > 0) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [firebaseMessages.length]);
 
   // Handle call button
   const handleCall = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Alert.alert(
       'Sesli Arama',
-      `${conversation.participantName} ile sesli arama başlatılsın mı?`,
+      `${participantName} ile sesli arama başlatılsın mı?`,
       [
         { text: 'İptal', style: 'cancel' },
         { text: 'Ara', onPress: () => Alert.alert('Aranıyor...', 'Arama özelliği yakında aktif olacak.') },
@@ -198,7 +236,11 @@ export function ChatScreen() {
   const chatOptions = [
     { id: 'profile', label: 'Profili Görüntüle', icon: 'person-outline', action: () => {
       setShowOptionsModal(false);
-      navigation.navigate('ProviderDetail', { providerId: conversation.id });
+      if (participantId) {
+        navigation.navigate('ProviderDetail', { providerId: participantId });
+      } else {
+        Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
+      }
     }},
     { id: 'mute', label: 'Bildirimleri Sessize Al', icon: 'notifications-off-outline', action: () => {
       setShowOptionsModal(false);
@@ -216,7 +258,7 @@ export function ChatScreen() {
       setShowOptionsModal(false);
       Alert.alert(
         'Engelle',
-        `${conversation.participantName} engellensin mi?`,
+        `${participantName} engellensin mi?`,
         [
           { text: 'İptal', style: 'cancel' },
           { text: 'Engelle', style: 'destructive', onPress: () => Alert.alert('Engellendi', 'Kullanıcı engellendi.') },
@@ -236,101 +278,93 @@ export function ChatScreen() {
     }},
   ];
 
-  const sendMessage = () => {
-    if (!message.trim()) return;
+  const handleSendMessage = async () => {
+    if (!message.trim() || !conversationId || !user?.uid) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const newMessage: ChatMessage = {
-      id: `m${messages.length + 1}`,
-      senderId: 'me',
-      text: message,
-      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      type: 'text',
-    };
+    const messageText = message.trim();
+    setMessage(''); // Clear input immediately
 
-    setMessages([...messages, newMessage]);
-    setMessage('');
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    try {
+      await sendChatMessage(conversationId, user.uid, {
+        text: messageText,
+        type: 'text',
+        time: '',
+        date: '',
+        senderId: user.uid,
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Hata', 'Mesaj gönderilemedi');
+      setMessage(messageText); // Restore message on error
+    }
   };
 
   // Send Offer
-  const handleSendOffer = () => {
+  const handleSendOffer = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!selectedEvent || !offerAmount) {
+    if (!selectedEvent || !offerAmount || !conversationId || !user?.uid) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen etkinlik seçin ve teklif tutarı girin.');
       return;
     }
 
-    const event = mockEvents.find(e => e.id === selectedEvent);
-    const newMessage: ChatMessage = {
-      id: `m${messages.length + 1}`,
-      senderId: 'me',
-      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      type: 'offer',
-      eventTitle: event?.title,
-      offerAmount: parseFloat(offerAmount.replace(/\./g, '').replace(',', '.')),
-      offerDescription: offerDescription || undefined,
-      offerStatus: 'pending',
-    };
+    const event = userEvents.find(e => e.id === selectedEvent);
 
-    setMessages([...messages, newMessage]);
-    setShowOfferModal(false);
-    setSelectedEvent(null);
-    setOfferAmount('');
-    setOfferDescription('');
+    try {
+      await sendChatMessage(conversationId, user.uid, {
+        type: 'offer',
+        eventTitle: event?.title,
+        eventId: selectedEvent,
+        offerAmount: parseFloat(offerAmount.replace(/\./g, '').replace(',', '.')),
+        offerDescription: offerDescription || undefined,
+        offerStatus: 'pending',
+        time: '',
+        date: '',
+        senderId: user.uid,
+      });
 
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-
-    // Simulate provider response
-    setTimeout(() => {
-      const responseMessage: ChatMessage = {
-        id: `m${messages.length + 2}`,
-        senderId: 'provider',
-        text: 'Teklifinizi aldım, inceleyip en kısa sürede dönüş yapacağım.',
-        time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-        type: 'text',
-      };
-      setMessages(prev => [...prev, responseMessage]);
-    }, 2000);
+      setShowOfferModal(false);
+      setSelectedEvent(null);
+      setOfferAmount('');
+      setOfferDescription('');
+    } catch (error) {
+      console.error('Error sending offer:', error);
+      Alert.alert('Hata', 'Teklif gönderilemedi');
+    }
   };
 
   // Send Meeting Request
-  const handleSendMeeting = () => {
+  const handleSendMeeting = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!meetingTitle || !meetingDate || !meetingTime) {
+    if (!meetingTitle || !meetingDate || !meetingTime || !conversationId || !user?.uid) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Lütfen toplantı başlığı, tarih ve saat girin.');
       return;
     }
 
-    const newMessage: ChatMessage = {
-      id: `m${messages.length + 1}`,
-      senderId: 'me',
-      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      type: 'meeting',
-      meetingTitle,
-      meetingDate,
-      meetingTime,
-      meetingLocation: meetingLocation || 'Belirtilmedi',
-      meetingStatus: 'pending',
-    };
+    try {
+      await sendChatMessage(conversationId, user.uid, {
+        type: 'meeting',
+        meetingTitle,
+        meetingDate,
+        meetingTime,
+        meetingLocation: meetingLocation || 'Belirtilmedi',
+        meetingStatus: 'pending',
+        time: '',
+        date: '',
+        senderId: user.uid,
+      });
 
-    setMessages([...messages, newMessage]);
-    setShowMeetingModal(false);
-    setMeetingTitle('');
-    setMeetingDate('');
-    setMeetingTime('');
-    setMeetingLocation('');
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+      setShowMeetingModal(false);
+      setMeetingTitle('');
+      setMeetingDate('');
+      setMeetingTime('');
+      setMeetingLocation('');
+    } catch (error) {
+      console.error('Error sending meeting:', error);
+      Alert.alert('Hata', 'Toplantı daveti gönderilemedi');
+    }
   };
 
   // Handle File Upload
@@ -376,23 +410,23 @@ export function ChatScreen() {
     setShowFileOptions(false);
   };
 
-  const sendFileMessage = (fileName: string, fileSize: string, fileType: string, fileUri: string) => {
-    const newMessage: ChatMessage = {
-      id: `m${messages.length + 1}`,
-      senderId: 'me',
-      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      type: 'file',
-      fileName,
-      fileSize,
-      fileType,
-      fileUri,
-    };
+  const sendFileMessage = async (fileName: string, fileSize: string, fileType: string, _fileUri: string) => {
+    if (!conversationId || !user?.uid) return;
 
-    setMessages([...messages, newMessage]);
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    try {
+      await sendChatMessage(conversationId, user.uid, {
+        type: 'file',
+        fileName,
+        fileSize,
+        fileType,
+        time: '',
+        date: '',
+        senderId: user.uid,
+      });
+    } catch (error) {
+      console.error('Error sending file:', error);
+      Alert.alert('Hata', 'Dosya gönderilemedi');
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -410,7 +444,7 @@ export function ChatScreen() {
   };
 
   // Render special message types
-  const renderOfferMessage = (msg: ChatMessage, isMe: boolean) => (
+  const renderOfferMessage = (msg: FirestoreChatMessage, isMe: boolean) => (
     <View style={[styles.specialMessageCard, {
       backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)',
       borderColor: colors.brand[400],
@@ -458,7 +492,7 @@ export function ChatScreen() {
     </View>
   );
 
-  const renderMeetingMessage = (msg: ChatMessage, isMe: boolean) => (
+  const renderMeetingMessage = (msg: FirestoreChatMessage, isMe: boolean) => (
     <View style={[styles.specialMessageCard, {
       backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
       borderColor: '#3b82f6',
@@ -514,7 +548,7 @@ export function ChatScreen() {
     </View>
   );
 
-  const renderFileMessage = (msg: ChatMessage, isMe: boolean) => (
+  const renderFileMessage = (msg: FirestoreChatMessage, isMe: boolean) => (
     <View style={[styles.fileMessageCard, {
       backgroundColor: isMe ? colors.brand[600] : (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'),
     }]}>
@@ -560,16 +594,20 @@ export function ChatScreen() {
 
         <TouchableOpacity
           style={styles.headerInfo}
-          onPress={() => navigation.navigate('ProviderDetail', { providerId: conversation.id })}
+          onPress={() => {
+            if (participantId) {
+              navigation.navigate('ProviderDetail', { providerId: participantId });
+            }
+          }}
           activeOpacity={0.7}
         >
-          <OptimizedImage source={conversation.participantImage} style={styles.headerAvatar} />
+          <OptimizedImage source={participantImage} style={styles.headerAvatar} />
           <View>
-            <Text style={[styles.headerName, { color: colors.text }]}>{conversation.participantName}</Text>
+            <Text style={[styles.headerName, { color: colors.text }]}>{participantName}</Text>
             <View style={styles.onlineStatus}>
-              <View style={[styles.onlineDot, { backgroundColor: colors.textMuted }, conversation.online && { backgroundColor: colors.success }]} />
+              <View style={[styles.onlineDot, { backgroundColor: colors.textMuted }, isOnline && { backgroundColor: colors.success }]} />
               <Text style={[styles.onlineText, { color: colors.textMuted }]}>
-                {conversation.online ? 'Çevrimiçi' : 'Son görülme: 2 saat önce'}
+                {isOnline ? 'Çevrimiçi' : 'Son görülme: 2 saat önce'}
               </Text>
             </View>
           </View>
@@ -613,16 +651,16 @@ export function ChatScreen() {
             }]}>Bugün</Text>
           </View>
 
-          {messages.map((msg, index) => {
-            const isMe = msg.senderId === 'me';
-            const showAvatar = !isMe && (index === 0 || messages[index - 1]?.senderId === 'me');
+          {firebaseMessages.map((msg, index) => {
+            const isMe = msg.senderId === user?.uid;
+            const showAvatar = !isMe && (index === 0 || firebaseMessages[index - 1]?.senderId === user?.uid);
 
             // Render special message types
             if (msg.type === 'offer') {
               return (
                 <View key={msg.id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
                   {!isMe && showAvatar && (
-                    <OptimizedImage source={conversation.participantImage} style={styles.messageAvatar} />
+                    <OptimizedImage source={participantImage} style={styles.messageAvatar} />
                   )}
                   {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
                   {renderOfferMessage(msg, isMe)}
@@ -634,7 +672,7 @@ export function ChatScreen() {
               return (
                 <View key={msg.id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
                   {!isMe && showAvatar && (
-                    <OptimizedImage source={conversation.participantImage} style={styles.messageAvatar} />
+                    <OptimizedImage source={participantImage} style={styles.messageAvatar} />
                   )}
                   {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
                   {renderMeetingMessage(msg, isMe)}
@@ -646,7 +684,7 @@ export function ChatScreen() {
               return (
                 <View key={msg.id} style={[styles.messageRow, isMe && styles.messageRowMe]}>
                   {!isMe && showAvatar && (
-                    <OptimizedImage source={conversation.participantImage} style={styles.messageAvatar} />
+                    <OptimizedImage source={participantImage} style={styles.messageAvatar} />
                   )}
                   {!isMe && !showAvatar && <View style={styles.avatarPlaceholder} />}
                   {renderFileMessage(msg, isMe)}
@@ -661,7 +699,7 @@ export function ChatScreen() {
               >
                 {!isMe && showAvatar && (
                   <OptimizedImage
-                    source={conversation.participantImage}
+                    source={participantImage}
                     style={styles.messageAvatar}
                   />
                 )}
@@ -685,7 +723,7 @@ export function ChatScreen() {
           })}
 
           {/* Typing Indicator */}
-          {conversation.online && (
+          {isOnline && (
             <View style={styles.typingIndicator}>
               <View style={styles.typingDots}>
                 <View style={[styles.typingDot, { backgroundColor: colors.textMuted, opacity: 0.4 }]} />
@@ -766,7 +804,7 @@ export function ChatScreen() {
             style={[styles.sendButton, {
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
             }, message.trim() && { backgroundColor: colors.brand[500] }]}
-            onPress={sendMessage}
+            onPress={handleSendMessage}
             disabled={!message.trim()}
           >
             <Ionicons
@@ -819,7 +857,7 @@ export function ChatScreen() {
               <View style={styles.formSection}>
                 <Text style={[styles.formLabel, { color: colors.textMuted }]}>Etkinlik Seçin</Text>
                 <View style={styles.eventOptions}>
-                  {mockEvents.map(event => (
+                  {userEvents.map(event => (
                     <TouchableOpacity
                       key={event.id}
                       style={[

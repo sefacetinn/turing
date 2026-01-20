@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,14 +28,14 @@ import Animated, {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-import { events as mockEvents, getOfferByServiceId } from '../data/mockData';
+// TODO: Replace with Firebase data fetching
+// For now, event data will come from navigation params or Firebase hook
 import { ReviseEventModal } from '../components/ReviseEventModal';
 import { CancelEventModal } from '../components/CancelEventModal';
 import {
   Service,
   TimelineItem,
   getCategoryInfo,
-  mockTimeline,
   getTimelineTypeIcon,
   getTimelineTypeColor,
   getServiceStatusInfo,
@@ -44,6 +44,14 @@ import type { TicketPlatform, TicketCategory } from '../types';
 import { PosterGenerator } from '../components/poster';
 import { RatingModal } from '../components/rating';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { useEvent } from '../hooks';
+import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions } from '../data/createEventData';
+
+// Helper to get label from option arrays
+const getOptionLabel = (options: { id: string; label: string }[], id: string | undefined): string | null => {
+  if (!id) return null;
+  return options.find(o => o.id === id)?.label || null;
+};
 
 // Expense Types
 interface Expense {
@@ -57,33 +65,14 @@ interface Expense {
   provider?: string;
 }
 
-// Mock Expenses Data
-const mockExpenses: Expense[] = [
-  { id: 'e1', title: 'Ana Sahne Sanatçısı', category: 'booking', amount: 200000, date: '10 Ocak 2026', status: 'paid', provider: 'Mabel Matiz' },
-  { id: 'e2', title: 'DJ Set', category: 'booking', amount: 50000, date: '12 Ocak 2026', status: 'pending', provider: 'DJ Mahmut' },
-  { id: 'e3', title: 'Ses Sistemi Kiralama', category: 'technical', amount: 85000, date: '8 Ocak 2026', status: 'paid', provider: 'ProSound' },
-  { id: 'e4', title: 'Işık Sistemi', category: 'technical', amount: 45000, date: '8 Ocak 2026', status: 'paid', provider: 'LightTech' },
-  { id: 'e5', title: 'Sahne Kurulumu', category: 'operation', amount: 35000, date: '14 Ocak 2026', status: 'pending', provider: 'Stage Masters' },
-  { id: 'e6', title: 'Güvenlik Hizmeti', category: 'operation', amount: 28000, date: '15 Ocak 2026', status: 'pending', provider: 'SecureEvent' },
-  { id: 'e7', title: 'Sosyal Medya Reklamı', category: 'marketing', amount: 15000, date: '5 Ocak 2026', status: 'paid' },
-  { id: 'e8', title: 'Mekan Kiralama', category: 'venue', amount: 120000, date: '1 Ocak 2026', status: 'paid', provider: 'KüsümPark' },
-];
+// TODO: Fetch expenses from Firebase
+// Empty initial state for production
 
-// Mock Platform Data for Ticketing
-const mockPlatforms: TicketPlatform[] = [
-  { id: '1', name: 'Biletix', ticketsSold: 2100, revenue: 525000, commission: 12, email: 'partner@biletix.com', isActive: true },
-  { id: '2', name: 'Mobilet', ticketsSold: 1850, revenue: 462500, commission: 10, email: 'info@mobilet.com', isActive: true },
-  { id: '3', name: 'Passo', ticketsSold: 1470, revenue: 367500, commission: 11, email: 'partners@passo.com.tr', isActive: true },
-  { id: '4', name: 'Biletinial', ticketsSold: 650, revenue: 162500, commission: 10, email: 'contact@biletinial.com', isActive: true },
-];
+// TODO: Fetch platforms from Firebase
+// Empty initial state for production
 
-// Mock Ticket Categories with check-in data
-const mockTicketCategories: (TicketCategory & { checkedIn: number })[] = [
-  { id: 'c1', name: 'Erken Rezervasyon', price: 250, capacity: 3000, sold: 3000, remaining: 0, checkedIn: 2850 },
-  { id: 'c2', name: 'Standart', price: 300, capacity: 8000, sold: 4370, remaining: 3630, checkedIn: 3200 },
-  { id: 'c3', name: 'VIP', price: 500, capacity: 2000, sold: 1200, remaining: 800, checkedIn: 980 },
-  { id: 'c4', name: 'Kapıda Satış', price: 350, capacity: 2000, sold: 500, remaining: 1500, checkedIn: 420 },
-];
+// TODO: Fetch ticket categories from Firebase
+// Empty initial state for production
 
 // Expense Category Info
 const getExpenseCategoryInfo = (category: Expense['category']) => {
@@ -150,8 +139,8 @@ export function OrganizerEventDetailScreen() {
   const [activeSection, setActiveSection] = useState<'services' | 'timeline' | 'budget' | 'tickets' | 'poster'>('services');
   const [showReviseModal, setShowReviseModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [ticketCategories, setTicketCategories] = useState<(TicketCategory & { checkedIn: number })[]>(mockTicketCategories);
-  const [platforms, setPlatforms] = useState<TicketPlatform[]>(mockPlatforms);
+  const [ticketCategories, setTicketCategories] = useState<(TicketCategory & { checkedIn: number })[]>([]);
+  const [platforms, setPlatforms] = useState<TicketPlatform[]>([]);
 
   // Ticket Sales State
   const [showSalesModal, setShowSalesModal] = useState(false);
@@ -161,7 +150,7 @@ export function OrganizerEventDetailScreen() {
   const [editableCategories, setEditableCategories] = useState<{ id: string; name: string; price: string; capacity: string }[]>([]);
 
   // Budget/Expense state
-  const [expenses, setExpenses] = useState<Expense[]>(mockExpenses);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [expenseForm, setExpenseForm] = useState({ title: '', amount: '', category: 'other' as Expense['category'], notes: '', provider: '' });
@@ -180,13 +169,56 @@ export function OrganizerEventDetailScreen() {
   // Pull-to-refresh state
   const [refreshing, setRefreshing] = useState(false);
 
+  // Timeline state - TODO: Fetch from Firebase
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Get event data first
-  const event = useMemo(() => mockEvents.find(e => e.id === eventId), [eventId]);
+  // Fetch event from Firebase
+  const { event: firebaseEvent, loading: eventLoading, error: eventError } = useEvent(eventId);
+
+  // Convert Firebase event to local format
+  const event = useMemo(() => {
+    if (!firebaseEvent) return null;
+
+    // Convert Firebase services to local Service format
+    const convertedServices: Service[] = (firebaseEvent.services || []).map(s => ({
+      id: s.id,
+      category: s.category,
+      name: s.name,
+      status: s.status,
+      provider: s.provider || null,
+      providerId: s.providerId,
+      price: s.price || 0,
+    }));
+
+    return {
+      id: firebaseEvent.id,
+      title: firebaseEvent.title,
+      date: firebaseEvent.date,
+      time: firebaseEvent.time || '20:00',
+      venue: firebaseEvent.venue,
+      district: firebaseEvent.district || firebaseEvent.city,
+      location: `${firebaseEvent.city}${firebaseEvent.district ? `, ${firebaseEvent.district}` : ''}`,
+      image: firebaseEvent.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
+      status: firebaseEvent.status,
+      progress: firebaseEvent.status === 'completed' ? 100 : firebaseEvent.status === 'confirmed' ? 75 : 50,
+      attendees: firebaseEvent.expectedAttendees || parseInt(firebaseEvent.guestCount || '0') || 0,
+      budget: firebaseEvent.budget || 0,
+      spent: 0, // TODO: Calculate from expenses when implemented
+      services: convertedServices,
+      description: firebaseEvent.description || '',
+      // Event detail fields
+      ageLimit: firebaseEvent.ageLimit || '',
+      seatingType: firebaseEvent.seatingType || '',
+      indoorOutdoor: firebaseEvent.indoorOutdoor || '',
+      venueCapacity: firebaseEvent.venueCapacity || '',
+      guestCount: firebaseEvent.guestCount || '',
+    };
+  }, [firebaseEvent]);
 
   // Check if event has ticketing enabled (mock - always true for demo)
   const isTicketed = true;
@@ -299,10 +331,40 @@ export function OrganizerEventDetailScreen() {
     return expenses.filter(e => e.status === expenseFilter);
   }, [expenses, expenseFilter]);
 
+  // Loading state
+  if (eventLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={[styles.errorText, { color: colors.textMuted }]}>Yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!event) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>Etkinlik bulunamadı</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={[styles.errorText, { color: colors.error }]}>Etkinlik bulunamadı</Text>
+          <Text style={[styles.errorText, { color: colors.textMuted, fontSize: 12, marginTop: 8 }]}>
+            Debug: eventId = {eventId}
+          </Text>
+          <Text style={[styles.errorText, { color: colors.textMuted, fontSize: 12 }]}>
+            firebaseEvent = {firebaseEvent ? 'loaded' : 'null'}
+          </Text>
+          {eventError && (
+            <Text style={[styles.errorText, { color: colors.error, fontSize: 12 }]}>
+              Error: {eventError}
+            </Text>
+          )}
+          <TouchableOpacity
+            style={{ marginTop: 20, backgroundColor: colors.brand[500], paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={{ color: 'white', fontWeight: '600' }}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -321,7 +383,7 @@ export function OrganizerEventDetailScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${event.title}\n📅 ${event.date}\n📍 ${event.venue}, ${event.district}\n\nTuring ile organize edildi.`,
+        message: `${event.title}\n📅 ${event.date}\n📍 ${event.venue}, ${event.district}\n\nturing ile organize edildi.`,
         title: event.title,
       });
     } catch (error) {
@@ -469,10 +531,10 @@ ${salesNote ? `EK NOTLAR\n━━━━━━━━━━━━━━━━━━
 Satış başlangıç tarihi ve komisyon oranları hakkında görüşmek üzere sizinle iletişime geçmek istiyoruz.
 
 Saygılarımızla,
-Turing Organizatör
+turing Organizatör
 
 ---
-Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
+Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
     `.trim();
 
     return emailBody;
@@ -598,12 +660,9 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
     if (service.status === 'confirmed' && service.providerId) {
       navigation.navigate('ProviderDetail', { providerId: service.providerId });
     } else if (service.status === 'offered') {
-      const offer = getOfferByServiceId(service.id);
-      if (offer) {
-        navigation.navigate('OfferDetail', { offerId: offer.id });
-      } else {
-        navigation.navigate('OffersTab');
-      }
+      // TODO: Get offer from Firebase by service ID
+      // For now, navigate to offers tab
+      navigation.navigate('OffersTab');
     } else if (service.status === 'pending') {
       navigation.navigate('ServiceProviders', { category: service.category });
     }
@@ -677,12 +736,8 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
             style={styles.serviceActionButton}
             activeOpacity={0.8}
             onPress={() => {
-              const offer = getOfferByServiceId(service.id);
-              if (offer) {
-                navigation.navigate('OfferDetail', { offerId: offer.id });
-              } else {
-                navigation.navigate('OffersTab');
-              }
+              // Navigate to offers - service-specific offer lookup will be done via Firebase
+              navigation.navigate('OffersTab');
             }}
           >
             <LinearGradient colors={gradients.primary} style={styles.serviceActionGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
@@ -704,7 +759,7 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
             <TouchableOpacity
               style={[styles.confirmedActionBtn, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Chat', { chatId: `provider_${service.id}`, recipientName: service.provider })}
+              onPress={() => navigation.navigate('Chat', { providerId: service.providerId, providerName: service.provider, providerImage: service.providerImage })}
             >
               <Ionicons name="chatbubble" size={14} color={colors.brand[400]} />
             </TouchableOpacity>
@@ -861,6 +916,39 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           ))}
         </View>
 
+        {/* Event Details Tags */}
+        {(event.ageLimit || event.seatingType || event.indoorOutdoor) && (
+          <View style={[styles.eventDetailsContainer, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+            <Text style={[styles.eventDetailsTitle, { color: colors.textMuted }]}>Etkinlik Detaylari</Text>
+            <View style={styles.eventDetailsTags}>
+              {event.ageLimit && (
+                <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                  <Ionicons name="shield-checkmark-outline" size={14} color="#EF4444" />
+                  <Text style={[styles.eventDetailTagText, { color: '#EF4444' }]}>
+                    {getOptionLabel(ageLimitOptions, event.ageLimit) || event.ageLimit}
+                  </Text>
+                </View>
+              )}
+              {event.seatingType && (
+                <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
+                  <Ionicons name="accessibility-outline" size={14} color="#6366F1" />
+                  <Text style={[styles.eventDetailTagText, { color: '#6366F1' }]}>
+                    {getOptionLabel(seatingTypeOptions, event.seatingType) || event.seatingType}
+                  </Text>
+                </View>
+              )}
+              {event.indoorOutdoor && (
+                <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.1)' }]}>
+                  <Ionicons name={event.indoorOutdoor === 'outdoor' ? 'sunny-outline' : 'business-outline'} size={14} color="#0EA5E9" />
+                  <Text style={[styles.eventDetailTagText, { color: '#0EA5E9' }]}>
+                    {getOptionLabel(indoorOutdoorOptions, event.indoorOutdoor) || event.indoorOutdoor}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Section Tabs - Minimal Design */}
         <View style={[styles.sectionTabsContainer, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
           <ScrollView
@@ -897,6 +985,24 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                 {services.map(service => renderServiceCard(service))}
               </View>
             ))}
+            {/* Operation Hub Button */}
+            <TouchableOpacity
+              style={[styles.operationHubButton, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)', borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)' }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                navigation.navigate('OperationHub' as any, { eventId: event.id });
+              }}
+            >
+              <View style={styles.operationHubIcon}>
+                <Ionicons name="grid" size={24} color="#8B5CF6" />
+              </View>
+              <View style={styles.operationHubContent}>
+                <Text style={[styles.operationHubTitle, { color: colors.text }]}>Operasyon Merkezi</Text>
+                <Text style={[styles.operationHubSubtitle, { color: colors.textMuted }]}>Tüm operasyonları tek yerden yönet</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.addServiceButton} onPress={() => Alert.alert('Hizmet Ekle', 'Hangi kategoriden hizmet eklemek istiyorsunuz?', [{ text: 'Booking', onPress: () => navigation.navigate('ServiceProviders', { category: 'booking' }) }, { text: 'Teknik', onPress: () => navigation.navigate('ServiceProviders', { category: 'technical' }) }, { text: 'Operasyon', onPress: () => navigation.navigate('ServiceProviders', { category: 'operation' }) }, { text: 'İptal', style: 'cancel' }])}>
               <Ionicons name="add" size={20} color={colors.brand[400]} />
               <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
@@ -907,7 +1013,14 @@ Bu talep Turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         {/* Timeline Section */}
         {activeSection === 'timeline' && (
           <View style={styles.timelineSection}>
-            {mockTimeline.map((item, index) => renderTimelineItem(item, index, index === mockTimeline.length - 1))}
+            {timeline.length > 0 ? (
+              timeline.map((item, index) => renderTimelineItem(item, index, index === timeline.length - 1))
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <Ionicons name="time-outline" size={48} color={colors.textMuted} />
+                <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 14 }}>Henüz zaman çizelgesi oluşturulmadı</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -1715,6 +1828,12 @@ const styles = StyleSheet.create({
   quickInfoCard: { flex: 1, alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1 },
   quickInfoValue: { fontSize: 16, fontWeight: '700', marginTop: 8 },
   quickInfoLabel: { fontSize: 11, marginTop: 2 },
+  // Event Details
+  eventDetailsContainer: { paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1 },
+  eventDetailsTitle: { fontSize: 12, fontWeight: '500', marginBottom: 10 },
+  eventDetailsTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  eventDetailTag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  eventDetailTagText: { fontSize: 13, fontWeight: '600' },
   operationsButton: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginVertical: 12, padding: 14, borderRadius: 14, borderWidth: 1 },
   operationsIconContainer: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   operationsTextContainer: { flex: 1 },
@@ -1750,6 +1869,11 @@ const styles = StyleSheet.create({
   confirmedActionText: { fontSize: 12, fontWeight: '600' },
   addServiceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(75, 48, 184, 0.3)', borderStyle: 'dashed', gap: 8 },
   addServiceText: { fontSize: 14, fontWeight: '500' },
+  operationHubButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+  operationHubIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(139, 92, 246, 0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  operationHubContent: { flex: 1 },
+  operationHubTitle: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
+  operationHubSubtitle: { fontSize: 13 },
   timelineSection: { padding: 20 },
   timelineItem: { flexDirection: 'row', marginBottom: 0 },
   timelineLeft: { alignItems: 'center', marginRight: 16 },

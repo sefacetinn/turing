@@ -1,9 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { getRolesForOrganizationType, getRoleById } from '../config/roles';
-import {
-  getMockOrganization,
-  getMockCurrentUser,
-} from '../data/mockTeamData';
+import { useAuth } from './AuthContext';
 import type {
   RBACContextValue,
   TeamMember,
@@ -22,22 +19,61 @@ interface RBACProviderProps {
 }
 
 export function RBACProvider({ children, isProvider }: RBACProviderProps) {
+  const { user, userProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
 
-  // Load organization and user data
+  // Get available roles for the organization type
+  const orgType = isProvider ? 'provider' : 'organizer';
+  const roles = getRolesForOrganizationType(orgType);
+  const ownerRole = roles.find(r => r.id.includes('owner') || r.id.includes('admin')) || roles[0];
+
+  // Create organization and user from Firebase auth data
   useEffect(() => {
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      const org = getMockOrganization(isProvider);
-      const user = getMockCurrentUser(isProvider);
-      setCurrentOrganization(org);
-      setCurrentUser(user);
-      setIsLoading(false);
-    }, 300);
-  }, [isProvider]);
+
+    if (user && userProfile) {
+      // Create current user as team member with owner role
+      const teamMember: TeamMember = {
+        id: user.uid,
+        odilerId: user.uid,
+        email: user.email || '',
+        name: userProfile.displayName || user.email?.split('@')[0] || 'Kullanıcı',
+        avatar: userProfile.photoURL || undefined,
+        phone: userProfile.phoneNumber || '',
+        role: ownerRole,
+        status: 'active',
+        invitedBy: 'self',
+        invitedAt: new Date().toISOString(),
+        joinedAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+      };
+
+      // Create organization from user profile
+      const organization: Organization = {
+        id: `org_${user.uid}`,
+        name: userProfile.companyName || 'Şirketim',
+        type: orgType,
+        category: isProvider ? 'technical' : undefined,
+        logo: userProfile.photoURL || '',
+        ownerId: user.uid,
+        members: [teamMember],
+        pendingInvitations: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setCurrentUser(teamMember);
+      setCurrentOrganization(organization);
+    } else {
+      // Not logged in - set empty state
+      setCurrentUser(null);
+      setCurrentOrganization(null);
+    }
+
+    setIsLoading(false);
+  }, [user, userProfile, isProvider, ownerRole]);
 
   // Get available roles based on organization type
   const availableRoles = useMemo(() => {
@@ -217,12 +253,12 @@ export function RBACProvider({ children, isProvider }: RBACProviderProps) {
   // Refresh organization data
   const refreshOrganization = useCallback(async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const org = getMockOrganization(isProvider);
-    setCurrentOrganization(org);
+    // TODO: Fetch from Firebase Firestore
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    // For now, just refresh based on current state
+    // In production, this would fetch from Firestore
     setIsLoading(false);
-  }, [isProvider]);
+  }, []);
 
   const contextValue: RBACContextValue = {
     currentUser,

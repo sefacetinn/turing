@@ -173,19 +173,40 @@ export default function TeamScreen() {
             </View>
           </View>
 
-          {activeMembers.map((member) => (
-            <TeamMemberCard
-              key={member.id}
-              member={member}
-              isCurrentUser={member.id === currentUser?.id}
-              onPress={
-                member.id !== currentUser?.id && canManageTeam
-                  ? () => handleMemberPress(member.id)
-                  : undefined
-              }
-              showChevron={canManageTeam}
-            />
-          ))}
+          {activeMembers.length === 0 ? (
+            <View style={styles.emptyMembersContainer}>
+              <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+              <Text style={[styles.emptyMembersTitle, { color: colors.text }]}>
+                Henüz ekip üyesi yok
+              </Text>
+              <Text style={[styles.emptyMembersSubtitle, { color: colors.textMuted }]}>
+                Ekibinize üye ekleyerek birlikte çalışmaya başlayın
+              </Text>
+              {canManageTeam && (
+                <TouchableOpacity
+                  style={[styles.inviteButton, { backgroundColor: colors.brand[400] }]}
+                  onPress={() => navigation.navigate('InviteMember')}
+                >
+                  <Ionicons name="person-add" size={18} color="#ffffff" />
+                  <Text style={styles.inviteButtonText}>Üye Davet Et</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            activeMembers.map((member) => (
+              <TeamMemberCard
+                key={member.id}
+                member={member}
+                isCurrentUser={member.id === currentUser?.id}
+                onPress={
+                  member.id !== currentUser?.id && canManageTeam
+                    ? () => handleMemberPress(member.id)
+                    : undefined
+                }
+                showChevron={canManageTeam}
+              />
+            ))
+          )}
         </View>
 
         {/* Pending Invitations Section */}
@@ -328,5 +349,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#4b30b8',
+  },
+  emptyMembersContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderRadius: 16,
+    gap: 8,
+  },
+  emptyMembersTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  emptyMembersSubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 8,
+  },
+  inviteButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

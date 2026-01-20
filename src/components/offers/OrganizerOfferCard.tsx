@@ -4,12 +4,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { gradients } from '../../theme/colors';
-import { OrganizerOffer, needsResponse } from '../../data/offersData';
+import { OrganizerOffer } from '../../data/offersData';
 import {
   getCategoryGradient,
   getCategoryIcon,
   getCategoryShortLabel,
 } from '../../utils/categoryHelpers';
+
+// Local needsResponse function with correct logic for organizer
+const needsOrganizerResponse = (offer: OrganizerOffer): boolean => {
+  // Organizer needs to respond when:
+  // 1. Provider sent a quote (status = 'quoted')
+  // 2. Provider sent a counter offer (status = 'counter_offered' and counterOffer.by = 'provider')
+  if (offer.status === 'quoted') {
+    return true;
+  }
+  if (offer.status === 'counter_offered' && offer.counterOffer?.by === 'provider') {
+    return true;
+  }
+  // 'pending' means organizer is waiting for provider - NO action needed
+  return false;
+};
 
 interface OrganizerOfferCardProps {
   offer: OrganizerOffer;
@@ -25,7 +40,8 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'accepted': return colors.success;
-      case 'pending': return colors.warning;
+      case 'pending': return colors.warning; // Waiting for provider
+      case 'quoted': return colors.success; // Provider sent quote - action needed
       case 'counter_offered': return colors.brand[400];
       case 'rejected': return colors.error;
       default: return colors.textMuted;
@@ -35,13 +51,14 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
   const getStatusText = (status: string) => {
     switch (status) {
       case 'accepted': return 'Kabul Edildi';
-      case 'pending': return 'Beklemede';
+      case 'pending': return 'Teklif Bekleniyor'; // Waiting for provider to send quote
+      case 'quoted': return 'Teklif Geldi'; // Provider sent a quote
       case 'counter_offered':
         if (offer.counterOffer) {
           if (offer.counterOffer.by === 'organizer') return 'Cevap Bekleniyor';
-          return 'Karşı Teklif Geldi';
+          return 'Karsi Teklif Geldi';
         }
-        return 'Pazarlık';
+        return 'Pazarlik';
       case 'rejected': return 'Reddedildi';
       default: return status;
     }
@@ -51,6 +68,7 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
     switch (status) {
       case 'accepted': return 'checkmark-circle';
       case 'pending': return 'time';
+      case 'quoted': return 'document-text';
       case 'counter_offered': return 'swap-horizontal';
       case 'rejected': return 'close-circle';
       default: return 'help-circle';
@@ -58,11 +76,13 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
   };
 
   const statusColor = getStatusColor(offer.status);
-  const showActions = needsResponse(offer, false);
-  const currentAmount = offer.counterOffer ? offer.counterOffer.amount : offer.amount;
-  const isUrgent = showActions && offer.status === 'pending';
+  const showActions = needsOrganizerResponse(offer);
+  const currentAmount = offer.counterOffer?.amount ?? offer.amount ?? 0;
+  const originalBudget = offer.originalBudget ?? offer.amount ?? 0;
+  // Show "new offer" banner when provider sent a quote that needs response
+  const isUrgent = showActions && (offer.status === 'quoted' || (offer.status === 'counter_offered' && offer.counterOffer?.by === 'provider'));
   const hasCounterFromProvider = offer.counterOffer?.by === 'provider';
-  const budgetDiff = currentAmount - offer.originalBudget;
+  const budgetDiff = currentAmount - originalBudget;
   const isUnderBudget = budgetDiff <= 0;
   const isCompleted = offer.status === 'accepted' || offer.status === 'rejected';
 
@@ -160,6 +180,24 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
           </LinearGradient>
         </View>
         <Text style={[styles.eventTitle, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
+        {(offer.eventCity || offer.eventVenue || offer.eventDate) && (
+          <View style={styles.eventLocationRow}>
+            {offer.eventDate && (
+              <View style={styles.eventLocationItem}>
+                <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.eventLocationText, { color: colors.textMuted }]}>{offer.eventDate}</Text>
+              </View>
+            )}
+            {(offer.eventVenue || offer.eventCity) && (
+              <View style={styles.eventLocationItem}>
+                <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                <Text style={[styles.eventLocationText, { color: colors.textMuted }]}>
+                  {[offer.eventVenue, offer.eventDistrict, offer.eventCity].filter(Boolean).join(', ')}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Message section - only for active offers */}
@@ -199,7 +237,7 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
           </View>
           <View style={styles.counterOfferBody}>
             <Text style={[styles.counterOfferAmount, { color: colors.text }]}>
-              ₺{offer.counterOffer.amount.toLocaleString('tr-TR')}
+              ₺{(offer.counterOffer?.amount ?? 0).toLocaleString('tr-TR')}
             </Text>
             {offer.counterOffer.message && (
               <Text style={[styles.counterOfferMessage, { color: colors.textMuted }]} numberOfLines={2}>
@@ -252,14 +290,14 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
                   { color: colors.text },
                   offer.counterOffer && { color: colors.textMuted, textDecorationLine: 'line-through', fontSize: 12 }
                 ]}>
-                  ₺{offer.amount.toLocaleString('tr-TR')}
+                  ₺{(offer.amount ?? 0).toLocaleString('tr-TR')}
                 </Text>
               </View>
               <View style={[styles.priceDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)' }]} />
               <View style={styles.priceItem}>
                 <Text style={[styles.priceLabel, { color: colors.textMuted }]}>Bütçeniz</Text>
                 <Text style={[styles.budgetValue, { color: colors.textSecondary }]}>
-                  ₺{offer.originalBudget.toLocaleString('tr-TR')}
+                  ₺{originalBudget.toLocaleString('tr-TR')}
                 </Text>
               </View>
               <View style={[styles.priceDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)' }]} />
@@ -508,6 +546,20 @@ const styles = StyleSheet.create({
   },
   eventTitle: {
     fontSize: 13,
+  },
+  eventLocationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 6,
+  },
+  eventLocationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  eventLocationText: {
+    fontSize: 11,
   },
   messageSection: {
     flexDirection: 'row',

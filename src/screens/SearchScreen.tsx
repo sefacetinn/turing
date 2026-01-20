@@ -29,24 +29,10 @@ type SearchScreenParams = {
 // Default colors for static styles
 const colors = defaultColors;
 
-// Local data
-const artists = [
-  { id: '1', name: 'Mabel Matiz', genre: 'Alternatif Pop', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400', rating: 4.9, type: 'artist', reviewCount: 128 },
-  { id: '2', name: 'DJ Burak Yeter', genre: 'EDM / House', image: 'https://images.unsplash.com/photo-1571266028243-e4733b0f0bb0?w=400', rating: 4.8, type: 'artist', reviewCount: 95 },
-  { id: '3', name: 'Duman', genre: 'Rock', image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400', rating: 4.9, type: 'artist', reviewCount: 312 },
-  { id: '4', name: 'Mor ve Ötesi', genre: 'Alternative Rock', image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400', rating: 4.7, type: 'artist', reviewCount: 186 },
-  { id: '5', name: 'Sezen Aksu', genre: 'Pop', image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?w=400', rating: 5.0, type: 'artist', reviewCount: 547 },
-  { id: '6', name: 'Tarkan', genre: 'Pop', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', rating: 4.9, type: 'artist', reviewCount: 423 },
-  { id: '7', name: 'Şebnem Ferah', genre: 'Rock', image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=400', rating: 4.8, type: 'artist', reviewCount: 198 },
-  { id: '8', name: 'Athena', genre: 'Ska / Rock', image: 'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=400', rating: 4.6, type: 'artist', reviewCount: 87 },
-];
-
-const providers = [
-  { id: 'p1', name: 'Pro Sound Istanbul', category: 'technical', image: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400', rating: 4.9, type: 'provider', reviewCount: 64 },
-  { id: 'p2', name: 'Elite VIP Transfer', category: 'transport', image: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400', rating: 4.8, type: 'provider', reviewCount: 112 },
-  { id: 'p3', name: 'Stage Masters', category: 'technical', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400', rating: 4.7, type: 'provider', reviewCount: 43 },
-  { id: 'p4', name: 'Backstage Catering', category: 'operation', image: 'https://images.unsplash.com/photo-1555244162-803834f70033?w=400', rating: 4.5, type: 'provider', reviewCount: 28 },
-];
+// TODO: Fetch artists and providers from Firebase
+// Empty arrays for production - will be populated from search API
+const artists: { id: string; name: string; genre: string; image: string; rating: number; type: string; reviewCount: number }[] = [];
+const providers: { id: string; name: string; category: string; image: string; rating: number; type: string; reviewCount: number }[] = [];
 
 const categories = [
   { id: 'booking', name: 'Booking', icon: 'musical-notes', gradient: ['#4b30b8', '#4b30b8'] },

@@ -3,7 +3,7 @@ import { OnboardingSlide, RegistrationStep } from '../types/auth';
 export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: '1',
-    title: "Turing'e Hoş Geldiniz",
+    title: "turing'e Hoş Geldiniz",
     description: 'Etkinlik ve müzik sektörünün buluşma noktası',
     icon: 'musical-notes',
     gradient: ['#4b30b8', '#a855f7'],

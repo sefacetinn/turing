@@ -7,6 +7,7 @@ import {
   TextInput,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +27,8 @@ import { EmptyState } from '../components/EmptyState';
 import { SkeletonEventList } from '../components/Skeleton';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-import { events as mockEvents, artists } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { useUserEvents, type FirestoreEvent } from '../hooks';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
 
 // Default colors for static styles (dark theme)
@@ -41,8 +43,9 @@ interface Service {
   category: string;
   name: string;
   status: string;
-  provider: string | null;
-  price: number;
+  provider?: string;
+  providerId?: string;
+  price?: number;
 }
 
 interface Event {
@@ -98,13 +101,10 @@ const getStatusInfo = (status: string) => {
 // Get artists for event from booking services
 const getEventArtists = (services: Service[]) => {
   const bookingServices = services.filter(s => s.category === 'booking' && s.provider);
-  return bookingServices.slice(0, 3).map(s => {
-    const artist = artists.find(a => a.name === s.provider);
-    return {
-      name: s.provider,
-      image: artist?.image || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200',
-    };
-  });
+  return bookingServices.slice(0, 3).map(s => ({
+    name: s.provider,
+    image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200', // Default artist image
+  }));
 };
 
 // Get unique categories from services
@@ -121,8 +121,17 @@ export function OrganizerEventsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCalendar, setShowCalendar] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Auth & Data hooks
+  const { user } = useAuth();
+  const { events: realEvents, loading: eventsLoading, error: eventsError } = useUserEvents(user?.uid);
+
+  // Check if user has real data
+  const hasRealData = user && realEvents.length > 0;
+  const isLoading = eventsLoading;
+  // Check if user is logged in but has no events (new user)
+  const isNewUser = user && !eventsLoading && realEvents.length === 0;
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -140,14 +149,6 @@ export function OrganizerEventsScreen() {
       }
     });
     return unsubscribe;
-  }, []);
-
-  // Simulate initial loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
   }, []);
 
   // Animated style for header action buttons (shrink on scroll)
@@ -219,15 +220,44 @@ export function OrganizerEventsScreen() {
   const onRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
-    // Simulate API call
+    // Since useUserEvents uses onSnapshot, data updates automatically
+    // Just show the refresh indicator briefly
     setTimeout(() => {
       setRefreshing(false);
-    }, 1000);
+    }, 800);
   }, []);
+
+  // Convert Firebase events to local Event type
+  const convertedRealEvents: Event[] = useMemo(() => {
+    if (!realEvents.length) return [];
+    return realEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.description || '',
+      date: e.date,
+      time: e.time,
+      location: e.city,
+      venue: e.venue,
+      district: e.district || '',
+      status: e.status,
+      progress: 50, // Default progress
+      budget: e.budget || 0,
+      spent: 0, // Would need to calculate from services
+      image: e.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
+      attendees: e.expectedAttendees || 0,
+      services: e.services || [],
+    }));
+  }, [realEvents]);
+
+  // Use real events if available, empty for new users
+  const allEvents = useMemo(() => {
+    if (hasRealData) return convertedRealEvents;
+    return []; // Empty for new users
+  }, [hasRealData, convertedRealEvents]);
 
   // Filter events
   const filteredEvents = useMemo(() => {
-    let filtered = mockEvents as Event[];
+    let filtered = allEvents;
 
     // Tab filter
     if (activeTab === 'active') {
@@ -247,11 +277,10 @@ export function OrganizerEventsScreen() {
     }
 
     return filtered;
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, allEvents]);
 
   // Stats
   const stats = useMemo(() => {
-    const allEvents = mockEvents as Event[];
     const activeEvents = allEvents.filter(e => ['planning', 'confirmed'].includes(e.status));
     const pastEvents = allEvents.filter(e => ['completed', 'cancelled'].includes(e.status));
     const totalBudget = allEvents.reduce((sum, e) => sum + e.budget, 0);
@@ -263,7 +292,7 @@ export function OrganizerEventsScreen() {
       totalBudget,
       totalSpent,
     };
-  }, []);
+  }, [allEvents]);
 
   // Generate card title - use event title directly
   const getCardTitle = (event: Event) => {

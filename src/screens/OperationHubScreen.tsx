@@ -41,6 +41,8 @@ import {
   sampleEventOperations,
   currentOperationUser,
 } from '../data/operationSectionsData';
+import { ProviderAssignmentModal } from '../components/operation';
+import { SectionProvider } from '../types/operationSection';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 48) / 2;
@@ -77,6 +79,8 @@ export function OperationHubScreen() {
 
   // State
   const [refreshing, setRefreshing] = useState(false);
+  const [showProviderModal, setShowProviderModal] = useState(false);
+  const [selectedSectionForAssignment, setSelectedSectionForAssignment] = useState<OperationSectionType | null>(null);
 
   // Get event data
   const eventData = sampleEventOperations;
@@ -137,9 +141,19 @@ export function OperationHubScreen() {
   const handleAssignProvider = useCallback(
     (sectionType: OperationSectionType) => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      // TODO: Open provider assignment modal
+      setSelectedSectionForAssignment(sectionType);
+      setShowProviderModal(true);
     },
     []
+  );
+
+  const handleProviderAssigned = useCallback(
+    (provider: SectionProvider) => {
+      // In production, this would make an API call to update the section
+      console.log('Provider assigned:', provider.name, 'to section:', selectedSectionForAssignment);
+      // For now, just close the modal - in real app, update state/refetch data
+    },
+    [selectedSectionForAssignment]
   );
 
   // Render section card
@@ -457,6 +471,20 @@ export function OperationHubScreen() {
 
         <View style={{ height: 100 }} />
       </AnimatedScrollView>
+
+      {/* Provider Assignment Modal */}
+      {selectedSectionForAssignment && (
+        <ProviderAssignmentModal
+          visible={showProviderModal}
+          sectionType={selectedSectionForAssignment}
+          currentProvider={getSectionData(selectedSectionForAssignment)?.provider}
+          onAssign={handleProviderAssigned}
+          onClose={() => {
+            setShowProviderModal(false);
+            setSelectedSectionForAssignment(null);
+          }}
+        />
+      )}
     </View>
   );
 }

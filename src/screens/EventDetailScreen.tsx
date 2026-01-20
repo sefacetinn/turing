@@ -8,6 +8,7 @@ import {
   Dimensions,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,71 +18,20 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { useEvent } from '../hooks';
 import type { TicketPlatform, TicketCategory } from '../types';
 
 // Default colors for static styles
 const colors = defaultColors;
 
-// Mock Platform Data
-const mockPlatforms: TicketPlatform[] = [
-  { id: '1', name: 'Biletix', ticketsSold: 2100, revenue: 525000, commission: 12, email: 'partner@biletix.com', isActive: true },
-  { id: '2', name: 'Mobilet', ticketsSold: 1850, revenue: 462500, commission: 10, email: 'info@mobilet.com', isActive: true },
-  { id: '3', name: 'Passo', ticketsSold: 1470, revenue: 367500, commission: 11, email: 'partners@passo.com.tr', isActive: true },
-  { id: '4', name: 'Biletinial', ticketsSold: 650, revenue: 162500, commission: 10, email: 'contact@biletinial.com', isActive: true },
-  { id: '5', name: 'Bu Bilet', ticketsSold: 720, revenue: 180000, commission: 14, email: 'info@bubilet.com', isActive: false },
-  { id: '6', name: 'iticket', ticketsSold: 580, revenue: 145000, commission: 11, email: 'partner@iticket.com.tr', isActive: false },
-];
+// TODO: Fetch platforms from Firebase
+// Empty initial state for production
 
-// Mock Ticket Categories
-const mockCategories: TicketCategory[] = [
-  { id: 'c1', name: 'Erken Rezervasyon', price: 250, capacity: 3000, sold: 3000, remaining: 0 },
-  { id: 'c2', name: 'Standart', price: 300, capacity: 8000, sold: 4370, remaining: 3630 },
-  { id: 'c3', name: 'VIP', price: 500, capacity: 2000, sold: 1200, remaining: 800 },
-  { id: 'c4', name: 'Kapıda Satış', price: 350, capacity: 2000, sold: 800, remaining: 1200 },
-];
+// TODO: Fetch ticket categories from Firebase
+// Empty initial state for production
 
-// Local events data
-const events = [
-  {
-    id: '1',
-    title: 'Yaz Festivali 2024',
-    description: '3 günlük açık hava müzik festivali',
-    date: '15-17 Temmuz 2024',
-    time: '16:00',
-    location: 'İstanbul',
-    district: 'Kadıköy',
-    venue: 'KüçükÇiftlik Park',
-    status: 'planning',
-    progress: 65,
-    budget: 2500000,
-    spent: 1625000,
-    attendees: 15000,
-    image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-    services: [{ id: 's1', category: 'booking', name: 'Ana Sahne', status: 'confirmed', provider: 'Mabel Matiz', price: 200000 }],
-    // Ticketing data
-    isTicketed: true,
-    ticketCapacity: 15000,
-  },
-  {
-    id: '2',
-    title: 'Kurumsal Gala',
-    description: 'Yıllık şirket galası',
-    date: '22 Ağustos 2024',
-    time: '19:00',
-    location: 'Ankara',
-    district: 'Çankaya',
-    venue: 'JW Marriott',
-    status: 'confirmed',
-    progress: 100,
-    budget: 800000,
-    spent: 750000,
-    attendees: 500,
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-    services: [],
-    isTicketed: false,
-    ticketCapacity: 0,
-  },
-];
+// TODO: Fetch event data from Firebase
+// Event will come from navigation params or Firebase hook
 
 const { width } = Dimensions.get('window');
 
@@ -125,13 +75,15 @@ const getStatusInfo = (status: string) => {
 export function EventDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { eventId } = (route.params as { eventId: string }) || { eventId: '1' };
+  const { eventId } = (route.params as { eventId: string }) || { eventId: '' };
   const { colors, isDark, helpers } = useTheme();
 
-  const event = events.find(e => e.id === eventId) || events[0];
+  // Fetch event from Firebase using eventId
+  const { event, loading: isLoading, error } = useEvent(eventId);
+
   const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'budget' | 'tickets'>('overview');
-  const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>(mockCategories);
-  const [platforms] = useState<TicketPlatform[]>(mockPlatforms);
+  const [ticketCategories, setTicketCategories] = useState<TicketCategory[]>([]);
+  const [platforms] = useState<TicketPlatform[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
@@ -139,11 +91,11 @@ export function EventDetailScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Ticketing calculations
+  // Ticketing calculations (safe with null checks)
   const totalTicketsSold = platforms.reduce((sum, p) => sum + p.ticketsSold, 0);
   const totalRevenue = platforms.reduce((sum, p) => sum + p.revenue, 0);
   const avgTicketPrice = totalTicketsSold > 0 ? Math.round(totalRevenue / totalTicketsSold) : 0;
-  const occupancyRate = event.ticketCapacity ? (totalTicketsSold / event.ticketCapacity) * 100 : 0;
+  const occupancyRate = event?.ticketCapacity ? (totalTicketsSold / event.ticketCapacity) * 100 : 0;
 
   // Handle price increase for tickets
   const handlePriceIncrease = (categoryId: string, increase: number) => {
@@ -191,11 +143,40 @@ export function EventDetailScreen() {
     );
   };
 
-  if (!event) {
-    return null;
+  // Loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: colors.textMuted }}>Yükleniyor...</Text>
+      </View>
+    );
   }
 
-  const confirmedServices = event.services?.filter(s => s.status === 'confirmed').length || 0;
+  // Empty state - no event found
+  if (!event) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.headerActions}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </SafeAreaView>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Ionicons name="calendar-outline" size={64} color={colors.textMuted} />
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>Etkinlik Bulunamadı</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 8, textAlign: 'center' }}>Bu etkinlik silinmiş veya mevcut olmayabilir.</Text>
+          <TouchableOpacity
+            style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.brand[500], borderRadius: 12 }}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const confirmedServices = event.services?.filter((s: any) => s.status === 'confirmed').length || 0;
   const totalServices = event.services?.length || 0;
   const budgetUsedPercent = event.budget ? Math.round((event.spent / event.budget) * 100) : 0;
 
@@ -203,7 +184,7 @@ export function EventDetailScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header Image */}
       <View style={styles.headerImage}>
-        <OptimizedImage source={event.image} style={styles.coverImage} priority="high" />
+        <OptimizedImage source={event.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800'} style={styles.coverImage} priority="high" />
         <LinearGradient
           colors={isDark ? ['transparent', 'rgba(9,9,11,0.8)', colors.background] : ['transparent', 'rgba(255,255,255,0.8)', colors.background]}
           style={styles.imageGradient}
@@ -269,12 +250,12 @@ export function EventDetailScreen() {
         {/* Stats Cards */}
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
-            <Text style={[styles.statValue, { color: colors.text }]}>{event.progress}%</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{event.progress ?? 0}%</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>İlerleme</Text>
             <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' }]}>
               <LinearGradient
                 colors={gradients.primary}
-                style={[styles.progressFill, { width: `${event.progress}%` }]}
+                style={[styles.progressFill, { width: `${event.progress ?? 0}%` as any }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               />
@@ -331,7 +312,7 @@ export function EventDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'services' && (
           <View style={styles.servicesSection}>
-            {event.services.map((service, index) => {
+            {event.services.map((service: any, index: number) => {
               const statusInfo = getStatusInfo(service.status);
               return (
                 <TouchableOpacity key={service.id} style={[styles.serviceCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
@@ -423,7 +404,7 @@ export function EventDetailScreen() {
             </View>
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Harcama Dağılımı</Text>
-            {event.services.filter(s => s.status === 'confirmed').map((service) => (
+            {event.services.filter((s: any) => s.status === 'confirmed').map((service: any) => (
               <View key={service.id} style={[styles.budgetRow, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
                 <View style={styles.budgetRowLeft}>
                   <View style={[styles.budgetDot, { backgroundColor: getCategoryGradient(service.category)[0] }]} />

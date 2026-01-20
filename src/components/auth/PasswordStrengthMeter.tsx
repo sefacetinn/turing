@@ -1,10 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
 import { validatePassword, getPasswordStrength } from '../../utils/validation';
 
@@ -34,11 +30,6 @@ export function PasswordStrengthMeter({
     return 'Güçlü';
   };
 
-  const progressStyle = useAnimatedStyle(() => ({
-    width: withSpring(`${strength}%`, { damping: 15, stiffness: 100 }),
-    backgroundColor: getStrengthColor(),
-  }));
-
   return (
     <View style={styles.container}>
       {/* Strength Bar */}
@@ -49,7 +40,15 @@ export function PasswordStrengthMeter({
             { backgroundColor: isDark ? colors.zinc[700] : colors.zinc[200] },
           ]}
         >
-          <Animated.View style={[styles.barFill, progressStyle]} />
+          <View
+            style={[
+              styles.barFill,
+              {
+                width: `${strength}%`,
+                backgroundColor: getStrengthColor(),
+              },
+            ]}
+          />
         </View>
         {strength > 0 && (
           <Text

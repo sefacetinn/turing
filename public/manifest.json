@@ -1,6 +1,6 @@
 {
-  "name": "Turing",
-  "short_name": "Turing",
+  "name": "turing",
+  "short_name": "turing",
   "description": "Etkinlik & Müzik Sektörü Platformu",
   "start_url": "/",
   "display": "standalone",

@@ -1,9 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import { useTheme } from '../../theme/ThemeContext';
 import { RegistrationStep } from '../../types/auth';
 
@@ -21,10 +17,6 @@ export function RegistrationProgress({
   const { colors, isDark } = useTheme();
   const progress = ((currentStep + 1) / steps.length) * 100;
 
-  const progressStyle = useAnimatedStyle(() => ({
-    width: withSpring(`${progress}%`, { damping: 15, stiffness: 100 }),
-  }));
-
   return (
     <View style={styles.container}>
       {/* Progress Bar */}
@@ -35,11 +27,10 @@ export function RegistrationProgress({
             { backgroundColor: isDark ? colors.zinc[700] : colors.zinc[200] },
           ]}
         >
-          <Animated.View
+          <View
             style={[
               styles.progressFill,
-              { backgroundColor: colors.brand[500] },
-              progressStyle,
+              { backgroundColor: colors.brand[500], width: `${progress}%` },
             ]}
           />
         </View>

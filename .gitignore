@@ -37,3 +37,10 @@ web-build/
 .env
 .env.local
 .env.*.local
+
+# Firebase Functions
+functions/lib
+functions/node_modules
+firebase-debug.log
+firebase-debug.*.log
+.firebase/

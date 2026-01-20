@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch, LayoutAnimation, Platform, UIManager, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,7 +13,8 @@ import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-import { userProfile } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+// No mock data imports - profile comes from Firebase
 import { useApp } from '../../App';
 import { isOrganizerStats, isProviderStats } from '../types';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
@@ -68,6 +69,7 @@ const businessManagementItems = [
 export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: ProfileScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
+  const { user, userProfile: authUserProfile } = useAuth();
   const { canSwitchMode, providerServices = [], currentAccount } = useApp();
   const insets = useSafeAreaInsets();
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
@@ -99,8 +101,46 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     setTimeout(() => setRefreshing(false), 800);
   }, []);
 
-  // Use currentAccount data if available, otherwise fallback to userProfile
-  const profile = currentAccount?.profile || userProfile;
+  // Use Firebase auth user data, empty profile for non-logged-in users
+  const profile = useMemo(() => {
+    // If user is logged in with Firebase, use their profile data
+    if (user && authUserProfile) {
+      return {
+        name: authUserProfile.displayName || user.email?.split('@')[0] || 'Kullanıcı',
+        email: user.email || '',
+        phone: authUserProfile.phoneNumber || user.phoneNumber || '',
+        company: authUserProfile.companyName || '',
+        verified: user.emailVerified || false,
+        // User's personal photo - prefer userPhotoURL from Firestore, fallback to Firebase Auth photoURL
+        avatar: authUserProfile.userPhotoURL || user.photoURL || null,
+        stats: {
+          totalEvents: 0,
+          totalOffers: 0,
+          rating: 0,
+          reviewCount: 0,
+        },
+      };
+    }
+    // Fall back to currentAccount if available
+    if (currentAccount?.profile) {
+      return currentAccount.profile;
+    }
+    // Empty profile for non-logged-in users
+    return {
+      name: 'Kullanıcı',
+      email: '',
+      phone: '',
+      company: '',
+      verified: false,
+      avatar: null,
+      stats: {
+        totalEvents: 0,
+        totalOffers: 0,
+        rating: 0,
+        reviewCount: 0,
+      },
+    };
+  }, [user, authUserProfile, currentAccount]);
 
   // Filter business management items based on provider's active services
   const filteredBusinessItems = useMemo(() => {
@@ -423,16 +463,23 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         >
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={gradients.primary}
-                style={styles.avatarGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text style={styles.avatarText}>
-                  {profile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                </Text>
-              </LinearGradient>
+              {profile.avatar ? (
+                <OptimizedImage
+                  source={profile.avatar}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <LinearGradient
+                  colors={gradients.primary}
+                  style={styles.avatarGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.avatarText}>
+                    {profile.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </Text>
+                </LinearGradient>
+              )}
               <View style={dynamicStyles.editAvatarButton}>
                 <Ionicons name="camera" size={14} color={isDark ? 'white' : colors.text} />
               </View>
@@ -453,80 +500,110 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           </View>
         </TouchableOpacity>
 
-        {/* Mode Switch - Only show if user has dual access */}
-        {canSwitchMode && (
-          <View style={dynamicStyles.modeCard}>
-            <View style={styles.modeInfo}>
-              <View style={[
-                styles.modeIcon,
-                isProviderMode
-                  ? { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(16, 185, 129, 0.25)' }
-                  : { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.15)', borderWidth: isDark ? 0 : 1, borderColor: 'rgba(75, 48, 184, 0.25)' }
-              ]}>
-                <Ionicons
-                  name={isProviderMode ? 'musical-notes' : 'people'}
-                  size={20}
-                  color={isProviderMode ? colors.success : colors.brand[400]}
-                />
-              </View>
-              <View>
-                <Text style={dynamicStyles.modeLabel}>
-                  {isProviderMode ? 'Sağlayıcı Modu' : 'Organizatör Modu'}
-                </Text>
-                <Text style={dynamicStyles.modeDescription}>
-                  {isProviderMode ? 'Hizmet sunuyorsunuz' : 'Etkinlik düzenliyorsunuz'}
-                </Text>
-              </View>
-            </View>
-            <Switch
-              value={isProviderMode}
-              onValueChange={onToggleMode}
-              trackColor={{ false: isDark ? colors.zinc[700] : '#a1a1aa', true: colors.brand[600] }}
-              thumbColor={isProviderMode ? '#ffffff' : isDark ? colors.zinc[400] : '#ffffff'}
-              ios_backgroundColor={isDark ? colors.zinc[700] : '#d4d4d8'}
-            />
-          </View>
-        )}
-
         {/* Company Profile Card */}
-        <TouchableOpacity
-          style={dynamicStyles.companyCard}
-          onPress={() => navigation.navigate('EditCompanyProfile')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.companyCardContent}>
-            <OptimizedImage
-              source={isProviderMode
-                ? 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400'
-                : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400'
-              }
-              style={styles.companyLogo}
-            />
-            <View style={styles.companyInfo}>
-              <Text style={dynamicStyles.companyName}>
-                {isProviderMode ? 'EventPro 360' : 'Stellar Events'}
-              </Text>
-              <View style={styles.companyMeta}>
-                <Ionicons name="star" size={12} color="#FBBF24" />
-                <Text style={dynamicStyles.companyRating}>
-                  {isProviderMode ? '4.9 (456)' : '4.8 (128)'}
+        {user && authUserProfile?.companyName ? (
+          // Show company card with real data for logged-in users with company info
+          <TouchableOpacity
+            style={dynamicStyles.companyCard}
+            onPress={() => navigation.navigate('EditCompanyProfile')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.companyCardContent}>
+              {authUserProfile.photoURL ? (
+                <OptimizedImage
+                  source={authUserProfile.photoURL}
+                  style={styles.companyLogo}
+                />
+              ) : (
+                <View style={[styles.companyLogoPlaceholder, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+                  <Text style={[styles.companyLogoText, { color: colors.brand[400] }]}>
+                    {authUserProfile.companyName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.companyInfo}>
+                <Text style={dynamicStyles.companyName}>
+                  {authUserProfile.companyName}
                 </Text>
-                <View style={[styles.companyDot, { backgroundColor: colors.textMuted }]} />
-                <Text style={dynamicStyles.companyCategory}>
-                  {isProviderMode ? 'Teknik & Booking' : 'Etkinlik Organizasyonu'}
-                </Text>
+                <View style={styles.companyMeta}>
+                  <Text style={dynamicStyles.companyCategory}>
+                    {isProviderMode ? 'Hizmet Sağlayıcı' : 'Etkinlik Organizatörü'}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.companyEditIcon, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="create-outline" size={18} color={colors.brand[400]} />
               </View>
             </View>
-            <View style={[styles.companyEditIcon, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
-              <Ionicons name="create-outline" size={18} color={colors.brand[400]} />
+            <View style={[styles.companyEditHint, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <Ionicons name="business-outline" size={14} color={colors.textMuted} />
+              <Text style={dynamicStyles.companyEditHintText}>Şirket profilini düzenle</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
             </View>
-          </View>
-          <View style={[styles.companyEditHint, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-            <Ionicons name="business-outline" size={14} color={colors.textMuted} />
-            <Text style={dynamicStyles.companyEditHintText}>Şirket profilini düzenle</Text>
-            <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        ) : user ? (
+          // Show setup card for logged-in users without company info
+          <TouchableOpacity
+            style={dynamicStyles.companyCard}
+            onPress={() => navigation.navigate('EditCompanyProfile')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.companyCardContent}>
+              <View style={[styles.companyLogoPlaceholder, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+                <Ionicons name="business-outline" size={24} color={colors.brand[400]} />
+              </View>
+              <View style={styles.companyInfo}>
+                <Text style={dynamicStyles.companyName}>Şirket Profili Ekle</Text>
+                <Text style={dynamicStyles.companyCategory}>
+                  Şirket bilgilerinizi ekleyerek profilinizi tamamlayın
+                </Text>
+              </View>
+              <View style={[styles.companyEditIcon, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="add" size={18} color={colors.brand[400]} />
+              </View>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          // Demo mode - show demo company card
+          <TouchableOpacity
+            style={dynamicStyles.companyCard}
+            onPress={() => navigation.navigate('EditCompanyProfile')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.companyCardContent}>
+              <OptimizedImage
+                source={isProviderMode
+                  ? 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=400'
+                  : 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400'
+                }
+                style={styles.companyLogo}
+              />
+              <View style={styles.companyInfo}>
+                <Text style={dynamicStyles.companyName}>
+                  {isProviderMode ? 'EventPro 360' : 'Stellar Events'}
+                </Text>
+                <View style={styles.companyMeta}>
+                  <Ionicons name="star" size={12} color="#FBBF24" />
+                  <Text style={dynamicStyles.companyRating}>
+                    {isProviderMode ? '4.9 (456)' : '4.8 (128)'}
+                  </Text>
+                  <View style={[styles.companyDot, { backgroundColor: colors.textMuted }]} />
+                  <Text style={dynamicStyles.companyCategory}>
+                    {isProviderMode ? 'Teknik & Booking' : 'Etkinlik Organizasyonu'}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.companyEditIcon, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="create-outline" size={18} color={colors.brand[400]} />
+              </View>
+            </View>
+            <View style={[styles.companyEditHint, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+              <Ionicons name="business-outline" size={14} color={colors.textMuted} />
+              <Text style={dynamicStyles.companyEditHintText}>Şirket profilini düzenle</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -649,7 +726,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         </TouchableOpacity>
 
         {/* Version */}
-        <Text style={dynamicStyles.versionText}>Turing v1.0.0</Text>
+        <Text style={dynamicStyles.versionText}>turing v1.0.0</Text>
       </Animated.ScrollView>
     </View>
   );
@@ -675,6 +752,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
   },
   avatarText: {
     fontSize: 24,
@@ -722,6 +804,17 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
+  },
+  companyLogoPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyLogoText: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   companyInfo: {
     flex: 1,

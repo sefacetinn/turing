@@ -16,11 +16,19 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  RoleSelection: undefined;
+  OrganizerRegistration: undefined;
   ProviderRegistration: undefined;
+  RegistrationSuccess: { role: 'organizer' | 'provider' };
+  AccountPending: undefined;
+  Onboarding: undefined;
 
   // Main
   MainTabs: NavigatorScreenParams<MainTabParamList>;
 };
+
+// Auth Navigation Type
+export type AuthNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // ============================================
 // MAIN TAB PARAMS

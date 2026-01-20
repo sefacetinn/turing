@@ -61,6 +61,10 @@ export interface EventData {
   operationSubServices: string[];
   budget: string;
   customBudget: string;
+  // New event detail fields
+  ageLimit: string; // 'all_ages', '18+', '21+'
+  seatingType: string; // 'standing', 'seated', 'mixed'
+  indoorOutdoor: string; // 'indoor', 'outdoor', 'mixed'
 }
 
 export interface NewVenueData {
@@ -322,7 +326,32 @@ export const initialEventData: EventData = {
   operationSubServices: [],
   budget: '',
   customBudget: '',
+  // New event detail fields
+  ageLimit: '',
+  seatingType: '',
+  indoorOutdoor: '',
 };
+
+// Age limit options
+export const ageLimitOptions = [
+  { id: 'all_ages', label: 'Tum Yaslar', icon: 'people-outline' },
+  { id: '18+', label: '18+', icon: 'shield-outline' },
+  { id: '21+', label: '21+', icon: 'shield-checkmark-outline' },
+];
+
+// Seating type options
+export const seatingTypeOptions = [
+  { id: 'standing', label: 'Ayakta', icon: 'walk-outline' },
+  { id: 'seated', label: 'Oturmali', icon: 'accessibility-outline' },
+  { id: 'mixed', label: 'Karma', icon: 'apps-outline' },
+];
+
+// Indoor/outdoor options
+export const indoorOutdoorOptions = [
+  { id: 'indoor', label: 'Kapali Alan', icon: 'business-outline' },
+  { id: 'outdoor', label: 'Acik Alan', icon: 'sunny-outline' },
+  { id: 'mixed', label: 'Hibrit', icon: 'partly-sunny-outline' },
+];
 
 export const initialNewVenueData: NewVenueData = {
   name: '',

@@ -16,17 +16,43 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  photoURL?: string;
+  photoURL?: string; // Company logo
+  userPhotoURL?: string; // User's personal photo
   role: 'organizer' | 'provider' | 'dual';
   isProvider: boolean;
   isOrganizer: boolean;
   companyName?: string;
   phone?: string;
+  phoneNumber?: string;
+  bio?: string;
+  city?: string;
+  website?: string;
   providerServices?: string[];
   createdAt: Date;
   updatedAt: Date;
   isVerified: boolean;
   isActive: boolean;
+  // Company profile fields
+  foundedYear?: string;
+  employeeCount?: string;
+  coverImage?: string;
+  address?: string;
+  serviceCategories?: string[];
+  serviceRegions?: string[];
+  socialMedia?: {
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+    youtube?: string;
+  };
+  workingHours?: {
+    day: string;
+    enabled: boolean;
+    start: string;
+    end: string;
+  }[];
+  // User preference for which mode to start in (for dual role users)
+  preferredMode?: 'organizer' | 'provider';
 }
 
 // Register new user
@@ -61,7 +87,7 @@ export async function registerUser(
       providerServices: additionalData?.providerServices || [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      isVerified: false,
+      isVerified: true, // Auto-approve for now (TODO: implement admin approval flow)
       isActive: true,
     };
 
@@ -82,9 +108,10 @@ export async function loginUser(email: string, password: string): Promise<UserCr
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-    // Update last login
+    // Update last login and auto-verify (TODO: remove auto-verify when admin approval is implemented)
     await updateDoc(doc(db, 'users', userCredential.user.uid), {
       lastLoginAt: serverTimestamp(),
+      isVerified: true, // Auto-approve existing users on login
     });
 
     return userCredential;
@@ -159,8 +186,18 @@ export function getAuthErrorMessage(errorCode: string): string {
     'auth/user-disabled': 'Bu hesap devre dışı bırakılmış.',
     'auth/user-not-found': 'Bu e-posta ile kayıtlı kullanıcı bulunamadı.',
     'auth/wrong-password': 'Hatalı şifre.',
+    'auth/invalid-credential': 'Geçersiz kimlik bilgisi. E-posta veya şifrenizi kontrol edin.',
     'auth/too-many-requests': 'Çok fazla deneme. Lütfen daha sonra tekrar deneyin.',
     'auth/network-request-failed': 'Ağ hatası. İnternet bağlantınızı kontrol edin.',
+    'auth/popup-closed-by-user': 'Giriş penceresi kapatıldı.',
+    'auth/cancelled-popup-request': 'İşlem iptal edildi.',
+    'auth/account-exists-with-different-credential': 'Bu e-posta farklı bir giriş yöntemiyle kayıtlı.',
+    'auth/requires-recent-login': 'Bu işlem için yeniden giriş yapmanız gerekiyor.',
+    'auth/invalid-verification-code': 'Doğrulama kodu hatalı.',
+    'auth/code-expired': 'Doğrulama kodunun süresi dolmuş.',
+    'auth/credential-already-in-use': 'Bu kimlik bilgisi başka bir hesaba bağlı.',
+    'auth/invalid-phone-number': 'Geçersiz telefon numarası.',
+    'auth/quota-exceeded': 'SMS kotası aşıldı. Lütfen daha sonra tekrar deneyin.',
   };
 
   return errorMessages[errorCode] || 'Bir hata oluştu. Lütfen tekrar deneyin.';

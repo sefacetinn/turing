@@ -126,8 +126,9 @@ export function OrganizerProfileScreen() {
   const handleMessage = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('Chat', {
-      chatId: `org_${organizer.id}`,
-      recipientName: organizer.name
+      providerId: organizer.id,
+      providerName: organizer.name,
+      providerImage: organizer.avatar,
     });
   };
 

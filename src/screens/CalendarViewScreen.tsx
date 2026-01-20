@@ -14,8 +14,9 @@ import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-import { providerEvents } from '../data/providerEventsData';
-import { events as organizerEvents } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { useUserEvents, useProviderJobs } from '../hooks';
+// No mock data imports - calendar events come from Firebase
 import {
   CalendarEvent,
   transformProviderEvents,
@@ -49,6 +50,16 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Auth & Data hooks
+  const { user } = useAuth();
+  const { events: realEvents, loading: eventsLoading } = useUserEvents(user?.uid);
+  const { jobs: realJobs, loading: jobsLoading } = useProviderJobs(user?.uid);
+
+  // Check if user has real data
+  const hasRealOrganizerData = user && realEvents.length > 0;
+  const hasRealProviderData = user && realJobs.length > 0;
+  const isNewUser = user && !eventsLoading && !jobsLoading && realEvents.length === 0 && realJobs.length === 0;
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
@@ -56,13 +67,44 @@ export function CalendarViewScreen({ isProviderMode = false }: CalendarViewScree
 
   const today = new Date();
 
-  // Mode-aware veri secimi
-  const calendarEvents = useMemo(() => {
+  // Mode-aware veri secimi - Real data for logged-in users, mock data for demo
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
     if (isProviderMode) {
-      return transformProviderEvents(providerEvents);
+      // Provider mode: use real jobs if available
+      if (hasRealProviderData) {
+        return realJobs.map(job => ({
+          id: job.id,
+          title: job.title,
+          date: new Date(job.date),
+          endDate: job.endDate ? new Date(job.endDate) : undefined,
+          time: job.time || '10:00',
+          venue: job.venue,
+          location: `${job.city}${job.district ? `, ${job.district}` : ''}`,
+          status: job.status,
+          category: 'technical',
+        }));
+      }
+      // Empty calendar for new users
+      return [];
+    } else {
+      // Organizer mode: use real events if available
+      if (hasRealOrganizerData) {
+        return realEvents.map(event => ({
+          id: event.id,
+          title: event.title,
+          date: new Date(event.date),
+          endDate: event.endDate ? new Date(event.endDate) : undefined,
+          time: event.time || '10:00',
+          venue: event.venue,
+          location: `${event.city}${event.district ? `, ${event.district}` : ''}`,
+          status: event.status,
+          category: 'booking',
+        }));
+      }
+      // Empty calendar for new users
+      return [];
     }
-    return transformOrganizerEvents(organizerEvents);
-  }, [isProviderMode]);
+  }, [isProviderMode, hasRealOrganizerData, hasRealProviderData, realEvents, realJobs]);
 
   // Calculate displayed days
   const displayedDays = useMemo(() => {

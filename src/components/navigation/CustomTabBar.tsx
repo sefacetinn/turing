@@ -25,9 +25,9 @@ const TAB_ICONS: Record<string, { active: string; inactive: string }> = {
   ProfileTab: { active: 'person-circle', inactive: 'person-circle-outline' },
 };
 
+// TODO: Get badge counts from Firebase/context
 const TAB_BADGES: Record<string, number> = {
-  OffersTab: 3,
-  MessagesTab: 2,
+  // Empty - no mock badges
 };
 
 interface TabRoute {

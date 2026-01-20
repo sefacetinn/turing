@@ -133,7 +133,7 @@ export function HelpSupportScreen() {
     {
       id: 'getting_started',
       title: 'Başlangıç Rehberi',
-      description: 'Turing\'e ilk adımlarınız',
+      description: 'turing\'e ilk adımlarınız',
       icon: 'rocket',
       color: '#8B5CF6',
       articles: [
@@ -209,7 +209,7 @@ export function HelpSupportScreen() {
   ];
 
   const videos: VideoItem[] = [
-    { id: 'v1', title: 'Turing\'e Hoş Geldiniz', duration: '2:45', thumbnail: '🎬', category: 'beginner', views: '12.5K' },
+    { id: 'v1', title: 'turing\'e Hoş Geldiniz', duration: '2:45', thumbnail: '🎬', category: 'beginner', views: '12.5K' },
     { id: 'v2', title: 'Hesap Oluşturma ve Profil Ayarları', duration: '4:30', thumbnail: '👤', category: 'beginner', views: '8.2K' },
     { id: 'v3', title: 'İlk Etkinliğinizi Oluşturun', duration: '6:15', thumbnail: '📅', category: 'organizer', views: '15.3K' },
     { id: 'v4', title: 'Teklif Alma ve Değerlendirme', duration: '5:45', thumbnail: '📋', category: 'organizer', views: '9.8K' },
@@ -265,7 +265,7 @@ export function HelpSupportScreen() {
     {
       id: 'b5',
       title: 'Müşteri Başarı Hikayesi: Festival Organizasyonu',
-      excerpt: 'Nasıl 50.000 kişilik bir festivali Turing ile organize ettiler?',
+      excerpt: 'Nasıl 50.000 kişilik bir festivali turing ile organize ettiler?',
       category: 'Başarı',
       date: '5 Ocak 2026',
       readTime: '8 dk',
@@ -1274,7 +1274,7 @@ export function HelpSupportScreen() {
                 <View>
                   <View style={styles.guideIntro}>
                     <Text style={[styles.guideIntroText, { color: colors.textSecondary }]}>
-                      Turing platformunu en verimli şekilde kullanmak için hazırladığımız rehberlere göz atın.
+                      turing platformunu en verimli şekilde kullanmak için hazırladığımız rehberlere göz atın.
                     </Text>
                   </View>
 

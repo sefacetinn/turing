@@ -1,49 +1,47 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  withSequence,
-} from 'react-native-reanimated';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { UserRole } from '../../types/auth';
-
-interface RouteParams {
-  role: UserRole;
-}
+import { AuthNavigationProp, RootStackParamList } from '../../types/navigation';
 
 export function RegistrationSuccessScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute();
-  const { role } = (route.params as RouteParams) || { role: 'organizer' };
+  const navigation = useNavigation<AuthNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'RegistrationSuccess'>>();
+  const { role } = route.params || { role: 'organizer' };
   const { colors, isDark } = useTheme();
 
-  const scale = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  // Use React Native's built-in Animated instead of Reanimated
+  const [scaleAnim] = useState(new Animated.Value(0));
+  const [opacityAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    scale.value = withSequence(
-      withDelay(200, withSpring(1.2, { damping: 8 })),
-      withSpring(1, { damping: 10 })
-    );
-    opacity.value = withDelay(400, withSpring(1));
+    // Animate icon scale
+    Animated.sequence([
+      Animated.delay(200),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animate content opacity
+    Animated.sequence([
+      Animated.delay(400),
+      Animated.spring(opacityAnim, {
+        toValue: 1,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const contentStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
 
   const isProvider = role === 'provider';
 
@@ -55,10 +53,9 @@ export function RegistrationSuccessScreen() {
         routes: [{ name: 'AccountPending' }],
       });
     } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
+      // User is already logged in via Firebase after registration
+      // Just navigate back - App.tsx will detect auth state and show MainTabs
+      navigation.getParent()?.goBack();
     }
   };
 
@@ -70,7 +67,7 @@ export function RegistrationSuccessScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           {/* Success Icon */}
-          <Animated.View style={[styles.iconWrapper, iconStyle]}>
+          <Animated.View style={[styles.iconWrapper, { transform: [{ scale: scaleAnim }] }]}>
             <View style={styles.iconCircle}>
               <Ionicons
                 name={isProvider ? 'briefcase' : 'checkmark'}
@@ -81,14 +78,14 @@ export function RegistrationSuccessScreen() {
           </Animated.View>
 
           {/* Text Content */}
-          <Animated.View style={[styles.textContent, contentStyle]}>
+          <Animated.View style={[styles.textContent, { opacity: opacityAnim }]}>
             <Text style={styles.title}>
               {isProvider ? 'Başvurunuz Alındı!' : 'Kayıt Tamamlandı!'}
             </Text>
             <Text style={styles.description}>
               {isProvider
                 ? 'Hesabınız admin onayından geçtikten sonra aktif hale gelecektir. Bu süreç genellikle 1-2 iş günü içinde tamamlanır.'
-                : 'Hesabınız başarıyla oluşturuldu. Artık Turing platformunu kullanmaya başlayabilirsiniz.'}
+                : 'Hesabınız başarıyla oluşturuldu. Artık turing platformunu kullanmaya başlayabilirsiniz.'}
             </Text>
 
             {isProvider && (
@@ -103,7 +100,7 @@ export function RegistrationSuccessScreen() {
         </View>
 
         {/* Continue Button */}
-        <Animated.View style={[styles.buttonContainer, contentStyle]}>
+        <Animated.View style={[styles.buttonContainer, { opacity: opacityAnim }]}>
           <TouchableOpacity
             style={styles.continueButton}
             onPress={handleContinue}

@@ -37,74 +37,8 @@ interface ContractsListScreenProps {
   isProviderMode?: boolean;
 }
 
-// Mock contracts data
-const mockContracts: Contract[] = [
-  {
-    id: 'c1',
-    eventName: 'Kurumsal Gala',
-    serviceName: 'VIP Transfer',
-    serviceCategory: 'transport',
-    otherPartyName: 'XYZ Holding',
-    otherPartyImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200',
-    amount: 12500,
-    status: 'pending_signature',
-    date: '16 Ocak 2024',
-    eventDate: '22 Ağustos 2024',
-    needsMySignature: true,
-  },
-  {
-    id: 'c2',
-    eventName: 'Zeytinli Rock Festivali',
-    serviceName: 'Ana Sahne Ses Sistemi',
-    serviceCategory: 'technical',
-    otherPartyName: 'Festival Org.',
-    otherPartyImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-    amount: 245000,
-    status: 'pending_signature',
-    date: '14 Ocak 2024',
-    eventDate: '18-20 Temmuz 2024',
-    needsMySignature: false,
-  },
-  {
-    id: 'c3',
-    eventName: 'Tech Conference 2024',
-    serviceName: 'Işık Sistemi',
-    serviceCategory: 'technical',
-    otherPartyName: 'ABC Teknoloji',
-    otherPartyImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200',
-    amount: 38000,
-    status: 'signed',
-    date: '10 Ocak 2024',
-    eventDate: '20 Ağustos 2024',
-    needsMySignature: false,
-  },
-  {
-    id: 'c4',
-    eventName: 'Düğün - Selin & Burak',
-    serviceName: 'DJ Set',
-    serviceCategory: 'booking',
-    otherPartyName: 'Selin Demir',
-    otherPartyImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-    amount: 22000,
-    status: 'signed',
-    date: '5 Ocak 2024',
-    eventDate: '15 Eylül 2024',
-    needsMySignature: false,
-  },
-  {
-    id: 'c5',
-    eventName: 'MegaFon Arena - Tarkan',
-    serviceName: 'Etkinlik Güvenliği',
-    serviceCategory: 'operation',
-    otherPartyName: 'MegaFon Events',
-    otherPartyImage: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=200',
-    amount: 185000,
-    status: 'completed',
-    date: '1 Ocak 2024',
-    eventDate: '25 Temmuz 2024',
-    needsMySignature: false,
-  },
-];
+// TODO: Fetch contracts from Firebase
+// Empty initial state for production
 
 const getCategoryColor = (category: string) => {
   const categoryColors: Record<string, string> = {
@@ -123,6 +57,9 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [refreshing, setRefreshing] = useState(false);
 
+  // TODO: Fetch contracts from Firebase
+  const [contracts, setContracts] = useState<Contract[]>([]);
+
   const onRefresh = () => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
@@ -130,22 +67,22 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
 
   const filteredContracts = useMemo(() => {
     if (activeTab === 'pending') {
-      return mockContracts.filter(c => c.status === 'pending_signature');
+      return contracts.filter(c => c.status === 'pending_signature');
     }
     if (activeTab === 'signed') {
-      return mockContracts.filter(c => c.status === 'signed' || c.status === 'completed');
+      return contracts.filter(c => c.status === 'signed' || c.status === 'completed');
     }
-    return mockContracts;
-  }, [activeTab]);
+    return contracts;
+  }, [activeTab, contracts]);
 
   const stats = useMemo(() => ({
-    pending: mockContracts.filter(c => c.status === 'pending_signature').length,
-    needsSignature: mockContracts.filter(c => c.needsMySignature).length,
-    signed: mockContracts.filter(c => c.status === 'signed' || c.status === 'completed').length,
-    totalValue: mockContracts
+    pending: contracts.filter(c => c.status === 'pending_signature').length,
+    needsSignature: contracts.filter(c => c.needsMySignature).length,
+    signed: contracts.filter(c => c.status === 'signed' || c.status === 'completed').length,
+    totalValue: contracts
       .filter(c => c.status === 'signed' || c.status === 'completed')
       .reduce((sum, c) => sum + c.amount, 0),
-  }), []);
+  }), [contracts]);
 
   const getStatusInfo = (contract: Contract) => {
     if (contract.status === 'pending_signature') {

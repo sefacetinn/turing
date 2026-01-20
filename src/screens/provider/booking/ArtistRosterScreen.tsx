@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TextInput,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { OptimizedImage } from '../../../components/OptimizedImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,11 +19,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../../../components/navigation';
 import { useTheme } from '../../../theme/ThemeContext';
-import {
-  Artist,
-  mockArtists,
-  getArtistStats,
-} from '../../../data/provider/artistData';
+import { useAuth } from '../../../context/AuthContext';
+import { useArtists, FirestoreArtist } from '../../../hooks';
 import * as Haptics from 'expo-haptics';
 
 type TabType = 'all' | 'available' | 'on_tour' | 'inactive';
@@ -34,6 +32,10 @@ export function ArtistRosterScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Auth and data hooks
+  const { user } = useAuth();
+  const { artists, loading: artistsLoading } = useArtists(user?.uid);
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -47,10 +49,15 @@ export function ArtistRosterScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  const stats = useMemo(() => getArtistStats(), []);
+  const stats = useMemo(() => ({
+    totalArtists: artists.length,
+    availableArtists: artists.filter(a => a.availability === 'available' && a.status === 'active').length,
+    upcomingShows: artists.reduce((sum, a) => sum + (a.totalShows || 0), 0),
+    totalRevenue: artists.reduce((sum, a) => sum + (a.totalRevenue || 0), 0),
+  }), [artists]);
 
   const filteredArtists = useMemo(() => {
-    let filtered = mockArtists;
+    let filtered = artists;
 
     if (activeTab === 'available') {
       filtered = filtered.filter(a => a.availability === 'available' && a.status === 'active');
@@ -70,9 +77,9 @@ export function ArtistRosterScreen() {
     }
 
     return filtered;
-  }, [activeTab, searchQuery]);
+  }, [artists, activeTab, searchQuery]);
 
-  const getAvailabilityInfo = (artist: Artist) => {
+  const getAvailabilityInfo = (artist: FirestoreArtist) => {
     switch (artist.availability) {
       case 'available':
         return { label: 'Müsait', color: '#10B981' };
@@ -86,10 +93,10 @@ export function ArtistRosterScreen() {
   };
 
   const tabs = [
-    { key: 'all' as TabType, label: 'Tümü', count: mockArtists.length },
+    { key: 'all' as TabType, label: 'Tümü', count: artists.length },
     { key: 'available' as TabType, label: 'Müsait', count: stats.availableArtists },
-    { key: 'on_tour' as TabType, label: 'Turnede', count: mockArtists.filter(a => a.status === 'on_tour').length },
-    { key: 'inactive' as TabType, label: 'Pasif', count: mockArtists.filter(a => a.status === 'inactive').length },
+    { key: 'on_tour' as TabType, label: 'Turnede', count: artists.filter(a => a.status === 'on_tour').length },
+    { key: 'inactive' as TabType, label: 'Pasif', count: artists.filter(a => a.status === 'inactive').length },
   ];
 
   const handleTabChange = (tab: TabType) => {
@@ -104,10 +111,10 @@ export function ArtistRosterScreen() {
     return num;
   };
 
-  const renderArtistItem = (artist: Artist, index: number) => {
+  const renderArtistItem = (artist: FirestoreArtist, index: number) => {
     const availabilityInfo = getAvailabilityInfo(artist);
     const displayName = artist.stageName || artist.name;
-    const primaryGenre = artist.genre[0];
+    const primaryGenre = artist.genre[0] || 'Tür belirtilmemiş';
 
     return (
       <TouchableOpacity
@@ -128,7 +135,7 @@ export function ArtistRosterScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarContainer}>
-          <OptimizedImage source={artist.image} style={styles.avatar} />
+          <OptimizedImage source={artist.image || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400'} style={styles.avatar} />
           <View style={[styles.statusDot, { backgroundColor: availabilityInfo.color }]} />
         </View>
 
@@ -138,7 +145,7 @@ export function ArtistRosterScreen() {
             {displayName}
           </Text>
           <Text style={[styles.artistMeta, { color: colors.textMuted }]} numberOfLines={1}>
-            {primaryGenre} • {artist.priceRange}
+            {primaryGenre}{artist.priceRange ? ` • ${artist.priceRange}` : ''}
           </Text>
         </View>
 
@@ -315,11 +322,15 @@ export function ArtistRosterScreen() {
           ) : (
             <View style={styles.emptyState}>
               <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F5F5F5' }]}>
-                <Ionicons name="person-outline" size={32} color={colors.textMuted} />
+                <Ionicons name="musical-notes-outline" size={32} color={colors.textMuted} />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>Sanatçı bulunamadı</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                {artists.length === 0 ? 'Henüz sanatçı eklenmedi' : 'Sanatçı bulunamadı'}
+              </Text>
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                Arama kriterlerinize uygun sonuç yok
+                {artists.length === 0
+                  ? 'Sağ üstteki + butonuna tıklayarak sanatçı ekleyebilirsiniz'
+                  : 'Arama kriterlerinize uygun sonuç yok'}
               </Text>
             </View>
           )}

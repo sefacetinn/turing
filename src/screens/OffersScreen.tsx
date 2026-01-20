@@ -25,17 +25,14 @@ import {
   OrganizerOffer,
   ProviderOffer,
   DraftRequest,
-  organizerOffers,
-  providerOffers,
-  enhancedOffers,
-  quoteRequests,
-  draftRequests,
   getTabForStatus,
 } from '../data/offersData';
 import { groupOffersByService, calculateOfferScores } from '../utils/offerUtils';
-import { defaultComparisonCriteria } from '../types/comparison';
+import { defaultComparisonCriteria, type GroupedOffers } from '../types/comparison';
 import type { OffersStackNavigationProp } from '../types';
 import { useApp } from '../../App';
+import { useAuth } from '../context/AuthContext';
+import { useOffers, type FirestoreOffer } from '../hooks';
 
 interface OffersScreenProps {
   isProviderMode: boolean;
@@ -56,6 +53,15 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const [filterPriceRange, setFilterPriceRange] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'price' | 'rating'>('date');
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Auth & Data hooks
+  const { user } = useAuth();
+  const userRole = isProviderMode ? 'provider' : 'organizer';
+  const { offers: realOffers, loading: offersLoading } = useOffers(user?.uid, userRole);
+
+  // Check if user has real data
+  const hasRealData = user && realOffers.length > 0;
+  const isNewUser = user && !offersLoading && realOffers.length === 0;
 
   const scrollY = useSharedValue(0);
   const accentColor = colors.brand[400];
@@ -84,52 +90,136 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
     }, 1000);
   }, []);
 
-  // Filter provider offers by service category
+  // Convert Firebase offers to local format (matching ProviderOffer/OrganizerOffer interfaces)
+  const convertedRealOffers = useMemo(() => {
+    if (!realOffers.length) return [];
+    return realOffers.map(o => {
+      // Build location string from event data
+      const locationParts = [
+        o.formData?.venue,
+        o.formData?.district,
+        o.eventCity
+      ].filter(Boolean);
+      const locationStr = locationParts.length > 0 ? locationParts.join(', ') : '';
+
+      return {
+      id: o.id,
+      eventId: o.eventId,
+      eventTitle: o.eventTitle,
+      eventDate: o.eventDate || '',
+      eventCity: o.eventCity || '',
+      eventDistrict: o.formData?.district || '',
+      eventVenue: o.formData?.venue || '',
+      location: locationStr, // For ProviderOfferCard
+      // Nested organizer object (expected by ProviderOfferCard)
+      organizer: {
+        id: o.organizerId,
+        name: o.organizerName || 'Organizatör',
+        image: o.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        company: '',
+      },
+      // Nested provider object (expected by OrganizerOfferCard)
+      provider: {
+        id: o.providerId,
+        name: o.providerName || 'Tedarikçi',
+        image: o.providerImage || 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200',
+        rating: 4.5,
+        reviewCount: 0,
+        completedJobs: 0,
+        verified: true,
+      },
+      // Artist info
+      artistId: o.artistId,
+      artistName: o.artistName,
+      artistImage: o.artistImage,
+      // Service info
+      service: o.serviceCategory,
+      serviceName: o.serviceCategory,
+      serviceCategory: o.serviceCategory,
+      // Pricing - use amount if set, otherwise fall back to requestedBudget
+      amount: o.amount || (o.requestedBudget ? parseInt(o.requestedBudget) : 0),
+      price: o.amount || (o.requestedBudget ? parseInt(o.requestedBudget) : 0),
+      originalBudget: o.requestedBudget ? parseInt(o.requestedBudget) : (o.amount || 0),
+      requestedBudget: o.requestedBudget,
+      // Counter offer data from Firebase
+      counterOffer: o.counterAmount ? {
+        amount: o.counterAmount,
+        message: o.counterMessage,
+        by: o.counterBy,
+        date: o.counterAt ? o.counterAt.toLocaleDateString('tr-TR') : '',
+      } : undefined,
+      // Status and type
+      status: o.status,
+      requestType: o.requestType,
+      message: o.message || '',
+      notes: o.notes,
+      // Form data
+      formData: o.formData,
+      serviceDates: o.serviceDates,
+      // Timestamps
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      validUntil: o.validUntil,
+      // UI helpers
+      rating: 4.5,
+      responseTime: '24 saat içinde',
+    };
+    });
+  }, [realOffers]);
+
+  // Use real offers for logged-in users, empty for new users
+  const baseOrganizerOffers = useMemo(() => {
+    if (hasRealData) return convertedRealOffers;
+    return []; // Empty for new users
+  }, [hasRealData, convertedRealOffers]);
+
+  const baseProviderOffers = useMemo(() => {
+    if (hasRealData) return convertedRealOffers;
+    return []; // Empty for new users
+  }, [hasRealData, convertedRealOffers]);
+
+  // Provider should see ALL incoming offers (no service category filter)
+  // They can decide which requests to respond to
   const filteredProviderOffers = useMemo(() => {
     if (!isProviderMode) return [];
-    // If provider has specific services, filter by those
-    if (providerServices.length > 0) {
-      return providerOffers.filter(o => providerServices.includes(o.serviceCategory));
-    }
-    // Fallback to all offers if no services defined
-    return providerOffers;
-  }, [isProviderMode, providerServices]);
+    return baseProviderOffers;
+  }, [isProviderMode, baseProviderOffers]);
 
   // Stats calculation - State machine'e göre tutarlı filtreleme
-  // Aktif: pending + counter_offered
+  // Aktif: pending + quoted + counter_offered (işlem bekleyen)
   // Onaylanan: SADECE accepted (karşılıklı onaylanmış)
   // Reddedilen: rejected + expired + cancelled
   const stats = useMemo(() => {
-    const offers = isProviderMode ? filteredProviderOffers : organizerOffers;
+    const offers = isProviderMode ? filteredProviderOffers : baseOrganizerOffers;
     return {
-      // Aktif = beklemede veya pazarlık sürecinde
-      active: offers.filter(o =>
-        o.status === 'pending' || o.status === 'counter_offered'
+      // Aktif = beklemede, teklif verilmiş veya pazarlık sürecinde
+      active: offers.filter((o: any) =>
+        o.status === 'pending' || o.status === 'quoted' || o.status === 'counter_offered'
       ).length,
       // Onaylanan = SADECE karşılıklı kabul edilmiş
-      accepted: offers.filter(o => o.status === 'accepted').length,
+      accepted: offers.filter((o: any) => o.status === 'accepted').length,
       // Reddedilen = reddedilmiş, süresi dolmuş veya iptal edilmiş
-      rejected: offers.filter(o =>
+      rejected: offers.filter((o: any) =>
         o.status === 'rejected' ||
         o.status === 'expired' ||
         o.status === 'cancelled'
       ).length,
-      drafts: isProviderMode ? 0 : draftRequests.length,
+      drafts: 0, // No draft requests in clean state
       total: offers.length,
     };
-  }, [isProviderMode, filteredProviderOffers]);
+  }, [isProviderMode, filteredProviderOffers, baseOrganizerOffers, isNewUser]);
 
   // Filtered offers by tab (for individual view)
   // State machine'e göre tutarlı filtreleme
   const filteredOffers = useMemo(() => {
-    const offers = isProviderMode ? filteredProviderOffers : organizerOffers;
+    const offers = isProviderMode ? filteredProviderOffers : baseOrganizerOffers;
 
     let result;
     switch (activeTab) {
       case 'active':
-        // Aktif sekmesi: pending ve counter_offered durumları
+        // Aktif sekmesi: pending, quoted ve counter_offered durumları
         result = offers.filter(o =>
-          o.status === 'pending' || o.status === 'counter_offered'
+          o.status === 'pending' || o.status === 'quoted' || o.status === 'counter_offered'
         );
         break;
       case 'accepted':
@@ -174,32 +264,13 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
     // Default is by date (already sorted)
 
     return result;
-  }, [isProviderMode, activeTab, filteredProviderOffers, filterService, filterPriceRange, sortBy]);
+  }, [isProviderMode, activeTab, filteredProviderOffers, baseOrganizerOffers, filterService, filterPriceRange, sortBy]);
 
-  // Grouped offers for comparison view
-  const groupedOffers = useMemo(() => {
-    if (isProviderMode || viewMode !== 'grouped' || activeTab !== 'active') {
-      return [];
-    }
-
-    // Calculate scores
-    const scoredOffers = calculateOfferScores(enhancedOffers, defaultComparisonCriteria);
-
-    // Group by service/quote request
-    return groupOffersByService(
-      scoredOffers,
-      quoteRequests.map(qr => ({
-        id: qr.id,
-        serviceId: qr.serviceId,
-        serviceName: qr.serviceName,
-        budget: qr.budget,
-        budgetMin: qr.budgetMin,
-        budgetMax: qr.budgetMax,
-        deadline: qr.deadline,
-        type: qr.type,
-      }))
-    );
-  }, [isProviderMode, viewMode, activeTab]);
+  // Grouped offers for comparison view - will be implemented when backend supports
+  const groupedOffers = useMemo((): GroupedOffers[] => {
+    // TODO: Implement real grouped offers when backend supports quote requests
+    return [];
+  }, []);
 
   // Action handlers
   const handleAccept = (offerId: string) => {
@@ -272,14 +343,8 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const hasActiveFilters = filterService !== null || filterPriceRange !== 'all' || sortBy !== 'date';
 
   const handleContinueDraft = (draftId: string) => {
-    const draft = draftRequests.find(d => d.id === draftId);
-    if (draft) {
-      (navigation as any).navigate('CategoryRequest', {
-        category: draft.category,
-        eventId: draft.eventId,
-        draftId: draft.id,
-      });
-    }
+    // TODO: Implement draft loading from Firebase when drafts are supported
+    Alert.alert('Bilgi', 'Taslak özelliği yakında aktif olacak.');
   };
 
   const handleDeleteDraft = (draftId: string) => {
@@ -299,7 +364,7 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
     );
   };
 
-  const renderOfferCard = (offer: OrganizerOffer | ProviderOffer) => {
+  const renderOfferCard = (offer: OrganizerOffer | ProviderOffer | any) => {
     if (isProviderMode) {
       return (
         <ProviderOfferCard
@@ -432,40 +497,23 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           showDrafts={!isProviderMode}
         />
 
-        <View style={showGroupedView ? styles.offersListContentGrouped : styles.offersListContentInner}>
+        <View style={(showGroupedView && groupedOffers.length > 0) ? styles.offersListContentGrouped : styles.offersListContentInner}>
           {showDraftsView ? (
-            // Drafts view
-            draftRequests.length > 0 ? (
-              draftRequests.map((draft) => (
-                <DraftCard
-                  key={draft.id}
-                  draft={draft}
-                  onContinue={() => handleContinueDraft(draft.id)}
-                  onDelete={() => handleDeleteDraft(draft.id)}
-                />
-              ))
-            ) : (
-              <EmptyOfferState />
-            )
-          ) : showGroupedView ? (
-            // Grouped view with MultiOfferCards
-            groupedOffers.length > 0 ? (
-              groupedOffers.map((group) => (
-                <MultiOfferCard
-                  key={group.quoteRequestId}
-                  groupedOffers={group}
-                  onOfferPress={handleOfferPress}
-                  onSelectOffer={handleSelectOffer}
-                  onCompareAll={() => handleCompareAll(group.quoteRequestId)}
-                />
-              ))
-            ) : (
-              <View style={styles.emptyContainer}>
-                <EmptyOfferState />
-              </View>
-            )
+            // Drafts view - TODO: will be populated from Firebase when drafts are supported
+            <EmptyOfferState />
+          ) : (showGroupedView && groupedOffers.length > 0) ? (
+            // Grouped view with MultiOfferCards (only when we have grouped offers)
+            groupedOffers.map((group) => (
+              <MultiOfferCard
+                key={group.quoteRequestId}
+                groupedOffers={group}
+                onOfferPress={handleOfferPress}
+                onSelectOffer={handleSelectOffer}
+                onCompareAll={() => handleCompareAll(group.quoteRequestId)}
+              />
+            ))
           ) : (
-            // Individual view with regular cards
+            // Individual view with regular cards (also fallback when no grouped offers)
             filteredOffers.length > 0 ? (
               filteredOffers.map(renderOfferCard)
             ) : (

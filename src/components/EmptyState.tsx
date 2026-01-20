@@ -47,6 +47,26 @@ export const EMPTY_STATE_PRESETS = {
     title: 'Bağlantı hatası',
     message: 'İnternet bağlantınızı kontrol edip tekrar deneyin',
   },
+  welcomeOrganizer: {
+    icon: 'sparkles-outline' as const,
+    title: 'Hoş geldiniz!',
+    message: 'İlk etkinliğinizi oluşturarak başlayın. Sanatçılar, mekanlar ve hizmet sağlayıcılarla kolayca çalışın.',
+  },
+  welcomeProvider: {
+    icon: 'briefcase-outline' as const,
+    title: 'Hoş geldiniz!',
+    message: 'Profilinizi tamamlayın ve organizatörlerden iş teklifleri almaya başlayın.',
+  },
+  noJobs: {
+    icon: 'briefcase-outline' as const,
+    title: 'Henüz iş yok',
+    message: 'Kabul ettiğiniz işler burada görünecek. Tekliflerinizi kontrol edin!',
+  },
+  noProviders: {
+    icon: 'people-outline' as const,
+    title: 'Sağlayıcı bulunamadı',
+    message: 'Bu kategoride henüz sağlayıcı bulunmuyor.',
+  },
 };
 
 export type EmptyStatePreset = keyof typeof EMPTY_STATE_PRESETS;

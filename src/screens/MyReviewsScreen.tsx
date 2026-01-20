@@ -21,17 +21,21 @@ import {
   RatingModal,
 } from '../components/rating';
 import {
-  mockReceivedReviews,
-  mockGivenReviews,
-  mockPendingReviews,
-  mockPendingProviderReviews,
-  mockOrganizerReceivedReviews,
-  mockOrganizerGivenReviews,
   calculateRatingBreakdown,
   calculateTopTags,
   calculateAverageRating,
   calculateWouldWorkAgainPercent,
+  Review,
 } from '../data/reviewData';
+
+// TODO: Fetch reviews from Firebase
+// Empty arrays for production
+const mockReceivedReviews: Review[] = [];
+const mockGivenReviews: Review[] = [];
+const mockPendingReviews: any[] = [];
+const mockPendingProviderReviews: any[] = [];
+const mockOrganizerReceivedReviews: Review[] = [];
+const mockOrganizerGivenReviews: Review[] = [];
 import { useApp } from '../../App';
 
 type TabType = 'pending' | 'given' | 'received';

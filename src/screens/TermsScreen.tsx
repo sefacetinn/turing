@@ -29,7 +29,7 @@ const termsContent: TermsSection[] = [
     id: 'service',
     title: 'Hizmet Koşulları',
     icon: 'shield-checkmark',
-    content: `Turing uygulamasını kullanarak aşağıdaki koşulları kabul etmiş sayılırsınız. Bu platform, etkinlik organizatörleri ile hizmet sağlayıcılarını bir araya getiren bir pazaryeri hizmeti sunmaktadır.
+    content: `turing uygulamasını kullanarak aşağıdaki koşulları kabul etmiş sayılırsınız. Bu platform, etkinlik organizatörleri ile hizmet sağlayıcılarını bir araya getiren bir pazaryeri hizmeti sunmaktadır.
 
 Kullanıcılar, platformu yasal amaçlar doğrultusunda kullanmayı, diğer kullanıcıların haklarını ihlal etmemeyi ve platformun güvenliğini tehlikeye atacak eylemlerden kaçınmayı kabul ederler.
 
@@ -85,7 +85,7 @@ Organizatörler:
     id: 'ip',
     title: 'Fikri Mülkiyet',
     icon: 'document',
-    content: `Turing uygulamasının tüm içerik ve tasarımları, fikri mülkiyet yasaları kapsamında korunmaktadır. İzinsiz kullanım yasaktır.
+    content: `turing uygulamasının tüm içerik ve tasarımları, fikri mülkiyet yasaları kapsamında korunmaktadır. İzinsiz kullanım yasaktır.
 
 Kullanıcılar, platforma yükledikleri içeriklerin haklarına sahip olduklarını beyan ve taahhüt ederler. Platform, telif hakkı ihlali bildirimlerini ciddiye alır ve gerekli aksiyonları alır.`,
   },
@@ -199,7 +199,7 @@ export function TermsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await Share.share({
-        message: 'Turing Kullanım Koşulları: https://turing.app/terms',
+        message: 'turing Kullanım Koşulları: https://turing.app/terms',
         title: 'Kullanım Koşulları',
       });
     } catch (error) {
@@ -441,7 +441,7 @@ export function TermsScreen() {
 
           <View style={styles.footerMeta}>
             <Text style={[styles.footerMetaText, { color: colors.textMuted }]}>
-              Turing Technologies A.Ş. • 2026
+              turing Technologies A.Ş. • 2026
             </Text>
             <Text style={[styles.footerMetaText, { color: colors.textMuted }]}>
               Tüm hakları saklıdır.

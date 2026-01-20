@@ -12,6 +12,7 @@ import {
   Platform,
   Keyboard,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useApp } from '../../App';
+import { addDocument, Collections } from '../services/firebase/firestore';
 import {
   StepProgress,
   SelectModal,
@@ -48,12 +52,17 @@ import {
   getAvailableVenues,
   initialEventData,
   initialNewVenueData,
+  ageLimitOptions,
+  seatingTypeOptions,
+  indoorOutdoorOptions,
 } from '../data/createEventData';
 
 export function CreateEventScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const { isProviderMode } = useApp();
   const TAB_BAR_HEIGHT = 80;
   const [currentStep, setCurrentStep] = useState<Step>('type');
   const [activeDropdown, setActiveDropdown] = useState<DropdownType>(null);
@@ -62,6 +71,7 @@ export function CreateEventScreen() {
   const [newVenue, setNewVenue] = useState<NewVenueData>(initialNewVenueData);
   const [customVenues, setCustomVenues] = useState<Venue[]>([]);
   const [eventData, setEventData] = useState<EventData>(initialEventData);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Inline selection state for new venue modal
   const [showCityList, setShowCityList] = useState(false);
@@ -233,20 +243,98 @@ export function CreateEventScreen() {
     setActiveDropdown(null);
   };
 
-  const createEvent = () => {
+  const createEvent = async () => {
     if (!eventData.name.trim()) {
-      Alert.alert('Uyari', 'Lutfen etkinlik adi girin.');
+      Alert.alert('Uyarı', 'Lütfen etkinlik adı girin.');
       return;
     }
     if (eventData.selectedDates.length === 0) {
-      Alert.alert('Uyari', 'Lutfen etkinlik tarihi secin.');
+      Alert.alert('Uyarı', 'Lütfen etkinlik tarihi seçin.');
       return;
     }
-    Alert.alert(
-      'Basarili',
-      'Etkinlik olusturuldu! Simdi hizmet saglayicilardan teklif alabilirsiniz.',
-      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
-    );
+    if (!user) {
+      Alert.alert('Hata', 'Etkinlik oluşturmak için giriş yapmalısınız.');
+      return;
+    }
+
+    setIsCreating(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      // Parse budget from string to number
+      let budgetValue = 0;
+      if (eventData.budget && eventData.budget !== 'Özel') {
+        const budgetMatch = eventData.budget.match(/(\d+)/g);
+        if (budgetMatch) {
+          budgetValue = parseInt(budgetMatch[0]) * 1000;
+        }
+      } else if (eventData.customBudget) {
+        budgetValue = parseInt(eventData.customBudget.replace(/\D/g, '')) || 0;
+      }
+
+      // Create event document - Firestore doesn't accept undefined values
+      const eventDoc: Record<string, any> = {
+        title: eventData.name.trim(),
+        description: eventData.description || '',
+        type: eventData.type || 'concert',
+        date: eventData.selectedDates[0] || `${eventData.year}-${eventData.month.padStart(2, '0')}-${eventData.day.padStart(2, '0')}`,
+        time: eventData.time || '20:00',
+        city: eventData.city || '',
+        district: eventData.district || '',
+        venue: eventData.venue || '',
+        budget: budgetValue,
+        status: 'planning',
+        organizerId: user.uid,
+        providerIds: isProviderMode ? [user.uid] : [],
+        services: eventData.services.length > 0 ? eventData.services.map(serviceId => ({
+          id: serviceId,
+          category: serviceId,
+          name: serviceCategories.find(s => s.id === serviceId)?.name || serviceId,
+          status: 'pending',
+        })) : [],
+      };
+
+      // Add optional fields only if they have values
+      if (eventData.selectedDates.length > 1) {
+        eventDoc.endDate = eventData.selectedDates[eventData.selectedDates.length - 1];
+      }
+      if (eventData.venueCapacity) {
+        eventDoc.venueCapacity = parseInt(eventData.venueCapacity.replace(/\D/g, '')) || 0;
+      }
+      if (eventData.guestCount) {
+        eventDoc.expectedAttendees = parseInt(eventData.guestCount.replace(/\D/g, '')) || 0;
+      }
+      if (eventData.image) {
+        eventDoc.image = eventData.image;
+      }
+      // New event detail fields
+      if (eventData.ageLimit) {
+        eventDoc.ageLimit = eventData.ageLimit;
+      }
+      if (eventData.seatingType) {
+        eventDoc.seatingType = eventData.seatingType;
+      }
+      if (eventData.indoorOutdoor) {
+        eventDoc.indoorOutdoor = eventData.indoorOutdoor;
+      }
+
+      const createdEventId = await addDocument(Collections.EVENTS, eventDoc);
+      console.log('[CreateEventScreen] Event created with ID:', createdEventId);
+      console.log('[CreateEventScreen] Event data:', JSON.stringify(eventDoc, null, 2));
+
+      Alert.alert(
+        'Başarılı',
+        isProviderMode
+          ? 'Etkinlik oluşturuldu! Etkinliklerim sayfasından takip edebilirsiniz.'
+          : 'Etkinlik oluşturuldu! Şimdi hizmet sağlayıcılardan teklif alabilirsiniz.',
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error creating event:', error);
+      Alert.alert('Hata', 'Etkinlik oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const renderStepContent = () => {
@@ -420,13 +508,77 @@ export function CreateEventScreen() {
                 <View style={styles.capacityHint}>
                   <Ionicons name="information-circle-outline" size={14} color={colors.brand[400]} />
                   <Text style={[styles.capacityHintText, { color: colors.textMuted }]}>
-                    Mekan kapasitesi: {eventData.venueCapacity} kişi (otomatik dolduruldu, değiştirebilirsiniz)
+                    Mekan kapasitesi: {eventData.venueCapacity} kisi (otomatik dolduruldu, degistirebilirsiniz)
                   </Text>
                 </View>
               )}
             </View>
+
+            {/* Age Limit */}
             <View style={styles.formGroup}>
-              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Açıklama</Text>
+              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Yas Siniri</Text>
+              <View style={styles.optionButtonsRow}>
+                {ageLimitOptions.map(option => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.optionButton,
+                      { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: eventData.ageLimit === option.id ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) },
+                      eventData.ageLimit === option.id && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
+                    ]}
+                    onPress={() => setEventData(prev => ({ ...prev, ageLimit: option.id }))}
+                  >
+                    <Ionicons name={option.icon as any} size={18} color={eventData.ageLimit === option.id ? colors.brand[400] : colors.textMuted} />
+                    <Text style={[styles.optionButtonText, { color: eventData.ageLimit === option.id ? colors.text : colors.textMuted }]}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Seating Type */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Oturma Duzeni</Text>
+              <View style={styles.optionButtonsRow}>
+                {seatingTypeOptions.map(option => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.optionButton,
+                      { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: eventData.seatingType === option.id ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) },
+                      eventData.seatingType === option.id && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
+                    ]}
+                    onPress={() => setEventData(prev => ({ ...prev, seatingType: option.id }))}
+                  >
+                    <Ionicons name={option.icon as any} size={18} color={eventData.seatingType === option.id ? colors.brand[400] : colors.textMuted} />
+                    <Text style={[styles.optionButtonText, { color: eventData.seatingType === option.id ? colors.text : colors.textMuted }]}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Indoor/Outdoor */}
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Alan Tipi</Text>
+              <View style={styles.optionButtonsRow}>
+                {indoorOutdoorOptions.map(option => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.optionButton,
+                      { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.04)', borderColor: eventData.indoorOutdoor === option.id ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border) },
+                      eventData.indoorOutdoor === option.id && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }
+                    ]}
+                    onPress={() => setEventData(prev => ({ ...prev, indoorOutdoor: option.id }))}
+                  >
+                    <Ionicons name={option.icon as any} size={18} color={eventData.indoorOutdoor === option.id ? colors.brand[400] : colors.textMuted} />
+                    <Text style={[styles.optionButtonText, { color: eventData.indoorOutdoor === option.id ? colors.text : colors.textMuted }]}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { color: colors.textMuted }]}>Aciklama</Text>
               <TextInput
                 style={[styles.input, styles.textArea, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', color: colors.text }]}
                 placeholder="Etkinlik hakkında ek detaylar..."
@@ -660,10 +812,16 @@ export function CreateEventScreen() {
             </LinearGradient>
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.nextButton} onPress={createEvent}>
+          <TouchableOpacity style={[styles.nextButton, isCreating && { opacity: 0.7 }]} onPress={createEvent} disabled={isCreating}>
             <LinearGradient colors={gradients.primary} style={styles.nextButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Ionicons name="checkmark-circle" size={18} color="white" />
-              <Text style={styles.nextButtonText}>Etkinlik Oluştur</Text>
+              {isCreating ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={18} color="white" />
+                  <Text style={styles.nextButtonText}>Etkinlik Oluştur</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -1129,6 +1287,10 @@ const styles = StyleSheet.create({
   // Capacity Hint
   capacityHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   capacityHintText: { fontSize: 12, flex: 1 },
+  // Option Buttons Row (for Age Limit, Seating Type, Indoor/Outdoor)
+  optionButtonsRow: { flexDirection: 'row', gap: 10 },
+  optionButton: { flex: 1, flexDirection: 'column', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1, gap: 6 },
+  optionButtonText: { fontSize: 12, fontWeight: '500' },
   // Add Venue Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
   addVenueModal: { borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' },

@@ -9,14 +9,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { OptimizedImage } from '../../../components/OptimizedImage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
-import { getArtistById, Artist } from '../../../data/provider/artistData';
+import { Artist } from '../../../data/provider/artistData';
+import { useAuth } from '../../../context/AuthContext';
+import { addDocument, updateDocument, Collections } from '../../../services/firebase/firestore';
 
 type RouteParams = {
   AddEditArtist: { artistId?: string };
@@ -32,49 +36,146 @@ export function AddEditArtistScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'AddEditArtist'>>();
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
 
   const artistId = route.params?.artistId;
-  const existingArtist = useMemo(
-    () => (artistId ? getArtistById(artistId) : null),
-    [artistId]
-  );
-  const isEditing = !!existingArtist;
+  // TODO: Fetch existing artist from Firebase when editing
+  const isEditing = !!artistId;
 
   // Form States
-  const [name, setName] = useState(existingArtist?.name || '');
-  const [stageName, setStageName] = useState(existingArtist?.stageName || '');
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(existingArtist?.genre || []);
-  const [description, setDescription] = useState(existingArtist?.description || '');
-  const [bio, setBio] = useState(existingArtist?.bio || '');
-  const [priceMin, setPriceMin] = useState(existingArtist?.priceMin?.toString() || '');
-  const [priceMax, setPriceMax] = useState(existingArtist?.priceMax?.toString() || '');
-  const [instagram, setInstagram] = useState(existingArtist?.socialMedia?.instagram || '');
-  const [spotify, setSpotify] = useState(existingArtist?.socialMedia?.spotify || '');
-  const [youtube, setYoutube] = useState(existingArtist?.socialMedia?.youtube || '');
-  const [status, setStatus] = useState<Artist['status']>(existingArtist?.status || 'active');
-  const [availability, setAvailability] = useState<Artist['availability']>(
-    existingArtist?.availability || 'available'
-  );
+  const [name, setName] = useState('');
+  const [stageName, setStageName] = useState('');
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [description, setDescription] = useState('');
+  const [bio, setBio] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [spotify, setSpotify] = useState('');
+  const [youtube, setYoutube] = useState('');
+  const [status, setStatus] = useState<Artist['status']>('active');
+  const [availability, setAvailability] = useState<Artist['availability']>('available');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
+  // Image States
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+
+  // Pick Profile Image
+  const pickProfileImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setProfileImage(result.assets[0].uri);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+    }
+  };
+
+  // Pick Cover Image
+  const pickCoverImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCoverImage(result.assets[0].uri);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+    }
+  };
+
+  const handleSave = async () => {
     // Validation
     if (!name.trim()) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Hata', 'Sanatci adi gereklidir.');
+      Alert.alert('Hata', 'Sanatçı adı gereklidir.');
       return;
     }
     if (selectedGenres.length === 0) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Hata', 'En az bir tur secmelisiniz.');
+      Alert.alert('Hata', 'En az bir tür seçmelisiniz.');
       return;
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      'Basarili',
-      isEditing ? 'Sanatci bilgileri guncellendi.' : 'Yeni sanatci eklendi.',
-      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
-    );
+    if (!user) {
+      Alert.alert('Hata', 'Oturum açmanız gerekiyor.');
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const artistData: Record<string, any> = {
+        name: name.trim(),
+        genre: selectedGenres,
+        status,
+        availability,
+        ownerId: user.uid,
+        rating: 0,
+        reviewCount: 0,
+        totalShows: 0,
+        totalRevenue: 0,
+      };
+
+      // Add optional fields only if they have values
+      if (stageName.trim()) artistData.stageName = stageName.trim();
+      if (description.trim()) artistData.description = description.trim();
+      if (bio.trim()) artistData.bio = bio.trim();
+      if (priceMin) artistData.priceMin = parseInt(priceMin) || 0;
+      if (priceMax) artistData.priceMax = parseInt(priceMax) || 0;
+      if (priceMin && priceMax) {
+        artistData.priceRange = `₺${parseInt(priceMin).toLocaleString('tr-TR')} - ₺${parseInt(priceMax).toLocaleString('tr-TR')}`;
+      }
+
+      // Social media
+      const socialMedia: Record<string, string> = {};
+      if (instagram.trim()) socialMedia.instagram = instagram.trim();
+      if (spotify.trim()) socialMedia.spotify = spotify.trim();
+      if (youtube.trim()) socialMedia.youtube = youtube.trim();
+      if (Object.keys(socialMedia).length > 0) {
+        artistData.socialMedia = socialMedia;
+      }
+
+      // Images - use selected or default
+      artistData.image = profileImage || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400';
+      if (coverImage) artistData.coverImage = coverImage;
+
+      if (isEditing && artistId) {
+        await updateDocument(Collections.ARTISTS, artistId, artistData);
+      } else {
+        await addDocument(Collections.ARTISTS, artistData);
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Başarılı',
+        isEditing ? 'Sanatçı bilgileri güncellendi.' : 'Yeni sanatçı eklendi.',
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error saving artist:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Sanatçı kaydedilirken bir hata oluştu.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleGenre = (genre: string) => {
@@ -163,28 +264,32 @@ export function AddEditArtistScreen() {
           <View style={styles.imageSection}>
             <TouchableOpacity
               style={[styles.imageUpload, { borderColor: colors.border }]}
+              onPress={pickProfileImage}
+              activeOpacity={0.7}
             >
-              {existingArtist?.image ? (
-                <OptimizedImage source={existingArtist.image} style={styles.previewImage} />
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.previewImage} />
               ) : (
                 <>
                   <Ionicons name="camera-outline" size={32} color={colors.textSecondary} />
                   <Text style={[styles.imageUploadText, { color: colors.textSecondary }]}>
-                    Profil Fotografi
+                    Profil Fotoğrafı
                   </Text>
                 </>
               )}
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.coverUpload, { borderColor: colors.border }]}
+              onPress={pickCoverImage}
+              activeOpacity={0.7}
             >
-              {existingArtist?.coverImage ? (
-                <OptimizedImage source={existingArtist.coverImage} style={styles.coverPreviewImage} />
+              {coverImage ? (
+                <Image source={{ uri: coverImage }} style={styles.coverPreviewImage} />
               ) : (
                 <>
                   <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
                   <Text style={[styles.coverUploadText, { color: colors.textSecondary }]}>
-                    Kapak Fotografi
+                    Kapak Fotoğrafı
                   </Text>
                 </>
               )}

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TextInput,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,10 +27,11 @@ import { SkeletonEventList, SkeletonStats } from '../components/Skeleton';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useApp } from '../../App';
+import { useAuth } from '../context/AuthContext';
+import { useProviderJobs } from '../hooks';
 import {
   TabType,
   ProviderEvent,
-  providerEvents,
   getServiceTypeInfo,
   getStatusInfo,
   getPaymentInfo,
@@ -47,8 +49,15 @@ export function ProviderEventsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Auth & Data hooks
+  const { user } = useAuth();
+  const { jobs: realJobs, loading: jobsLoading } = useProviderJobs(user?.uid);
+
+  // Check if user has real data
+  const hasRealData = user && realJobs.length > 0;
+  const isLoading = jobsLoading;
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -68,14 +77,6 @@ export function ProviderEventsScreen() {
     return unsubscribe;
   }, []);
 
-  // Simulate initial loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Animated style for calendar button (shrink on scroll)
   const calendarAnimatedStyle = useAnimatedStyle(() => {
     const scale = interpolate(
@@ -92,9 +93,10 @@ export function ProviderEventsScreen() {
   const onRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
+    // Since useProviderJobs uses onSnapshot, data updates automatically
     setTimeout(() => {
       setRefreshing(false);
-    }, 1000);
+    }, 800);
   }, []);
 
   // Format money for display (compact)
@@ -107,41 +109,41 @@ export function ProviderEventsScreen() {
     return amount.toLocaleString('tr-TR');
   };
 
-  // Filter events by provider's service types
-  const serviceFilteredEvents = useMemo(() => {
-    if (!providerServices || providerServices.length === 0) {
-      return providerEvents;
-    }
-    // Map service categories to provider service IDs
-    const serviceTypeMap: Record<string, string[]> = {
-      'booking': ['booking'],
-      'technical': ['sound-light', 'technical'],
-      'sound-light': ['technical', 'sound-light'],
-      'venue': ['venue'],
-      'accommodation': ['accommodation'],
-      'transport': ['transport'],
-      'flight': ['flight'],
-      'security': ['security'],
-      'catering': ['catering'],
-      'generator': ['generator'],
-      'beverage': ['beverage'],
-      'medical': ['medical'],
-      'sanitation': ['sanitation'],
-      'media': ['media'],
-      'barrier': ['barrier'],
-      'tent': ['tent'],
-      'ticketing': ['ticketing'],
-      'decoration': ['decoration'],
-    };
+  // Convert Firebase jobs to ProviderEvent format
+  const convertedRealJobs: ProviderEvent[] = useMemo(() => {
+    if (!realJobs.length) return [];
+    const now = new Date();
+    return realJobs.map(job => ({
+      id: job.id,
+      eventTitle: job.title,
+      eventDate: job.date,
+      eventTime: job.time || '20:00',
+      eventImage: job.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
+      venue: job.venue,
+      location: `${job.city}${job.district ? `, ${job.district}` : ''}`,
+      organizerName: 'Organizatör',
+      organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+      status: job.status === 'completed' ? 'past' : job.status === 'confirmed' ? 'active' : 'planned',
+      serviceType: 'technical' as const,
+      serviceLabel: 'Hizmet',
+      earnings: job.budget || 0,
+      paidAmount: 0,
+      paymentStatus: 'unpaid' as const,
+      daysUntil: Math.max(0, Math.ceil((new Date(job.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+      tasks: { total: 5, completed: 2 },
+      teamSize: 3,
+    }));
+  }, [realJobs]);
 
-    return providerEvents.filter(event => {
-      // Check if event's serviceType matches any of provider's services
-      const mappedTypes = serviceTypeMap[event.serviceType] || [event.serviceType];
-      return providerServices.some(ps =>
-        mappedTypes.includes(ps) || ps === event.serviceType
-      );
-    });
-  }, [providerServices]);
+  // Use real jobs if available, empty for new users
+  const baseEvents = useMemo(() => {
+    return hasRealData ? convertedRealJobs : [];
+  }, [hasRealData, convertedRealJobs]);
+
+  // All events - data comes from Firebase, no filtering needed
+  const serviceFilteredEvents = useMemo(() => {
+    return baseEvents;
+  }, [baseEvents]);
 
   const filteredEvents = useMemo(() => {
     let filtered = serviceFilteredEvents;
@@ -205,7 +207,10 @@ export function ProviderEventsScreen() {
           borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border
         }]}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('ProviderEventDetail', { eventId: event.id })}
+        onPress={() => {
+          console.log('[ProviderEventsScreen] Navigating to event with ID:', event.id);
+          navigation.navigate('ProviderEventDetail', { eventId: event.id });
+        }}
       >
         <View style={styles.eventImageContainer}>
           <OptimizedImage source={event.eventImage} style={styles.eventImage} />

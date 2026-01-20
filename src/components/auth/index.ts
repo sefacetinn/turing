@@ -5,3 +5,4 @@ export { RegistrationProgress } from './RegistrationProgress';
 export { PhoneInput } from './PhoneInput';
 export { OnboardingSlide } from './OnboardingSlide';
 export { OnboardingPagination } from './OnboardingPagination';
+export { PhoneVerificationModal } from './PhoneVerificationModal';

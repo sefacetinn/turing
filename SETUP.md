@@ -1,4 +1,4 @@
-# EventApp Kurulum Rehberi
+# turing Kurulum Rehberi
 
 Bu rehber, uygulamayı production ortamına hazırlamak için gereken adımları içerir.
 
@@ -10,13 +10,13 @@ Bu rehber, uygulamayı production ortamına hazırlamak için gereken adımları
 3. "Proje Ekle" butonuna tıkla
 
 ### Adım 2: Proje Ayarları
-1. Proje adı: `EventApp` veya istediğin bir isim
+1. Proje adı: `turing` veya istediğin bir isim
 2. Google Analytics'i etkinleştir (opsiyonel)
 3. "Proje Oluştur" butonuna tıkla
 
 ### Adım 3: Web Uygulaması Ekle
 1. Proje ana sayfasında `</>` (Web) ikonuna tıkla
-2. Uygulama adı: `EventApp Web`
+2. Uygulama adı: `turing Web`
 3. Firebase Hosting'i şimdilik atlayabilirsin
 4. "Uygulamayı kaydet" butonuna tıkla
 5. Gösterilen `firebaseConfig` değerlerini kopyala
@@ -26,9 +26,9 @@ Proje kök dizinindeki `.env` dosyasını aç ve Firebase değerlerini yapışt�
 
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=AIzaSy...
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=eventapp-xxxxx.firebaseapp.com
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=eventapp-xxxxx
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=eventapp-xxxxx.appspot.com
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=turing-xxxxx.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=turing-xxxxx
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=turing-xxxxx.appspot.com
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
 EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
 ```

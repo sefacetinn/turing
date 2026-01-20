@@ -525,11 +525,12 @@ export const organizerUser = {
   image: coreOrganizers.ORG001.logo,
 };
 
+// Provider user data - will be populated from Firebase auth
 export const providerUser = {
-  name: coreProviders.PROV001.name,
+  name: coreProviders.PROV001?.name || 'Sağlayıcı',
   role: 'Sağlayıcı',
-  subtitle: coreProviders.PROV001.description,
-  image: coreProviders.PROV001.logo,
+  subtitle: coreProviders.PROV001?.description || '',
+  image: coreProviders.PROV001?.logo || '',
 };
 
 // Stats for organizer home

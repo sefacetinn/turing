@@ -140,7 +140,7 @@ export function KeyboardAwareScrollView({
     // Find currently focused input and scroll to it
     const focusedInput = TextInput.State.currentlyFocusedInput?.();
     if (focusedInput) {
-      const nodeHandle = findNodeHandle(focusedInput);
+      const nodeHandle = findNodeHandle(focusedInput as any);
       if (nodeHandle) {
         currentlyFocusedInput.current = nodeHandle;
         scrollToInput(nodeHandle, kbHeight);
@@ -189,7 +189,7 @@ export function KeyboardAwareScrollView({
       // Re-check focused input after keyboard is fully shown
       const focusedInput = TextInput.State.currentlyFocusedInput?.();
       if (focusedInput && isKeyboardVisible) {
-        const nodeHandle = findNodeHandle(focusedInput);
+        const nodeHandle = findNodeHandle(focusedInput as any);
         if (nodeHandle && nodeHandle !== currentlyFocusedInput.current) {
           currentlyFocusedInput.current = nodeHandle;
           scrollToInput(nodeHandle, keyboardHeight);

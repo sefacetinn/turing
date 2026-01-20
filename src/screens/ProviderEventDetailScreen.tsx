@@ -38,7 +38,6 @@ import {
   EventDocument,
   EventDetail,
   mockSchedule,
-  getProviderEventById,
   getTeamByEventId,
   getTasksByEventId,
   getPaymentsByEventId,
@@ -49,6 +48,7 @@ import {
   getDocumentIcon,
   formatFileSize,
 } from '../data/providerEventData';
+import { useEvent } from '../hooks';
 import {
   CheckInStatus,
   getCheckInStatus,
@@ -66,7 +66,7 @@ import { OptimizedImage } from '../components/OptimizedImage';
 // Route params type
 type RootStackParamList = {
   ProviderEventDetail: { eventId: string };
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
 };
 
 type ProviderEventDetailRouteProp = RouteProp<RootStackParamList, 'ProviderEventDetail'>;
@@ -122,6 +122,11 @@ export function ProviderEventDetailScreen() {
 
   // Get eventId from route params
   const eventId = route.params?.eventId || 'pe1';
+  console.log('[ProviderEventDetailScreen] Received eventId from route:', eventId);
+  console.log('[ProviderEventDetailScreen] Full route params:', JSON.stringify(route.params));
+
+  // Fetch event from Firebase
+  const { event: firebaseEvent, loading: eventLoading, error: eventError } = useEvent(eventId);
 
   // State
   const [isLoading, setIsLoading] = useState(true);
@@ -147,28 +152,62 @@ export function ProviderEventDetailScreen() {
   // Rating Modal State
   const [showRatingModal, setShowRatingModal] = useState(false);
 
-  // Load event data
-  const loadEventData = useCallback(async () => {
-    const eventData = getProviderEventById(eventId);
-    if (eventData) {
-      setEvent(eventData);
+  // Convert Firebase event to EventDetail format
+  useEffect(() => {
+    console.log('[ProviderEventDetailScreen] useEffect triggered - firebaseEvent:', firebaseEvent ? 'exists' : 'null', ', loading:', eventLoading);
+    if (firebaseEvent) {
+      console.log('[ProviderEventDetailScreen] Converting firebaseEvent to EventDetail:', firebaseEvent.id, firebaseEvent.title);
+      const eventDetail: EventDetail = {
+        id: firebaseEvent.id,
+        eventTitle: firebaseEvent.title,
+        eventDate: firebaseEvent.date,
+        eventTime: firebaseEvent.time,
+        venue: firebaseEvent.venue,
+        location: `${firebaseEvent.city}${firebaseEvent.district ? `, ${firebaseEvent.district}` : ''}`,
+        image: firebaseEvent.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
+        organizerId: firebaseEvent.organizerId,
+        organizerName: 'Organizatör',
+        organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        organizerPhone: '',
+        role: 'Hizmet Sağlayıcı',
+        category: firebaseEvent.services?.[0]?.category || 'technical',
+        status: firebaseEvent.status === 'completed' ? 'completed' :
+                firebaseEvent.status === 'cancelled' ? 'cancelled' :
+                firebaseEvent.status === 'confirmed' ? 'active' : 'planned',
+        earnings: firebaseEvent.budget || 0,
+        paidAmount: 0,
+        pendingAmount: firebaseEvent.budget || 0,
+        description: firebaseEvent.description || '',
+        teamSize: 1,
+        taskCount: 0,
+        completedTaskCount: 0,
+      };
+      setEvent(eventDetail);
+      // Load mock data for tasks, team, etc. (TODO: fetch from Firebase)
       setTasks(getTasksByEventId(eventId));
       setTeam(getTeamByEventId(eventId));
       setPayments(getPaymentsByEventId(eventId));
       setDocuments(getDocumentsByEventId(eventId));
+    } else if (!eventLoading) {
+      console.log('[ProviderEventDetailScreen] Firebase event is null and loading is false - event not found');
     }
+    setIsLoading(eventLoading);
+  }, [firebaseEvent, eventLoading, eventId]);
 
-    // Load check-in status
-    const status = await getCheckInStatus(eventId);
-    setCheckInStatus(status);
-
-    setIsLoading(false);
-    setRefreshing(false);
+  // Load check-in status
+  useEffect(() => {
+    const loadCheckInStatus = async () => {
+      const status = await getCheckInStatus(eventId);
+      setCheckInStatus(status);
+    };
+    loadCheckInStatus();
   }, [eventId]);
 
-  useEffect(() => {
-    loadEventData();
-  }, [loadEventData]);
+  // Handle refresh
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
 
   // Update working minutes timer
   useEffect(() => {
@@ -205,8 +244,8 @@ export function ProviderEventDetailScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadEventData();
-  }, [loadEventData]);
+    setTimeout(() => setRefreshing(false), 800);
+  }, []);
 
   // Hooks must be called before any early returns
   const taskStats = useMemo(() => {
@@ -240,6 +279,20 @@ export function ProviderEventDetailScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.text }]}>Etkinlik bulunamadı</Text>
+          <Text style={[styles.errorText, { color: colors.textMuted, fontSize: 12, marginTop: 8 }]}>
+            Debug: eventId = {eventId}
+          </Text>
+          <Text style={[styles.errorText, { color: colors.textMuted, fontSize: 12 }]}>
+            firebaseEvent = {firebaseEvent ? 'loaded' : 'null'}
+          </Text>
+          <Text style={[styles.errorText, { color: colors.textMuted, fontSize: 12 }]}>
+            loading = {eventLoading ? 'true' : 'false'}
+          </Text>
+          {eventError && (
+            <Text style={[styles.errorText, { color: colors.error, fontSize: 12 }]}>
+              Error: {eventError}
+            </Text>
+          )}
           <TouchableOpacity
             style={[styles.backToListButton, { backgroundColor: colors.brand[500] }]}
             onPress={() => navigation.goBack()}
@@ -427,7 +480,7 @@ export function ProviderEventDetailScreen() {
         { text: 'İptal', style: 'cancel' },
         {
           text: 'Organizatöre Sor',
-          onPress: () => navigation.navigate('Chat', { chatId: `org_${event.organizerId}`, recipientName: event.organizerName }),
+          onPress: () => navigation.navigate('Chat', { providerId: event.organizerId, providerName: event.organizerName, providerImage: event.organizerImage }),
         },
         {
           text: 'Destek Hattını Ara',
@@ -469,7 +522,7 @@ export function ProviderEventDetailScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${event.eventTitle}\n📅 ${event.eventDate}\n📍 ${event.venue}\n🎯 Rolüm: ${event.role.includes(' - ') ? event.role.split(' - ')[0].trim() : event.role}\n\nTuring ile yönetiyorum.`,
+        message: `${event.eventTitle}\n📅 ${event.eventDate}\n📍 ${event.venue}\n🎯 Rolüm: ${event.role.includes(' - ') ? event.role.split(' - ')[0].trim() : event.role}\n\nturing ile yönetiyorum.`,
         title: event.eventTitle,
       });
     } catch (error) {
@@ -485,7 +538,7 @@ export function ProviderEventDetailScreen() {
       [
         { text: 'Takvime Ekle', onPress: () => Alert.alert('Eklendi', 'Etkinlik takviminize eklendi.') },
         { text: 'Hatırlatıcı Kur', onPress: () => Alert.alert('Ayarlandı', 'Etkinlikten 1 gün önce hatırlatılacak.') },
-        { text: 'Sorun Bildir', onPress: () => navigation.navigate('Chat', { chatId: `org_${event.organizerId}`, recipientName: event.organizerName }) },
+        { text: 'Sorun Bildir', onPress: () => navigation.navigate('Chat', { providerId: event.organizerId, providerName: event.organizerName, providerImage: event.organizerImage }) },
         { text: 'Sözleşmeyi Görüntüle', onPress: () => Alert.alert('Sözleşme', 'Sözleşme dökümanı açılıyor...') },
         { text: 'İptal', style: 'cancel' },
       ]
@@ -870,7 +923,7 @@ export function ProviderEventDetailScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.organizerActionBtn, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}
-              onPress={(e) => { e.stopPropagation(); navigation.navigate('Chat', { chatId: `org_${event.organizerId || '1'}`, recipientName: event.organizerName }); }}
+              onPress={(e) => { e.stopPropagation(); navigation.navigate('Chat', { providerId: event.organizerId, providerName: event.organizerName, providerImage: event.organizerImage }); }}
             >
               <Ionicons name="chatbubble" size={16} color={colors.brand[400]} />
             </TouchableOpacity>

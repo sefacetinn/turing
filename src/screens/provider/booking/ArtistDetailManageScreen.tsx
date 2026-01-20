@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Linking,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../../../components/OptimizedImage';
@@ -15,15 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
-import {
-  Artist,
-  getArtistById,
-  getArtistRiderStatus,
-  getArtistContracts,
-  crewRoleLabels,
-  riderTypeLabels,
-} from '../../../data/provider/artistData';
-import { RiderCard, CrewMemberItem, RiderStatusBadge } from '../../../components/artist';
+import { useArtist } from '../../../hooks';
 
 type TabType = 'general' | 'crew' | 'riders' | 'shows' | 'contracts';
 
@@ -38,15 +30,21 @@ export function ArtistDetailManageScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('general');
 
   const artistId = route.params?.artistId;
-  const artist = useMemo(() => getArtistById(artistId), [artistId]);
-  const riderStatus = useMemo(
-    () => (artist ? getArtistRiderStatus(artist) : null),
-    [artist]
-  );
-  const contracts = useMemo(
-    () => (artist ? getArtistContracts(artist.id) : []),
-    [artist]
-  );
+  const { artist, loading: artistLoading } = useArtist(artistId);
+
+
+  if (artistLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.errorContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.errorText, { color: colors.textMuted, marginTop: 16 }]}>
+            Yükleniyor...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!artist) {
     return (
@@ -54,13 +52,13 @@ export function ArtistDetailManageScreen() {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={colors.textSecondary} />
           <Text style={[styles.errorText, { color: colors.text }]}>
-            Sanatci bulunamadi
+            Sanatçı bulunamadı
           </Text>
           <TouchableOpacity
             style={[styles.backButtonError, { backgroundColor: colors.primary }]}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>Geri Don</Text>
+            <Text style={styles.backButtonText}>Geri Dön</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -123,27 +121,27 @@ export function ArtistDetailManageScreen() {
       {/* Bio Section */}
       <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Biyografi</Text>
-        <Text style={[styles.bioText, { color: colors.textSecondary }]}>{artist.bio}</Text>
+        <Text style={[styles.bioText, { color: colors.textSecondary }]}>{artist.bio || 'Henüz biyografi eklenmemiş'}</Text>
       </View>
 
       {/* Stats Section */}
       <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Istatistikler</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>İstatistikler</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statBox}>
-            <Ionicons name="people" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>{artist.stats.followers}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Takipci</Text>
+            <Ionicons name="star" size={24} color={colors.primary} />
+            <Text style={[styles.statValue, { color: colors.text }]}>{artist.rating || 0}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Puan</Text>
           </View>
           <View style={styles.statBox}>
-            <Ionicons name="headset" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>{artist.stats.monthlyListeners}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Aylik Dinleyici</Text>
+            <Ionicons name="chatbubbles" size={24} color={colors.primary} />
+            <Text style={[styles.statValue, { color: colors.text }]}>{artist.reviewCount || 0}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Değerlendirme</Text>
           </View>
           <View style={styles.statBox}>
             <Ionicons name="musical-notes" size={24} color={colors.primary} />
-            <Text style={[styles.statValue, { color: colors.text }]}>{artist.stats.totalShows}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Toplam Gosteri</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{artist.totalShows || 0}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Toplam Gösteri</Text>
           </View>
         </View>
       </View>
@@ -151,41 +149,46 @@ export function ArtistDetailManageScreen() {
       {/* Price Range */}
       <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Fiyat Araligi</Text>
-        <Text style={[styles.priceText, { color: colors.text }]}>{artist.priceRange}</Text>
+        <Text style={[styles.priceText, { color: colors.text }]}>{artist.priceRange || 'Belirtilmemiş'}</Text>
       </View>
 
       {/* Social Media */}
       <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Sosyal Medya</Text>
         <View style={styles.socialLinks}>
-          {artist.socialMedia.instagram && (
+          {artist.socialMedia?.instagram && (
             <TouchableOpacity
               style={[styles.socialButton, { backgroundColor: '#E4405F20' }]}
-              onPress={() => handleSocialLink('instagram', artist.socialMedia.instagram)}
+              onPress={() => handleSocialLink('instagram', artist.socialMedia?.instagram)}
             >
               <Ionicons name="logo-instagram" size={24} color="#E4405F" />
               <Text style={[styles.socialText, { color: '#E4405F' }]}>
-                {artist.socialMedia.instagram}
+                {artist.socialMedia?.instagram}
               </Text>
             </TouchableOpacity>
           )}
-          {artist.socialMedia.spotify && (
+          {artist.socialMedia?.spotify && (
             <TouchableOpacity
               style={[styles.socialButton, { backgroundColor: '#1DB95420' }]}
-              onPress={() => handleSocialLink('spotify', artist.socialMedia.spotify)}
+              onPress={() => handleSocialLink('spotify', artist.socialMedia?.spotify)}
             >
               <Ionicons name="logo-tiktok" size={24} color="#1DB954" />
               <Text style={[styles.socialText, { color: '#1DB954' }]}>Spotify</Text>
             </TouchableOpacity>
           )}
-          {artist.socialMedia.youtube && (
+          {artist.socialMedia?.youtube && (
             <TouchableOpacity
               style={[styles.socialButton, { backgroundColor: '#FF000020' }]}
-              onPress={() => handleSocialLink('youtube', artist.socialMedia.youtube)}
+              onPress={() => handleSocialLink('youtube', artist.socialMedia?.youtube)}
             >
               <Ionicons name="logo-youtube" size={24} color="#FF0000" />
               <Text style={[styles.socialText, { color: '#FF0000' }]}>YouTube</Text>
             </TouchableOpacity>
+          )}
+          {!artist.socialMedia?.instagram && !artist.socialMedia?.spotify && !artist.socialMedia?.youtube && (
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Sosyal medya bilgisi eklenmemiş
+            </Text>
           )}
         </View>
       </View>
@@ -194,263 +197,69 @@ export function ArtistDetailManageScreen() {
 
   const renderCrewTab = () => (
     <View style={styles.tabContent}>
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionHeaderTitle, { color: colors.text }]}>
-          Ekip Uyeleri ({artist.crew.length})
+      <Text style={[styles.sectionHeaderTitle, { color: colors.text, marginBottom: 16 }]}>
+        Ekip Üyeleri
+      </Text>
+      <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
+        <Ionicons name="people-outline" size={40} color={colors.textSecondary} />
+        <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
+          Henüz ekip üyesi eklenmemiş
         </Text>
-        <TouchableOpacity
-          style={[styles.addButtonSmall, { backgroundColor: colors.primary + '20' }]}
-          onPress={() => navigation.navigate('CrewManagement', { artistId: artist.id })}
-        >
-          <Ionicons name="add" size={20} color={colors.primary} />
-          <Text style={[styles.addButtonText, { color: colors.primary }]}>Ekle</Text>
-        </TouchableOpacity>
+        <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
+          Ekip yönetimi yakında eklenecek
+        </Text>
       </View>
-
-      {artist.crew.length > 0 ? (
-        artist.crew.map((member) => (
-          <CrewMemberItem
-            key={member.id}
-            member={member}
-            onEdit={() => navigation.navigate('CrewManagement', { artistId: artist.id, memberId: member.id })}
-            onDelete={() => Alert.alert('Sil', `${member.name} silinsin mi?`)}
-          />
-        ))
-      ) : (
-        <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
-          <Ionicons name="people-outline" size={40} color={colors.textSecondary} />
-          <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
-            Henuz ekip uyesi eklenmemis
-          </Text>
-          <TouchableOpacity
-            style={[styles.emptyAddButton, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('CrewManagement', { artistId: artist.id })}
-          >
-            <Ionicons name="add" size={18} color="white" />
-            <Text style={styles.emptyAddButtonText}>Ekip Uyesi Ekle</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 
-  const renderRidersTab = () => {
-    const riderTypes: Array<'technical' | 'transport' | 'accommodation' | 'backstage'> = [
-      'technical',
-      'transport',
-      'accommodation',
-      'backstage',
-    ];
-
-    return (
-      <View style={styles.tabContent}>
-        <View style={styles.riderSummary}>
-          <View style={styles.riderSummaryLeft}>
-            <Text style={[styles.riderSummaryTitle, { color: colors.text }]}>
-              Rider Durumu
-            </Text>
-            <Text style={[styles.riderSummarySubtitle, { color: colors.textSecondary }]}>
-              {riderStatus?.completionRate}% tamamlandi
-            </Text>
-          </View>
-          <View style={styles.riderBadgesRow}>
-            {riderTypes.map((type) => (
-              <RiderStatusBadge
-                key={type}
-                type={type}
-                isComplete={riderStatus?.[type] || false}
-                showLabel={false}
-                size="medium"
-              />
-            ))}
-          </View>
-        </View>
-
-        {riderTypes.map((type) => {
-          const rider = artist.riders[type];
-          const document = artist.riderDocuments.find((d) => d.type === type);
-
-          return (
-            <RiderCard
-              key={type}
-              type={type}
-              rider={rider}
-              document={document}
-              onPress={() => navigation.navigate('EditRider', { artistId: artist.id, riderType: type })}
-              onEdit={() => navigation.navigate('EditRider', { artistId: artist.id, riderType: type })}
-            />
-          );
-        })}
+  const renderRidersTab = () => (
+    <View style={styles.tabContent}>
+      <Text style={[styles.sectionHeaderTitle, { color: colors.text, marginBottom: 16 }]}>
+        Rider'lar
+      </Text>
+      <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
+        <Ionicons name="document-text-outline" size={40} color={colors.textSecondary} />
+        <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
+          Henüz rider eklenmemiş
+        </Text>
+        <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
+          Rider yönetimi yakında eklenecek
+        </Text>
       </View>
-    );
-  };
+    </View>
+  );
 
   const renderShowsTab = () => (
     <View style={styles.tabContent}>
-      {/* Upcoming Shows */}
-      <Text style={[styles.sectionHeaderTitle, { color: colors.text, marginBottom: 12 }]}>
-        Yaklasan Gosteriler ({artist.upcomingShows.length})
+      <Text style={[styles.sectionHeaderTitle, { color: colors.text, marginBottom: 16 }]}>
+        Gösteriler
       </Text>
-      {artist.upcomingShows.length > 0 ? (
-        artist.upcomingShows.map((show) => (
-          <View
-            key={show.id}
-            style={[styles.showCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          >
-            <View style={styles.showHeader}>
-              <View
-                style={[
-                  styles.showStatusBadge,
-                  {
-                    backgroundColor:
-                      show.status === 'confirmed' ? '#10B98120' : '#F59E0B20',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.showStatusText,
-                    { color: show.status === 'confirmed' ? '#10B981' : '#F59E0B' },
-                  ]}
-                >
-                  {show.status === 'confirmed' ? 'Onaylandi' : 'Bekliyor'}
-                </Text>
-              </View>
-              <Text style={[styles.showFee, { color: colors.text }]}>
-                {show.fee.toLocaleString('tr-TR')} TL
-              </Text>
-            </View>
-            <Text style={[styles.showName, { color: colors.text }]}>{show.eventName}</Text>
-            <View style={styles.showDetails}>
-              <View style={styles.showDetailItem}>
-                <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                <Text style={[styles.showDetailText, { color: colors.textSecondary }]}>
-                  {show.venue}, {show.city}
-                </Text>
-              </View>
-              <View style={styles.showDetailItem}>
-                <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                <Text style={[styles.showDetailText, { color: colors.textSecondary }]}>
-                  {show.date}
-                </Text>
-              </View>
-            </View>
-          </View>
-        ))
-      ) : (
-        <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
-          <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
-          <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
-            Yaklasan gosteri yok
-          </Text>
-        </View>
-      )}
-
-      {/* Past Shows */}
-      {artist.pastShows.length > 0 && (
-        <>
-          <Text
-            style={[styles.sectionHeaderTitle, { color: colors.text, marginTop: 24, marginBottom: 12 }]}
-          >
-            Gecmis Gosteriler ({artist.pastShows.length})
-          </Text>
-          {artist.pastShows.map((show) => (
-            <View
-              key={show.id}
-              style={[
-                styles.showCard,
-                { backgroundColor: colors.surface, borderColor: colors.border, opacity: 0.7 },
-              ]}
-            >
-              <Text style={[styles.showName, { color: colors.text }]}>{show.eventName}</Text>
-              <View style={styles.showDetails}>
-                <View style={styles.showDetailItem}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.showDetailText, { color: colors.textSecondary }]}>
-                    {show.venue}, {show.city}
-                  </Text>
-                </View>
-                <View style={styles.showDetailItem}>
-                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.showDetailText, { color: colors.textSecondary }]}>
-                    {show.date}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </>
-      )}
+      <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
+        <Ionicons name="calendar-outline" size={40} color={colors.textSecondary} />
+        <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
+          Henüz gösteri kaydı yok
+        </Text>
+        <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
+          Gösteri yönetimi yakında eklenecek
+        </Text>
+      </View>
     </View>
   );
 
   const renderContractsTab = () => (
     <View style={styles.tabContent}>
-      <Text style={[styles.sectionHeaderTitle, { color: colors.text, marginBottom: 12 }]}>
-        Sozlesmeler ({contracts.length})
+      <Text style={[styles.sectionHeaderTitle, { color: colors.text, marginBottom: 16 }]}>
+        Sözleşmeler
       </Text>
-      {contracts.length > 0 ? (
-        contracts.map((contract) => {
-          const getContractStatusInfo = () => {
-            switch (contract.status) {
-              case 'draft':
-                return { label: 'Taslak', color: '#9CA3AF' };
-              case 'sent':
-                return { label: 'Gonderildi', color: '#F59E0B' };
-              case 'signed':
-                return { label: 'Imzalandi', color: '#10B981' };
-              case 'completed':
-                return { label: 'Tamamlandi', color: '#6366F1' };
-              default:
-                return { label: contract.status, color: colors.textSecondary };
-            }
-          };
-
-          const statusInfo = getContractStatusInfo();
-
-          return (
-            <View
-              key={contract.id}
-              style={[styles.contractCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <View style={styles.contractHeader}>
-                <View
-                  style={[styles.contractStatusBadge, { backgroundColor: statusInfo.color + '20' }]}
-                >
-                  <Text style={[styles.contractStatusText, { color: statusInfo.color }]}>
-                    {statusInfo.label}
-                  </Text>
-                </View>
-                <Text style={[styles.contractFee, { color: colors.text }]}>
-                  {contract.fee.toLocaleString('tr-TR')} TL
-                </Text>
-              </View>
-              <Text style={[styles.contractName, { color: colors.text }]}>{contract.eventName}</Text>
-              <View style={styles.contractDetails}>
-                <View style={styles.contractDetailItem}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.contractDetailText, { color: colors.textSecondary }]}>
-                    {contract.venue}
-                  </Text>
-                </View>
-                <View style={styles.contractDetailItem}>
-                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.contractDetailText, { color: colors.textSecondary }]}>
-                    {contract.eventDate}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          );
-        })
-      ) : (
-        <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
-          <Ionicons name="document-outline" size={40} color={colors.textSecondary} />
-          <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
-            Henuz sozlesme yok
-          </Text>
-        </View>
-      )}
+      <View style={[styles.emptySection, { backgroundColor: colors.surface }]}>
+        <Ionicons name="document-outline" size={40} color={colors.textSecondary} />
+        <Text style={[styles.emptySectionText, { color: colors.textSecondary }]}>
+          Henüz sözleşme yok
+        </Text>
+        <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
+          Sözleşme yönetimi yakında eklenecek
+        </Text>
+      </View>
     </View>
   );
 
@@ -475,7 +284,7 @@ export function ArtistDetailManageScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header with Cover Image */}
       <View style={styles.headerContainer}>
-        <OptimizedImage source={artist.coverImage} style={styles.coverImage} />
+        <OptimizedImage source={artist.image || 'https://via.placeholder.com/400x300'} style={styles.coverImage} />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.8)']}
           style={styles.coverGradient}
@@ -502,7 +311,7 @@ export function ArtistDetailManageScreen() {
         </TouchableOpacity>
 
         <View style={styles.artistInfoOverlay}>
-          <OptimizedImage source={artist.image} style={styles.artistImageLarge} />
+          <OptimizedImage source={artist.image || 'https://via.placeholder.com/100x100'} style={styles.artistImageLarge} />
           <View style={styles.artistInfoText}>
             <Text style={styles.artistNameLarge}>{artist.stageName || artist.name}</Text>
             {artist.stageName && (
@@ -722,6 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   socialText: { fontSize: 14, fontWeight: '500' },
+  emptyText: { fontSize: 14, textAlign: 'center' as const },
 
   riderSummary: {
     flexDirection: 'row',
@@ -742,7 +552,8 @@ const styles = StyleSheet.create({
     padding: 32,
     borderRadius: 12,
   },
-  emptySectionText: { fontSize: 14, marginTop: 12, marginBottom: 16 },
+  emptySectionText: { fontSize: 14, marginTop: 12 },
+  emptySubtext: { fontSize: 12, marginTop: 4, textAlign: 'center' as const },
   emptyAddButton: {
     flexDirection: 'row',
     alignItems: 'center',

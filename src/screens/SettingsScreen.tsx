@@ -436,7 +436,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
 
         {/* App Version */}
         <View style={styles.versionContainer}>
-          <Text style={dynamicStyles.versionText}>Turing v1.0.0</Text>
+          <Text style={dynamicStyles.versionText}>turing v1.0.0</Text>
           <Text style={dynamicStyles.versionSubtext}>Build 2024.1</Text>
         </View>
 

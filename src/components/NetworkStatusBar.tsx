@@ -17,7 +17,9 @@ export function NetworkStatusBar() {
   const isDark = colorScheme === 'dark';
   const translateY = useRef(new Animated.Value(-100)).current;
 
-  const isOffline = isConnected === false || isInternetReachable === false;
+  // Only show offline banner when definitely not connected
+  // isInternetReachable can be null or false in simulators even with working connection
+  const isOffline = isConnected === false;
 
   useEffect(() => {
     Animated.spring(translateY, {

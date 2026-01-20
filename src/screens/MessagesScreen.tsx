@@ -15,10 +15,27 @@ import { OptimizedImage } from '../components/OptimizedImage';
 import { darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
-import { getConversationList } from '../data/messagesData';
+// No mock data imports - conversations come from Firebase
+import { useAuth } from '../context/AuthContext';
+import { useConversations, type FirestoreConversation } from '../hooks';
 
 // Default colors for static styles (dark theme)
 const colors = defaultColors;
+
+// Helper to format conversation time
+const formatConversationTime = (date: Date): string => {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'Şimdi';
+  if (minutes < 60) return `${minutes}dk`;
+  if (hours < 24) return `${hours}s`;
+  if (days < 7) return `${days}g`;
+  return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+};
 
 type MessageTab = 'all' | 'unread' | 'archived';
 
@@ -26,18 +43,54 @@ interface MessagesScreenProps {
   isProviderMode: boolean;
 }
 
-// Get initial conversations from data file
-const initialConversations = getConversationList();
-
 export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<MessageTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [conversations, setConversations] = useState(initialConversations);
-  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Auth & Data hooks
+  const { user } = useAuth();
+  const { conversations: realConversations, loading: conversationsLoading } = useConversations(user?.uid);
+
+  // Check if user has real data
+  const hasRealData = user && realConversations.length > 0;
+  const isNewUser = user && !conversationsLoading && realConversations.length === 0;
+
+  // Convert Firebase conversations to local format
+  const convertedRealConversations = useMemo(() => {
+    if (!realConversations.length) return [];
+    return realConversations.map(c => {
+      const otherParticipantId = c.participantIds.find(id => id !== user?.uid) || '';
+      const otherParticipantName = c.participantNames[otherParticipantId] || 'Kullanıcı';
+      const otherParticipantImage = c.participantImages[otherParticipantId] || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200';
+      return {
+        id: c.id,
+        name: otherParticipantName,
+        avatar: otherParticipantImage,
+        message: c.lastMessage,
+        time: formatConversationTime(c.lastMessageAt),
+        unread: c.unreadCount[user?.uid || ''] || 0,
+        archived: false, // TODO: Add archived field to Firestore
+      };
+    });
+  }, [realConversations, user?.uid]);
+
+  // Use real conversations for logged-in users, empty for new users
+  const baseConversations = useMemo(() => {
+    if (hasRealData) return convertedRealConversations;
+    return []; // Empty for new users
+  }, [hasRealData, convertedRealConversations]);
+
+  const [conversations, setConversations] = useState(baseConversations);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Update local conversations when base changes
+  useEffect(() => {
+    setConversations(baseConversations);
+  }, [baseConversations]);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -57,13 +110,18 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
     return unsubscribe;
   }, []);
 
-  // Simulate initial loading
+  // Loading state - use real loading for logged-in users, simulate for demo
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, []);
+    if (user) {
+      setIsLoading(conversationsLoading);
+    } else {
+      // Demo mode - simulate loading
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [user, conversationsLoading]);
 
   // Handle long press on conversation
   const handleLongPress = (chat: typeof conversations[0]) => {

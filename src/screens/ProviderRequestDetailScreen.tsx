@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,10 +20,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
-import { providerOffers } from '../data/offersData';
+import { useOffer, respondToOfferRequest, sendCounterOffer } from '../hooks';
+import { useAuth } from '../context/AuthContext';
 import { OfferTimeline } from '../components/offers/OfferTimeline';
+import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions } from '../data/createEventData';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+
+// Helper to get label from option arrays
+const getOptionLabel = (options: { id: string; label: string }[], id: string | undefined): string | null => {
+  if (!id) return null;
+  return options.find(o => o.id === id)?.label || null;
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -108,9 +116,60 @@ export function ProviderRequestDetailScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
-  const { offerId } = (route.params as { offerId: string }) || { offerId: 'po_book_2' };
+  const { user } = useAuth();
+  const { offerId } = (route.params as { offerId: string } | undefined) || { offerId: '' };
 
-  const offer = providerOffers.find(o => o.id === offerId) || providerOffers.find(o => o.serviceCategory === 'booking') || providerOffers[0];
+  // Fetch offer from Firebase
+  const { offer: firebaseOffer, loading: isLoading } = useOffer(offerId);
+
+  // Convert Firebase offer to local format
+  const offer = useMemo(() => {
+    if (!firebaseOffer) return null;
+
+    return {
+      id: firebaseOffer.id,
+      eventId: firebaseOffer.eventId,
+      eventTitle: firebaseOffer.eventTitle || 'Etkinlik',
+      eventDate: firebaseOffer.eventDate || '',
+      location: firebaseOffer.eventCity || '',
+      serviceCategory: firebaseOffer.serviceCategory || 'booking',
+      artistId: firebaseOffer.artistId,
+      artistName: firebaseOffer.artistName || '',
+      artistImage: firebaseOffer.artistImage,
+      role: firebaseOffer.artistName || firebaseOffer.serviceCategory || 'Hizmet',
+      status: firebaseOffer.status,
+      amount: firebaseOffer.amount || 0,
+      organizer: {
+        id: firebaseOffer.organizerId,
+        name: firebaseOffer.organizerName || 'Organizatör',
+        image: firebaseOffer.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        rating: 4.5,
+        reviewCount: 0,
+        phone: firebaseOffer.organizerPhone || '',
+      },
+      notes: firebaseOffer.notes || firebaseOffer.message || '',
+      counterOffer: firebaseOffer.counterAmount ? {
+        amount: firebaseOffer.counterAmount,
+        message: firebaseOffer.counterMessage,
+        by: firebaseOffer.counterBy,
+        at: firebaseOffer.counterAt,
+      } : null,
+      rejectionReason: firebaseOffer.responseMessage,
+      rejectedAt: firebaseOffer.status === 'rejected' ? firebaseOffer.updatedAt?.toLocaleDateString('tr-TR') : undefined,
+      history: [] as Array<{ type: string; by: string; date: string; amount?: number }>,
+      createdAt: firebaseOffer.createdAt,
+      validUntil: firebaseOffer.validUntil,
+      eventVenue: firebaseOffer.formData?.venue || '',
+      eventDistrict: firebaseOffer.formData?.district || '',
+      eventGuestCount: firebaseOffer.formData?.guestCount || '',
+      eventAgeLimit: firebaseOffer.formData?.ageLimit || '',
+      eventSeatingType: firebaseOffer.formData?.seatingType || '',
+      eventIndoorOutdoor: firebaseOffer.formData?.indoorOutdoor || '',
+      eventTime: firebaseOffer.formData?.time || '',
+      formData: firebaseOffer.formData,
+      requestedBudget: firebaseOffer.requestedBudget || '',
+    };
+  }, [firebaseOffer]);
 
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [showVenueModal, setShowVenueModal] = useState(false);
@@ -169,230 +228,84 @@ export function ProviderRequestDetailScreen() {
     ));
   };
 
-  // Venue info varies based on event
-  const getVenueInfo = (): VenueInfo => {
-    const venues: Record<string, VenueInfo> = {
-      'po_book_1': {
-        id: 'v1',
-        name: 'Volkswagen Arena',
-        address: 'Huzur Mah. Maslak Ayazağa Cad. No:4',
-        city: 'İstanbul',
-        district: 'Sarıyer',
-        capacity: 5000,
-        indoorOutdoor: 'indoor',
-        venueType: 'arena',
-        stageWidth: 18,
-        stageDepth: 12,
-        stageHeight: 8,
-        backstage: {
-          hasBackstage: true,
-          roomCount: 4,
-          hasMirror: true,
-          hasShower: true,
-          hasPrivateToilet: true,
-          cateringAvailable: true,
-          notes: 'Ana kulis + 3 sanatçı odası',
-        },
-        hasSoundSystem: true,
-        hasLightingSystem: true,
-        hasParkingArea: true,
-        parkingCapacity: 500,
-        images: [
-          'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
-          'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800',
-        ],
-        contactName: 'Mehmet Yılmaz',
-        contactPhone: '+90 212 999 00 00',
-        rating: 4.8,
-        reviewCount: 127,
-      },
-      'po_book_2': {
-        id: 'v2',
-        name: 'The Ritz-Carlton Istanbul',
-        address: 'Süzer Plaza, Askerocağı Cad. No:6',
-        city: 'İstanbul',
-        district: 'Şişli',
-        capacity: 800,
-        indoorOutdoor: 'indoor',
-        venueType: 'hotel_ballroom',
-        halls: [
-          { id: 'h1', name: 'Grand Ballroom', capacity: 800, seatingType: 'seated', stageWidth: 10, stageDepth: 6, isMainHall: true },
-          { id: 'h2', name: 'Salon A', capacity: 200, seatingType: 'seated', stageWidth: 6, stageDepth: 4 },
-          { id: 'h3', name: 'Salon B', capacity: 150, seatingType: 'seated', stageWidth: 5, stageDepth: 3 },
-        ],
-        selectedHallId: 'h1',
-        backstage: {
-          hasBackstage: true,
-          roomCount: 2,
-          hasMirror: true,
-          hasShower: false,
-          hasPrivateToilet: true,
-          cateringAvailable: true,
-          notes: 'VIP hazırlık odası mevcut',
-        },
-        hasSoundSystem: true,
-        hasLightingSystem: true,
-        hasParkingArea: true,
-        parkingCapacity: 200,
-        images: [
-          'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800',
-          'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800',
-        ],
-        contactName: 'Ayşe Kaya',
-        contactPhone: '+90 212 334 44 44',
-        rating: 4.9,
-        reviewCount: 89,
-      },
-      'po_book_3': {
-        id: 'v3',
-        name: 'Harbiye Cemil Topuzlu Açıkhava',
-        address: 'Taşkışla Cad. Harbiye',
-        city: 'İstanbul',
-        district: 'Şişli',
-        capacity: 4500,
-        indoorOutdoor: 'outdoor',
-        venueType: 'open_air',
-        stageWidth: 20,
-        stageDepth: 14,
-        stageHeight: 10,
-        backstage: {
-          hasBackstage: true,
-          roomCount: 6,
-          hasMirror: true,
-          hasShower: true,
-          hasPrivateToilet: true,
-          cateringAvailable: true,
-          notes: 'Tarihi kulis alanı, klimalı odalar',
-        },
-        hasSoundSystem: true,
-        hasLightingSystem: true,
-        hasParkingArea: false,
-        images: [
-          'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-          'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-        ],
-        contactName: 'CRR Organizasyon',
-        contactPhone: '+90 212 231 54 98',
-        rating: 4.7,
-        reviewCount: 234,
-      },
-      'default': {
-        id: 'v4',
-        name: 'Zorlu PSM Ana Salon',
-        address: 'Zorlu Center, Levazım Mah.',
-        city: 'İstanbul',
-        district: 'Beşiktaş',
-        capacity: 2200,
-        indoorOutdoor: 'indoor',
-        venueType: 'concert_hall',
-        halls: [
-          { id: 'z1', name: 'Ana Salon', capacity: 2200, seatingType: 'seated', stageWidth: 16, stageDepth: 10, stageHeight: 12, isMainHall: true },
-          { id: 'z2', name: 'Studio', capacity: 750, seatingType: 'mixed', stageWidth: 12, stageDepth: 8 },
-          { id: 'z3', name: 'Drama Sahnesi', capacity: 400, seatingType: 'seated', stageWidth: 10, stageDepth: 8 },
-        ],
-        selectedHallId: 'z1',
-        backstage: {
-          hasBackstage: true,
-          roomCount: 8,
-          hasMirror: true,
-          hasShower: true,
-          hasPrivateToilet: true,
-          cateringAvailable: true,
-          notes: 'Profesyonel backstage, özel asansör',
-        },
-        hasSoundSystem: true,
-        hasLightingSystem: true,
-        hasParkingArea: true,
-        parkingCapacity: 2500,
-        images: [
-          'https://images.unsplash.com/photo-1478147427282-58a87a120781?w=800',
-          'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800',
-        ],
-        contactName: 'Zorlu PSM',
-        contactPhone: '+90 850 222 67 68',
-        rating: 4.9,
-        reviewCount: 312,
-      },
-    };
-    return venues[offer.id] || venues['default'];
+  // Early return for loading state
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#09090B' : '#F8FAFC' }]}>
+        <View style={[styles.header, {
+          paddingTop: insets.top,
+          backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+          borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'
+        }]}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Talep Detayı</Text>
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.textSecondary }}>Yükleniyor...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Early return for null offer
+  if (!offer) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#09090B' : '#F8FAFC' }]}>
+        <View style={[styles.header, {
+          paddingTop: insets.top,
+          backgroundColor: isDark ? '#18181B' : '#FFFFFF',
+          borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'
+        }]}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Talep Detayı</Text>
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginTop: 12 }}>Teklif Bulunamadı</Text>
+          <Text style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 8 }}>Bu teklif artık mevcut değil veya silinmiş olabilir.</Text>
+          <TouchableOpacity
+            style={{ marginTop: 20, backgroundColor: colors.brand?.[500] || '#8B5CF6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={{ color: 'white', fontWeight: '600' }}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Venue info from event data
+  const venueInfo: VenueInfo | null = (!offer.eventVenue && !offer.location) ? null : {
+    id: offer.eventId || '',
+    name: offer.eventVenue || '',
+    address: offer.formData?.venueAddress || '',
+    city: offer.location || '',
+    district: offer.eventDistrict || '',
+    capacity: offer.eventGuestCount ? parseInt(offer.eventGuestCount) : 0,
+    indoorOutdoor: (offer.eventIndoorOutdoor as 'indoor' | 'outdoor' | 'mixed') || 'indoor',
+    venueType: 'other' as const,
   };
 
-  const venueInfo = getVenueInfo();
-
-  // Event details vary based on offer
-  const getEventDetails = (): EventDetails => {
-    const details: Record<string, EventDetails> = {
-      'po_book_1': {
-        ageLimit: '+18',
-        participantType: 'Genel Katılım',
-        concertTime: '21:00',
-        eventDuration: '120 dakika',
-        images: [
-          'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
-          'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
-          'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
-        ],
-        socialMedia: {
-          instagram: '@volkswagenarena',
-          twitter: '@vikiparc',
-          website: 'www.volkswagenarena.com.tr',
-        },
-      },
-      'po_book_2': {
-        ageLimit: 'Tüm Yaşlar',
-        participantType: 'Davetli',
-        concertTime: '22:30',
-        eventDuration: '90 dakika',
-        images: [
-          'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800',
-          'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800',
-          'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800',
-        ],
-        socialMedia: {
-          instagram: '@tusiadevents',
-          website: 'www.tusiad.org',
-        },
-      },
-      'po_book_3': {
-        ageLimit: '+16',
-        participantType: 'Biletli',
-        concertTime: '21:30',
-        eventDuration: '105 dakika',
-        images: [
-          'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-          'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-          'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800',
-        ],
-        socialMedia: {
-          instagram: '@harbiyeacik',
-          twitter: '@harbiyesahnesi',
-          website: 'www.harbiyeacikhava.com',
-        },
-      },
-      'default': {
-        ageLimit: '+18',
-        participantType: 'Genel Katılım',
-        concertTime: '21:00',
-        eventDuration: '90 dakika',
-        images: [
-          'https://images.unsplash.com/photo-1478147427282-58a87a120781?w=800',
-          'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800',
-          'https://images.unsplash.com/photo-1598387993441-a364f854c3e1?w=800',
-        ],
-        socialMedia: {
-          instagram: '@zorlupsm',
-          twitter: '@ZorluPSM',
-          website: 'www.zorlupsm.com',
-        },
-      },
-    };
-    return details[offer.id] || details['default'];
+  // Event details from offer
+  const eventDetails: EventDetails = {
+    ageLimit: offer.eventAgeLimit ? getOptionLabel(ageLimitOptions, offer.eventAgeLimit) || offer.eventAgeLimit : '',
+    participantType: '',
+    concertTime: offer.eventTime || '',
+    eventDuration: offer.formData?.duration || '',
+    images: [],
+    socialMedia: {},
   };
 
-  const eventDetails = getEventDetails();
-
-  // Budget - can be null if organizer didn't provide
-  const organizerBudget: number | null = offer.serviceCategory === 'booking' ? 350000 : null;
+  // Budget from organizer's request
+  const organizerBudget: number | null = offer.requestedBudget
+    ? parseInt(offer.requestedBudget.replace(/\D/g, ''), 10) || null
+    : null;
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -435,7 +348,7 @@ export function ProviderRequestDetailScreen() {
     }
   };
 
-  const handleSubmitOffer = () => {
+  const handleSubmitOffer = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const amount = parseInt(offerAmount.replace(/\./g, ''));
     if (!amount || amount <= 0) {
@@ -443,13 +356,33 @@ export function ProviderRequestDetailScreen() {
       Alert.alert('Hata', 'Lütfen geçerli bir tutar girin');
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowOfferModal(false);
-    Alert.alert(
-      'Teklif Gönderildi',
-      `₺${amount.toLocaleString('tr-TR')} tutarındaki teklifiniz organizatöre iletildi.`,
-      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
-    );
+
+    try {
+      // Check if this is the first quote (status is 'pending') or a counter offer
+      const isFirstQuote = firebaseOffer?.status === 'pending';
+
+      if (isFirstQuote) {
+        // Provider's first response to organizer's request
+        await respondToOfferRequest(offerId, amount, offerNote || undefined);
+      } else {
+        // This is a counter offer in an ongoing negotiation
+        await sendCounterOffer(offerId, amount, 'provider', offerNote || undefined);
+      }
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowOfferModal(false);
+      setOfferAmount('');
+      setOfferNote('');
+      Alert.alert(
+        'Teklif Gönderildi',
+        `₺${amount.toLocaleString('tr-TR')} tutarındaki teklifiniz organizatöre iletildi.`,
+        [{ text: 'Tamam' }]
+      );
+    } catch (error) {
+      console.error('Error submitting offer:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Teklif gönderilirken bir hata oluştu.');
+    }
   };
 
   const handleAcceptCounterOffer = () => {

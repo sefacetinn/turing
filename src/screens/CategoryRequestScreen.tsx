@@ -9,6 +9,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,17 +19,19 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useUserEvents, useProviderArtists, createOfferRequest, type FirestoreArtist } from '../hooks';
 import { SelectionChips, SwitchRow, FormSection, InputLabel } from '../components/categoryRequest';
 import { CalendarPickerModal } from '../components/createEvent';
-import { categoryConfig, userEvents, categoryOptions } from '../data/categoryRequestData';
-import {
-  mockArtists,
-  getArtistById,
-  getArtistRiderStatus,
-  riderTypeLabels,
-  RiderDocument,
-} from '../data/provider/artistData';
+import { categoryConfig, categoryOptions } from '../data/categoryRequestData';
 import { draftRequests, getDraftById } from '../data/offersData';
+import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions } from '../data/createEventData';
+
+// Helper to get label from option arrays
+const getOptionLabel = (options: { id: string; label: string }[], id: string | undefined): string | null => {
+  if (!id) return null;
+  return options.find(o => o.id === id)?.label || null;
+};
 
 export function CategoryRequestScreen() {
   const navigation = useNavigation<any>();
@@ -40,12 +43,39 @@ export function CategoryRequestScreen() {
     draftId?: string;
   }) || { category: 'booking' };
   const { colors, isDark, helpers } = useTheme();
+  const { user } = useAuth();
+
+  // Fetch user's events from Firebase
+  const { events: firebaseEvents, loading: eventsLoading } = useUserEvents(user?.uid);
+
+  // Fetch provider's artists if this is a booking/artist request
+  const isBookingRequest = (category === 'booking' || category === 'artist') && provider?.id;
+  const { artists: providerArtists, loading: artistsLoading } = useProviderArtists(
+    isBookingRequest ? provider.id : undefined
+  );
+
+  // State for selected provider artist (for booking category)
+  const [selectedProviderArtist, setSelectedProviderArtist] = useState<FirestoreArtist | null>(null);
+  const hasPreselectedArtist = !!provider?.artistId;
+
+  // Pre-select artist if one was passed in params
+  React.useEffect(() => {
+    if (hasPreselectedArtist && providerArtists.length > 0) {
+      const preselectedArtist = providerArtists.find(a => a.id === provider.artistId);
+      if (preselectedArtist) {
+        setSelectedProviderArtist(preselectedArtist);
+      }
+    }
+  }, [hasPreselectedArtist, providerArtists, provider?.artistId]);
 
   const config = categoryConfig[category] || categoryConfig.booking;
   const options = categoryOptions[category as keyof typeof categoryOptions] || {};
 
   // Load draft data if draftId is provided
   const existingDraft = draftId ? getDraftById(draftId) : null;
+
+  // If eventId is provided (user came from event detail), auto-select it
+  const hasPreselectedEvent = !!eventId;
 
   // Common state - initialize from draft if available
   const [selectedEvent, setSelectedEvent] = useState<string | null>(existingDraft?.eventId || eventId || null);
@@ -56,40 +86,6 @@ export function CategoryRequestScreen() {
 
   // Category-specific state (consolidated) - initialize from draft if available
   const [formState, setFormState] = useState<Record<string, any>>(existingDraft?.formData || {});
-
-  // Artist and Rider state (for booking/technical/transport/accommodation categories)
-  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
-  const [selectedRiderDocs, setSelectedRiderDocs] = useState<string[]>([]);
-
-  const selectedArtist = useMemo(
-    () => (selectedArtistId ? getArtistById(selectedArtistId) : null),
-    [selectedArtistId]
-  );
-
-  const riderStatus = useMemo(
-    () => (selectedArtist ? getArtistRiderStatus(selectedArtist) : null),
-    [selectedArtist]
-  );
-
-  // Get relevant rider type for current category
-  const getRiderTypeForCategory = () => {
-    switch (category) {
-      case 'technical':
-        return 'technical';
-      case 'transport':
-        return 'transport';
-      case 'accommodation':
-        return 'accommodation';
-      default:
-        return null;
-    }
-  };
-
-  const toggleRiderDoc = (docId: string) => {
-    setSelectedRiderDocs((prev) =>
-      prev.includes(docId) ? prev.filter((id) => id !== docId) : [...prev, docId]
-    );
-  };
 
   const updateForm = (key: string, value: any) => {
     setFormState(prev => ({ ...prev, [key]: value }));
@@ -121,19 +117,105 @@ export function CategoryRequestScreen() {
     return `${parseInt(day1)} ${months[parseInt(month1) - 1]} - ${parseInt(day2)} ${months[parseInt(month2) - 1]} ${year2}`;
   }, [selectedDates]);
 
-  const handleSubmit = () => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (!user) {
+      Alert.alert('Hata', 'Lütfen giriş yapın');
+      return;
+    }
+
     if (!selectedEvent) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Uyarı', 'Lütfen bir etkinlik seçin');
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      'Teklif Talebi Gönderildi',
-      'Talebiniz ilgili sağlayıcılara iletildi. En kısa sürede teklifler alacaksınız.',
-      [{ text: 'Tamam', onPress: () => navigation.goBack() }]
-    );
+
+    // For booking requests, require artist selection
+    if (isBookingRequest && !selectedProviderArtist) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Uyarı', 'Lütfen bir sanatçı seçin');
+      return;
+    }
+
+    if (!provider?.id) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Uyarı', 'Tedarikçi bilgisi bulunamadı');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const selectedEventData = firebaseEvents.find(e => e.id === selectedEvent);
+
+      // Build request data - only include defined values (Firebase rejects undefined)
+      // Include event details from the selected event
+      const eventFormData: Record<string, any> = {
+        ...formState,
+        selectedDates,
+      };
+
+      // Add event-specific details if available
+      if (selectedEventData?.venue) eventFormData.venue = selectedEventData.venue;
+      if (selectedEventData?.district) eventFormData.district = selectedEventData.district;
+      if (selectedEventData?.venueCapacity) eventFormData.venueCapacity = selectedEventData.venueCapacity;
+      if (selectedEventData?.guestCount) eventFormData.guestCount = selectedEventData.guestCount;
+      if (selectedEventData?.ageLimit) eventFormData.ageLimit = selectedEventData.ageLimit;
+      if (selectedEventData?.seatingType) eventFormData.seatingType = selectedEventData.seatingType;
+      if (selectedEventData?.indoorOutdoor) eventFormData.indoorOutdoor = selectedEventData.indoorOutdoor;
+      if (selectedEventData?.time) eventFormData.time = selectedEventData.time;
+
+      const requestData: any = {
+        // Event info
+        eventId: selectedEvent,
+        eventTitle: selectedEventData?.title || '',
+        // Organizer info
+        organizerId: user.uid,
+        organizerName: user.displayName || 'Organizatör',
+        organizerImage: user.photoURL || '',
+        // Provider info
+        providerId: provider.id,
+        providerName: provider.name || '',
+        providerImage: provider.image || '',
+        // Request details
+        serviceCategory: category,
+        formData: eventFormData,
+        serviceDates: selectedDates.length > 0 ? selectedDates : [],
+      };
+
+      // Add optional fields only if they have values
+      if (selectedEventData?.date) requestData.eventDate = selectedEventData.date;
+      if (selectedEventData?.city) requestData.eventCity = selectedEventData.city;
+      if (budget && budget.trim()) requestData.requestedBudget = budget.trim();
+      if (notes && notes.trim()) requestData.notes = notes.trim();
+
+      // Artist info (for booking requests)
+      const artistId = selectedProviderArtist?.id || provider.artistId;
+      const artistName = selectedProviderArtist?.stageName || selectedProviderArtist?.name || provider.artistName;
+      const artistImage = selectedProviderArtist?.image || provider.artistImage;
+
+      if (artistId) requestData.artistId = artistId;
+      if (artistName) requestData.artistName = artistName;
+      if (artistImage) requestData.artistImage = artistImage;
+
+      await createOfferRequest(requestData);
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(
+        'Teklif Talebi Gönderildi',
+        'Talebiniz tedarikçiye iletildi. En kısa sürede teklif alacaksınız.',
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error creating offer request:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Teklif talebi gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSaveDraft = () => {
@@ -144,7 +226,7 @@ export function CategoryRequestScreen() {
       return;
     }
 
-    const selectedEventData = userEvents.find(e => e.id === selectedEvent);
+    const selectedEventData = firebaseEvents.find(e => e.id === selectedEvent);
     const draftData = {
       id: existingDraft?.id || `draft_${Date.now()}`,
       eventId: selectedEvent,
@@ -194,172 +276,18 @@ export function CategoryRequestScreen() {
     }
   };
 
-  // Render artist selection and rider attachment for relevant categories
-  const renderArtistRiderSection = () => {
-    const relevantCategories = ['technical', 'transport', 'accommodation', 'booking'];
-    if (!relevantCategories.includes(category)) return null;
-
-    const riderType = getRiderTypeForCategory();
-
-    return (
-      <>
-        {/* Artist Selection */}
-        <FormSection title="Sanatci Secimi" subtitle="Etkinlikteki sanatcinin rider bilgilerini ekleyin">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.artistScrollList}>
-            {mockArtists.slice(0, 5).map((artist) => {
-              const isSelected = selectedArtistId === artist.id;
-              const artistRiderStatus = getArtistRiderStatus(artist);
-              return (
-                <TouchableOpacity
-                  key={artist.id}
-                  style={[
-                    styles.artistSelectCard,
-                    {
-                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                      borderColor: isSelected ? colors.brand[500] : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
-                    },
-                    isSelected && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' },
-                  ]}
-                  onPress={() => {
-                    setSelectedArtistId(isSelected ? null : artist.id);
-                    setSelectedRiderDocs([]);
-                  }}
-                >
-                  <OptimizedImage source={artist.image} style={styles.artistSelectImage} />
-                  <Text style={[styles.artistSelectName, { color: colors.text }]} numberOfLines={1}>
-                    {artist.stageName || artist.name}
-                  </Text>
-                  <View style={styles.artistSelectRiderBadge}>
-                    <Ionicons
-                      name="document-text-outline"
-                      size={12}
-                      color={artistRiderStatus.completionRate > 50 ? '#10B981' : colors.textMuted}
-                    />
-                    <Text style={[styles.artistSelectRiderText, { color: colors.textMuted }]}>
-                      {artistRiderStatus.completionRate}%
-                    </Text>
-                  </View>
-                  {isSelected && (
-                    <View style={styles.artistSelectCheck}>
-                      <Ionicons name="checkmark-circle" size={20} color={colors.brand[500]} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </FormSection>
-
-        {/* Rider Documents Attachment */}
-        {selectedArtist && selectedArtist.riderDocuments.length > 0 && (
-          <FormSection
-            title="Sanatci Rider Dokumanlari"
-            subtitle="Teklif talebine eklenecek rider dokumanlarini secin"
-          >
-            <View style={styles.riderDocsList}>
-              {selectedArtist.riderDocuments
-                .filter((doc) => !riderType || doc.type === riderType || doc.type === 'general')
-                .map((doc) => {
-                  const isDocSelected = selectedRiderDocs.includes(doc.id);
-                  const typeLabel = riderTypeLabels[doc.type] || doc.type;
-                  return (
-                    <TouchableOpacity
-                      key={doc.id}
-                      style={[
-                        styles.riderDocCard,
-                        {
-                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                          borderColor: isDocSelected ? '#10B981' : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
-                        },
-                        isDocSelected && { backgroundColor: 'rgba(16, 185, 129, 0.08)' },
-                      ]}
-                      onPress={() => toggleRiderDoc(doc.id)}
-                    >
-                      <View style={styles.riderDocCheckbox}>
-                        {isDocSelected ? (
-                          <View style={styles.riderDocChecked}>
-                            <Ionicons name="checkmark" size={14} color="white" />
-                          </View>
-                        ) : (
-                          <View style={[styles.riderDocUnchecked, { borderColor: colors.textMuted }]} />
-                        )}
-                      </View>
-                      <View style={styles.riderDocInfo}>
-                        <View style={styles.riderDocHeader}>
-                          <Ionicons name="document-text" size={16} color={colors.brand[400]} />
-                          <Text style={[styles.riderDocType, { color: colors.brand[400] }]}>{typeLabel}</Text>
-                        </View>
-                        <Text style={[styles.riderDocName, { color: colors.text }]} numberOfLines={1}>
-                          {doc.fileName}
-                        </Text>
-                        <Text style={[styles.riderDocMeta, { color: colors.textMuted }]}>
-                          {(doc.fileSize / 1024 / 1024).toFixed(1)} MB • v{doc.version}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-            </View>
-            {selectedRiderDocs.length > 0 && (
-              <View style={[styles.riderAttachmentNote, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={[styles.riderAttachmentNoteText, { color: '#10B981' }]}>
-                  {selectedRiderDocs.length} dokuaman teklif talebine eklenecek
-                </Text>
-              </View>
-            )}
-          </FormSection>
-        )}
-
-        {/* Show rider requirements summary if available */}
-        {selectedArtist && riderType && selectedArtist.riders[riderType as keyof typeof selectedArtist.riders] && (
-          <FormSection title="Sanatci Gereksinimleri" subtitle="Secilen sanatcinin rider bilgileri otomatik eklendi">
-            <View style={[styles.riderSummaryCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)', borderColor: 'rgba(75, 48, 184, 0.2)' }]}>
-              <View style={styles.riderSummaryHeader}>
-                <Ionicons name="information-circle" size={20} color="#6366F1" />
-                <Text style={[styles.riderSummaryTitle, { color: '#6366F1' }]}>
-                  {selectedArtist.stageName || selectedArtist.name} - {riderTypeLabels[riderType as keyof typeof riderTypeLabels]}
-                </Text>
-              </View>
-              <Text style={[styles.riderSummaryText, { color: colors.textSecondary }]}>
-                {riderType === 'technical' && selectedArtist.riders.technical && (
-                  `Sahne: ${selectedArtist.riders.technical.stage.minWidth}x${selectedArtist.riders.technical.stage.minDepth}m • Ses: ${(selectedArtist.riders.technical.sound.minPower / 1000).toFixed(0)}kW • Isik: ${selectedArtist.riders.technical.lighting.movingHeadCount} MH`
-                )}
-                {riderType === 'transport' && selectedArtist.riders.transport && (
-                  `Transfer: ${selectedArtist.riders.transport.airportTransfer.passengerCount} kisi • Arac: ${selectedArtist.riders.transport.airportTransfer.vehicleType}`
-                )}
-                {riderType === 'accommodation' && selectedArtist.riders.accommodation && (
-                  `${selectedArtist.riders.accommodation.artistRooms.minStarRating}★ • ${selectedArtist.riders.accommodation.artistRooms.count} Sanatci + ${selectedArtist.riders.accommodation.crewRooms.count} Ekip odasi`
-                )}
-              </Text>
-            </View>
-          </FormSection>
-        )}
-      </>
-    );
-  };
-
   const renderBookingFields = () => {
     const opt = categoryOptions.booking;
+    // Only ask booking-specific questions - event details come from selected event
     return (
       <>
-        <FormSection title="Etkinlik Türü">
-          <SelectionChips options={opt.eventTypes} selected={formState.eventType || ''} onSelect={v => updateForm('eventType', v)} />
-        </FormSection>
-        <FormSection title="Mekan Türü">
-          <SelectionChips options={opt.venueTypes} selected={formState.venueType || ''} onSelect={v => updateForm('venueType', v)} />
-        </FormSection>
-        <FormSection title="Tahmini Katılımcı">
-          <SelectionChips options={opt.guestCounts} selected={formState.guestCount || ''} onSelect={v => updateForm('guestCount', v)} />
-        </FormSection>
-        <FormSection title="Set Süresi">
+        <FormSection title="Set Süresi" subtitle="Sanatcinin sahne suresi">
           <SelectionChips options={opt.durations} selected={formState.duration || ''} onSelect={v => updateForm('duration', v)} />
         </FormSection>
-        <FormSection title="Yaş Sınırı">
-          <SelectionChips options={opt.ageRestrictions} selected={formState.ageRestriction || ''} onSelect={v => updateForm('ageRestriction', v)} />
-        </FormSection>
-        <FormSection title="Oturma Düzeni">
-          <SelectionChips options={opt.seatingTypes} selected={formState.seatingType || ''} onSelect={v => updateForm('seatingType', v)} />
+        <FormSection title="Performans Detaylari">
+          <SwitchRow icon="musical-notes-outline" label="Canli Performans" value={formState.livePerformance !== false} onValueChange={v => updateForm('livePerformance', v)} />
+          <SwitchRow icon="mic-outline" label="DJ Set" value={formState.djSet || false} onValueChange={v => updateForm('djSet', v)} />
+          <SwitchRow icon="people-outline" label="Meet & Greet" value={formState.meetGreet || false} onValueChange={v => updateForm('meetGreet', v)} />
         </FormSection>
       </>
     );
@@ -367,27 +295,20 @@ export function CategoryRequestScreen() {
 
   const renderTechnicalFields = () => {
     const opt = categoryOptions.technical;
+    // Service-specific fields only - venue info comes from event
     return (
       <>
-        <FormSection title="Mekan Bilgileri">
-          <InputLabel label="Mekan Türü" />
-          <SelectionChips options={opt.venueTypes} selected={formState.indoorOutdoor || ''} onSelect={v => updateForm('indoorOutdoor', v)} />
-          <InputLabel label="Mekan Büyüklüğü" marginTop />
-          <SelectionChips options={opt.venueSizes} selected={formState.venueSize || ''} onSelect={v => updateForm('venueSize', v)} />
-        </FormSection>
-        <FormSection title="Ses Sistemi İhtiyaçları" subtitle="Birden fazla seçebilirsiniz">
+        <FormSection title="Ses Sistemi Ihtiyaclari" subtitle="Birden fazla secebilirsiniz">
           <SelectionChips options={opt.soundRequirements} selected={formState.soundRequirements || []} onSelect={v => toggleMultiSelect('soundRequirements', v)} multiSelect />
         </FormSection>
-        <FormSection title="Aydınlatma İhtiyaçları" subtitle="Birden fazla seçebilirsiniz">
+        <FormSection title="Aydinlatma Ihtiyaclari" subtitle="Birden fazla secebilirsiniz">
           <SelectionChips options={opt.lightingRequirements} selected={formState.lightingRequirements || []} onSelect={v => toggleMultiSelect('lightingRequirements', v)} multiSelect />
         </FormSection>
-        <FormSection title="Sahne İhtiyacı">
+        <FormSection title="Sahne Ihtiyaci">
           <SelectionChips options={opt.stageSizes} selected={formState.stageSize || ''} onSelect={v => updateForm('stageSize', v)} />
         </FormSection>
-        <FormSection title="Güç ve Kurulum">
-          <InputLabel label="Mevcut Güç Kapasitesi" />
-          <SelectionChips options={opt.powerOptions} selected={formState.powerAvailable || ''} onSelect={v => updateForm('powerAvailable', v)} />
-          <InputLabel label="Kurulum Süresi" marginTop />
+        <FormSection title="Kurulum Bilgileri">
+          <InputLabel label="Kurulum Suresi" />
           <SelectionChips options={opt.setupTimes} selected={formState.setupTime || ''} onSelect={v => updateForm('setupTime', v)} />
         </FormSection>
       </>
@@ -396,21 +317,18 @@ export function CategoryRequestScreen() {
 
   const renderVenueFields = () => {
     const opt = categoryOptions.venue;
+    // Service-specific fields - capacity and area type come from event
     return (
       <>
-        <FormSection title="Mekan Tipi">
+        <FormSection title="Mekan Tipi Tercihi">
           <SelectionChips options={opt.styles} selected={formState.venueStyle || ''} onSelect={v => updateForm('venueStyle', v)} />
         </FormSection>
-        <FormSection title="Kapasite">
-          <SelectionChips options={opt.capacities} selected={formState.venueCapacity || ''} onSelect={v => updateForm('venueCapacity', v)} />
-        </FormSection>
-        <FormSection title="Alan Tercihi">
-          <SelectionChips options={opt.areaTypes} selected={formState.indoorOutdoor || ''} onSelect={v => updateForm('indoorOutdoor', v)} />
-        </FormSection>
-        <FormSection title="Ek Gereksinimler">
-          <SwitchRow icon="restaurant-outline" label="Catering Hizmeti" value={formState.cateringIncluded || false} onValueChange={v => updateForm('cateringIncluded', v)} />
-          <SwitchRow icon="car-outline" label="Otopark Gerekli" value={formState.parkingNeeded || false} onValueChange={v => updateForm('parkingNeeded', v)} />
-          <SwitchRow icon="accessibility-outline" label="Engelli Erişimi" value={formState.accessibilityNeeded || false} onValueChange={v => updateForm('accessibilityNeeded', v)} />
+        <FormSection title="Mekan Ozellikleri">
+          <SwitchRow icon="restaurant-outline" label="Catering Alani" value={formState.cateringArea || false} onValueChange={v => updateForm('cateringArea', v)} />
+          <SwitchRow icon="car-outline" label="Otopark" value={formState.parkingNeeded || false} onValueChange={v => updateForm('parkingNeeded', v)} />
+          <SwitchRow icon="accessibility-outline" label="Engelli Erisimi" value={formState.accessibilityNeeded || false} onValueChange={v => updateForm('accessibilityNeeded', v)} />
+          <SwitchRow icon="musical-notes-outline" label="Ses Sistemi Mevcut" value={formState.hasSoundSystem || false} onValueChange={v => updateForm('hasSoundSystem', v)} />
+          <SwitchRow icon="flash-outline" label="Isik Sistemi Mevcut" value={formState.hasLightingSystem || false} onValueChange={v => updateForm('hasLightingSystem', v)} />
         </FormSection>
       </>
     );
@@ -682,51 +600,243 @@ export function CategoryRequestScreen() {
 
         {provider && (
           <View style={[styles.providerCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }]}>
-            <OptimizedImage source={provider.image} style={styles.providerImage} />
+            <OptimizedImage source={provider.image || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400'} style={styles.providerImage} />
             <View style={styles.providerInfo}>
               <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color="#fbbf24" />
-                <Text style={styles.ratingText}>{provider.rating}</Text>
-              </View>
+              {provider.rating !== undefined && (
+                <View style={styles.ratingRow}>
+                  <Ionicons name="star" size={12} color="#fbbf24" />
+                  <Text style={styles.ratingText}>{provider.rating}</Text>
+                </View>
+              )}
             </View>
           </View>
         )}
 
-        <FormSection title="Etkinlik Seçin" subtitle="Bu teklif hangi etkinlik için?">
-          <View style={styles.eventsList}>
-            {userEvents.map(event => (
-              <TouchableOpacity
-                key={event.id}
-                style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }, selectedEvent === event.id && { borderColor: colors.brand[500], backgroundColor: isDark ? 'rgba(75, 48, 184, 0.05)' : 'rgba(75, 48, 184, 0.08)' }]}
-                onPress={() => setSelectedEvent(event.id)}
-              >
-                <View style={styles.eventRadio}>
-                  {selectedEvent === event.id ? (
-                    <LinearGradient colors={gradients.primary} style={styles.eventRadioSelected}>
-                      <Ionicons name="checkmark" size={12} color="white" />
-                    </LinearGradient>
-                  ) : (
-                    <View style={[styles.eventRadioEmpty, { borderColor: colors.textMuted }]} />
-                  )}
+        {/* Artist Selection for Booking Providers */}
+        {isBookingRequest && (
+          <FormSection
+            title="Sanatçı Seçin"
+            subtitle={hasPreselectedArtist ? "Seçilen sanatçı" : "Hangi sanatçı için teklif istiyorsunuz?"}
+          >
+            {artistsLoading ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.brand[400]} />
+                <Text style={[styles.eventMetaText, { color: colors.textMuted, marginTop: 8 }]}>Sanatçılar yükleniyor...</Text>
+              </View>
+            ) : providerArtists.length === 0 ? (
+              <View style={[styles.emptyEventsCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                <Ionicons name="person-outline" size={32} color={colors.textMuted} />
+                <Text style={[styles.emptyEventsText, { color: colors.textMuted }]}>Bu firmaya ait sanatçı bulunamadı</Text>
+              </View>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.artistScrollList}>
+                {providerArtists.map((artist) => {
+                  const isSelected = selectedProviderArtist?.id === artist.id;
+                  return (
+                    <TouchableOpacity
+                      key={artist.id}
+                      style={[
+                        styles.providerArtistCard,
+                        {
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                          borderColor: isSelected ? colors.brand[500] : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
+                        },
+                        isSelected && { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' },
+                      ]}
+                      onPress={() => setSelectedProviderArtist(isSelected ? null : artist)}
+                      disabled={hasPreselectedArtist}
+                    >
+                      <OptimizedImage source={artist.image || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400'} style={styles.providerArtistImage} />
+                      <Text style={[styles.providerArtistName, { color: colors.text }]} numberOfLines={1}>
+                        {artist.stageName || artist.name}
+                      </Text>
+                      <Text style={[styles.providerArtistGenre, { color: colors.textMuted }]} numberOfLines={1}>
+                        {artist.genre || 'Sanatçı'}
+                      </Text>
+                      {isSelected && (
+                        <View style={styles.providerArtistCheck}>
+                          <Ionicons name="checkmark-circle" size={20} color={colors.brand[500]} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </FormSection>
+        )}
+
+        {/* Event Selection - only show if no event is preselected */}
+        {!hasPreselectedEvent ? (
+          <FormSection title="Etkinlik Seçin" subtitle="Bu teklif hangi etkinlik için?">
+            <View style={styles.eventsList}>
+              {eventsLoading ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={colors.brand[400]} />
+                  <Text style={[styles.eventMetaText, { color: colors.textMuted, marginTop: 8 }]}>Etkinlikler yükleniyor...</Text>
                 </View>
-                <View style={styles.eventInfo}>
-                  <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
-                  <View style={styles.eventMeta}>
-                    <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
-                    <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.date}</Text>
-                    <Ionicons name="location-outline" size={12} color={colors.textMuted} />
-                    <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.location}</Text>
-                  </View>
+              ) : firebaseEvents.length === 0 ? (
+                <View style={[styles.emptyEventsCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                  <Ionicons name="calendar-outline" size={32} color={colors.textMuted} />
+                  <Text style={[styles.emptyEventsText, { color: colors.textMuted }]}>Henüz etkinliğiniz yok</Text>
                 </View>
+              ) : (
+                firebaseEvents.map(event => (
+                  <TouchableOpacity
+                    key={event.id}
+                    style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border, ...(isDark ? {} : helpers.getShadow('sm')) }, selectedEvent === event.id && { borderColor: colors.brand[500], backgroundColor: isDark ? 'rgba(75, 48, 184, 0.05)' : 'rgba(75, 48, 184, 0.08)' }]}
+                    onPress={() => setSelectedEvent(event.id)}
+                  >
+                    <View style={styles.eventRadio}>
+                      {selectedEvent === event.id ? (
+                        <LinearGradient colors={gradients.primary} style={styles.eventRadioSelected}>
+                          <Ionicons name="checkmark" size={12} color="white" />
+                        </LinearGradient>
+                      ) : (
+                        <View style={[styles.eventRadioEmpty, { borderColor: colors.textMuted }]} />
+                      )}
+                    </View>
+                    <View style={styles.eventInfo}>
+                      <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
+                      <View style={styles.eventMeta}>
+                        <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                        <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.date}</Text>
+                        <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                        <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{event.city || event.venue}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+              <TouchableOpacity style={styles.newEventCard} onPress={() => navigation.navigate('CreateEvent')}>
+                <View style={styles.newEventIcon}><Ionicons name="add" size={20} color={colors.brand[400]} /></View>
+                <Text style={[styles.newEventText, { color: colors.brand[400] }]}>Yeni Etkinlik Oluştur</Text>
               </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={styles.newEventCard} onPress={() => navigation.navigate('CreateEvent')}>
-              <View style={styles.newEventIcon}><Ionicons name="add" size={20} color={colors.brand[400]} /></View>
-              <Text style={[styles.newEventText, { color: colors.brand[400] }]}>Yeni Etkinlik Oluştur</Text>
-            </TouchableOpacity>
-          </View>
-        </FormSection>
+            </View>
+          </FormSection>
+        ) : (
+          /* Show selected event info when preselected */
+          <FormSection title="Etkinlik" subtitle="Bu talep aşağıdaki etkinlik için">
+            {(() => {
+              const preselectedEventData = firebaseEvents.find(e => e.id === eventId);
+              if (preselectedEventData) {
+                return (
+                  <View style={[styles.eventCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.05)' : 'rgba(75, 48, 184, 0.08)', borderColor: colors.brand[500], ...(isDark ? {} : helpers.getShadow('sm')) }]}>
+                    <View style={styles.eventRadio}>
+                      <LinearGradient colors={gradients.primary} style={styles.eventRadioSelected}>
+                        <Ionicons name="checkmark" size={12} color="white" />
+                      </LinearGradient>
+                    </View>
+                    <View style={styles.eventInfo}>
+                      <Text style={[styles.eventTitle, { color: colors.text }]}>{preselectedEventData.title}</Text>
+                      <View style={styles.eventMeta}>
+                        <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
+                        <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{preselectedEventData.date}</Text>
+                        <Ionicons name="location-outline" size={12} color={colors.textMuted} />
+                        <Text style={[styles.eventMetaText, { color: colors.textMuted }]}>{preselectedEventData.city || preselectedEventData.venue}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+          </FormSection>
+        )}
+
+        {/* Event Details Section - Show when event is selected */}
+        {selectedEvent && (() => {
+          const selectedEventData = firebaseEvents.find(e => e.id === selectedEvent);
+          if (!selectedEventData) return null;
+
+          const hasDetails = selectedEventData.venue || selectedEventData.venueCapacity ||
+                           selectedEventData.guestCount || selectedEventData.ageLimit ||
+                           selectedEventData.seatingType || selectedEventData.indoorOutdoor;
+
+          if (!hasDetails) return null;
+
+          return (
+            <FormSection title="Etkinlik Detaylari" subtitle="Secilen etkinligin bilgileri">
+              <View style={[styles.eventDetailsCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                {/* Location & Venue */}
+                {(selectedEventData.city || selectedEventData.venue) && (
+                  <View style={styles.eventDetailRow}>
+                    <View style={[styles.eventDetailIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+                      <Ionicons name="location" size={16} color={colors.brand[400]} />
+                    </View>
+                    <View style={styles.eventDetailContent}>
+                      <Text style={[styles.eventDetailLabel, { color: colors.textMuted }]}>Konum</Text>
+                      <Text style={[styles.eventDetailValue, { color: colors.text }]}>
+                        {[selectedEventData.venue, selectedEventData.district, selectedEventData.city].filter(Boolean).join(', ')}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Date & Time */}
+                {selectedEventData.date && (
+                  <View style={styles.eventDetailRow}>
+                    <View style={[styles.eventDetailIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                      <Ionicons name="calendar" size={16} color="#10B981" />
+                    </View>
+                    <View style={styles.eventDetailContent}>
+                      <Text style={[styles.eventDetailLabel, { color: colors.textMuted }]}>Tarih ve Saat</Text>
+                      <Text style={[styles.eventDetailValue, { color: colors.text }]}>
+                        {selectedEventData.date}{selectedEventData.time ? ` - ${selectedEventData.time}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Capacity / Guest Count */}
+                {(selectedEventData.venueCapacity || selectedEventData.guestCount) && (
+                  <View style={styles.eventDetailRow}>
+                    <View style={[styles.eventDetailIcon, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                      <Ionicons name="people" size={16} color="#F59E0B" />
+                    </View>
+                    <View style={styles.eventDetailContent}>
+                      <Text style={[styles.eventDetailLabel, { color: colors.textMuted }]}>Katilimci</Text>
+                      <Text style={[styles.eventDetailValue, { color: colors.text }]}>
+                        {selectedEventData.guestCount || selectedEventData.venueCapacity || '-'} kisi
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Age Limit, Seating Type, Indoor/Outdoor */}
+                {(selectedEventData.ageLimit || selectedEventData.seatingType || selectedEventData.indoorOutdoor) && (
+                  <View style={styles.eventDetailTagsRow}>
+                    {selectedEventData.ageLimit && (
+                      <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
+                        <Ionicons name="shield-checkmark-outline" size={12} color="#EF4444" />
+                        <Text style={[styles.eventDetailTagText, { color: '#EF4444' }]}>
+                          {getOptionLabel(ageLimitOptions, selectedEventData.ageLimit) || selectedEventData.ageLimit}
+                        </Text>
+                      </View>
+                    )}
+                    {selectedEventData.seatingType && (
+                      <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
+                        <Ionicons name="accessibility-outline" size={12} color="#6366F1" />
+                        <Text style={[styles.eventDetailTagText, { color: '#6366F1' }]}>
+                          {getOptionLabel(seatingTypeOptions, selectedEventData.seatingType) || selectedEventData.seatingType}
+                        </Text>
+                      </View>
+                    )}
+                    {selectedEventData.indoorOutdoor && (
+                      <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.1)' }]}>
+                        <Ionicons name={selectedEventData.indoorOutdoor === 'outdoor' ? 'sunny-outline' : 'business-outline'} size={12} color="#0EA5E9" />
+                        <Text style={[styles.eventDetailTagText, { color: '#0EA5E9' }]}>
+                          {getOptionLabel(indoorOutdoorOptions, selectedEventData.indoorOutdoor) || selectedEventData.indoorOutdoor}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            </FormSection>
+          );
+        })()}
 
         <FormSection title="Hizmet Tarihi">
           <TouchableOpacity
@@ -761,8 +871,6 @@ export function CategoryRequestScreen() {
           </TouchableOpacity>
         </FormSection>
 
-        {renderArtistRiderSection()}
-
         {renderCategoryFields()}
 
         <FormSection title="Bütçe" subtitle="(Opsiyonel)">
@@ -786,10 +894,19 @@ export function CategoryRequestScreen() {
             <Ionicons name="bookmark-outline" size={18} color={colors.warning} />
             <Text style={[styles.draftButtonText, { color: colors.warning }]}>Taslak</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <LinearGradient colors={gradients.primary} style={styles.submitButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={styles.submitButtonText}>Teklif Talebi Gönder</Text>
-              <Ionicons name="paper-plane" size={18} color="white" />
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={isSubmitting}>
+            <LinearGradient colors={isSubmitting ? ['#9ca3af', '#6b7280'] : gradients.primary} style={styles.submitButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              {isSubmitting ? (
+                <>
+                  <ActivityIndicator size="small" color="white" />
+                  <Text style={styles.submitButtonText}>Gönderiliyor...</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.submitButtonText}>Teklif Talebi Gönder</Text>
+                  <Ionicons name="paper-plane" size={18} color="white" />
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -838,6 +955,7 @@ const styles = StyleSheet.create({
   providerImage: { width: 48, height: 48, borderRadius: 12 },
   providerInfo: { flex: 1, marginLeft: 12 },
   providerName: { fontSize: 15, fontWeight: '600' },
+  artistNameSubtext: { fontSize: 13, fontWeight: '500', marginTop: 2 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   ratingText: { fontSize: 12, fontWeight: '600', color: '#fbbf24' },
   eventsList: { gap: 10 },
@@ -865,33 +983,28 @@ const styles = StyleSheet.create({
   submitButtonText: { fontSize: 15, fontWeight: '600', color: 'white' },
   // Artist Selection Styles
   artistScrollList: { marginTop: 8 },
-  artistSelectCard: { width: 100, padding: 12, borderRadius: 12, borderWidth: 1, marginRight: 10, alignItems: 'center', position: 'relative' },
-  artistSelectImage: { width: 50, height: 50, borderRadius: 25, marginBottom: 8 },
-  artistSelectName: { fontSize: 12, fontWeight: '500', textAlign: 'center' },
-  artistSelectRiderBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  artistSelectRiderText: { fontSize: 10 },
-  artistSelectCheck: { position: 'absolute', top: 6, right: 6 },
-  // Rider Docs Styles
-  riderDocsList: { gap: 10 },
-  riderDocCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1 },
-  riderDocCheckbox: { marginRight: 12 },
-  riderDocChecked: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
-  riderDocUnchecked: { width: 22, height: 22, borderRadius: 11, borderWidth: 2 },
-  riderDocInfo: { flex: 1 },
-  riderDocHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  riderDocType: { fontSize: 11, fontWeight: '600' },
-  riderDocName: { fontSize: 14, fontWeight: '500' },
-  riderDocMeta: { fontSize: 11, marginTop: 2 },
-  riderAttachmentNote: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, marginTop: 12 },
-  riderAttachmentNoteText: { fontSize: 13, fontWeight: '500' },
-  // Rider Summary Styles
-  riderSummaryCard: { padding: 14, borderRadius: 12, borderWidth: 1 },
-  riderSummaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  riderSummaryTitle: { fontSize: 14, fontWeight: '600' },
-  riderSummaryText: { fontSize: 13, lineHeight: 20 },
   // Date Picker Styles
   datePickerButton: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, borderWidth: 1, marginTop: 8, gap: 10 },
   datePickerContent: { flex: 1 },
   datePickerText: { fontSize: 15 },
   datePickerHint: { fontSize: 11, marginTop: 2 },
+  // Empty Events Card
+  emptyEventsCard: { alignItems: 'center', padding: 24, borderRadius: 12, borderWidth: 1, gap: 8 },
+  emptyEventsText: { fontSize: 14 },
+  // Provider Artist Selection Styles
+  providerArtistCard: { width: 110, padding: 12, borderRadius: 14, borderWidth: 1.5, marginRight: 12, alignItems: 'center', position: 'relative' },
+  providerArtistImage: { width: 60, height: 60, borderRadius: 30, marginBottom: 10 },
+  providerArtistName: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  providerArtistGenre: { fontSize: 11, marginTop: 2, textAlign: 'center' },
+  providerArtistCheck: { position: 'absolute', top: 8, right: 8 },
+  // Event Details Styles
+  eventDetailsCard: { padding: 14, borderRadius: 14, borderWidth: 1, gap: 12 },
+  eventDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  eventDetailIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  eventDetailContent: { flex: 1 },
+  eventDetailLabel: { fontSize: 11, marginBottom: 2 },
+  eventDetailValue: { fontSize: 14, fontWeight: '500' },
+  eventDetailTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+  eventDetailTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  eventDetailTagText: { fontSize: 12, fontWeight: '500' },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,10 @@ import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { AuthNavigationProp } from '../../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   RegistrationProgress,
@@ -37,10 +39,20 @@ import {
   sanitizeEmail,
 } from '../../utils/validation';
 import { ProviderRegistrationData, UploadedDocument } from '../../types/auth';
+import {
+  sendEmailVerificationCode,
+  verifyEmailCode,
+  sendPhoneVerificationCode,
+  verifyPhoneCode,
+  registerUser,
+  logoutUser,
+} from '../../services/firebase';
+import { app } from '../../services/firebase/config';
 
 export function ProviderRegistrationScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AuthNavigationProp>();
   const { colors, isDark } = useTheme();
+  const recaptchaVerifier = useRef<any>(null);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +79,11 @@ export function ProviderRegistrationScreen() {
   const [emailCode, setEmailCode] = useState('');
   const [phoneCode, setPhoneCode] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Verification status
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
 
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -163,21 +180,77 @@ export function ProviderRegistrationScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!validateStep(currentStep)) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    if (currentStep < PROVIDER_STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
-
-      if (currentStep === 5) {
-        Alert.alert('Doğrulama Kodu', `${formData.email} adresine kod gönderildi.`);
-      } else if (currentStep === 6) {
-        Alert.alert('Doğrulama Kodu', `${formData.phone} numarasına SMS gönderildi.`);
+    // Handle verification steps
+    if (currentStep === 6) {
+      // Verify email code
+      if (!emailVerified) {
+        setIsLoading(true);
+        try {
+          await verifyEmailCode(formData.email!, emailCode);
+          setEmailVerified(true);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          // Send phone verification code using Firebase Phone Auth
+          await sendPhoneVerificationCode(formData.phone!, recaptchaVerifier.current);
+          Alert.alert('SMS Gönderildi', `${formData.phone} numarasına doğrulama kodu gönderildi.`);
+          setCurrentStep(currentStep + 1);
+        } catch (error: any) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setErrors({ emailCode: error.message });
+        } finally {
+          setIsLoading(false);
+        }
+        return;
       }
+    }
+
+    if (currentStep === 7) {
+      // Verify phone code with Firebase
+      if (!phoneVerified) {
+        if (phoneCode.length !== 6) {
+          setErrors({ phoneCode: 'Doğrulama kodu 6 haneli olmalı' });
+          return;
+        }
+        setIsLoading(true);
+        try {
+          await verifyPhoneCode(phoneCode, 'validateOnly');
+          setPhoneVerified(true);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setCurrentStep(8);
+        } catch (error: any) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          setErrors({ phoneCode: error.message });
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+    }
+
+    if (currentStep < PROVIDER_STEPS.length - 1) {
+      // Send email code when moving from step 5 to step 6
+      if (currentStep === 5) {
+        setSendingCode(true);
+        try {
+          await sendEmailVerificationCode(formData.email!);
+          Alert.alert('Email Gönderildi', `${formData.email} adresine doğrulama kodu gönderildi.`);
+          setCurrentStep(currentStep + 1);
+        } catch (error: any) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Hata', error.message);
+        } finally {
+          setSendingCode(false);
+        }
+        return;
+      }
+
+      setCurrentStep(currentStep + 1);
     } else {
       handleSubmit();
     }
@@ -201,20 +274,51 @@ export function ProviderRegistrationScreen() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Register user with email/password and save phone/company info to profile
+      await registerUser(
+        formData.email!,
+        formData.password!,
+        formData.fullName!,
+        'provider',
+        {
+          phone: formData.phone,
+          companyName: formData.companyName,
+          providerServices: formData.primaryCategory ? [formData.primaryCategory] : [],
+        }
+      );
+
+      // Sign out immediately after registration to prevent auto-login
+      // User will need to log in manually after seeing success screen
+      await logoutUser();
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate('RegistrationSuccess', { role: 'provider' });
-    }, 1500);
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Kayıt Hatası', error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResendCode = (type: 'email' | 'phone') => {
-    Alert.alert(
-      'Kod Gönderildi',
-      type === 'email'
-        ? `${formData.email} adresine yeni kod gönderildi.`
-        : `${formData.phone} numarasına yeni SMS gönderildi.`
-    );
+  const handleResendCode = async (type: 'email' | 'phone') => {
+    setSendingCode(true);
+    try {
+      if (type === 'email') {
+        await sendEmailVerificationCode(formData.email!);
+        Alert.alert('Kod Gönderildi', `${formData.email} adresine yeni kod gönderildi.`);
+      } else {
+        await sendPhoneVerificationCode(formData.phone!, recaptchaVerifier.current);
+        Alert.alert('Kod Gönderildi', `${formData.phone} numarasına yeni SMS gönderildi.`);
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', error.message);
+    } finally {
+      setSendingCode(false);
+    }
   };
 
   const inputStyle = [
@@ -672,6 +776,15 @@ export function ProviderRegistrationScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Firebase Phone Auth reCAPTCHA - only render when needed */}
+      {currentStep <= 6 && (
+        <FirebaseRecaptchaVerifierModal
+          ref={recaptchaVerifier}
+          firebaseConfig={app.options}
+          attemptInvisibleVerification
+        />
+      )}
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -704,7 +817,7 @@ export function ProviderRegistrationScreen() {
           <TouchableOpacity
             style={styles.nextButton}
             onPress={handleNext}
-            disabled={isLoading}
+            disabled={isLoading || sendingCode}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -714,13 +827,13 @@ export function ProviderRegistrationScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Text style={styles.nextButtonText}>
-                {isLoading
+                {isLoading || sendingCode
                   ? 'Yükleniyor...'
                   : currentStep === PROVIDER_STEPS.length - 1
                   ? 'Kaydı Tamamla'
                   : 'Devam'}
               </Text>
-              {!isLoading && (
+              {!isLoading && !sendingCode && (
                 <Ionicons
                   name={currentStep === PROVIDER_STEPS.length - 1 ? 'checkmark' : 'arrow-forward'}
                   size={20}

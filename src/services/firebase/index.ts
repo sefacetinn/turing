@@ -55,3 +55,22 @@ export {
   uriToBlob,
   generateFileName,
 } from './storage';
+
+// Verification (Email - Cloud Functions)
+export {
+  sendEmailVerificationCode,
+  verifyEmailCode,
+  isValidPhoneNumber,
+  isValidEmail,
+} from './verification';
+
+// Phone Auth (Firebase Phone Auth)
+export {
+  sendPhoneVerificationCode,
+  verifyPhoneCode,
+  formatPhoneNumber,
+  isVerificationInProgress,
+  clearVerificationState,
+  linkStoredPhoneCredential,
+  hasStoredPhoneCredential,
+} from './phoneAuth';

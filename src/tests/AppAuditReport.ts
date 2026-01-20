@@ -1,5 +1,5 @@
 /**
- * TURING APP - KAPSAMLI TEST VE DENETİM RAPORU
+ * turing APP - KAPSAMLI TEST VE DENETİM RAPORU
  * Tarih: 17 Ocak 2026
  *
  * Bu dosya, uygulamanın tüm bileşenlerini sistematik olarak test eder
@@ -423,7 +423,7 @@ export const detailedFindings: TestResult[] = [
 
 export function runAllTests() {
   console.log('='.repeat(60));
-  console.log('TURING APP - TEST RAPORU');
+  console.log('turing APP - TEST RAPORU');
   console.log('='.repeat(60));
 
   const criticalCount = detailedFindings.filter(f => f.severity === 'critical').length;

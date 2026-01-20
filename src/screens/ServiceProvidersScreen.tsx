@@ -10,6 +10,7 @@ import {
   Linking,
   Alert,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { OptimizedImage } from '../components/OptimizedImage';
@@ -19,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useBookingProviders, FirestoreBookingProvider } from '../hooks';
 import {
   Filters,
   Provider,
@@ -55,8 +57,38 @@ export function ServiceProvidersScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
+  // Fetch booking providers from Firebase for booking category
+  const { providers: bookingProviders, loading: providersLoading, error: providersError } = useBookingProviders();
+
   const config = categoryConfig[category] || categoryConfig.booking;
-  const allProviders = getProvidersByCategory(category);
+
+  // Check if this is booking category
+  const isBookingCategory = category === 'booking' || category === 'artist';
+
+  const allProviders: Provider[] = useMemo(() => {
+    if (isBookingCategory) {
+      // Show booking companies (not individual artists)
+      return bookingProviders.map((bp: FirestoreBookingProvider): Provider => ({
+        id: bp.id,
+        name: bp.companyName || bp.displayName,
+        rating: bp.rating || 0,
+        reviewCount: bp.reviewCount || 0,
+        description: bp.bio || 'Booking ve sanatçı menajerlik hizmetleri',
+        city: bp.city || 'İstanbul',
+        teamSize: '1-10',
+        image: bp.photoURL || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
+        previouslyWorked: false,
+        phone: bp.phone || '',
+        verified: bp.isVerified,
+        yearsExperience: 0,
+        completedEvents: bp.completedJobs || 0,
+        priceRange: 'Sanatçıya göre değişir',
+        responseTime: 'Hızlı yanıt',
+        specialties: ['Booking', 'Menajerlik'],
+      }));
+    }
+    return getProvidersByCategory(category);
+  }, [category, bookingProviders, isBookingCategory]);
 
   const activeFilterCount = [filters.city, filters.minRating, filters.budgetRange].filter(Boolean).length;
 
@@ -102,7 +134,12 @@ export function ServiceProvidersScreen() {
 
   const handleProviderDetail = (provider: Provider) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('ProviderDetail', { providerId: provider.id });
+    // For booking category, navigate to booking provider profile (shows company with artist roster)
+    if (isBookingCategory) {
+      navigation.navigate('BookingProviderProfile', { providerId: provider.id });
+    } else {
+      navigation.navigate('ProviderDetail', { providerId: provider.id });
+    }
   };
 
   const handleRequestOffer = (provider: Provider) => {
@@ -256,9 +293,22 @@ export function ServiceProvidersScreen() {
 
       {/* Results Count */}
       <View style={styles.resultsCount}>
-        <Text style={[styles.resultsCountText, { color: colors.textMuted }]}>
-          {filteredProviders.length} sağlayıcı bulundu
-        </Text>
+        {providersLoading && isBookingCategory ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <ActivityIndicator size="small" color={colors.brand[400]} />
+            <Text style={[styles.resultsCountText, { color: colors.textMuted }]}>
+              Booking firmaları yükleniyor...
+            </Text>
+          </View>
+        ) : providersError && isBookingCategory ? (
+          <Text style={[styles.resultsCountText, { color: '#ef4444' }]}>
+            Hata: {providersError}
+          </Text>
+        ) : (
+          <Text style={[styles.resultsCountText, { color: colors.textMuted }]}>
+            {filteredProviders.length} {isBookingCategory ? 'firma' : 'sağlayıcı'} bulundu
+          </Text>
+        )}
         {selectionMode && selectedProviders.length > 0 && (
           <Text style={[styles.selectedCountText, { color: colors.brand[400] }]}>
             {selectedProviders.length} seçildi
@@ -405,7 +455,7 @@ export function ServiceProvidersScreen() {
           </TouchableOpacity>
         ))}
 
-        <View style={{ height: selectionMode && selectedProviders.length > 0 ? 140 : 100 }} />
+        <View style={{ height: selectionMode && selectedProviders.length > 0 ? 180 : 100 }} />
       </ScrollView>
 
       {/* Bulk Offer Button */}
@@ -582,7 +632,7 @@ const styles = StyleSheet.create({
   offerButtonGradient: { paddingHorizontal: 16, paddingVertical: 10 },
   offerButtonText: { fontSize: 13, fontWeight: '600', color: 'white' },
   iconButton: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', backgroundColor: 'rgba(255, 255, 255, 0.03)', alignItems: 'center', justifyContent: 'center' },
-  bulkOfferContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 32, backgroundColor: 'rgba(9, 9, 11, 0.95)', borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.06)' },
+  bulkOfferContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 100, backgroundColor: 'rgba(9, 9, 11, 0.95)', borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.06)' },
   bulkOfferButton: { borderRadius: 14, overflow: 'hidden' },
   bulkOfferGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
   bulkOfferText: { fontSize: 15, fontWeight: '600', color: 'white' },

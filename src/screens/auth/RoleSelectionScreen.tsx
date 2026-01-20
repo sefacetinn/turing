@@ -13,9 +13,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
 import { UserRole } from '../../types/auth';
+import { AuthNavigationProp } from '../../types/navigation';
 
 export function RoleSelectionScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AuthNavigationProp>();
   const { colors, isDark } = useTheme();
 
   const handleSelectRole = (role: UserRole) => {

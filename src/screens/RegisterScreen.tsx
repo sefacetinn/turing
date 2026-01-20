@@ -86,7 +86,7 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
               </LinearGradient>
             </View>
             <Text style={[styles.brandName, { color: colors.text }]}>Hesap Oluştur</Text>
-            <Text style={[styles.brandTagline, { color: colors.textSecondary }]}>Turing'e hoş geldiniz</Text>
+            <Text style={[styles.brandTagline, { color: colors.textSecondary }]}>turing'e hoş geldiniz</Text>
           </View>
 
           {/* Glass Card */}

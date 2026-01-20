@@ -190,14 +190,14 @@ export async function seedAll(): Promise<void> {
 // Demo user for testing
 export const demoUsers = {
   organizer: {
-    email: 'demo-organizer@eventapp.com',
+    email: 'demo-organizer@turing.app',
     password: 'Demo123!',
     displayName: 'Demo Organizatör',
     role: 'organizer' as const,
     companyName: 'Demo Events',
   },
   provider: {
-    email: 'demo-provider@eventapp.com',
+    email: 'demo-provider@turing.app',
     password: 'Demo123!',
     displayName: 'Demo Provider',
     role: 'provider' as const,

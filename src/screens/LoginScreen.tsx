@@ -26,6 +26,7 @@ import {
 } from '../utils/storage';
 import { validateEmail, sanitizeEmail } from '../utils/validation';
 import { validateCredentials, TestAccount, testAccounts } from '../data/testAccounts';
+import { loginUser, getAuthErrorMessage, getUserProfile } from '../services/firebase';
 
 interface LoginScreenProps {
   onLogin: (asProvider: boolean, account?: TestAccount) => void;
@@ -76,40 +77,77 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       return;
     }
 
-    // Validate credentials against test accounts
-    const account = validateCredentials(email, password);
+    // First try demo accounts (for quick testing)
+    const demoAccount = validateCredentials(email, password);
 
-    if (!account) {
+    if (demoAccount) {
+      // Check if account type matches selected mode
+      if ((selectedMode === 'provider' && demoAccount.role !== 'provider') ||
+          (selectedMode === 'organizer' && demoAccount.role !== 'organizer')) {
+        Alert.alert(
+          'Hatalı Mod Seçimi',
+          `Bu hesap ${demoAccount.role === 'provider' ? 'sağlayıcı' : 'organizatör'} hesabıdır. Lütfen doğru modu seçin.`,
+          [{ text: 'Tamam' }]
+        );
+        return;
+      }
+
+      // Handle remember me
+      if (rememberMe) {
+        await saveRememberedEmail(email);
+      } else {
+        await clearRememberedEmail();
+      }
+
+      // Haptic feedback for successful login
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      onLogin(selectedMode === 'provider', demoAccount);
+      return;
+    }
+
+    // Try Firebase login for real registered users
+    try {
+      const userCredential = await loginUser(email, password);
+      const profile = await getUserProfile(userCredential.user.uid);
+
+      if (!profile) {
+        Alert.alert('Hata', 'Kullanıcı profili bulunamadı.');
+        return;
+      }
+
+      // Check if account type matches selected mode
+      if ((selectedMode === 'provider' && !profile.isProvider) ||
+          (selectedMode === 'organizer' && !profile.isOrganizer)) {
+        Alert.alert(
+          'Hatalı Mod Seçimi',
+          `Bu hesap ${profile.isProvider ? 'sağlayıcı' : 'organizatör'} hesabıdır. Lütfen doğru modu seçin.`,
+          [{ text: 'Tamam' }]
+        );
+        return;
+      }
+
+      // Handle remember me
+      if (rememberMe) {
+        await saveRememberedEmail(email);
+      } else {
+        await clearRememberedEmail();
+      }
+
+      // Haptic feedback for successful login
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Firebase login successful - App.tsx onAuthChange will handle the rest
+      // Just call onLogin to update local state
+      onLogin(selectedMode === 'provider');
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      const errorCode = error.code || '';
       Alert.alert(
         'Giriş Başarısız',
-        'E-posta veya şifre hatalı.\n\nDemo hesapları:\n• Organizatör: demo@organizer.com\n• Booking: demo@booking.com\n• Teknik: demo@technical.com\n• Catering: demo@catering.com\n• Ulaşım: demo@transport.com\n• Güvenlik: demo@security.com\n\nŞifre: demo123',
+        getAuthErrorMessage(errorCode) + '\n\nDemo hesapları:\n• demo@organizer.com\n• demo@booking.com\n\nŞifre: demo123',
         [{ text: 'Tamam' }]
       );
-      return;
     }
-
-    // Check if account type matches selected mode
-    if ((selectedMode === 'provider' && account.role !== 'provider') ||
-        (selectedMode === 'organizer' && account.role !== 'organizer')) {
-      Alert.alert(
-        'Hatalı Mod Seçimi',
-        `Bu hesap ${account.role === 'provider' ? 'sağlayıcı' : 'organizatör'} hesabıdır. Lütfen doğru modu seçin.`,
-        [{ text: 'Tamam' }]
-      );
-      return;
-    }
-
-    // Handle remember me
-    if (rememberMe) {
-      await saveRememberedEmail(email);
-    } else {
-      await clearRememberedEmail();
-    }
-
-    // Haptic feedback for successful login
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    onLogin(selectedMode === 'provider', account);
   };
 
   const handleForgotPassword = () => {
@@ -147,7 +185,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               />
             </View>
 
-            <Text style={[styles.brandName, { color: colors.text }]}>TURING</Text>
+            <Text style={[styles.brandName, { color: colors.text }]}>turing</Text>
             <Text style={[styles.brandTagline, { color: colors.textSecondary }]}>Etkinlik & Müzik Sektörü Platformu</Text>
           </View>
 

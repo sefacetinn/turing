@@ -46,6 +46,7 @@ export type ServiceCategory =
  */
 export type OfferStatus =
   | 'pending'           // Beklemede - yanıt bekleniyor
+  | 'quoted'            // Teklif verildi - provider fiyat teklifi verdi
   | 'counter_offered'   // Pazarlık sürecinde - karşı teklif yapıldı
   | 'accepted'          // Onaylandı - karşılıklı kabul edildi
   | 'rejected'          // Reddedildi
@@ -598,7 +599,10 @@ export interface QuoteRequest {
 
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import type { CompositeNavigationProp, RouteProp } from '@react-navigation/native';
+import type { CompositeNavigationProp, RouteProp, NavigatorScreenParams } from '@react-navigation/native';
+
+// Forward declare ProfileStackParamList for RootTabParamList
+// (actual definition is below)
 
 // Root Tab Navigator Params
 export type RootTabParamList = {
@@ -606,7 +610,7 @@ export type RootTabParamList = {
   EventsTab: undefined;
   OffersTab: undefined;
   MessagesTab: undefined;
-  ProfileTab: undefined;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 // Home Stack Params
@@ -621,7 +625,7 @@ export type HomeStackParamList = {
   OperationSubcategories: undefined;
   RequestOffer: { providerId: string; category: ServiceCategory };
   CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string };
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
   PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
   ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
   ProviderFinance: undefined;
@@ -646,7 +650,7 @@ export type EventsStackParamList = {
   CreateEvent: undefined;
   ServiceProviders: { category: ServiceCategory | OperationSubCategory | string };
   CategoryRequest: { category: ServiceCategory | OperationSubCategory; eventId?: string; provider?: { id: string; name: string; rating: number; image: string; } };
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
   PortfolioGallery: { images: string[]; initialIndex?: number; providerName?: string };
   ProviderReviews: { providerId: string; providerName: string; reviews: { id: string; name: string; avatar: string; rating: number; date: string; text: string; eventType: string; }[]; rating: number; reviewCount: number };
   EventOperations: { eventId: string };
@@ -663,13 +667,13 @@ export type OffersStackParamList = {
   Contracts: undefined;
   EventOperations: { eventId: string };
   ServiceOperations: { eventId: string; serviceId: string; serviceCategory: ServiceCategory; serviceName: string; providerName: string };
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
 };
 
 // Messages Stack Params
 export type MessagesStackParamList = {
   MessagesMain: undefined;
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
 };
 
 // Profile Stack Params
@@ -689,7 +693,7 @@ export type ProfileStackParamList = {
   ChangePassword: undefined;
   QuietHours: undefined;
   ProviderServices: undefined;
-  Chat: { chatId: string; recipientName: string };
+  Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
   Contract: { contractId: string };
   Contracts: undefined;
   Language: undefined;
