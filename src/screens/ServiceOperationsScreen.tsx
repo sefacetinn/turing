@@ -285,15 +285,15 @@ export function ServiceOperationsScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Mutable states
-  const [tasks, setTasks] = useState<OperationTask[]>(() => generateTasks(serviceCategory));
-  const [notes, setNotes] = useState<OperationNote[]>(() => generateNotes());
-  const [schedule, setSchedule] = useState<ScheduleItem[]>(() => generateSchedule(serviceCategory));
-  const [team, setTeam] = useState<TeamMember[]>(() => generateTeam(serviceCategory));
-  const [payments, setPayments] = useState<PaymentItem[]>(() => generatePayments());
+  // Mutable states - start with empty arrays (no mock data)
+  const [tasks, setTasks] = useState<OperationTask[]>([]);
+  const [notes, setNotes] = useState<OperationNote[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
 
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
-  const progress = Math.round((completedTasks / tasks.length) * 100);
+  const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
 
   const handleCall = useCallback((phone: string) => {
     Linking.openURL(`tel:${phone}`);
@@ -789,57 +789,67 @@ export function ServiceOperationsScreen() {
               <Text style={styles.addButtonText}>Yeni Görev Ekle</Text>
             </TouchableOpacity>
 
-            {tasks.map((task) => {
-              const statusStyle = getStatusStyle(task.status);
-              return (
-                <TouchableOpacity
-                  key={task.id}
-                  style={[styles.taskCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-                  onLongPress={() => handleTaskLongPress(task)}
-                  activeOpacity={0.9}
-                  delayLongPress={300}
-                >
-                  {/* Interactive Checkbox */}
-                  <TouchableOpacity
-                    style={styles.taskLeft}
-                    onPress={() => handleCycleTaskStatus(task.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[
-                      styles.taskCheckbox,
-                      {
-                        borderColor: statusStyle.text,
-                        backgroundColor: task.status === 'completed' ? statusStyle.text :
-                                        task.status === 'in_progress' ? statusStyle.text + '40' : 'transparent'
-                      }
-                    ]}>
-                      {task.status === 'completed' && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                      {task.status === 'in_progress' && <View style={styles.inProgressDot} />}
-                    </View>
-                  </TouchableOpacity>
-                  <View style={styles.taskContent}>
-                    <Text style={[styles.taskTitle, { color: colors.text }, task.status === 'completed' && styles.taskTitleCompleted]}>{task.title}</Text>
-                    <View style={styles.taskMeta}>
-                      <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>{task.assignee}</Text>
-                      <View style={styles.taskMetaDot} />
-                      <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>{task.time}</Text>
-                    </View>
-                  </View>
-                  {/* Interactive Status Badge */}
-                  <TouchableOpacity
-                    style={[styles.taskStatus, { backgroundColor: statusStyle.bg }]}
-                    onPress={() => handleCycleTaskStatus(task.id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.taskStatusText, { color: statusStyle.text }]}>{getStatusLabel(task.status)}</Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              );
-            })}
+            {tasks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkbox-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Henüz görev yok</Text>
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Yeni görev ekleyerek başlayın</Text>
+              </View>
+            ) : (
+              <>
+                {tasks.map((task) => {
+                  const statusStyle = getStatusStyle(task.status);
+                  return (
+                    <TouchableOpacity
+                      key={task.id}
+                      style={[styles.taskCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                      onLongPress={() => handleTaskLongPress(task)}
+                      activeOpacity={0.9}
+                      delayLongPress={300}
+                    >
+                      {/* Interactive Checkbox */}
+                      <TouchableOpacity
+                        style={styles.taskLeft}
+                        onPress={() => handleCycleTaskStatus(task.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[
+                          styles.taskCheckbox,
+                          {
+                            borderColor: statusStyle.text,
+                            backgroundColor: task.status === 'completed' ? statusStyle.text :
+                                            task.status === 'in_progress' ? statusStyle.text + '40' : 'transparent'
+                          }
+                        ]}>
+                          {task.status === 'completed' && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                          {task.status === 'in_progress' && <View style={styles.inProgressDot} />}
+                        </View>
+                      </TouchableOpacity>
+                      <View style={styles.taskContent}>
+                        <Text style={[styles.taskTitle, { color: colors.text }, task.status === 'completed' && styles.taskTitleCompleted]}>{task.title}</Text>
+                        <View style={styles.taskMeta}>
+                          <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>{task.assignee}</Text>
+                          <View style={styles.taskMetaDot} />
+                          <Text style={[styles.taskMetaText, { color: colors.textSecondary }]}>{task.time}</Text>
+                        </View>
+                      </View>
+                      {/* Interactive Status Badge */}
+                      <TouchableOpacity
+                        style={[styles.taskStatus, { backgroundColor: statusStyle.bg }]}
+                        onPress={() => handleCycleTaskStatus(task.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.taskStatusText, { color: statusStyle.text }]}>{getStatusLabel(task.status)}</Text>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                })}
 
-            <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              İpucu: Düzenlemek veya silmek için göreve uzun basın
-            </Text>
+                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                  İpucu: Düzenlemek veya silmek için göreve uzun basın
+                </Text>
+              </>
+            )}
           </View>
         )}
 
@@ -855,39 +865,49 @@ export function ServiceOperationsScreen() {
               <Text style={styles.addButtonText}>Yeni Program Ekle</Text>
             </TouchableOpacity>
 
-            {schedule.map((item, index) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.scheduleRow}
-                onLongPress={() => handleScheduleLongPress(item)}
-                activeOpacity={0.9}
-                delayLongPress={300}
-              >
-                <View style={styles.scheduleTimeline}>
-                  <View style={[
-                    styles.scheduleTimelineDot,
-                    { backgroundColor: item.status === 'done' ? '#10B981' : item.status === 'active' ? '#3B82F6' : isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB' }
-                  ]} />
-                  {index < schedule.length - 1 && (
-                    <View style={[styles.scheduleTimelineLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
-                  )}
-                </View>
-                <View style={[styles.scheduleCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                  <Text style={[styles.scheduleTime, { color: item.status === 'active' ? '#3B82F6' : colors.textSecondary }]}>{item.time}</Text>
-                  <Text style={[styles.scheduleTitle, { color: colors.text }]}>{item.title}</Text>
-                  {item.status === 'active' && (
-                    <View style={styles.scheduleActiveIndicator}>
-                      <View style={styles.scheduleActiveDot} />
-                      <Text style={styles.scheduleActiveText}>Şu an</Text>
+            {schedule.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Henüz program yok</Text>
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Yeni program ekleyerek başlayın</Text>
+              </View>
+            ) : (
+              <>
+                {schedule.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.scheduleRow}
+                    onLongPress={() => handleScheduleLongPress(item)}
+                    activeOpacity={0.9}
+                    delayLongPress={300}
+                  >
+                    <View style={styles.scheduleTimeline}>
+                      <View style={[
+                        styles.scheduleTimelineDot,
+                        { backgroundColor: item.status === 'done' ? '#10B981' : item.status === 'active' ? '#3B82F6' : isDark ? 'rgba(255,255,255,0.2)' : '#D1D5DB' }
+                      ]} />
+                      {index < schedule.length - 1 && (
+                        <View style={[styles.scheduleTimelineLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+                      )}
                     </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
+                    <View style={[styles.scheduleCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                      <Text style={[styles.scheduleTime, { color: item.status === 'active' ? '#3B82F6' : colors.textSecondary }]}>{item.time}</Text>
+                      <Text style={[styles.scheduleTitle, { color: colors.text }]}>{item.title}</Text>
+                      {item.status === 'active' && (
+                        <View style={styles.scheduleActiveIndicator}>
+                          <View style={styles.scheduleActiveDot} />
+                          <Text style={styles.scheduleActiveText}>Şu an</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
 
-            <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              İpucu: Düzenlemek veya silmek için programa uzun basın
-            </Text>
+                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                  İpucu: Düzenlemek veya silmek için programa uzun basın
+                </Text>
+              </>
+            )}
           </View>
         )}
 
@@ -903,34 +923,44 @@ export function ServiceOperationsScreen() {
               <Text style={styles.addButtonText}>Ekip Üyesi Ekle</Text>
             </TouchableOpacity>
 
-            {team.map((member) => (
-              <TouchableOpacity
-                key={member.id}
-                style={[styles.teamCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-                onLongPress={() => handleTeamLongPress(member)}
-                activeOpacity={0.9}
-                delayLongPress={300}
-              >
-                <View style={styles.teamAvatarContainer}>
-                  <OptimizedImage source={member.image} style={styles.teamAvatar} />
-                  <View style={[styles.teamStatusDot, { backgroundColor: getMemberStatusColor(member.status) }]} />
-                </View>
-                <View style={styles.teamInfo}>
-                  <Text style={[styles.teamName, { color: colors.text }]}>{member.name}</Text>
-                  <Text style={[styles.teamRole, { color: colors.textSecondary }]}>{member.role}</Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.teamCallBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5' }]}
-                  onPress={() => handleCall(member.phone)}
-                >
-                  <Ionicons name="call-outline" size={18} color="#10B981" />
-                </TouchableOpacity>
-              </TouchableOpacity>
-            ))}
+            {team.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Henüz ekip üyesi yok</Text>
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Ekip üyesi ekleyerek başlayın</Text>
+              </View>
+            ) : (
+              <>
+                {team.map((member) => (
+                  <TouchableOpacity
+                    key={member.id}
+                    style={[styles.teamCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                    onLongPress={() => handleTeamLongPress(member)}
+                    activeOpacity={0.9}
+                    delayLongPress={300}
+                  >
+                    <View style={styles.teamAvatarContainer}>
+                      <OptimizedImage source={member.image} style={styles.teamAvatar} />
+                      <View style={[styles.teamStatusDot, { backgroundColor: getMemberStatusColor(member.status) }]} />
+                    </View>
+                    <View style={styles.teamInfo}>
+                      <Text style={[styles.teamName, { color: colors.text }]}>{member.name}</Text>
+                      <Text style={[styles.teamRole, { color: colors.textSecondary }]}>{member.role}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.teamCallBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5' }]}
+                      onPress={() => handleCall(member.phone)}
+                    >
+                      <Ionicons name="call-outline" size={18} color="#10B981" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
 
-            <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              İpucu: Düzenlemek veya çıkarmak için ekip üyesine uzun basın
-            </Text>
+                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                  İpucu: Düzenlemek veya çıkarmak için ekip üyesine uzun basın
+                </Text>
+              </>
+            )}
           </View>
         )}
 
@@ -946,70 +976,80 @@ export function ServiceOperationsScreen() {
               <Text style={styles.addButtonText}>Ödeme Ekle</Text>
             </TouchableOpacity>
 
-            {/* Payment Summary */}
-            <View style={[styles.paymentSummary, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-              <View style={styles.paymentSummaryItem}>
-                <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Toplam</Text>
-                <Text style={[styles.paymentSummaryValue, { color: colors.text }]}>
-                  ₺{payments.reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
-                </Text>
+            {payments.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="wallet-outline" size={48} color={colors.textMuted} />
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Henüz ödeme yok</Text>
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Ödeme ekleyerek başlayın</Text>
               </View>
-              <View style={[styles.paymentSummaryDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
-              <View style={styles.paymentSummaryItem}>
-                <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Alınan</Text>
-                <Text style={[styles.paymentSummaryValue, { color: '#10B981' }]}>
-                  ₺{payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
-                </Text>
-              </View>
-              <View style={[styles.paymentSummaryDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
-              <View style={styles.paymentSummaryItem}>
-                <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Bekleyen</Text>
-                <Text style={[styles.paymentSummaryValue, { color: '#F59E0B' }]}>
-                  ₺{payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
-                </Text>
-              </View>
-            </View>
-
-            {/* Payment Cards */}
-            {payments.map((payment) => {
-              const statusInfo = getPaymentStatusInfo(payment.status);
-              return (
-                <TouchableOpacity
-                  key={payment.id}
-                  style={[styles.paymentCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
-                  onLongPress={() => handlePaymentLongPress(payment)}
-                  activeOpacity={0.9}
-                  delayLongPress={300}
-                >
-                  <View style={styles.paymentHeader}>
-                    <View style={styles.paymentInfo}>
-                      <Text style={[styles.paymentTitle, { color: colors.text }]}>{payment.title}</Text>
-                      <Text style={[styles.paymentDate, { color: colors.textSecondary }]}>
-                        {payment.status === 'paid' ? `Ödeme: ${payment.paidDate}` : `Vade: ${payment.dueDate}`}
-                      </Text>
-                    </View>
-                    <View style={[styles.paymentStatusBadge, { backgroundColor: statusInfo.color + '20' }]}>
-                      <Ionicons name={statusInfo.icon as any} size={12} color={statusInfo.color} />
-                      <Text style={[styles.paymentStatusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
-                    </View>
+            ) : (
+              <>
+                {/* Payment Summary */}
+                <View style={[styles.paymentSummary, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                  <View style={styles.paymentSummaryItem}>
+                    <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Toplam</Text>
+                    <Text style={[styles.paymentSummaryValue, { color: colors.text }]}>
+                      ₺{payments.reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
+                    </Text>
                   </View>
-                  <Text style={[styles.paymentAmount, { color: colors.text }]}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
+                  <View style={[styles.paymentSummaryDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+                  <View style={styles.paymentSummaryItem}>
+                    <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Alınan</Text>
+                    <Text style={[styles.paymentSummaryValue, { color: '#10B981' }]}>
+                      ₺{payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
+                    </Text>
+                  </View>
+                  <View style={[styles.paymentSummaryDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+                  <View style={styles.paymentSummaryItem}>
+                    <Text style={[styles.paymentSummaryLabel, { color: colors.textSecondary }]}>Bekleyen</Text>
+                    <Text style={[styles.paymentSummaryValue, { color: '#F59E0B' }]}>
+                      ₺{payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0).toLocaleString('tr-TR')}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Payment Cards */}
+                {payments.map((payment) => {
+                  const statusInfo = getPaymentStatusInfo(payment.status);
+                  return (
+                    <TouchableOpacity
+                      key={payment.id}
+                      style={[styles.paymentCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}
+                      onLongPress={() => handlePaymentLongPress(payment)}
+                      activeOpacity={0.9}
+                      delayLongPress={300}
+                    >
+                      <View style={styles.paymentHeader}>
+                        <View style={styles.paymentInfo}>
+                          <Text style={[styles.paymentTitle, { color: colors.text }]}>{payment.title}</Text>
+                          <Text style={[styles.paymentDate, { color: colors.textSecondary }]}>
+                            {payment.status === 'paid' ? `Ödeme: ${payment.paidDate}` : `Vade: ${payment.dueDate}`}
+                          </Text>
+                        </View>
+                        <View style={[styles.paymentStatusBadge, { backgroundColor: statusInfo.color + '20' }]}>
+                          <Ionicons name={statusInfo.icon as any} size={12} color={statusInfo.color} />
+                          <Text style={[styles.paymentStatusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.paymentAmount, { color: colors.text }]}>₺{payment.amount.toLocaleString('tr-TR')}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <Text style={[styles.hintText, { color: colors.textMuted }]}>
+                  İpucu: Düzenlemek veya silmek için ödemeye uzun basın
+                </Text>
+
+                {/* Invoice Button */}
+                <TouchableOpacity
+                  style={[styles.invoiceButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
+                  onPress={() => Alert.alert('Fatura', 'Fatura oluşturuluyor...')}
+                >
+                  <Ionicons name="document-text-outline" size={18} color="#4B30B8" />
+                  <Text style={styles.invoiceButtonText}>Fatura Oluştur</Text>
                 </TouchableOpacity>
-              );
-            })}
-
-            <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              İpucu: Düzenlemek veya silmek için ödemeye uzun basın
-            </Text>
-
-            {/* Invoice Button */}
-            <TouchableOpacity
-              style={[styles.invoiceButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
-              onPress={() => Alert.alert('Fatura', 'Fatura oluşturuluyor...')}
-            >
-              <Ionicons name="document-text-outline" size={18} color="#4B30B8" />
-              <Text style={styles.invoiceButtonText}>Fatura Oluştur</Text>
-            </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
 
@@ -1068,7 +1108,8 @@ export function ServiceOperationsScreen() {
             {notes.length === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
-                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Henüz not yok</Text>
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Henüz not yok</Text>
+                <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>Not ekleyerek başlayın</Text>
               </View>
             )}
           </View>
@@ -1844,6 +1885,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 40,
     gap: 12,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyStateText: {
     fontSize: 14,
