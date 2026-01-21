@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,19 +16,46 @@ export function NetworkStatusBar() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const translateY = useRef(new Animated.Value(-100)).current;
+  const [showBanner, setShowBanner] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Only show offline banner when definitely not connected
   // isInternetReachable can be null or false in simulators even with working connection
-  const isOffline = isConnected === false;
+  // Also require isInternetReachable to be explicitly false (not null) for extra certainty
+  const isOffline = isConnected === false || (isConnected === true && isInternetReachable === false);
+
+  // Add a delay before showing the banner to prevent flashing on app startup
+  // and handle brief network hiccups
+  useEffect(() => {
+    if (isOffline) {
+      // Wait 2 seconds before showing the banner to avoid false positives
+      timeoutRef.current = setTimeout(() => {
+        setShowBanner(true);
+      }, 2000);
+    } else {
+      // Hide immediately when connection is restored
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setShowBanner(false);
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isOffline]);
 
   useEffect(() => {
     Animated.spring(translateY, {
-      toValue: isOffline ? 0 : -100,
+      toValue: showBanner ? 0 : -100,
       useNativeDriver: true,
       tension: 80,
       friction: 12,
     }).start();
-  }, [isOffline, translateY]);
+  }, [showBanner, translateY]);
 
   return (
     <Animated.View
@@ -40,7 +67,7 @@ export function NetworkStatusBar() {
           transform: [{ translateY }],
         },
       ]}
-      pointerEvents={isOffline ? 'auto' : 'none'}
+      pointerEvents={showBanner ? 'auto' : 'none'}
     >
       <View style={styles.content}>
         <Ionicons

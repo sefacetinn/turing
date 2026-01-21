@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import NetInfo, { NetInfoState, NetInfoSubscription } from '@react-native-community/netinfo';
 
 export interface NetworkStatus {
@@ -16,32 +16,47 @@ export interface NetworkStatus {
  * const { isConnected, isInternetReachable, checkConnection } = useNetworkStatus();
  */
 export function useNetworkStatus() {
+  // Start with optimistic defaults (assume connected) to avoid flash on startup
   const [status, setStatus] = useState<NetworkStatus>({
     isConnected: true,
-    isInternetReachable: true,
+    isInternetReachable: null, // null means "unknown/checking"
     type: 'unknown',
     isWifi: false,
     isCellular: false,
   });
 
+  // Track if we've completed initial fetch to avoid false negatives
+  const hasInitialized = useRef(false);
+
   const updateStatus = useCallback((state: NetInfoState) => {
-    setStatus({
-      isConnected: state.isConnected,
-      isInternetReachable: state.isInternetReachable,
-      type: state.type,
-      isWifi: state.type === 'wifi',
-      isCellular: state.type === 'cellular',
-    });
+    // Only update if we have valid data or if already initialized
+    // This prevents setting isConnected to false during initial unknown state
+    if (hasInitialized.current || state.isConnected !== null) {
+      hasInitialized.current = true;
+      setStatus({
+        isConnected: state.isConnected,
+        isInternetReachable: state.isInternetReachable,
+        type: state.type,
+        isWifi: state.type === 'wifi',
+        isCellular: state.type === 'cellular',
+      });
+    }
   }, []);
 
   useEffect(() => {
-    // Get initial state
-    NetInfo.fetch().then(updateStatus);
+    // Get initial state with a small delay to let the system settle
+    const initTimeout = setTimeout(() => {
+      NetInfo.fetch().then((state) => {
+        hasInitialized.current = true;
+        updateStatus(state);
+      });
+    }, 500);
 
     // Subscribe to updates
     const unsubscribe: NetInfoSubscription = NetInfo.addEventListener(updateStatus);
 
     return () => {
+      clearTimeout(initTimeout);
       unsubscribe();
     };
   }, [updateStatus]);
