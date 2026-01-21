@@ -64,10 +64,17 @@ export function ChatScreen() {
   const [participantName, setParticipantName] = useState(params?.providerName || 'Bilinmeyen');
   const [participantImage, setParticipantImage] = useState(params?.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
   const [participantRole, setParticipantRole] = useState<'organizer' | 'provider' | null>(null);
+  const [participantCompanyName, setParticipantCompanyName] = useState<string | undefined>(undefined);
+  const [participantUserRole, setParticipantUserRole] = useState<string | undefined>(undefined);
   const [isOnline, setIsOnline] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
-  // Fetch real user data from Firebase
+  // Build display name: "Firma - Kişi (Rol)" or just "Kişi"
+  const displayName = participantCompanyName
+    ? `${participantCompanyName} - ${participantName}${participantUserRole ? ` (${participantUserRole})` : ''}`
+    : participantName;
+
+  // Fetch real user data from Firebase (including company info)
   const fetchParticipantData = async (userId: string) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', userId));
@@ -76,19 +83,48 @@ export function ChatScreen() {
         const role = userData.role || userData.userType || null;
         setParticipantRole(role);
 
-        // Update participant image from user data if available
+        // Check if user has a primary company
+        const primaryCompanyId = userData.primaryCompanyId;
+        if (primaryCompanyId) {
+          try {
+            const companyDoc = await getDoc(doc(db, 'companies', primaryCompanyId));
+            if (companyDoc.exists()) {
+              const companyData = companyDoc.data();
+              setParticipantCompanyName(companyData.name);
+
+              // Use company logo if available
+              if (companyData.logo) {
+                setParticipantImage(companyData.logo);
+              }
+
+              // Get user's role in company
+              const membersQuery = await getDoc(doc(db, 'company_members', `member_${userId}_${primaryCompanyId}`));
+              if (membersQuery.exists()) {
+                const memberData = membersQuery.data();
+                setParticipantUserRole(memberData.roleName);
+              }
+            }
+          } catch (companyError) {
+            console.warn('Error fetching company data:', companyError);
+          }
+        }
+
+        // Fallback to user image if no company logo
         const userImage = userData.photoURL || userData.profileImage || userData.image;
-        if (userImage) {
+        if (userImage && !participantCompanyName) {
           setParticipantImage(userImage);
         }
 
-        // Update name if available
-        const userName = userData.displayName || userData.name || userData.companyName;
+        // Update name (personal name, for the "Firma - Kişi" format)
+        const userName = userData.displayName || userData.name;
         if (userName) {
           setParticipantName(userName);
+        } else if (userData.companyName && !participantCompanyName) {
+          // Use companyName only as fallback if no personal name and no company fetched
+          setParticipantName(userData.companyName);
         }
 
-        return { role, image: userImage, name: userName };
+        return { role, image: userImage, name: userName, companyId: primaryCompanyId };
       }
     } catch (error) {
       console.warn('Error fetching participant data:', error);
@@ -673,8 +709,10 @@ export function ChatScreen() {
           activeOpacity={0.7}
         >
           <OptimizedImage source={participantImage} style={styles.headerAvatar} />
-          <View>
-            <Text style={[styles.headerName, { color: colors.text }]}>{participantName}</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={[styles.headerName, { color: colors.text }]} numberOfLines={1}>
+              {displayName}
+            </Text>
             <View style={styles.onlineStatus}>
               <View style={[styles.onlineDot, { backgroundColor: colors.textMuted }, isOnline && { backgroundColor: colors.success }]} />
               <Text style={[styles.onlineText, { color: colors.textMuted }]}>
@@ -1319,6 +1357,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 12,
     marginRight: 12,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginRight: 8,
   },
   headerName: {
     fontSize: 16,

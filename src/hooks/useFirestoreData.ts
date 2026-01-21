@@ -96,6 +96,7 @@ export interface FirestoreOffer {
   eventDate?: string;
   eventTime?: string;
   eventCity?: string;
+  // Legacy fields (backward compatible)
   organizerId: string;
   organizerName: string;
   organizerImage?: string;
@@ -106,6 +107,19 @@ export interface FirestoreOffer {
   providerPhone?: string;
   providerBio?: string;
   responseTime?: string;
+  // Company-based fields (new)
+  organizerCompanyId?: string;
+  organizerCompanyName?: string;
+  organizerCompanyLogo?: string;
+  organizerUserId?: string;
+  organizerUserName?: string;
+  organizerUserRole?: string;
+  providerCompanyId?: string;
+  providerCompanyName?: string;
+  providerCompanyLogo?: string;
+  providerUserId?: string;
+  providerUserName?: string;
+  providerUserRole?: string;
   // For booking/artist requests
   artistId?: string;
   artistName?: string;
@@ -177,6 +191,11 @@ export interface FirestoreConversation {
   unreadCount: Record<string, number>;
   eventId?: string;
   eventTitle?: string;
+  // Company-based fields (new)
+  participantCompanyIds?: Record<string, string>;   // userId -> companyId
+  participantCompanyNames?: Record<string, string>; // userId -> companyName
+  participantCompanyLogos?: Record<string, string>; // userId -> companyLogo
+  participantRoles?: Record<string, string>;        // userId -> role
 }
 
 export interface DashboardStats {
@@ -238,14 +257,29 @@ const docToOffer = (doc: any): FirestoreOffer => {
     eventTitle: data.eventTitle || '',
     eventDate: data.eventDate,
     eventCity: data.eventCity,
+    // Legacy fields
     organizerId: data.organizerId || '',
-    organizerName: data.organizerName || '',
-    organizerImage: data.organizerImage,
+    organizerName: data.organizerCompanyName || data.organizerName || '',
+    organizerImage: data.organizerCompanyLogo || data.organizerImage,
     organizerPhone: data.organizerPhone,
     providerId: data.providerId || '',
-    providerName: data.providerName || '',
-    providerImage: data.providerImage,
+    providerName: data.providerCompanyName || data.providerName || '',
+    providerImage: data.providerCompanyLogo || data.providerImage,
     providerPhone: data.providerPhone,
+    // Company-based fields
+    organizerCompanyId: data.organizerCompanyId,
+    organizerCompanyName: data.organizerCompanyName,
+    organizerCompanyLogo: data.organizerCompanyLogo,
+    organizerUserId: data.organizerUserId || data.organizerId,
+    organizerUserName: data.organizerUserName,
+    organizerUserRole: data.organizerUserRole,
+    providerCompanyId: data.providerCompanyId,
+    providerCompanyName: data.providerCompanyName,
+    providerCompanyLogo: data.providerCompanyLogo,
+    providerUserId: data.providerUserId || data.providerId,
+    providerUserName: data.providerUserName,
+    providerUserRole: data.providerUserRole,
+    // Artist fields
     artistId: data.artistId,
     artistName: data.artistName,
     artistImage: data.artistImage,
@@ -295,6 +329,11 @@ const docToConversation = (doc: any): FirestoreConversation => {
     unreadCount: data.unreadCount || {},
     eventId: data.eventId,
     eventTitle: data.eventTitle,
+    // Company-based fields
+    participantCompanyIds: data.participantCompanyIds || {},
+    participantCompanyNames: data.participantCompanyNames || {},
+    participantCompanyLogos: data.participantCompanyLogos || {},
+    participantRoles: data.participantRoles || {},
   };
 };
 
@@ -1493,6 +1532,19 @@ function generateConversationId(userId1: string, userId2: string): string {
   return `conv_${sorted[0]}_${sorted[1]}`;
 }
 
+/**
+ * Participant info for conversation
+ */
+export interface ConversationParticipantInfo {
+  userId: string;
+  userName: string;
+  userImage?: string;
+  companyId?: string;
+  companyName?: string;
+  companyLogo?: string;
+  userRole?: string;
+}
+
 export async function createOrGetConversation(
   userId: string,
   userName: string,
@@ -1546,6 +1598,121 @@ export async function createOrGetConversation(
   await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
     senderId: 'system',
     text: `Sohbet başlatıldı. ${otherUserName} ile iletişime geçebilirsiniz.`,
+    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+    date: new Date().toLocaleDateString('tr-TR'),
+    type: 'text',
+    createdAt: now,
+  });
+
+  return conversationId;
+}
+
+/**
+ * Create or get conversation with company info
+ * Enhanced version that includes company information for display
+ */
+export async function createOrGetConversationWithCompany(
+  participant1: ConversationParticipantInfo,
+  participant2: ConversationParticipantInfo,
+  serviceCategory?: string
+): Promise<string> {
+  // Generate deterministic conversation ID to prevent race conditions
+  const conversationId = generateConversationId(participant1.userId, participant2.userId);
+  const conversationRef = doc(db, 'conversations', conversationId);
+
+  // Check if conversation already exists
+  const existingDoc = await getDoc(conversationRef);
+
+  // Prepare display names: prioritize company name if available
+  const name1 = participant1.companyName || participant1.userName;
+  const name2 = participant2.companyName || participant2.userName;
+  const image1 = participant1.companyLogo || participant1.userImage || '';
+  const image2 = participant2.companyLogo || participant2.userImage || '';
+
+  if (existingDoc.exists()) {
+    // Update participant info in case names/images have changed
+    const updateData: Record<string, any> = {
+      [`participantNames.${participant1.userId}`]: name1,
+      [`participantNames.${participant2.userId}`]: name2,
+      [`participantImages.${participant1.userId}`]: image1,
+      [`participantImages.${participant2.userId}`]: image2,
+    };
+
+    // Update company info if available
+    if (participant1.companyId) {
+      updateData[`participantCompanyIds.${participant1.userId}`] = participant1.companyId;
+      updateData[`participantCompanyNames.${participant1.userId}`] = participant1.companyName || '';
+      updateData[`participantCompanyLogos.${participant1.userId}`] = participant1.companyLogo || '';
+    }
+    if (participant2.companyId) {
+      updateData[`participantCompanyIds.${participant2.userId}`] = participant2.companyId;
+      updateData[`participantCompanyNames.${participant2.userId}`] = participant2.companyName || '';
+      updateData[`participantCompanyLogos.${participant2.userId}`] = participant2.companyLogo || '';
+    }
+    if (participant1.userRole) {
+      updateData[`participantRoles.${participant1.userId}`] = participant1.userRole;
+    }
+    if (participant2.userRole) {
+      updateData[`participantRoles.${participant2.userId}`] = participant2.userRole;
+    }
+
+    await updateDoc(conversationRef, updateData);
+    return conversationId;
+  }
+
+  // Create new conversation with deterministic ID using setDoc
+  const now = Timestamp.now();
+  const conversationData: Record<string, any> = {
+    participantIds: [participant1.userId, participant2.userId].sort(),
+    participantNames: {
+      [participant1.userId]: name1,
+      [participant2.userId]: name2,
+    },
+    participantImages: {
+      [participant1.userId]: image1,
+      [participant2.userId]: image2,
+    },
+    participantCompanyIds: {},
+    participantCompanyNames: {},
+    participantCompanyLogos: {},
+    participantRoles: {},
+    lastMessage: '',
+    lastMessageAt: now,
+    unreadCount: {
+      [participant1.userId]: 0,
+      [participant2.userId]: 0,
+    },
+    createdAt: now,
+  };
+
+  // Add company info if available
+  if (participant1.companyId) {
+    conversationData.participantCompanyIds[participant1.userId] = participant1.companyId;
+    conversationData.participantCompanyNames[participant1.userId] = participant1.companyName || '';
+    conversationData.participantCompanyLogos[participant1.userId] = participant1.companyLogo || '';
+  }
+  if (participant2.companyId) {
+    conversationData.participantCompanyIds[participant2.userId] = participant2.companyId;
+    conversationData.participantCompanyNames[participant2.userId] = participant2.companyName || '';
+    conversationData.participantCompanyLogos[participant2.userId] = participant2.companyLogo || '';
+  }
+  if (participant1.userRole) {
+    conversationData.participantRoles[participant1.userId] = participant1.userRole;
+  }
+  if (participant2.userRole) {
+    conversationData.participantRoles[participant2.userId] = participant2.userRole;
+  }
+
+  await setDoc(conversationRef, conversationData);
+
+  // Add welcome message with company name if available
+  const welcomeName = participant2.companyName
+    ? `${participant2.companyName} (${participant2.userName})`
+    : participant2.userName;
+
+  await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
+    senderId: 'system',
+    text: `Sohbet başlatıldı. ${welcomeName} ile iletişime geçebilirsiniz.`,
     time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
     date: new Date().toLocaleDateString('tr-TR'),
     type: 'text',
@@ -1665,14 +1832,28 @@ export interface CreateOfferRequestParams {
   eventTitle: string;
   eventDate?: string;
   eventCity?: string;
-  // Organizer info
+  // Organizer info (legacy)
   organizerId: string;
   organizerName: string;
   organizerImage?: string;
-  // Provider info
+  // Provider info (legacy)
   providerId: string;
   providerName: string;
   providerImage?: string;
+  // Organizer company info (new)
+  organizerCompanyId?: string;
+  organizerCompanyName?: string;
+  organizerCompanyLogo?: string;
+  organizerUserId?: string;
+  organizerUserName?: string;
+  organizerUserRole?: string;
+  // Provider company info (new)
+  providerCompanyId?: string;
+  providerCompanyName?: string;
+  providerCompanyLogo?: string;
+  providerUserId?: string;
+  providerUserName?: string;
+  providerUserRole?: string;
   // Artist info (for booking requests)
   artistId?: string;
   artistName?: string;

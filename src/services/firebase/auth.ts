@@ -53,6 +53,9 @@ export interface UserProfile {
   }[];
   // User preference for which mode to start in (for dual role users)
   preferredMode?: 'organizer' | 'provider';
+  // Company membership fields (new)
+  companyIds?: string[];             // Kullanıcının üye olduğu firmalar
+  primaryCompanyId?: string;         // Aktif firma
 }
 
 // Register new user

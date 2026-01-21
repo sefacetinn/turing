@@ -57,10 +57,16 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const { user } = useAuth();
   const { conversations: realConversations, loading: conversationsLoading } = useConversations(user?.uid);
 
-  // State to store real user display names fetched from Firebase
-  const [userDisplayNames, setUserDisplayNames] = useState<Record<string, { name: string; image: string }>>({});
+  // State to store real user display names fetched from Firebase (with company info)
+  const [userDisplayNames, setUserDisplayNames] = useState<Record<string, {
+    name: string;
+    image: string;
+    companyName?: string;
+    userRole?: string;
+    displayName: string;
+  }>>({});
 
-  // Fetch real user display names from Firebase
+  // Fetch real user display names from Firebase (including company info)
   useEffect(() => {
     const fetchUserDisplayNames = async () => {
       if (!realConversations.length || !user?.uid) return;
@@ -78,10 +84,47 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           const userDoc = await getDoc(doc(db, 'users', userId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            // Prefer displayName (person's name) over companyName
-            const displayName = userData.displayName || userData.name || userData.companyName || 'Kullanıcı';
-            const userImage = userData.photoURL || userData.profileImage || userData.image || '';
-            return { id: userId, name: displayName, image: userImage };
+            const userName = userData.displayName || userData.name || 'Kullanıcı';
+            let userImage = userData.photoURL || userData.profileImage || userData.image || '';
+            let companyName: string | undefined;
+            let userRole: string | undefined;
+
+            // Check if user has a primary company
+            const primaryCompanyId = userData.primaryCompanyId;
+            if (primaryCompanyId) {
+              try {
+                const companyDoc = await getDoc(doc(db, 'companies', primaryCompanyId));
+                if (companyDoc.exists()) {
+                  const companyData = companyDoc.data();
+                  companyName = companyData.name;
+
+                  // Use company logo if available
+                  if (companyData.logo) {
+                    userImage = companyData.logo;
+                  }
+
+                  // Get user's role in company
+                  const memberDoc = await getDoc(doc(db, 'company_members', `member_${userId}_${primaryCompanyId}`));
+                  if (memberDoc.exists()) {
+                    const memberData = memberDoc.data();
+                    userRole = memberData.roleName;
+                  }
+                }
+              } catch (companyError) {
+                console.warn('Error fetching company data:', companyError);
+              }
+            }
+
+            // Build display name: "Firma - Kişi (Rol)" or just "Kişi"
+            let displayName = userName;
+            if (companyName) {
+              displayName = `${companyName} - ${userName}`;
+              if (userRole) {
+                displayName += ` (${userRole})`;
+              }
+            }
+
+            return { id: userId, name: userName, image: userImage, companyName, userRole, displayName };
           }
         } catch (error) {
           console.warn('Error fetching user data for:', userId, error);
@@ -90,10 +133,16 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
       });
 
       const results = await Promise.all(userDataPromises);
-      const newUserNames: Record<string, { name: string; image: string }> = {};
+      const newUserNames: Record<string, { name: string; image: string; companyName?: string; userRole?: string; displayName: string }> = {};
       results.forEach(result => {
         if (result) {
-          newUserNames[result.id] = { name: result.name, image: result.image };
+          newUserNames[result.id] = {
+            name: result.name,
+            image: result.image,
+            companyName: result.companyName,
+            userRole: result.userRole,
+            displayName: result.displayName,
+          };
         }
       });
 
@@ -112,10 +161,35 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
     if (!realConversations.length) return [];
     return realConversations.map(c => {
       const otherParticipantId = c.participantIds.find(id => id !== user?.uid) || '';
-      // Use fetched display name from Firebase (person's name), fallback to conversation's participantNames
+
+      // Use fetched display name from Firebase (includes company info)
       const fetchedUserData = userDisplayNames[otherParticipantId];
-      const otherParticipantName = fetchedUserData?.name || c.participantNames[otherParticipantId] || 'Kullanıcı';
-      const otherParticipantImage = fetchedUserData?.image || c.participantImages[otherParticipantId] || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200';
+
+      // For name: Use displayName which includes company format "Firma - Kişi (Rol)"
+      // Fallback chain: displayName -> conversation's participantCompanyNames -> participantNames
+      let otherParticipantName = fetchedUserData?.displayName;
+      if (!otherParticipantName) {
+        // Check if conversation has company name stored
+        const companyName = c.participantCompanyNames?.[otherParticipantId];
+        const userName = c.participantNames[otherParticipantId] || 'Kullanıcı';
+        const userRole = c.participantRoles?.[otherParticipantId];
+
+        if (companyName) {
+          otherParticipantName = `${companyName} - ${userName}`;
+          if (userRole) {
+            otherParticipantName += ` (${userRole})`;
+          }
+        } else {
+          otherParticipantName = userName;
+        }
+      }
+
+      // For image: prefer company logo from fetched data
+      const otherParticipantImage = fetchedUserData?.image ||
+        c.participantCompanyLogos?.[otherParticipantId] ||
+        c.participantImages[otherParticipantId] ||
+        'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200';
+
       return {
         id: c.id,
         name: otherParticipantName,

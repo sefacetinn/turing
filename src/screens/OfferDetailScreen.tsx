@@ -30,6 +30,7 @@ interface OfferData {
   id: string;
   counterpartyId: string;
   counterpartyName: string;
+  counterpartyFullName?: string; // "Firma - Kişi (Rol)" format
   counterpartyImage: string;
   counterpartyRating: number;
   counterpartyReviewCount: number;
@@ -38,6 +39,11 @@ interface OfferData {
   counterpartyResponseTime: string;
   counterpartyPhone: string;
   counterpartyType: 'provider' | 'organizer';
+  // Company info
+  counterpartyCompanyId?: string;
+  counterpartyCompanyName?: string;
+  counterpartyUserName?: string;
+  counterpartyUserRole?: string;
   service: string;
   category: string;
   eventTitle: string;
@@ -77,16 +83,43 @@ export function OfferDetailScreen() {
     // Determine if current user is provider or organizer for this offer
     const isUserProvider = user?.uid === firebaseOffer.providerId;
 
+    // Determine display names - prefer company name if available
+    const organizerDisplayName = firebaseOffer.organizerCompanyName || firebaseOffer.organizerName || 'Organizatör';
+    const organizerDisplayImage = firebaseOffer.organizerCompanyLogo || firebaseOffer.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100';
+    const providerDisplayName = firebaseOffer.providerCompanyName || firebaseOffer.providerName || 'Tedarikçi';
+    const providerDisplayImage = firebaseOffer.providerCompanyLogo || firebaseOffer.providerImage || 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200';
+
+    // Build display name with user info if company exists: "Firma - Kişi (Rol)"
+    const getFullDisplayName = (companyName?: string, userName?: string, userRole?: string) => {
+      if (!companyName) return userName || 'Bilinmeyen';
+      let displayName = companyName;
+      if (userName) {
+        displayName += ` - ${userName}`;
+        if (userRole) {
+          displayName += ` (${userRole})`;
+        }
+      }
+      return displayName;
+    };
+
+    const organizerFullName = getFullDisplayName(
+      firebaseOffer.organizerCompanyName,
+      firebaseOffer.organizerUserName,
+      firebaseOffer.organizerUserRole
+    );
+    const providerFullName = getFullDisplayName(
+      firebaseOffer.providerCompanyName,
+      firebaseOffer.providerUserName,
+      firebaseOffer.providerUserRole
+    );
+
     return {
       id: firebaseOffer.id,
       // Show the other party's info
       counterpartyId: isUserProvider ? firebaseOffer.organizerId : firebaseOffer.providerId,
-      counterpartyName: isUserProvider
-        ? (firebaseOffer.organizerName || 'Organizatör')
-        : (firebaseOffer.providerName || 'Tedarikçi'),
-      counterpartyImage: isUserProvider
-        ? (firebaseOffer.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100')
-        : (firebaseOffer.providerImage || 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200'),
+      counterpartyName: isUserProvider ? organizerDisplayName : providerDisplayName,
+      counterpartyFullName: isUserProvider ? organizerFullName : providerFullName,
+      counterpartyImage: isUserProvider ? organizerDisplayImage : providerDisplayImage,
       counterpartyRating: 4.5,
       counterpartyReviewCount: 0,
       counterpartyVerified: true,
@@ -96,6 +129,11 @@ export function OfferDetailScreen() {
         ? (firebaseOffer.organizerPhone || '')
         : (firebaseOffer.providerPhone || ''),
       counterpartyType: isUserProvider ? 'organizer' : 'provider',
+      // Company info for detailed view
+      counterpartyCompanyId: isUserProvider ? firebaseOffer.organizerCompanyId : firebaseOffer.providerCompanyId,
+      counterpartyCompanyName: isUserProvider ? firebaseOffer.organizerCompanyName : firebaseOffer.providerCompanyName,
+      counterpartyUserName: isUserProvider ? firebaseOffer.organizerUserName : firebaseOffer.providerUserName,
+      counterpartyUserRole: isUserProvider ? firebaseOffer.organizerUserRole : firebaseOffer.providerUserRole,
       service: firebaseOffer.artistName || firebaseOffer.serviceCategory || 'Hizmet',
       category: firebaseOffer.serviceCategory || 'booking',
       eventTitle: firebaseOffer.eventTitle || 'Etkinlik',

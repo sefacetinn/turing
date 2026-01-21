@@ -109,6 +109,12 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
       ].filter(Boolean);
       const locationStr = locationParts.length > 0 ? locationParts.join(', ') : '';
 
+      // Determine display names - prefer company name if available
+      const organizerDisplayName = o.organizerCompanyName || o.organizerName || 'Organizatör';
+      const organizerDisplayImage = o.organizerCompanyLogo || o.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100';
+      const providerDisplayName = o.providerCompanyName || o.providerName || 'Tedarikçi';
+      const providerDisplayImage = o.providerCompanyLogo || o.providerImage || 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200';
+
       return {
       id: o.id,
       eventId: o.eventId,
@@ -120,20 +126,29 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
       location: locationStr, // For ProviderOfferCard
       // Nested organizer object (expected by ProviderOfferCard)
       organizer: {
-        id: o.organizerId,
-        name: o.organizerName || 'Organizatör',
-        image: o.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-        company: '',
+        id: o.organizerUserId || o.organizerId,
+        name: organizerDisplayName,
+        image: organizerDisplayImage,
+        company: o.organizerCompanyName || '',
+        // Additional company info for detailed view
+        companyId: o.organizerCompanyId,
+        userName: o.organizerUserName,
+        userRole: o.organizerUserRole,
       },
       // Nested provider object (expected by OrganizerOfferCard)
       provider: {
-        id: o.providerId,
-        name: o.providerName || 'Tedarikçi',
-        image: o.providerImage || 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200',
+        id: o.providerUserId || o.providerId,
+        name: providerDisplayName,
+        image: providerDisplayImage,
         rating: 4.5,
         reviewCount: 0,
         completedJobs: 0,
         verified: true,
+        // Additional company info for detailed view
+        companyId: o.providerCompanyId,
+        companyName: o.providerCompanyName,
+        userName: o.providerUserName,
+        userRole: o.providerUserRole,
       },
       // Artist info
       artistId: o.artistId,

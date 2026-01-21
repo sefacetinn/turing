@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager, RefreshControl, Modal, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +14,7 @@ import { OptimizedImage } from '../components/OptimizedImage';
 import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useUserCompanies } from '../hooks/useCompany';
 // No mock data imports - profile comes from Firebase
 import { useApp } from '../../App';
 import { isOrganizerStats, isProviderStats } from '../types';
@@ -75,7 +76,12 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
   const menuItems = isProviderMode ? providerMenuItems : organizerMenuItems;
   const [isBusinessExpanded, setIsBusinessExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCompanyPicker, setShowCompanyPicker] = useState(false);
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Company hooks - for multi-company support
+  const { companies, primaryCompany, switchPrimaryCompany, loading: companiesLoading } = useUserCompanies(user?.uid);
+  const hasMultipleCompanies = companies.length > 1;
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -214,6 +220,17 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsBusinessExpanded(!isBusinessExpanded);
   };
+
+  // Handle company selection
+  const handleCompanySelect = useCallback(async (companyId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await switchPrimaryCompany(companyId);
+      setShowCompanyPicker(false);
+    } catch (error) {
+      console.warn('Error switching company:', error);
+    }
+  }, [switchPrimaryCompany]);
 
   const dynamicStyles = {
     container: {
@@ -411,6 +428,92 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
       color: colors.textMuted,
       marginTop: 20,
     },
+    // Company Picker Modal styles
+    companyPickerOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end' as const,
+    },
+    companyPickerContainer: {
+      backgroundColor: colors.cardBackground,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingTop: 16,
+      paddingBottom: insets.bottom + 16,
+      maxHeight: 400,
+    },
+    companyPickerHeader: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      paddingHorizontal: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    companyPickerTitle: {
+      fontSize: 18,
+      fontWeight: '600' as const,
+      color: colors.text,
+    },
+    companyPickerItem: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    companyPickerItemActive: {
+      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.05)',
+    },
+    companyPickerLogo: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      marginRight: 12,
+    },
+    companyPickerLogoPlaceholder: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      marginRight: 12,
+      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)',
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    },
+    companyPickerName: {
+      fontSize: 15,
+      fontWeight: '500' as const,
+      color: colors.text,
+    },
+    companyPickerType: {
+      fontSize: 12,
+      color: colors.textMuted,
+      marginTop: 2,
+    },
+    companySelectorCard: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      marginHorizontal: 20,
+      marginTop: 16,
+      padding: 14,
+      backgroundColor: isDark ? 'rgba(75, 48, 184, 0.08)' : 'rgba(75, 48, 184, 0.05)',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)',
+    },
+    companySelectorText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    companySelectorName: {
+      fontSize: 14,
+      fontWeight: '600' as const,
+      color: colors.text,
+      marginTop: 2,
+    },
   };
 
   return (
@@ -499,6 +602,31 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
             </View>
           </View>
         </TouchableOpacity>
+
+        {/* Company Selector - for users with multiple companies */}
+        {user && hasMultipleCompanies && (
+          <TouchableOpacity
+            style={dynamicStyles.companySelectorCard}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowCompanyPicker(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={dynamicStyles.companySelectorText}>Aktif Firma</Text>
+              <Text style={dynamicStyles.companySelectorName}>
+                {primaryCompany?.name || 'Firma seçin'}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={[styles.companyCountBadge, { backgroundColor: colors.brand[400] }]}>
+                <Text style={styles.companyCountText}>{companies.length}</Text>
+              </View>
+              <Ionicons name="swap-horizontal" size={18} color={colors.brand[400]} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Company Profile Card */}
         {user && authUserProfile?.companyName ? (
@@ -728,6 +856,64 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         {/* Version */}
         <Text style={dynamicStyles.versionText}>turing v1.0.0</Text>
       </Animated.ScrollView>
+
+      {/* Company Picker Modal */}
+      <Modal
+        visible={showCompanyPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCompanyPicker(false)}
+      >
+        <TouchableOpacity
+          style={dynamicStyles.companyPickerOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCompanyPicker(false)}
+        >
+          <View style={dynamicStyles.companyPickerContainer}>
+            <View style={dynamicStyles.companyPickerHeader}>
+              <Text style={dynamicStyles.companyPickerTitle}>Firma Seçin</Text>
+              <TouchableOpacity onPress={() => setShowCompanyPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={companies}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    dynamicStyles.companyPickerItem,
+                    primaryCompany?.id === item.id && dynamicStyles.companyPickerItemActive,
+                  ]}
+                  onPress={() => handleCompanySelect(item.id)}
+                >
+                  {item.logo ? (
+                    <OptimizedImage
+                      source={item.logo}
+                      style={dynamicStyles.companyPickerLogo}
+                    />
+                  ) : (
+                    <View style={dynamicStyles.companyPickerLogoPlaceholder}>
+                      <Text style={{ color: colors.brand[400], fontWeight: '600' }}>
+                        {item.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={dynamicStyles.companyPickerName}>{item.name}</Text>
+                    <Text style={dynamicStyles.companyPickerType}>
+                      {item.type === 'provider' ? 'Hizmet Sağlayıcı' : item.type === 'organizer' ? 'Organizatör' : 'Dual'}
+                    </Text>
+                  </View>
+                  {primaryCompany?.id === item.id && (
+                    <Ionicons name="checkmark-circle" size={22} color={colors.brand[400]} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -873,6 +1059,18 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  companyCountBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  companyCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   businessSection: {
     marginTop: 24,
