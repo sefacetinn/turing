@@ -44,8 +44,9 @@ import type { TicketPlatform, TicketCategory } from '../types';
 import { PosterGenerator } from '../components/poster';
 import { RatingModal } from '../components/rating';
 import { OptimizedImage } from '../components/OptimizedImage';
-import { useEvent } from '../hooks';
+import { useEvent, syncOffersToEventServices, syncOffersToEventServicesWithDebug } from '../hooks';
 import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions } from '../data/createEventData';
+import { deleteDocument, Collections } from '../services/firebase/firestore';
 
 // Helper to get label from option arrays
 const getOptionLabel = (options: { id: string; label: string }[], id: string | undefined): string | null => {
@@ -172,13 +173,38 @@ export function OrganizerEventDetailScreen() {
   // Timeline state - TODO: Fetch from Firebase
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Sync accepted offers to event services
+    if (eventId) {
+      console.log('[OrganizerEventDetail] Refreshing event:', eventId);
+      try {
+        const result = await syncOffersToEventServicesWithDebug(eventId);
+        // Show debug alert
+        let message = `Event ID:\n${eventId}\n\n`;
+        message += `Hizmetler:\n${result.services}\n\n`;
+        message += `Teklifler: ${result.allOffers === -1 ? 'Okunamadı' : result.allOffers}\n`;
+        message += `Kabul edilenler: ${result.acceptedOffers === -1 ? 'Okunamadı' : result.acceptedOffers}\n`;
+        if (result.error) {
+          message += `\nHata: ${result.error}`;
+        }
+        Alert.alert('Sync Debug', message, [{ text: 'Tamam' }]);
+      } catch (err: any) {
+        Alert.alert('Sync Error', err?.message || String(err));
+      }
+    }
     setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+  }, [eventId]);
 
   // Fetch event from Firebase
   const { event: firebaseEvent, loading: eventLoading, error: eventError } = useEvent(eventId);
+
+  // Sync accepted offers to event services when screen loads
+  useEffect(() => {
+    if (eventId && !eventLoading) {
+      syncOffersToEventServices(eventId);
+    }
+  }, [eventId, eventLoading]);
 
   // Convert Firebase event to local format
   const event = useMemo(() => {
@@ -1469,7 +1495,17 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
       </Animated.ScrollView>
 
       <ReviseEventModal visible={showReviseModal} onClose={() => setShowReviseModal(false)} onSubmit={() => { Alert.alert('Başarılı', 'Değişiklik talebi gönderildi.'); setShowReviseModal(false); }} eventTitle={event.title} />
-      <CancelEventModal visible={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={() => { Alert.alert('Etkinlik İptal Edildi', 'Tedarikçilere bildirim gönderildi.'); setShowCancelModal(false); navigation.goBack(); }} eventTitle={event.title} eventDate={event.date} totalSpent={event.spent} confirmedProviders={stats.confirmed} />
+      <CancelEventModal visible={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={async () => {
+        try {
+          await deleteDocument(Collections.EVENTS, eventId);
+          setShowCancelModal(false);
+          Alert.alert('Etkinlik İptal Edildi', 'Etkinlik başarıyla silindi ve tedarikçilere bildirim gönderildi.');
+          navigation.goBack();
+        } catch (error: any) {
+          console.warn('Error deleting event:', error);
+          Alert.alert('Hata', 'Etkinlik silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+        }
+      }} eventTitle={event.title} eventDate={event.date} totalSpent={event.spent} confirmedProviders={stats.confirmed} />
 
       {/* Add/Edit Expense Modal */}
       <Modal visible={showAddExpenseModal} animationType="slide" transparent>

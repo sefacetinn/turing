@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,7 +21,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { Artist } from '../../../data/provider/artistData';
 import { useAuth } from '../../../context/AuthContext';
-import { addDocument, updateDocument, Collections } from '../../../services/firebase/firestore';
+import { addDocument, updateDocument, getDocument, Collections } from '../../../services/firebase/firestore';
 
 type RouteParams = {
   AddEditArtist: { artistId?: string };
@@ -39,8 +40,10 @@ export function AddEditArtistScreen() {
   const { user } = useAuth();
 
   const artistId = route.params?.artistId;
-  // TODO: Fetch existing artist from Firebase when editing
   const isEditing = !!artistId;
+
+  // Loading state for fetching existing data
+  const [isLoading, setIsLoading] = useState(isEditing);
 
   // Form States
   const [name, setName] = useState('');
@@ -61,6 +64,69 @@ export function AddEditArtistScreen() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
+  // Fetch existing artist data when editing
+  useEffect(() => {
+    if (isEditing && artistId) {
+      fetchArtistData();
+    }
+  }, [artistId]);
+
+  const fetchArtistData = async () => {
+    if (!artistId) return;
+
+    try {
+      setIsLoading(true);
+      const artistData = await getDocument<Artist>(Collections.ARTISTS, artistId);
+
+      if (artistData) {
+        // Populate form fields with existing data
+        setName(artistData.name || '');
+        setStageName(artistData.stageName || '');
+        setDescription(artistData.description || '');
+        setBio(artistData.bio || '');
+        setStatus(artistData.status || 'active');
+        setAvailability(artistData.availability || 'available');
+
+        // Handle genres (could be array or string)
+        if (artistData.genre) {
+          if (Array.isArray(artistData.genre)) {
+            setSelectedGenres(artistData.genre);
+          } else if (typeof artistData.genre === 'string') {
+            setSelectedGenres([artistData.genre]);
+          }
+        }
+
+        // Handle price
+        if (artistData.priceMin) {
+          setPriceMin(artistData.priceMin.toString());
+        }
+        if (artistData.priceMax) {
+          setPriceMax(artistData.priceMax.toString());
+        }
+
+        // Handle social media
+        if (artistData.socialMedia) {
+          setInstagram(artistData.socialMedia.instagram || '');
+          setSpotify(artistData.socialMedia.spotify || '');
+          setYoutube(artistData.socialMedia.youtube || '');
+        }
+
+        // Handle images
+        if (artistData.image) {
+          setProfileImage(artistData.image);
+        }
+        if (artistData.coverImage) {
+          setCoverImage(artistData.coverImage);
+        }
+      }
+    } catch (error) {
+      console.warn('Error fetching artist data:', error);
+      Alert.alert('Hata', 'Sanatçı bilgileri yüklenirken bir hata oluştu.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Pick Profile Image
   const pickProfileImage = async () => {
     try {
@@ -76,7 +142,7 @@ export function AddEditArtistScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.warn('Error picking image:', error);
       Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
     }
   };
@@ -96,7 +162,7 @@ export function AddEditArtistScreen() {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.warn('Error picking image:', error);
       Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
     }
   };
@@ -170,7 +236,7 @@ export function AddEditArtistScreen() {
         [{ text: 'Tamam', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error saving artist:', error);
+      console.warn('Error saving artist:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Sanatçı kaydedilirken bir hata oluştu.');
     } finally {
@@ -230,6 +296,32 @@ export function AddEditArtistScreen() {
     { key: 'limited', label: 'Sinirli', color: '#F59E0B' },
   ];
 
+  // Show loading state while fetching existing artist data
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderColor: colors.border }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.goBack();
+          }}>
+            <Ionicons name="close" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Sanatçıyı Düzenle
+          </Text>
+          <View style={{ width: 80 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Sanatçı bilgileri yükleniyor...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
@@ -241,13 +333,14 @@ export function AddEditArtistScreen() {
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {isEditing ? 'Sanatciyi Duzenle' : 'Yeni Sanatci Ekle'}
+          {isEditing ? 'Sanatçıyı Düzenle' : 'Yeni Sanatçı Ekle'}
         </Text>
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          style={[styles.saveButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.6 : 1 }]}
           onPress={handleSave}
+          disabled={isSaving}
         >
-          <Text style={styles.saveButtonText}>Kaydet</Text>
+          <Text style={styles.saveButtonText}>{isSaving ? 'Kaydediliyor...' : 'Kaydet'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -488,6 +581,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   saveButtonText: { color: 'white', fontWeight: '600' },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
 
   content: { flex: 1 },
   contentContainer: { padding: 16, paddingBottom: 100 },

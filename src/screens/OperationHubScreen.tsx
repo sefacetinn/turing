@@ -287,6 +287,14 @@ export function OperationHubScreen() {
   // Overall progress calculation
   const overallProgress = useMemo(() => {
     const totalSections = eventData.sections.length;
+    if (totalSections === 0) {
+      return {
+        completed: 0,
+        assigned: 0,
+        total: 0,
+        percentage: 0,
+      };
+    }
     const completedSections = eventData.sections.filter(
       (s) => s.status === 'completed'
     ).length;
@@ -301,6 +309,9 @@ export function OperationHubScreen() {
       percentage: Math.round((completedSections / totalSections) * 100),
     };
   }, [eventData.sections]);
+
+  // Check if we have real event data
+  const hasEventData = eventData.eventId && eventData.eventTitle;
 
   return (
     <View style={styles.container}>
@@ -337,137 +348,155 @@ export function OperationHubScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
-        {/* Event Header */}
-        <View style={styles.eventHeader}>
-          <Text style={styles.eventTitle}>{eventData.eventTitle}</Text>
-          <Text style={styles.eventSubtitle}>
-            {eventData.eventDate} • {eventData.eventVenue}
-          </Text>
-        </View>
+        {/* Empty State - No Event Selected */}
+        {!hasEventData ? (
+          <View style={styles.emptyStateContainer}>
+            <View style={styles.emptyStateIcon}>
+              <Ionicons name="construct-outline" size={64} color="#D1D5DB" />
+            </View>
+            <Text style={styles.emptyStateTitle}>Operasyon Merkezi</Text>
+            <Text style={styles.emptyStateText}>
+              Operasyonlarını yönetmek için bir etkinlik seçin.
+            </Text>
+            <Text style={styles.emptyStateSubtext}>
+              Etkinlik detay sayfasından "Operasyonlar" butonuna tıklayarak
+              bu ekrana erişebilirsiniz.
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Event Header */}
+            <View style={styles.eventHeader}>
+              <Text style={styles.eventTitle}>{eventData.eventTitle}</Text>
+              <Text style={styles.eventSubtitle}>
+                {eventData.eventDate} • {eventData.eventVenue}
+              </Text>
+            </View>
 
-        {/* Current User Info */}
-        {userRole && (
-          <View style={styles.userCard}>
-            <View style={styles.userInfo}>
-              <View style={styles.userAvatar}>
-                <Ionicons name="person" size={20} color="#4B30B8" />
-              </View>
-              <View style={styles.userDetails}>
-                <Text style={styles.userName}>
-                  {currentOperationUser.party === 'booking'
-                    ? 'Booking Firması'
-                    : currentOperationUser.party === 'organizer'
-                    ? 'Organizatör'
-                    : 'Provider'}
+            {/* Progress Overview */}
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressTitle}>Genel İlerleme</Text>
+                <Text style={styles.progressPercentage}>
+                  %{overallProgress.percentage || 0}
                 </Text>
-                <Text style={styles.userRole}>{userRole.name}</Text>
               </View>
-            </View>
-            <View style={styles.accessBadge}>
-              <Text style={styles.accessBadgeText}>
-                {accessibleSections.length} bölüm
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Progress Overview */}
-        <View style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Genel İlerleme</Text>
-            <Text style={styles.progressPercentage}>
-              %{overallProgress.percentage}
-            </Text>
-          </View>
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                { width: `${overallProgress.percentage}%` },
-              ]}
-            />
-          </View>
-          <View style={styles.progressStats}>
-            <View style={styles.progressStat}>
-              <Text style={styles.progressStatValue}>
-                {overallProgress.assigned}/{overallProgress.total}
-              </Text>
-              <Text style={styles.progressStatLabel}>Atanan</Text>
-            </View>
-            <View style={styles.progressStatDivider} />
-            <View style={styles.progressStat}>
-              <Text style={styles.progressStatValue}>
-                {overallProgress.completed}/{overallProgress.total}
-              </Text>
-              <Text style={styles.progressStatLabel}>Tamamlanan</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Section Title */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderTitle}>Operasyon Bölümleri</Text>
-          <Text style={styles.sectionHeaderSubtitle}>
-            Erişebildiğiniz bölümler
-          </Text>
-        </View>
-
-        {/* Sections Grid */}
-        <View style={styles.sectionsGrid}>
-          {accessibleSections.map((section, index) =>
-            renderSectionCard(section, index)
-          )}
-        </View>
-
-        {/* No Access Message */}
-        {accessibleSections.length === 0 && (
-          <View style={styles.noAccessCard}>
-            <Ionicons name="lock-closed" size={48} color="#D1D5DB" />
-            <Text style={styles.noAccessTitle}>Erişim Yok</Text>
-            <Text style={styles.noAccessText}>
-              Bu etkinliğin operasyon bölümlerine erişim yetkiniz bulunmuyor.
-            </Text>
-          </View>
-        )}
-
-        {/* Parties Section */}
-        <View style={styles.partiesSection}>
-          <Text style={styles.partiesSectionTitle}>Taraflar</Text>
-          <View style={styles.partiesRow}>
-            <View style={styles.partyCard}>
-              <Image
-                source={{ uri: eventData.parties.booking.companyLogo }}
-                style={styles.partyLogo}
-              />
-              <Text style={styles.partyName} numberOfLines={1}>
-                {eventData.parties.booking.companyName}
-              </Text>
-              <Text style={styles.partyType}>Booking</Text>
-            </View>
-            <View style={styles.partyCard}>
-              <Image
-                source={{ uri: eventData.parties.organizer.companyLogo }}
-                style={styles.partyLogo}
-              />
-              <Text style={styles.partyName} numberOfLines={1}>
-                {eventData.parties.organizer.companyName}
-              </Text>
-              <Text style={styles.partyType}>Organizatör</Text>
-            </View>
-            {eventData.parties.artist && (
-              <View style={styles.partyCard}>
-                <Image
-                  source={{ uri: eventData.parties.artist.artistImage }}
-                  style={styles.partyLogo}
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${overallProgress.percentage || 0}%` },
+                  ]}
                 />
-                <Text style={styles.partyName} numberOfLines={1}>
-                  {eventData.parties.artist.artistName}
+              </View>
+              <View style={styles.progressStats}>
+                <View style={styles.progressStat}>
+                  <Text style={styles.progressStatValue}>
+                    {overallProgress.assigned}/{overallProgress.total}
+                  </Text>
+                  <Text style={styles.progressStatLabel}>Atanan</Text>
+                </View>
+                <View style={styles.progressStatDivider} />
+                <View style={styles.progressStat}>
+                  <Text style={styles.progressStatValue}>
+                    {overallProgress.completed}/{overallProgress.total}
+                  </Text>
+                  <Text style={styles.progressStatLabel}>Tamamlanan</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Section Title */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderTitle}>Operasyon Bölümleri</Text>
+              <Text style={styles.sectionHeaderSubtitle}>
+                {accessibleSections.length > 0
+                  ? 'Erişebildiğiniz bölümler'
+                  : 'Henüz bölüm oluşturulmamış'}
+              </Text>
+            </View>
+
+            {/* Sections Grid */}
+            {accessibleSections.length > 0 ? (
+              <View style={styles.sectionsGrid}>
+                {accessibleSections.map((section, index) =>
+                  renderSectionCard(section, index)
+                )}
+              </View>
+            ) : (
+              <View style={styles.noSectionsCard}>
+                <Ionicons name="albums-outline" size={48} color="#D1D5DB" />
+                <Text style={styles.noSectionsTitle}>Bölüm Yok</Text>
+                <Text style={styles.noSectionsText}>
+                  Bu etkinlik için henüz operasyon bölümü oluşturulmamış.
                 </Text>
-                <Text style={styles.partyType}>Sanatçı</Text>
               </View>
             )}
-          </View>
-        </View>
+
+            {/* Parties Section - Only show if there are parties */}
+            {(eventData.parties.booking.companyName || eventData.parties.organizer.companyName) && (
+              <View style={styles.partiesSection}>
+                <Text style={styles.partiesSectionTitle}>Taraflar</Text>
+                <View style={styles.partiesRow}>
+                  {eventData.parties.booking.companyName && (
+                    <View style={styles.partyCard}>
+                      {eventData.parties.booking.companyLogo ? (
+                        <Image
+                          source={{ uri: eventData.parties.booking.companyLogo }}
+                          style={styles.partyLogo}
+                        />
+                      ) : (
+                        <View style={[styles.partyLogo, styles.partyLogoPlaceholder]}>
+                          <Ionicons name="business" size={24} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <Text style={styles.partyName} numberOfLines={1}>
+                        {eventData.parties.booking.companyName}
+                      </Text>
+                      <Text style={styles.partyType}>Booking</Text>
+                    </View>
+                  )}
+                  {eventData.parties.organizer.companyName && (
+                    <View style={styles.partyCard}>
+                      {eventData.parties.organizer.companyLogo ? (
+                        <Image
+                          source={{ uri: eventData.parties.organizer.companyLogo }}
+                          style={styles.partyLogo}
+                        />
+                      ) : (
+                        <View style={[styles.partyLogo, styles.partyLogoPlaceholder]}>
+                          <Ionicons name="person" size={24} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <Text style={styles.partyName} numberOfLines={1}>
+                        {eventData.parties.organizer.companyName}
+                      </Text>
+                      <Text style={styles.partyType}>Organizatör</Text>
+                    </View>
+                  )}
+                  {eventData.parties.artist && eventData.parties.artist.artistName && (
+                    <View style={styles.partyCard}>
+                      {eventData.parties.artist.artistImage ? (
+                        <Image
+                          source={{ uri: eventData.parties.artist.artistImage }}
+                          style={styles.partyLogo}
+                        />
+                      ) : (
+                        <View style={[styles.partyLogo, styles.partyLogoPlaceholder]}>
+                          <Ionicons name="mic" size={24} color="#9CA3AF" />
+                        </View>
+                      )}
+                      <Text style={styles.partyName} numberOfLines={1}>
+                        {eventData.parties.artist.artistName}
+                      </Text>
+                      <Text style={styles.partyType}>Sanatçı</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+          </>
+        )}
 
         <View style={{ height: 100 }} />
       </AnimatedScrollView>
@@ -855,6 +884,66 @@ const styles = StyleSheet.create({
   partyType: {
     fontSize: 10,
     color: '#9CA3AF',
+  },
+  partyLogoPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 80,
+  },
+  emptyStateIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  noSectionsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  noSectionsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noSectionsText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

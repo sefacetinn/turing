@@ -32,7 +32,7 @@ export async function sendEmailVerificationCode(email: string): Promise<Verifica
     const result = await sendEmailVerification({ email });
     return result.data;
   } catch (error: any) {
-    console.error('Email verification error:', error);
+    console.warn('Email verification error:', error);
 
     // Handle Firebase Functions errors
     if (error.code === 'functions/invalid-argument') {
@@ -64,7 +64,7 @@ export async function verifyEmailCode(email: string, code: string): Promise<Veri
     const result = await verifyEmail({ email, code });
     return result.data;
   } catch (error: any) {
-    console.error('Email code verification error:', error);
+    console.warn('Email code verification error:', error);
 
     if (error.code === 'functions/invalid-argument') {
       throw new Error(error.message || 'Doğrulama kodu hatalı.');
@@ -93,7 +93,7 @@ export async function sendSmsVerificationCode(phone: string): Promise<Verificati
     const result = await sendSmsVerification({ phone: formattedPhone });
     return result.data;
   } catch (error: any) {
-    console.error('SMS verification error:', error);
+    console.warn('SMS verification error:', error);
 
     if (error.code === 'functions/invalid-argument') {
       throw new Error(error.message || 'Geçersiz telefon numarası.');
@@ -126,7 +126,7 @@ export async function verifySmsCode(phone: string, code: string): Promise<Verifi
     const result = await verifySms({ phone: formattedPhone, code });
     return result.data;
   } catch (error: any) {
-    console.error('SMS code verification error:', error);
+    console.warn('SMS code verification error:', error);
 
     if (error.code === 'functions/invalid-argument') {
       throw new Error(error.message || 'Doğrulama kodu hatalı.');

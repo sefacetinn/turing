@@ -37,7 +37,7 @@ export async function getDocument<T>(
     }
     return null;
   } catch (error) {
-    console.error('Error getting document:', error);
+    console.warn('Error getting document:', error);
     throw error;
   }
 }
@@ -54,9 +54,14 @@ export async function getDocuments<T>(
       id: doc.id,
       ...doc.data(),
     })) as T[];
-  } catch (error) {
-    console.error('Error getting documents:', error);
-    throw error;
+  } catch (error: any) {
+    // Handle permission errors gracefully - return empty array instead of crashing
+    if (error?.code === 'permission-denied') {
+      console.warn('Permission denied for collection:', collectionName);
+      return [];
+    }
+    console.warn('Error getting documents:', error);
+    return []; // Return empty array instead of throwing to prevent app crash
   }
 }
 
@@ -73,7 +78,7 @@ export async function addDocument<T extends DocumentData>(
     });
     return docRef.id;
   } catch (error) {
-    console.error('Error adding document:', error);
+    console.warn('Error adding document:', error);
     throw error;
   }
 }
@@ -91,7 +96,7 @@ export async function updateDocument(
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Error updating document:', error);
+    console.warn('Error updating document:', error);
     throw error;
   }
 }
@@ -105,7 +110,7 @@ export async function deleteDocument(
     const docRef = doc(db, collectionName, docId);
     await deleteDoc(docRef);
   } catch (error) {
-    console.error('Error deleting document:', error);
+    console.warn('Error deleting document:', error);
     throw error;
   }
 }
@@ -183,7 +188,7 @@ export async function getPaginatedDocuments<T>(
       hasMore,
     };
   } catch (error) {
-    console.error('Error getting paginated documents:', error);
+    console.warn('Error getting paginated documents:', error);
     throw error;
   }
 }

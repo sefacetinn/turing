@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,27 +17,58 @@ import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { useAuth } from '../context/AuthContext';
+import { useFavorites, toggleFavorite } from '../hooks';
 
 const colors = defaultColors;
-
-// TODO: Fetch favorites from Firebase
-// Empty arrays for production - will be populated from user's favorites
-const favoriteArtists: { id: string; name: string; genre: string; image: string; rating: number }[] = [];
-const favoriteProviders: { id: string; name: string; category: string; rating: number; reviews: number; location: string; verified: boolean; image: string }[] = [];
 
 type TabType = 'artists' | 'providers';
 
 export function FavoritesScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('artists');
   const [refreshing, setRefreshing] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  // Fetch favorites from Firebase
+  const { favorites, loading: favoritesLoading } = useFavorites(user?.uid);
+
+  // Filter favorites by type
+  const favoriteArtists = useMemo(() =>
+    favorites.filter(f => f.type === 'artist'),
+    [favorites]
+  );
+
+  const favoriteProviders = useMemo(() =>
+    favorites.filter(f => f.type === 'provider'),
+    [favorites]
+  );
 
   const onRefresh = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
+    // useFavorites uses onSnapshot so data updates automatically
     setTimeout(() => setRefreshing(false), 800);
   }, []);
+
+  // Handle removing a favorite
+  const handleRemoveFavorite = async (type: 'artist' | 'provider', itemId: string, itemName: string, itemImage?: string) => {
+    if (!user) return;
+
+    setRemovingId(itemId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      await toggleFavorite(user.uid, type, itemId, itemName, itemImage);
+    } catch (error) {
+      console.warn('Error removing favorite:', error);
+      Alert.alert('Hata', 'Favori kaldırılırken bir hata oluştu');
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -105,125 +138,139 @@ export function FavoritesScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.brand[400]}
-          />
-        }
-      >
-        {activeTab === 'artists' ? (
-          <View style={styles.artistsGrid}>
-            {favoriteArtists.map((artist) => (
-              <TouchableOpacity
-                key={artist.id}
-                style={[
-                  styles.artistCard,
-                  {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
-                    ...(isDark ? {} : helpers.getShadow('sm')),
-                  },
-                ]}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.id })}
-              >
-                <View style={styles.artistImageContainer}>
-                  <OptimizedImage source={artist.image} style={styles.artistImage} />
-                  <TouchableOpacity style={styles.favoriteButton}>
-                    <Ionicons name="heart" size={18} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.artistInfo}>
-                  <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
-                  <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>{artist.genre}</Text>
-                  <View style={styles.artistRating}>
-                    <Ionicons name="star" size={12} color="#fbbf24" />
-                    <Text style={[styles.artistRatingText, { color: colors.text }]}>{artist.rating}</Text>
+      {/* Loading State */}
+      {favoritesLoading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.brand[400]} />
+          <Text style={{ color: colors.textMuted, marginTop: 12 }}>Favoriler yükleniyor...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.brand[400]}
+            />
+          }
+        >
+          {activeTab === 'artists' ? (
+            <View style={styles.artistsGrid}>
+              {favoriteArtists.map((artist) => (
+                <TouchableOpacity
+                  key={artist.id}
+                  style={[
+                    styles.artistCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                      ...(isDark ? {} : helpers.getShadow('sm')),
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('ArtistDetail', { artistId: artist.itemId })}
+                >
+                  <View style={styles.artistImageContainer}>
+                    <OptimizedImage
+                      source={artist.itemImage || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400'}
+                      style={styles.artistImage}
+                    />
+                    <TouchableOpacity
+                      style={[styles.favoriteButton, removingId === artist.itemId && { opacity: 0.5 }]}
+                      onPress={() => handleRemoveFavorite('artist', artist.itemId, artist.itemName, artist.itemImage)}
+                      disabled={removingId === artist.itemId}
+                    >
+                      {removingId === artist.itemId ? (
+                        <ActivityIndicator size="small" color={colors.error} />
+                      ) : (
+                        <Ionicons name="heart" size={18} color={colors.error} />
+                      )}
+                    </TouchableOpacity>
                   </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.providersList}>
-            {favoriteProviders.map((provider) => (
-              <TouchableOpacity
-                key={provider.id}
-                style={[
-                  styles.providerCard,
-                  {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
-                    ...(isDark ? {} : helpers.getShadow('sm')),
-                  },
-                ]}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('ProviderDetail', { providerId: provider.id })}
-              >
-                <View style={styles.providerImageContainer}>
-                  <OptimizedImage source={provider.image} style={styles.providerImage} />
-                  {provider.verified && (
-                    <View style={[styles.verifiedBadge, { borderColor: colors.background, backgroundColor: colors.brand[500] }]}>
-                      <Ionicons name="checkmark" size={10} color="white" />
-                    </View>
-                  )}
-                </View>
-                <View style={styles.providerInfo}>
-                  <Text style={[styles.providerName, { color: colors.text }]}>{provider.name}</Text>
-                  <View style={styles.providerMeta}>
-                    <Text style={[styles.providerCategory, { color: colors.brand[400] }]}>{provider.category}</Text>
-                    <Text style={[styles.providerDot, { color: colors.textSecondary }]}>•</Text>
-                    <Ionicons name="location" size={10} color={colors.textMuted} />
-                    <Text style={[styles.providerLocation, { color: colors.textMuted }]}>{provider.location}</Text>
+                  <View style={styles.artistInfo}>
+                    <Text style={[styles.artistName, { color: colors.text }]} numberOfLines={1}>{artist.itemName}</Text>
+                    <Text style={[styles.artistGenre, { color: colors.textMuted }]} numberOfLines={1}>Sanatçı</Text>
                   </View>
-                </View>
-                <View style={styles.providerRight}>
-                  <View style={styles.ratingRow}>
-                    <Ionicons name="star" size={12} color="#fbbf24" />
-                    <Text style={[styles.ratingText, { color: colors.text }]}>{provider.rating}</Text>
-                  </View>
-                  <TouchableOpacity style={styles.heartButton}>
-                    <Ionicons name="heart" size={18} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* Empty State */}
-        {((activeTab === 'artists' && favoriteArtists.length === 0) ||
-          (activeTab === 'providers' && favoriteProviders.length === 0)) && (
-          <View style={styles.emptyState}>
-            <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
-              <Ionicons name="heart-outline" size={48} color={colors.textMuted} />
+                </TouchableOpacity>
+              ))}
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz favori yok</Text>
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-              Beğendiğiniz sanatçı ve sağlayıcıları favorilerinize ekleyin
-            </Text>
-            <TouchableOpacity
-              style={styles.exploreButton}
-              onPress={() => navigation.getParent()?.navigate('HomeTab')}
-            >
-              <LinearGradient
-                colors={gradients.primary}
-                style={styles.exploreButtonGradient}
-              >
-                <Text style={styles.exploreButtonText}>Keşfet</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <View style={styles.providersList}>
+              {favoriteProviders.map((provider) => (
+                <TouchableOpacity
+                  key={provider.id}
+                  style={[
+                    styles.providerCard,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border,
+                      ...(isDark ? {} : helpers.getShadow('sm')),
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('BookingProviderProfile', { providerId: provider.itemId })}
+                >
+                  <View style={styles.providerImageContainer}>
+                    <OptimizedImage
+                      source={provider.itemImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400'}
+                      style={styles.providerImage}
+                    />
+                  </View>
+                  <View style={styles.providerInfo}>
+                    <Text style={[styles.providerName, { color: colors.text }]}>{provider.itemName}</Text>
+                    <View style={styles.providerMeta}>
+                      <Text style={[styles.providerCategory, { color: colors.brand[400] }]}>Hizmet Sağlayıcı</Text>
+                    </View>
+                  </View>
+                  <View style={styles.providerRight}>
+                    <TouchableOpacity
+                      style={[styles.heartButton, removingId === provider.itemId && { opacity: 0.5 }]}
+                      onPress={() => handleRemoveFavorite('provider', provider.itemId, provider.itemName, provider.itemImage)}
+                      disabled={removingId === provider.itemId}
+                    >
+                      {removingId === provider.itemId ? (
+                        <ActivityIndicator size="small" color={colors.error} />
+                      ) : (
+                        <Ionicons name="heart" size={18} color={colors.error} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          {/* Empty State */}
+          {((activeTab === 'artists' && favoriteArtists.length === 0) ||
+            (activeTab === 'providers' && favoriteProviders.length === 0)) && (
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIcon, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground }]}>
+                <Ionicons name="heart-outline" size={48} color={colors.textMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz favori yok</Text>
+              <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                Beğendiğiniz {activeTab === 'artists' ? 'sanatçıları' : 'sağlayıcıları'} favorilerinize ekleyin
+              </Text>
+              <TouchableOpacity
+                style={styles.exploreButton}
+                onPress={() => navigation.getParent()?.navigate('HomeTab')}
+              >
+                <LinearGradient
+                  colors={gradients.primary}
+                  style={styles.exploreButtonGradient}
+                >
+                  <Text style={styles.exploreButtonText}>Keşfet</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

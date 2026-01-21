@@ -23,11 +23,12 @@ import { getCategoryGradient, OfferHistoryItem } from '../data/offersData';
 import { useApp } from '../../App';
 import { OfferTimeline } from '../components/offers/OfferTimeline';
 import { OptimizedImage } from '../components/OptimizedImage';
-import { useOffer, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
+import { useOffer, useEvent, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
 import { useAuth } from '../context/AuthContext';
 
 interface OfferData {
   id: string;
+  counterpartyId: string;
   counterpartyName: string;
   counterpartyImage: string;
   counterpartyRating: number;
@@ -42,6 +43,7 @@ interface OfferData {
   eventTitle: string;
   eventId: string;
   eventDate: string;
+  eventTime?: string;
   eventVenue: string;
   amount: number;
   originalAmount: number;
@@ -64,6 +66,9 @@ export function OfferDetailScreen() {
 
   // Fetch offer from Firebase
   const { offer: firebaseOffer, loading: isLoading } = useOffer(offerId);
+
+  // Fetch event details for venue information
+  const { event: eventData } = useEvent(firebaseOffer?.eventId);
 
   // Convert Firebase offer to local format
   const offer: OfferData | null = React.useMemo(() => {
@@ -96,6 +101,7 @@ export function OfferDetailScreen() {
       eventTitle: firebaseOffer.eventTitle || 'Etkinlik',
       eventId: firebaseOffer.eventId,
       eventDate: firebaseOffer.eventDate || '',
+      eventTime: firebaseOffer.eventTime || '',
       eventVenue: firebaseOffer.eventCity || '',
       amount: firebaseOffer.amount || (firebaseOffer.requestedBudget ? parseInt(firebaseOffer.requestedBudget) : 0),
       originalAmount: firebaseOffer.amount || (firebaseOffer.requestedBudget ? parseInt(firebaseOffer.requestedBudget) : 0),
@@ -109,9 +115,96 @@ export function OfferDetailScreen() {
       createdAt: firebaseOffer.createdAt ? firebaseOffer.createdAt.toLocaleDateString('tr-TR') : '',
     };
   }, [firebaseOffer, user]);
+
+  // Build offer history from Firebase data
+  const offerHistory: OfferHistoryItem[] = React.useMemo(() => {
+    if (!firebaseOffer) return [];
+
+    const history: OfferHistoryItem[] = [];
+
+    // 1. Initial request from organizer (always first)
+    if (firebaseOffer.createdAt) {
+      history.push({
+        id: 'request',
+        type: 'submitted',
+        by: 'organizer',
+        date: firebaseOffer.createdAt.toLocaleDateString('tr-TR'),
+        message: firebaseOffer.notes,
+        amount: firebaseOffer.requestedBudget ? parseInt(firebaseOffer.requestedBudget) : undefined,
+      });
+    }
+
+    // 2. Use offerHistory array if available (new format)
+    if (firebaseOffer.offerHistory && firebaseOffer.offerHistory.length > 0) {
+      firebaseOffer.offerHistory.forEach((item: any, index: number) => {
+        history.push({
+          id: `history-${index}`,
+          type: item.type === 'quote' ? 'submitted' : item.type,
+          by: item.by,
+          date: item.timestamp?.toLocaleDateString?.('tr-TR') || '',
+          amount: item.amount,
+          message: item.message,
+        });
+      });
+    } else {
+      // Fallback: reconstruct from individual fields (old format)
+      // 2. Provider responds with quote
+      if (firebaseOffer.status !== 'pending' && firebaseOffer.amount) {
+        history.push({
+          id: 'quote',
+          type: 'submitted',
+          by: 'provider',
+          date: '',
+          amount: firebaseOffer.amount,
+          message: firebaseOffer.message,
+        });
+      }
+
+      // 3. Counter offer (if exists) - only the last one
+      if (firebaseOffer.counterAmount) {
+        history.push({
+          id: 'counter',
+          type: 'counter',
+          by: firebaseOffer.counterBy || 'organizer',
+          date: firebaseOffer.counterAt?.toLocaleDateString('tr-TR') || '',
+          amount: firebaseOffer.counterAmount,
+          message: firebaseOffer.counterMessage,
+        });
+      }
+    }
+
+    // 4. Final status (accepted/rejected)
+    if (firebaseOffer.status === 'accepted') {
+      history.push({
+        id: 'accepted',
+        type: 'accepted',
+        by: firebaseOffer.acceptedBy || 'organizer',
+        date: firebaseOffer.acceptedAt?.toLocaleDateString('tr-TR') || firebaseOffer.updatedAt?.toLocaleDateString('tr-TR') || '',
+        amount: firebaseOffer.finalAmount || firebaseOffer.counterAmount || firebaseOffer.amount,
+      });
+    } else if (firebaseOffer.status === 'rejected') {
+      history.push({
+        id: 'rejected',
+        type: 'rejected',
+        by: firebaseOffer.rejectedBy || 'organizer',
+        date: firebaseOffer.rejectedAt?.toLocaleDateString('tr-TR') || firebaseOffer.updatedAt?.toLocaleDateString('tr-TR') || '',
+        message: firebaseOffer.rejectionReason,
+      });
+    }
+
+    return history;
+  }, [firebaseOffer]);
+
   const [showNegotiate, setShowNegotiate] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [scopeExpanded, setScopeExpanded] = useState(false);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [providerExpanded, setProviderExpanded] = useState(false);
+  const [artistExpanded, setArtistExpanded] = useState(false);
+  const [venueExpanded, setVenueExpanded] = useState(false);
+  const [eventExpanded, setEventExpanded] = useState(false);
   const [counterOfferAmount, setCounterOfferAmount] = useState('');
   const [counterOfferNote, setCounterOfferNote] = useState('');
   const [quoteAmount, setQuoteAmount] = useState('');
@@ -158,7 +251,7 @@ export function OfferDetailScreen() {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               Alert.alert('Teklif Kabul Edildi', 'Sozlesme olusturuldu.');
             } catch (error: any) {
-              console.error('Error accepting offer:', error);
+              console.warn('Error accepting offer:', error);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
               Alert.alert('Hata', error.message || 'Teklif kabul edilirken bir hata olustu.');
             }
@@ -203,7 +296,7 @@ export function OfferDetailScreen() {
         { text: 'Tamam', onPress: () => navigation.goBack() }
       ]);
     } catch (error: any) {
-      console.error('Error rejecting offer:', error);
+      console.warn('Error rejecting offer:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', error.message || 'Teklif reddedilirken bir hata olustu.');
     }
@@ -226,9 +319,13 @@ export function OfferDetailScreen() {
       setCounterOfferNote('');
       setSelectedQuickAmount(null);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Karsi Teklif Gonderildi', `₺${amount.toLocaleString('tr-TR')} tutarindaki teklifiniz iletildi.`);
+      Alert.alert(
+        'Karşı Teklif Gönderildi',
+        `₺${amount.toLocaleString('tr-TR')} tutarındaki teklifiniz iletildi.`,
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
-      console.error('Error sending counter offer:', error);
+      console.warn('Error sending counter offer:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Karsi teklif gonderilirken bir hata olustu.');
     }
@@ -291,7 +388,7 @@ export function OfferDetailScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Teklif Gonderildi', `₺${amount.toLocaleString('tr-TR')} tutarindaki teklifiniz organizatore iletildi.`);
     } catch (error) {
-      console.error('Error sending quote:', error);
+      console.warn('Error sending quote:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Teklif gonderilirken bir hata olustu.');
     }
@@ -396,170 +493,501 @@ export function OfferDetailScreen() {
           />
         }
       >
-        {/* Status & Amount Card */}
-        <View style={[styles.amountCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <View style={styles.amountHeader}>
-            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
-              <Ionicons name={statusConfig.icon as any} size={14} color={statusConfig.color} />
-              <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
-            </View>
-            <View style={styles.validBadge}>
-              <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
-              <Text style={[styles.validText, { color: colors.textSecondary }]}>{offer.validUntil} gecerli</Text>
-            </View>
+        {/* Status Header */}
+        <View style={[styles.statusHeader, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
+          <View style={[styles.heroStatusBadge, { backgroundColor: statusConfig.bg }]}>
+            <View style={[styles.heroStatusDot, { backgroundColor: statusConfig.color }]} />
+            <Text style={[styles.heroStatusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
           </View>
-
-          <View style={styles.serviceRow}>
-            <View style={[styles.serviceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
-              <Ionicons
-                name={offer.category === 'technical' ? 'hardware-chip-outline' : offer.category === 'booking' ? 'musical-notes-outline' : 'cube-outline'}
-                size={20}
-                color="#6366F1"
-              />
-            </View>
-            <View style={styles.serviceInfo}>
-              <Text style={[styles.serviceName, { color: colors.text }]}>{offer.service}</Text>
-              <Text style={[styles.eventName, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
-            </View>
-          </View>
-
-          <View style={styles.amountSection}>
-            <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>Teklif Tutari</Text>
-            <View style={styles.amountRow}>
-              {offer.discount > 0 && (
-                <Text style={[styles.originalAmount, { color: colors.textSecondary }]}>
-                  ₺{offer.originalAmount.toLocaleString('tr-TR')}
-                </Text>
-              )}
-              <Text style={[styles.amount, { color: colors.text }]}>₺{offer.amount.toLocaleString('tr-TR')}</Text>
-              {offer.discount > 0 && (
-                <View style={styles.discountBadge}>
-                  <Text style={styles.discountText}>%{offer.discount}</Text>
-                </View>
-              )}
-            </View>
-          </View>
+          {offer.validUntil && (
+            <Text style={[styles.heroValidText, { color: colors.textMuted }]}>{offer.validUntil}'e kadar</Text>
+          )}
         </View>
 
-        {/* Provider Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>
-            {offer.counterpartyType === 'organizer' ? 'Organizator' : 'Hizmet Saglayici'}
-          </Text>
-
+        {/* Combined Info Section */}
+        <View style={styles.infoSection}>
+          {/* 1. Event Row - Expandable */}
           <TouchableOpacity
-            style={styles.providerRow}
-            onPress={() => !isProviderMode && navigation.navigate('ProviderDetail', { providerId: offer.id })}
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
+            onPress={() => setEventExpanded(!eventExpanded)}
             activeOpacity={0.7}
           >
-            <OptimizedImage source={offer.counterpartyImage} style={styles.providerImage} />
-            <View style={styles.providerInfo}>
-              <View style={styles.providerNameRow}>
-                <Text style={[styles.providerName, { color: colors.text }]}>{offer.counterpartyName}</Text>
-                {offer.counterpartyVerified && (
-                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+            <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
+              <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                <Ionicons name="calendar" size={22} color="#6366F1" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.eventTitle}</Text>
+                <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
+                  <Ionicons name="calendar-outline" size={13} color="#6366F1" />
+                  <Text style={[styles.infoMetaText, { color: '#6366F1', fontSize: 13, fontWeight: '600' }]}>{offer.eventDate || 'Tarih Belirtilmedi'}</Text>
+                </View>
+                {offer.eventDate && (
+                  <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
+                    <Ionicons name="today-outline" size={12} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>
+                      {(() => {
+                        const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+                        const parts = offer.eventDate.split(/[\/\.\-]/);
+                        if (parts.length >= 3) {
+                          const day = parseInt(parts[0], 10);
+                          const month = parseInt(parts[1], 10) - 1;
+                          const year = parseInt(parts[2], 10);
+                          const date = new Date(year, month, day);
+                          return days[date.getDay()];
+                        }
+                        return '';
+                      })()}
+                    </Text>
+                  </View>
                 )}
               </View>
-              <View style={styles.providerRating}>
-                <Ionicons name="star" size={14} color="#FBBF24" />
-                <Text style={[styles.ratingText, { color: colors.text }]}>{offer.counterpartyRating}</Text>
-                <Text style={[styles.reviewCount, { color: colors.textSecondary }]}>({offer.counterpartyReviewCount})</Text>
-              </View>
+              <Ionicons name={eventExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+
+            {/* Expanded Content */}
+            {eventExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Event Description */}
+                {eventData?.description && (
+                  <Text style={[styles.providerBio, { color: colors.textSecondary }]}>
+                    {eventData.description}
+                  </Text>
+                )}
+
+                {/* Event Stats Row 1 */}
+                <View style={styles.providerStats}>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="time-outline" size={16} color="#6366F1" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData?.startTime || offer.eventTime || '--:--'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Saat</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="people-outline" size={16} color="#EC4899" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData?.guestCount || eventData?.venueCapacity || '-'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konuk</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="pricetag-outline" size={16} color="#10B981" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData?.category || offer.category || '-'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Kategori</Text>
+                  </View>
+                </View>
+
+                {/* Event Stats Row 2 */}
+                <View style={[styles.providerStats, { marginTop: 8 }]}>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="musical-notes-outline" size={16} color="#F59E0B" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>
+                      {eventData?.eventType === 'festival' ? 'Festival' :
+                       eventData?.eventType === 'concert' ? 'Konser' :
+                       eventData?.eventType === 'corporate' ? 'Kurumsal' :
+                       eventData?.eventType === 'private' ? 'Özel' :
+                       eventData?.eventType || 'Etkinlik'}
+                    </Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Tür</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>
+                      {eventData?.ageLimit ? `${eventData.ageLimit}+` :
+                       eventData?.isAllAges ? 'Tüm Yaşlar' : '-'}
+                    </Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Yaş Sınırı</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="grid-outline" size={16} color="#0EA5E9" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>
+                      {eventData?.seatingArrangement === 'seated' ? 'Oturmalı' :
+                       eventData?.seatingArrangement === 'standing' ? 'Ayakta' :
+                       eventData?.seatingArrangement === 'mixed' ? 'Karma' :
+                       eventData?.seatingArrangement || '-'}
+                    </Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Düzen</Text>
+                  </View>
+                </View>
+
+                {/* View Event Button */}
+                <TouchableOpacity
+                  style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)', marginTop: 8 }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    navigation.navigate(isProviderMode ? 'ProviderEventDetail' : 'OrganizerEventDetail', { eventId: offer.eventId });
+                  }}
+                >
+                  <Ionicons name="eye" size={16} color="#6366F1" />
+                  <Text style={[styles.providerActionText, { color: '#6366F1' }]}>Etkinlik Detaylarını Görüntüle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </TouchableOpacity>
 
-          <View style={[styles.providerStats, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.text }]}>{offer.counterpartyCompletedJobs}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Is</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.text }]}>{offer.counterpartyResponseTime}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Yanit</Text>
-            </View>
-          </View>
-
-          <View style={styles.providerActions}>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnCall]} onPress={handleCall}>
-              <Ionicons name="call-outline" size={18} color="#10B981" />
-              <Text style={[styles.actionBtnText, { color: '#10B981' }]}>Ara</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, styles.actionBtnChat]} onPress={handleChat}>
-              <Ionicons name="chatbubble-outline" size={18} color="#6366F1" />
-              <Text style={[styles.actionBtnText, { color: '#6366F1' }]}>Mesaj</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Event Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Etkinlik</Text>
-          <TouchableOpacity
-            style={styles.eventRow}
-            onPress={() => navigation.navigate(isProviderMode ? 'ProviderEventDetail' : 'OrganizerEventDetail', { eventId: offer.eventId })}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.eventIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
-              <Ionicons name="calendar-outline" size={20} color="#6366F1" />
-            </View>
-            <View style={styles.eventInfo}>
-              <Text style={[styles.eventTitle, { color: colors.text }]}>{offer.eventTitle}</Text>
-              <View style={styles.eventMeta}>
-                <View style={styles.eventMetaItem}>
-                  <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
-                  <Text style={[styles.eventMetaText, { color: colors.textSecondary }]}>{offer.eventDate}</Text>
+          {/* 2. Artist Row - Expandable */}
+          {firebaseOffer?.artistId && firebaseOffer?.artistName && (
+            <TouchableOpacity
+              style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+              onPress={() => setArtistExpanded(!artistExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.infoCardContent}>
+                <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)' }]}>
+                  <Ionicons name="musical-notes" size={18} color="#8B5CF6" />
                 </View>
-                <View style={styles.eventMetaItem}>
-                  <Ionicons name="location-outline" size={12} color={colors.textSecondary} />
-                  <Text style={[styles.eventMetaText, { color: colors.textSecondary }]}>{offer.eventVenue}</Text>
+                <View style={styles.infoCardDetails}>
+                  <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{firebaseOffer.artistName}</Text>
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="mic-outline" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Sanatçı</Text>
+                  </View>
                 </View>
+                <Ionicons name={artistExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
               </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
 
-        {/* Details Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Detaylar</Text>
+              {/* Expanded Content */}
+              {artistExpanded && (
+                <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                  {/* Artist Bio */}
+                  <Text style={[styles.providerBio, { color: colors.textSecondary }]}>
+                    {firebaseOffer?.artistBio || `${firebaseOffer.artistName}, Türkiye'nin önde gelen sanatçılarından biridir.`}
+                  </Text>
 
-          <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Hizmet Bedeli</Text>
-            <Text style={[styles.detailValue, { color: colors.text }]}>₺{offer.originalAmount.toLocaleString('tr-TR')}</Text>
-          </View>
+                  {/* Artist Stats */}
+                  <View style={styles.providerStats}>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="disc-outline" size={16} color="#8B5CF6" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.artistAlbumCount || '10+'}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Albüm</Text>
+                    </View>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="people-outline" size={16} color="#EC4899" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.artistFollowers || '500K+'}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Takipçi</Text>
+                    </View>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="calendar-outline" size={16} color="#10B981" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.artistConcertCount || '100+'}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konser</Text>
+                    </View>
+                  </View>
 
-          {offer.discount > 0 && (
-            <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: '#10B981' }]}>Indirim</Text>
-              <Text style={[styles.detailValue, { color: '#10B981' }]}>-₺{(offer.originalAmount - offer.amount).toLocaleString('tr-TR')}</Text>
-            </View>
+                  {/* Genre Tags */}
+                  {firebaseOffer?.artistGenres && (
+                    <View style={styles.artistGenres}>
+                      {(firebaseOffer.artistGenres as string[]).slice(0, 3).map((genre: string, index: number) => (
+                        <View key={index} style={[styles.artistGenreTag, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                          <Text style={styles.artistGenreText}>{genre}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* View Profile Button */}
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)', marginTop: 8 }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      navigation.navigate('ArtistProfile', { artistId: firebaseOffer.artistId });
+                    }}
+                  >
+                    <Ionicons name="person" size={16} color="#8B5CF6" />
+                    <Text style={[styles.providerActionText, { color: '#8B5CF6' }]}>Sanatçı Profilini Görüntüle</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </TouchableOpacity>
           )}
 
-          <View style={[styles.totalRow, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-            <Text style={[styles.totalLabel, { color: colors.text }]}>Toplam</Text>
-            <Text style={[styles.totalValue, { color: '#6366F1' }]}>₺{offer.amount.toLocaleString('tr-TR')}</Text>
-          </View>
+          {/* 4. Venue Row - Expandable */}
+          {eventData?.venue && (
+            <TouchableOpacity
+              style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+              onPress={() => setVenueExpanded(!venueExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.infoCardContent}>
+                <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.06)' }]}>
+                  <Ionicons name="location" size={18} color="#EC4899" />
+                </View>
+                <View style={styles.infoCardDetails}>
+                  <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{eventData.venue}</Text>
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="navigate-outline" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {eventData.district ? eventData.district + ', ' : ''}{eventData.city}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name={venueExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+              </View>
 
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>Teslimat: {offer.deliveryTime}</Text>
+              {/* Expanded Content */}
+              {venueExpanded && (
+                <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                  {/* Address */}
+                  {eventData.venueAddress && (
+                    <View style={styles.venueInfoRow}>
+                      <Ionicons name="map-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.venueInfoText, { color: colors.textSecondary }]}>{eventData.venueAddress}</Text>
+                    </View>
+                  )}
+
+                  {/* Venue Stats */}
+                  <View style={styles.providerStats}>
+                    {eventData.venueCapacity && (
+                      <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                        <Ionicons name="people-outline" size={16} color="#EC4899" />
+                        <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData.venueCapacity}</Text>
+                        <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Kapasite</Text>
+                      </View>
+                    )}
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name={eventData.indoorOutdoor === 'outdoor' ? 'sunny-outline' : 'home-outline'} size={16} color="#6366F1" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>
+                        {eventData.indoorOutdoor === 'outdoor' ? 'Açık' : eventData.indoorOutdoor === 'indoor' ? 'Kapalı' : 'Karma'}
+                      </Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Alan</Text>
+                    </View>
+                    {eventData.seatingType && (
+                      <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                        <Ionicons name={eventData.seatingType === 'standing' ? 'walk-outline' : 'grid-outline'} size={16} color="#10B981" />
+                        <Text style={[styles.providerStatValue, { color: colors.text }]}>
+                          {eventData.seatingType === 'standing' ? 'Ayakta' : eventData.seatingType === 'seated' ? 'Oturmalı' : 'Karma'}
+                        </Text>
+                        <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Düzen</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Actions */}
+                  <View style={styles.providerActions}>
+                    <TouchableOpacity
+                      style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.08)' }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        const address = eventData.venueAddress || `${eventData.venue}, ${eventData.city}`;
+                        Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`);
+                      }}
+                    >
+                      <Ionicons name="navigate" size={16} color="#EC4899" />
+                      <Text style={[styles.providerActionText, { color: '#EC4899' }]}>Yol Tarifi</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9', flex: 1 }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        navigation.navigate('VenueDetail', {
+                          venueName: eventData.venue,
+                          venueAddress: eventData.venueAddress || '',
+                          venueCity: eventData.city || '',
+                          venueDistrict: eventData.district || '',
+                          venueCapacity: eventData.venueCapacity || '',
+                          venueImage: eventData.venueImage || '',
+                          indoorOutdoor: eventData.indoorOutdoor || '',
+                          seatingType: eventData.seatingType || '',
+                        });
+                      }}
+                    >
+                      <Ionicons name="business" size={16} color={colors.text} />
+                      <Text style={[styles.providerActionText, { color: colors.text }]}>Mekan Detayları</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* 5. Provider Row - Expandable */}
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+            onPress={() => setProviderExpanded(!providerExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
+              <OptimizedImage source={offer.counterpartyImage} style={[styles.infoAvatar, { width: 52, height: 52, borderRadius: 26 }]} />
+              <View style={styles.infoCardDetails}>
+                <View style={styles.infoNameRow}>
+                  <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.counterpartyName}</Text>
+                  {offer.counterpartyVerified && (
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginLeft: 4 }} />
+                  )}
+                </View>
+                <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
+                  <Ionicons name="star" size={13} color="#FBBF24" />
+                  <Text style={[styles.infoMetaText, { color: '#FBBF24', fontSize: 13, fontWeight: '600' }]}>
+                    {offer.counterpartyRating} · {offer.counterpartyCompletedJobs} iş tamamlandı
+                  </Text>
+                </View>
+                <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
+                  <Ionicons name="briefcase-outline" size={12} color={colors.textSecondary} />
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>
+                    {offer.category || 'Hizmet Sağlayıcı'}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={providerExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
             </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-              <Text style={[styles.metaText, { color: colors.textSecondary }]}>{offer.createdAt}</Text>
-            </View>
-          </View>
+
+            {/* Expanded Content */}
+            {providerExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Provider Bio */}
+                <Text style={[styles.providerBio, { color: colors.textSecondary }]}>
+                  {firebaseOffer?.providerBio || `${offer.counterpartyName}, etkinlik sektöründe profesyonel hizmet veren deneyimli bir firmadır.`}
+                </Text>
+
+                {/* Quick Stats */}
+                <View style={styles.providerStats}>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="briefcase-outline" size={16} color="#6366F1" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.counterpartyCompletedJobs || 0}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Tamamlanan</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="star-outline" size={16} color="#FBBF24" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.counterpartyRating || '0.0'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Puan</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="time-outline" size={16} color="#10B981" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.responseTime || '< 1 saat'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Yanıt</Text>
+                  </View>
+                </View>
+
+                {/* Actions */}
+                <View style={styles.providerActions}>
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
+                    onPress={(e) => { e.stopPropagation(); handleCall(); }}
+                  >
+                    <Ionicons name="call" size={16} color="#10B981" />
+                    <Text style={[styles.providerActionText, { color: '#10B981' }]}>Ara</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)' }]}
+                    onPress={(e) => { e.stopPropagation(); handleChat(); }}
+                  >
+                    <Ionicons name="chatbubble" size={16} color="#6366F1" />
+                    <Text style={[styles.providerActionText, { color: '#6366F1' }]}>Mesaj</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9', flex: 1 }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      if (offer.counterpartyType === 'provider') {
+                        navigation.navigate('BookingProviderProfile', { providerId: offer.counterpartyId });
+                      } else {
+                        navigation.navigate('OrganizerProfile', { organizerId: offer.counterpartyId });
+                      }
+                    }}
+                  >
+                    <Ionicons name="person" size={16} color={colors.text} />
+                    <Text style={[styles.providerActionText, { color: colors.text }]}>Profili Görüntüle</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Notes */}
+        {/* Notes - Expandable */}
         {offer.notes && (
-          <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Talep Notu</Text>
-            <Text style={[styles.notesText, { color: colors.text }]}>{offer.notes}</Text>
-          </View>
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}
+            onPress={() => setNotesExpanded(!notesExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.06)' }]}>
+                <Ionicons name="document-text" size={18} color="#EC4899" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>Talep Notu</Text>
+                <View style={styles.infoMetaRow}>
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {offer.notes.length > 30 ? offer.notes.substring(0, 30) + '...' : offer.notes}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={notesExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+            </View>
+
+            {/* Expanded Content */}
+            {notesExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                <Text style={[styles.notesText, { color: colors.text }]}>{offer.notes}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Scope Card - Expandable */}
+        {(firebaseOffer?.inclusions?.length || firebaseOffer?.exclusions?.length) && (
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}
+            onPress={() => setScopeExpanded(!scopeExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.06)' }]}>
+                <Ionicons name="list" size={18} color="#F59E0B" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>Teklif Kapsamı</Text>
+                <View style={styles.infoMetaRow}>
+                  {(firebaseOffer?.inclusions?.length ?? 0) > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Ionicons name="checkmark-circle" size={11} color="#10B981" />
+                      <Text style={[styles.infoMetaText, { color: '#10B981' }]}>{firebaseOffer?.inclusions?.length ?? 0} dahil</Text>
+                    </View>
+                  )}
+                  {(firebaseOffer?.inclusions?.length ?? 0) > 0 && (firebaseOffer?.exclusions?.length ?? 0) > 0 && (
+                    <Text style={[styles.infoMetaDot, { color: colors.textMuted }]}>·</Text>
+                  )}
+                  {(firebaseOffer?.exclusions?.length ?? 0) > 0 && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Ionicons name="close-circle" size={11} color="#EF4444" />
+                      <Text style={[styles.infoMetaText, { color: '#EF4444' }]}>{firebaseOffer?.exclusions?.length ?? 0} hariç</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <Ionicons name={scopeExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+            </View>
+
+            {/* Expanded Content */}
+            {scopeExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                <View style={styles.scopeGrid}>
+                  {/* Inclusions Column */}
+                  {firebaseOffer?.inclusions && firebaseOffer.inclusions.length > 0 && (
+                    <View style={[styles.scopeColumn, { borderRightWidth: firebaseOffer?.exclusions?.length ? 1 : 0, borderRightColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.scopeHeader}>
+                        <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                        <Text style={[styles.scopeHeaderText, { color: '#10B981' }]}>Dahil</Text>
+                      </View>
+                      {firebaseOffer.inclusions.map((item: string, index: number) => (
+                        <Text key={index} style={[styles.scopeItem, { color: colors.text }]}>{item}</Text>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Exclusions Column */}
+                  {firebaseOffer?.exclusions && firebaseOffer.exclusions.length > 0 && (
+                    <View style={styles.scopeColumn}>
+                      <View style={styles.scopeHeader}>
+                        <Ionicons name="close-circle" size={14} color="#EF4444" />
+                        <Text style={[styles.scopeHeaderText, { color: '#EF4444' }]}>Hariç</Text>
+                      </View>
+                      {firebaseOffer.exclusions.map((item: string, index: number) => (
+                        <Text key={index} style={[styles.scopeItem, { color: colors.textSecondary }]}>{item}</Text>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
         )}
 
         {/* Counter Offer Section */}
@@ -594,21 +1022,74 @@ export function OfferDetailScreen() {
           </View>
         )}
 
-        {/* Offer Timeline / History - TODO: Fetch from Firebase */}
-        {/* Timeline will be shown when offer.history is available */}
+        {/* Offer Timeline / History - Expandable */}
+        {offerHistory.length > 0 && (
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}
+            onPress={() => setTimelineExpanded(!timelineExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                <Ionicons name="time" size={18} color="#6366F1" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>Teklif Süreci</Text>
+                <View style={styles.infoMetaRow}>
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>{offerHistory.length} işlem</Text>
+                </View>
+              </View>
+              <Ionicons name={timelineExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+            </View>
+
+            {/* Expanded Content */}
+            {timelineExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                <OfferTimeline history={offerHistory} currentUserRole={isUserProvider ? 'provider' : 'organizer'} />
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Amount Card - Only show if amount exists */}
+        {offer.amount > 0 && (
+          <View style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}>
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
+                <Ionicons name="cash" size={18} color="#10B981" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>₺{offer.amount.toLocaleString('tr-TR')}</Text>
+                <View style={styles.infoMetaRow}>
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Teklif Tutarı</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Contract Link (if accepted) */}
         {offer.status === 'accepted' && (
           <TouchableOpacity
             style={[styles.contractCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
-            onPress={() => navigation.navigate('Contract', { contractId: offer.id })}
+            onPress={() => navigation.navigate('Contract', {
+              offerId: offer.id,
+              eventId: firebaseOffer?.eventId,
+              eventTitle: firebaseOffer?.eventTitle,
+              eventDate: firebaseOffer?.eventDate,
+              artistName: firebaseOffer?.artistName,
+              organizerName: firebaseOffer?.organizerName,
+              amount: firebaseOffer?.finalAmount || firebaseOffer?.amount,
+            })}
           >
             <View style={styles.contractIcon}>
               <Ionicons name="document-text-outline" size={24} color="#10B981" />
             </View>
             <View style={styles.contractInfo}>
               <Text style={[styles.contractTitle, { color: colors.text }]}>Sozlesme</Text>
-              <Text style={[styles.contractStatus, { color: '#10B981' }]}>Imza bekliyor</Text>
+              <Text style={[styles.contractStatus, { color: firebaseOffer?.contractSigned ? '#10B981' : '#F59E0B' }]}>
+                {firebaseOffer?.contractSigned ? 'Imzalandi - Sozlesmeyi Gor' : 'Imza bekliyor'}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#10B981" />
           </TouchableOpacity>
@@ -696,9 +1177,32 @@ export function OfferDetailScreen() {
             <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
             <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Contract', { contractId: offer.id })}>
-            <Text style={styles.primaryBtnText}>Sozlesmeyi Gor</Text>
-          </TouchableOpacity>
+          {firebaseOffer?.contractSigned ? (
+            // Sözleşme imzalandı - Etkinliği Görüntüle
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => {
+              // Navigate based on user role
+              if (isUserProvider) {
+                navigation.navigate('ProviderEventDetail', { eventId: firebaseOffer?.eventId });
+              } else {
+                navigation.navigate('OrganizerEventDetail', { eventId: firebaseOffer?.eventId });
+              }
+            }}>
+              <Text style={styles.primaryBtnText}>Etkinligi Goruntule</Text>
+            </TouchableOpacity>
+          ) : (
+            // Sözleşme henüz imzalanmadı - Sözleşmeyi Gör
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Contract', {
+                offerId: offer.id,
+                eventId: firebaseOffer?.eventId,
+                eventTitle: firebaseOffer?.eventTitle,
+                eventDate: firebaseOffer?.eventDate,
+                artistName: firebaseOffer?.artistName,
+                organizerName: firebaseOffer?.organizerName,
+                amount: firebaseOffer?.finalAmount || firebaseOffer?.amount,
+              })}>
+              <Text style={styles.primaryBtnText}>Sozlesmeyi Gor</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -919,7 +1423,8 @@ export function OfferDetailScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+
+      </View>
   );
 }
 
@@ -1003,6 +1508,177 @@ const styles = StyleSheet.create({
   },
   discountText: { color: 'white', fontSize: 12, fontWeight: '600' },
 
+  // Status Header
+  statusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  heroStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 6,
+  },
+  heroStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  heroStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  heroValidText: {
+    fontSize: 11,
+  },
+
+  // Info Section (Combined Cards)
+  infoSection: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  infoCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  infoCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    minHeight: 72,
+  },
+  infoAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  infoIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCardDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  infoMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    gap: 4,
+  },
+  infoMetaText: {
+    fontSize: 12,
+  },
+  infoMetaDot: {
+    fontSize: 12,
+    marginHorizontal: 2,
+  },
+  infoActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  infoActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Provider Expanded
+  providerBio: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  providerStats: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  providerStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 4,
+  },
+  providerStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  providerStatLabel: {
+    fontSize: 10,
+  },
+  providerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  providerActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 6,
+  },
+  providerActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Artist Genres
+  artistGenres: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  artistGenreTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  artistGenreText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+
+  // Venue Info
+  venueInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 12,
+  },
+  venueInfoText: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
+  },
+
   // Cards
   card: {
     marginHorizontal: 16,
@@ -1011,64 +1687,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   cardTitle: { fontSize: 13, fontWeight: '600', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.6 },
-
-  // Provider
-  providerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  providerImage: { width: 48, height: 48, borderRadius: 12 },
-  providerInfo: { flex: 1, marginLeft: 12 },
-  providerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  providerName: { fontSize: 16, fontWeight: '600' },
-  providerRating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 14, fontWeight: '600' },
-  reviewCount: { fontSize: 13 },
-  providerStats: {
-    flexDirection: 'row',
-    paddingTop: 16,
-    marginTop: 16,
-    borderTopWidth: 1,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 16, fontWeight: '700' },
-  statLabel: { fontSize: 12, marginTop: 2 },
-  statDivider: { width: 1, height: 30 },
-  providerActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  actionBtnCall: { backgroundColor: 'rgba(16, 185, 129, 0.1)' },
-  actionBtnChat: { backgroundColor: 'rgba(99, 102, 241, 0.1)' },
-  actionBtnText: { fontSize: 14, fontWeight: '600' },
-
-  // Event
-  eventRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  eventIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eventInfo: { flex: 1, marginLeft: 12 },
-  eventTitle: { fontSize: 15, fontWeight: '600', marginBottom: 6 },
-  eventMeta: { gap: 4 },
-  eventMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  eventMetaText: { fontSize: 13 },
 
   // Details
   detailRow: {
@@ -1097,6 +1715,39 @@ const styles = StyleSheet.create({
 
   // Notes
   notesText: { fontSize: 14, lineHeight: 22 },
+
+  // Scope (Inclusions/Exclusions)
+  scopeExpandedContent: {
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 4,
+  },
+  scopeGrid: {
+    flexDirection: 'row',
+  },
+  scopeColumn: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  scopeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 10,
+  },
+  scopeHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  scopeItem: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
 
   // Counter Offer Section
   counterOfferHeader: {

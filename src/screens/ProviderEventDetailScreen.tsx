@@ -48,7 +48,10 @@ import {
   getDocumentIcon,
   formatFileSize,
 } from '../data/providerEventData';
-import { useEvent } from '../hooks';
+import { useEvent, useProviderEventOffer } from '../hooks';
+import { useAuth } from '../context/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase/config';
 import {
   CheckInStatus,
   getCheckInStatus,
@@ -125,8 +128,14 @@ export function ProviderEventDetailScreen() {
   console.log('[ProviderEventDetailScreen] Received eventId from route:', eventId);
   console.log('[ProviderEventDetailScreen] Full route params:', JSON.stringify(route.params));
 
+  // Get current user
+  const { user } = useAuth();
+
   // Fetch event from Firebase
   const { event: firebaseEvent, loading: eventLoading, error: eventError } = useEvent(eventId);
+
+  // Fetch provider's accepted offer for this event to get contract amount
+  const { contractAmount, offer: providerOffer } = useProviderEventOffer(user?.uid, eventId);
 
   // State
   const [isLoading, setIsLoading] = useState(true);
@@ -152,11 +161,46 @@ export function ProviderEventDetailScreen() {
   // Rating Modal State
   const [showRatingModal, setShowRatingModal] = useState(false);
 
+  // Organizer data state
+  const [organizerData, setOrganizerData] = useState<{
+    name: string;
+    image?: string;
+    phone?: string;
+  } | null>(null);
+
+  // Fetch organizer data from Firebase
+  useEffect(() => {
+    const fetchOrganizerData = async () => {
+      if (!firebaseEvent?.organizerId) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', firebaseEvent.organizerId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setOrganizerData({
+            name: userData.displayName || userData.name || userData.companyName || 'Organizatör',
+            image: userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image,
+            phone: userData.phone || userData.phoneNumber,
+          });
+        }
+      } catch (error) {
+        console.warn('Error fetching organizer data:', error);
+      }
+    };
+
+    fetchOrganizerData();
+  }, [firebaseEvent?.organizerId]);
+
   // Convert Firebase event to EventDetail format
   useEffect(() => {
     console.log('[ProviderEventDetailScreen] useEffect triggered - firebaseEvent:', firebaseEvent ? 'exists' : 'null', ', loading:', eventLoading);
     if (firebaseEvent) {
       console.log('[ProviderEventDetailScreen] Converting firebaseEvent to EventDetail:', firebaseEvent.id, firebaseEvent.title);
+      console.log('[ProviderEventDetailScreen] Contract amount from offer:', contractAmount);
+
+      // Use contract amount if available, otherwise fall back to event budget
+      const earnings = contractAmount > 0 ? contractAmount : (firebaseEvent.budget || 0);
+
       const eventDetail: EventDetail = {
         id: firebaseEvent.id,
         eventTitle: firebaseEvent.title,
@@ -166,17 +210,17 @@ export function ProviderEventDetailScreen() {
         location: `${firebaseEvent.city}${firebaseEvent.district ? `, ${firebaseEvent.district}` : ''}`,
         image: firebaseEvent.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
         organizerId: firebaseEvent.organizerId,
-        organizerName: 'Organizatör',
-        organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-        organizerPhone: '',
+        organizerName: organizerData?.name || 'Organizatör',
+        organizerImage: organizerData?.image || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        organizerPhone: organizerData?.phone || '',
         role: 'Hizmet Sağlayıcı',
         category: firebaseEvent.services?.[0]?.category || 'technical',
         status: firebaseEvent.status === 'completed' ? 'completed' :
                 firebaseEvent.status === 'cancelled' ? 'cancelled' :
                 firebaseEvent.status === 'confirmed' ? 'active' : 'planned',
-        earnings: firebaseEvent.budget || 0,
+        earnings: earnings,
         paidAmount: 0,
-        pendingAmount: firebaseEvent.budget || 0,
+        pendingAmount: earnings,
         description: firebaseEvent.description || '',
         teamSize: 1,
         taskCount: 0,
@@ -192,7 +236,7 @@ export function ProviderEventDetailScreen() {
       console.log('[ProviderEventDetailScreen] Firebase event is null and loading is false - event not found');
     }
     setIsLoading(eventLoading);
-  }, [firebaseEvent, eventLoading, eventId]);
+  }, [firebaseEvent, eventLoading, eventId, contractAmount, organizerData]);
 
   // Load check-in status
   useEffect(() => {

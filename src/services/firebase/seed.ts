@@ -182,7 +182,7 @@ export async function seedAll(): Promise<void> {
     await seedArtists();
     console.log('Database seeded successfully!');
   } catch (error) {
-    console.error('Error seeding database:', error);
+    console.warn('Error seeding database:', error);
     throw error;
   }
 }

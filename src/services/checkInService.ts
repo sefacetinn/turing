@@ -67,7 +67,7 @@ export async function requestLocationPermission(): Promise<boolean> {
     const { status } = await Location.requestForegroundPermissionsAsync();
     return status === 'granted';
   } catch (error) {
-    console.error('Error requesting location permission:', error);
+    console.warn('Error requesting location permission:', error);
     return false;
   }
 }
@@ -85,7 +85,7 @@ export async function getCurrentLocation(): Promise<Location.LocationObject | nu
     });
     return location;
   } catch (error) {
-    console.error('Error getting current location:', error);
+    console.warn('Error getting current location:', error);
     return null;
   }
 }
@@ -99,7 +99,7 @@ export async function getCheckInStatus(eventId: string): Promise<CheckInStatus |
     }
     return null;
   } catch (error) {
-    console.error('Error getting check-in status:', error);
+    console.warn('Error getting check-in status:', error);
     return null;
   }
 }
@@ -112,7 +112,7 @@ export async function saveCheckInStatus(status: CheckInStatus): Promise<void> {
       JSON.stringify(status)
     );
   } catch (error) {
-    console.error('Error saving check-in status:', error);
+    console.warn('Error saving check-in status:', error);
   }
 }
 
@@ -246,7 +246,7 @@ export async function performCheckIn(
       distance: Math.round(distance),
     };
   } catch (error) {
-    console.error('Error performing check-in:', error);
+    console.warn('Error performing check-in:', error);
     return {
       success: false,
       message: 'Check-in sırasında bir hata oluştu.',
@@ -287,7 +287,7 @@ export async function performCheckOut(eventId: string): Promise<CheckInResult> {
       status: updatedStatus,
     };
   } catch (error) {
-    console.error('Error performing check-out:', error);
+    console.warn('Error performing check-out:', error);
     return {
       success: false,
       message: 'Check-out sırasında bir hata oluştu.',
@@ -333,7 +333,7 @@ export async function startBreak(eventId: string): Promise<CheckInResult> {
       status: updatedStatus,
     };
   } catch (error) {
-    console.error('Error starting break:', error);
+    console.warn('Error starting break:', error);
     return {
       success: false,
       message: 'Mola başlatılırken bir hata oluştu.',
@@ -387,7 +387,7 @@ export async function endBreak(eventId: string): Promise<CheckInResult> {
       status: updatedStatus,
     };
   } catch (error) {
-    console.error('Error ending break:', error);
+    console.warn('Error ending break:', error);
     return {
       success: false,
       message: 'Mola bitirilirken bir hata oluştu.',
@@ -400,6 +400,6 @@ export async function clearCheckInData(eventId: string): Promise<void> {
   try {
     await AsyncStorage.removeItem(`${CHECKIN_STORAGE_KEY}${eventId}`);
   } catch (error) {
-    console.error('Error clearing check-in data:', error);
+    console.warn('Error clearing check-in data:', error);
   }
 }

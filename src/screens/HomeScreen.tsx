@@ -19,7 +19,7 @@ import { gradients } from '../theme/colors';
 import { useApp } from '../../App';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
 import { useAuth } from '../context/AuthContext';
-import { useOrganizerDashboard, useProviderDashboard, useUserEvents } from '../hooks';
+import { useOrganizerDashboard, useProviderDashboard, useUserEvents, useOrganizerOffers, useProviderOffers } from '../hooks';
 import {
   HomeHeader,
   SearchBar,
@@ -75,10 +75,83 @@ function OrganizerHomeContent() {
   const { user, userProfile } = useAuth();
   const { stats: realStats, upcomingEvents: realUpcomingEvents, loading: dashboardLoading, refresh: refreshDashboard } = useOrganizerDashboard(user?.uid);
   const { events: realEvents, loading: eventsLoading } = useUserEvents(user?.uid);
+  const { offers: realOffers, loading: offersLoading } = useOrganizerOffers(user?.uid);
 
   // Check if user has real data (registered user vs demo)
-  const hasRealData = user && realEvents.length > 0;
-  const isLoading = dashboardLoading || eventsLoading;
+  const hasRealData = user && (realEvents.length > 0 || realOffers.length > 0);
+  const isLoading = dashboardLoading || eventsLoading || offersLoading;
+
+  // Generate recent activities from offers and events
+  const recentActivities = useMemo(() => {
+    const activities: { id: string; message: string; time: string; date: Date }[] = [];
+
+    // Add activities from offers
+    realOffers.forEach(offer => {
+      let message = '';
+      const offerDate = offer.updatedAt || offer.createdAt;
+
+      switch (offer.status) {
+        case 'pending':
+          message = `${offer.providerName || 'Tedarikçi'}'e teklif gönderildi`;
+          break;
+        case 'quoted':
+          message = `${offer.providerName || 'Tedarikçi'} fiyat teklifi gönderdi`;
+          break;
+        case 'accepted':
+          message = `${offer.providerName || 'Tedarikçi'} ile anlaşma sağlandı`;
+          break;
+        case 'rejected':
+          message = `${offer.providerName || 'Tedarikçi'} teklifi reddetti`;
+          break;
+        case 'counter_offered':
+          message = offer.counterBy === 'provider'
+            ? `${offer.providerName || 'Tedarikçi'} karşı teklif gönderdi`
+            : `Karşı teklif gönderildi`;
+          break;
+        default:
+          message = `Teklif güncellendi - ${offer.eventTitle || 'Etkinlik'}`;
+      }
+
+      activities.push({
+        id: `offer-${offer.id}`,
+        message,
+        time: formatActivityTime(offerDate),
+        date: offerDate,
+      });
+    });
+
+    // Add activities from recent events
+    realEvents.slice(0, 5).forEach(event => {
+      const eventDate = event.updatedAt || event.createdAt;
+      activities.push({
+        id: `event-${event.id}`,
+        message: `"${event.title}" etkinliği ${event.status === 'planning' ? 'oluşturuldu' : 'güncellendi'}`,
+        time: formatActivityTime(eventDate),
+        date: eventDate,
+      });
+    });
+
+    // Sort by date and take latest 5
+    return activities
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 5)
+      .map(({ id, message, time }) => ({ id, message, time }));
+  }, [realOffers, realEvents]);
+
+  // Helper to format activity time
+  function formatActivityTime(date: Date): string {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Şimdi';
+    if (minutes < 60) return `${minutes} dk önce`;
+    if (hours < 24) return `${hours} saat önce`;
+    if (days < 7) return `${days} gün önce`;
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+  }
 
   // Check if user is logged in but has no events (new user)
   const isNewUser = user && !eventsLoading && realEvents.length === 0;
@@ -195,7 +268,7 @@ function OrganizerHomeContent() {
       progress: 50,
     } : null,
     pendingActions: [],
-    recentActivity: [],
+    recentActivity: recentActivities,
   } : {
     // Empty dashboard for new users or not logged in
     activeEvents: 0,
@@ -478,21 +551,33 @@ function OrganizerHomeContent() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Son Aktiviteler</Text>
           <View style={[styles.listCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-            {dashboard.recentActivity.slice(0, 3).map((activity, index) => (
-              <View
-                key={activity.id}
-                style={[
-                  styles.activityRow,
-                  index !== Math.min(dashboard.recentActivity.length, 3) - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
-                ]}
-              >
-                <View style={[styles.activityDot, { backgroundColor: accentColor }]} />
-                <View style={styles.activityContent}>
-                  <Text style={[styles.activityText, { color: colors.text }]}>{activity.message}</Text>
-                  <Text style={[styles.activityTime, { color: colors.textMuted }]}>{activity.time}</Text>
+            {dashboard.recentActivity.length > 0 ? (
+              dashboard.recentActivity.slice(0, 5).map((activity, index) => (
+                <View
+                  key={activity.id}
+                  style={[
+                    styles.activityRow,
+                    index !== Math.min(dashboard.recentActivity.length, 5) - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
+                  ]}
+                >
+                  <View style={[styles.activityDot, { backgroundColor: accentColor }]} />
+                  <View style={styles.activityContent}>
+                    <Text style={[styles.activityText, { color: colors.text }]}>{activity.message}</Text>
+                    <Text style={[styles.activityTime, { color: colors.textMuted }]}>{activity.time}</Text>
+                  </View>
                 </View>
+              ))
+            ) : (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Ionicons name="time-outline" size={32} color={colors.textMuted} />
+                <Text style={{ color: colors.textMuted, marginTop: 8, textAlign: 'center' }}>
+                  Henüz aktivite yok
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                  Etkinlik veya teklif oluşturduğunuzda burada görünecek
+                </Text>
               </View>
-            ))}
+            )}
           </View>
         </View>
 
@@ -673,21 +758,32 @@ function ProviderHomeContent() {
   // Convert real offers to recent requests format
   const convertedRealOffers = useMemo(() => {
     if (!realOffers.length) return [];
-    return realOffers.map(offer => ({
-      id: offer.id,
-      title: offer.eventTitle || 'Yeni Talep',
-      category: offer.serviceCategory || 'Hizmet',
-      organizer: offer.organizerName || 'Organizatör',
-      organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-      location: 'İstanbul', // Would need to be fetched from event
-      date: '', // Would need to be fetched from event
-      budget: `₺${(offer.amount || 0).toLocaleString('tr-TR')}`,
-      isNew: offer.status === 'pending',
-      isHot: false,
-      timeAgo: '1s önce',
-      matchScore: 85,
-      serviceType: offer.serviceCategory || 'technical',
-    }));
+    return realOffers.map(offer => {
+      // Priority: counterAmount > amount > requestedBudget (show latest offer state)
+      let budgetValue = 0;
+      if (offer.counterAmount) {
+        budgetValue = offer.counterAmount;
+      } else if (offer.amount) {
+        budgetValue = offer.amount;
+      } else if (offer.requestedBudget) {
+        budgetValue = parseInt(offer.requestedBudget.replace(/[^\d]/g, ''));
+      }
+      return {
+        id: offer.id,
+        title: offer.eventTitle || 'Yeni Talep',
+        category: offer.serviceCategory || 'Hizmet',
+        organizer: offer.organizerName || 'Organizatör',
+        organizerImage: offer.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        location: offer.eventCity || 'İstanbul',
+        date: offer.eventDate || '',
+        budget: budgetValue > 0 ? `₺${budgetValue.toLocaleString('tr-TR')}` : 'Bütçe belirtilmedi',
+        isNew: offer.status === 'pending',
+        isHot: false,
+        timeAgo: '1s önce',
+        matchScore: 85,
+        serviceType: offer.serviceCategory || 'technical',
+      };
+    });
   }, [realOffers]);
 
   // Upcoming jobs - only from Firebase
@@ -857,7 +953,7 @@ function ProviderHomeContent() {
           <RequestCard
             key={request.id}
             {...request}
-            onPress={() => navigation.navigate('OfferDetail', { offerId: request.id })}
+            onPress={() => navigation.navigate('ProviderRequestDetail', { offerId: request.id })}
           />
         ))}
 

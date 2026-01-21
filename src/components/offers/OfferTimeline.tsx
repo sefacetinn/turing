@@ -6,9 +6,10 @@ import type { OfferHistoryItem } from '../../data/offersData';
 
 interface OfferTimelineProps {
   history: OfferHistoryItem[];
+  currentUserRole?: 'provider' | 'organizer';
 }
 
-export function OfferTimeline({ history }: OfferTimelineProps) {
+export function OfferTimeline({ history, currentUserRole }: OfferTimelineProps) {
   const { colors, isDark } = useTheme();
 
   const getIcon = (type: OfferHistoryItem['type']): keyof typeof Ionicons.glyphMap => {
@@ -69,7 +70,12 @@ export function OfferTimeline({ history }: OfferTimelineProps) {
   };
 
   const getByLabel = (by: OfferHistoryItem['by']): string => {
-    return by === 'provider' ? 'Siz' : 'Organizatör';
+    // If current user role matches the action's 'by', show "Siz" (You)
+    if (currentUserRole === by) {
+      return 'Siz';
+    }
+    // Otherwise show the other party's role
+    return by === 'provider' ? 'Tedarikçi' : 'Organizatör';
   };
 
   return (

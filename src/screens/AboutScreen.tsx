@@ -54,7 +54,7 @@ export function AboutScreen() {
         title: 'turing',
       });
     } catch (error) {
-      console.error('Share error:', error);
+      console.warn('Share error:', error);
     }
   };
 

@@ -434,6 +434,19 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               <Text style={styles.demoButtonText}>Demo Giriş</Text>
             </TouchableOpacity>
 
+            {/* Admin Panel Button */}
+            <TouchableOpacity
+              style={[styles.adminButton, {
+                backgroundColor: isDark ? 'rgba(124, 58, 237, 0.15)' : 'rgba(124, 58, 237, 0.1)',
+                borderColor: 'rgba(124, 58, 237, 0.3)',
+              }]}
+              onPress={() => navigation.navigate('AdminDashboard')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shield-checkmark" size={18} color="#7c3aed" />
+              <Text style={styles.adminButtonText}>Admin Panel</Text>
+            </TouchableOpacity>
+
             {/* Social Login */}
             <View style={styles.socialRow}>
               <TouchableOpacity
@@ -724,6 +737,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#10b981',
+  },
+  adminButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  adminButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7c3aed',
   },
   toggleRow: {
     flexDirection: 'row',

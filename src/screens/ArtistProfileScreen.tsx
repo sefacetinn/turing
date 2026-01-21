@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -22,6 +22,7 @@ import { useArtist, useFavorites, toggleFavorite } from '../hooks';
 import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
+const TAB_BAR_HEIGHT = 60;
 
 type RouteParams = {
   ArtistProfile: { artistId: string };
@@ -33,6 +34,7 @@ export function ArtistProfileScreen() {
   const { colors, isDark } = useTheme();
   const { artistId } = route.params;
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
 
   // Fetch artist from Firebase
   const { artist, loading: artistLoading } = useArtist(artistId);
@@ -56,7 +58,7 @@ export function ArtistProfileScreen() {
         artist.image
       );
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      console.warn('Error toggling favorite:', error);
     }
     setFavoriteLoading(false);
   };
@@ -303,12 +305,12 @@ export function ArtistProfileScreen() {
           )}
 
           {/* Spacer for bottom button */}
-          <View style={{ height: 120 }} />
+          <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 100 }} />
         </View>
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 16 }]}>
         <TouchableOpacity
           style={[styles.contactButton, { borderColor: colors.brand[400] }]}
           onPress={handleContactAgency}
@@ -547,7 +549,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 16,
-    paddingBottom: 32,
     borderTopWidth: 1,
   },
   contactButton: {

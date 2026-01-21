@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet, RefreshControl, Alert, TouchableOpacity, Text, Modal } from 'react-native';
+import { View, StyleSheet, RefreshControl, Alert, TouchableOpacity, Text, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +32,7 @@ import { defaultComparisonCriteria, type GroupedOffers } from '../types/comparis
 import type { OffersStackNavigationProp } from '../types';
 import { useApp } from '../../App';
 import { useAuth } from '../context/AuthContext';
-import { useOffers, type FirestoreOffer } from '../hooks';
+import { useOffers, sendCounterOffer, type FirestoreOffer } from '../hooks';
 
 interface OffersScreenProps {
   isProviderMode: boolean;
@@ -53,6 +53,13 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   const [filterPriceRange, setFilterPriceRange] = useState<'all' | 'low' | 'medium' | 'high'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'price' | 'rating'>('date');
   const scrollViewRef = useRef<Animated.ScrollView>(null);
+
+  // Counter offer modal state
+  const [showCounterOfferModal, setShowCounterOfferModal] = useState(false);
+  const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+  const [counterOfferAmount, setCounterOfferAmount] = useState('');
+  const [counterOfferNote, setCounterOfferNote] = useState('');
+  const [isSubmittingCounter, setIsSubmittingCounter] = useState(false);
 
   // Auth & Data hooks
   const { user } = useAuth();
@@ -295,9 +302,46 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   };
 
   const handleCounterOffer = (offerId: string) => {
-    Alert.alert('Karsi Teklif', 'Bu ozellik yakinda aktif olacak.', [
-      { text: 'Tamam' },
-    ]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedOfferId(offerId);
+    setCounterOfferAmount('');
+    setCounterOfferNote('');
+    setShowCounterOfferModal(true);
+  };
+
+  const handleSubmitCounterOffer = async () => {
+    if (!selectedOfferId) return;
+
+    const amount = parseInt(counterOfferAmount.replace(/\./g, ''));
+    if (!amount || amount <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Lütfen geçerli bir tutar girin');
+      return;
+    }
+
+    setIsSubmittingCounter(true);
+    try {
+      const counterBy = isProviderMode ? 'provider' : 'organizer';
+      await sendCounterOffer(selectedOfferId, amount, counterBy, counterOfferNote || undefined);
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowCounterOfferModal(false);
+      setSelectedOfferId(null);
+      setCounterOfferAmount('');
+      setCounterOfferNote('');
+      Alert.alert('Başarılı', `₺${amount.toLocaleString('tr-TR')} tutarındaki karşı teklifiniz gönderildi.`);
+    } catch (error: any) {
+      console.warn('Error sending counter offer:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', error.message || 'Karşı teklif gönderilirken bir hata oluştu.');
+    } finally {
+      setIsSubmittingCounter(false);
+    }
+  };
+
+  const formatCurrency = (value: string): string => {
+    const numbers = value.replace(/\D/g, '');
+    return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
   const handleOfferPress = (offerId: string) => {
@@ -608,6 +652,76 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
           </View>
         </View>
       </Modal>
+
+      {/* Counter Offer Modal */}
+      <Modal
+        visible={showCounterOfferModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowCounterOfferModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.counterModalContent, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
+            <View style={styles.modalHandle}>
+              <View style={[styles.modalHandleBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#E2E8F0' }]} />
+            </View>
+
+            <View style={[styles.counterModalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+              <Text style={[styles.counterModalTitle, { color: colors.text }]}>Karşı Teklif</Text>
+              <TouchableOpacity onPress={() => setShowCounterOfferModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.counterModalBody}>
+              <Text style={[styles.counterInputLabel, { color: colors.textSecondary }]}>Teklif Tutarı</Text>
+              <View style={[styles.counterInputContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]}>
+                <Text style={[styles.counterInputPrefix, { color: colors.text }]}>₺</Text>
+                <TextInput
+                  style={[styles.counterInput, { color: colors.text }]}
+                  placeholder="Tutar girin"
+                  placeholderTextColor={colors.textSecondary}
+                  value={counterOfferAmount}
+                  onChangeText={(t) => setCounterOfferAmount(formatCurrency(t))}
+                  keyboardType="number-pad"
+                />
+              </View>
+
+              <Text style={[styles.counterInputLabel, { color: colors.textSecondary, marginTop: 20 }]}>Mesaj (Opsiyonel)</Text>
+              <TextInput
+                style={[styles.counterTextArea, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0', color: colors.text }]}
+                placeholder="Teklifiniz hakkında açıklama ekleyin..."
+                placeholderTextColor={colors.textSecondary}
+                value={counterOfferNote}
+                onChangeText={setCounterOfferNote}
+                multiline
+                numberOfLines={3}
+              />
+            </ScrollView>
+
+            <View style={[styles.counterModalFooter, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+              <TouchableOpacity
+                style={[styles.counterCancelBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC' }]}
+                onPress={() => setShowCounterOfferModal(false)}
+              >
+                <Text style={[styles.counterCancelText, { color: colors.text }]}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.counterSubmitBtn, { opacity: isSubmittingCounter ? 0.6 : 1 }]}
+                onPress={handleSubmitCounterOffer}
+                disabled={isSubmittingCounter}
+              >
+                <Text style={styles.counterSubmitText}>
+                  {isSubmittingCounter ? 'Gönderiliyor...' : 'Gönder'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -742,5 +856,96 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
+  },
+  // Counter Offer Modal Styles
+  modalHandle: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  modalHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  counterModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  counterModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  counterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  counterModalBody: {
+    padding: 20,
+  },
+  counterInputLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  counterInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  counterInputPrefix: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginRight: 8,
+  },
+  counterInput: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  counterTextArea: {
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  counterModalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    paddingBottom: 34,
+    borderTopWidth: 1,
+  },
+  counterCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  counterCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  counterSubmitBtn: {
+    flex: 1.5,
+    backgroundColor: '#6366F1',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  counterSubmitText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

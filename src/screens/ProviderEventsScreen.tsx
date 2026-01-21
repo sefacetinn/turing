@@ -113,26 +113,30 @@ export function ProviderEventsScreen() {
   const convertedRealJobs: ProviderEvent[] = useMemo(() => {
     if (!realJobs.length) return [];
     const now = new Date();
-    return realJobs.map(job => ({
-      id: job.id,
-      eventTitle: job.title,
-      eventDate: job.date,
-      eventTime: job.time || '20:00',
-      eventImage: job.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
-      venue: job.venue,
-      location: `${job.city}${job.district ? `, ${job.district}` : ''}`,
-      organizerName: 'Organizatör',
-      organizerImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-      status: job.status === 'completed' ? 'past' : job.status === 'confirmed' ? 'active' : 'planned',
-      serviceType: 'technical' as const,
-      serviceLabel: 'Hizmet',
-      earnings: job.budget || 0,
-      paidAmount: 0,
-      paymentStatus: 'unpaid' as const,
-      daysUntil: Math.max(0, Math.ceil((new Date(job.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
-      tasks: { total: 5, completed: 2 },
-      teamSize: 3,
-    }));
+    return realJobs.map(job => {
+      // Use contract amount (from accepted offer) if available, otherwise fall back to event budget
+      const earnings = job.contractAmount ?? job.budget ?? 0;
+      return {
+        id: job.id,
+        eventTitle: job.title,
+        eventDate: job.date,
+        eventTime: job.time || '20:00',
+        eventImage: job.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
+        venue: job.venue,
+        location: `${job.city}${job.district ? `, ${job.district}` : ''}`,
+        organizerName: job.organizerName || 'Organizatör',
+        organizerImage: job.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
+        status: job.status === 'completed' ? 'past' : job.status === 'confirmed' ? 'active' : 'planned',
+        serviceType: 'technical' as const,
+        serviceLabel: 'Hizmet',
+        earnings: earnings,
+        paidAmount: 0,
+        paymentStatus: 'unpaid' as const,
+        daysUntil: Math.max(0, Math.ceil((new Date(job.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
+        tasks: { total: 5, completed: 2 },
+        teamSize: 3,
+      };
+    });
   }, [realJobs]);
 
   // Use real jobs if available, empty for new users

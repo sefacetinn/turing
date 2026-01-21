@@ -21,6 +21,7 @@ import {
   limit,
   Timestamp,
   QueryConstraint,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
 
@@ -31,14 +32,21 @@ export interface FirestoreEvent {
   description?: string;
   date: string;
   time: string;
+  startTime?: string;
+  endTime?: string;
   endDate?: string;
   city: string;
   district?: string;
   venue: string;
   venueAddress?: string;
   venueCapacity?: string;
+  venueImage?: string;
   status: 'draft' | 'planning' | 'confirmed' | 'completed' | 'cancelled';
   organizerId: string;
+  // Organizer info (populated by useProviderJobs)
+  organizerName?: string;
+  organizerImage?: string;
+  organizerPhone?: string;
   providerIds?: string[]; // Providers assigned to this event
   artistId?: string;
   artistName?: string;
@@ -49,6 +57,9 @@ export interface FirestoreEvent {
   expectedAttendees?: number;
   attendees?: number; // Actual attendees count
   guestCount?: string;
+  // Event type and category
+  eventType?: string; // 'concert', 'festival', 'corporate', etc.
+  category?: string;
   // Ticketing
   isTicketed?: boolean;
   ticketCapacity?: number;
@@ -57,9 +68,13 @@ export interface FirestoreEvent {
   progress?: number; // 0-100 percentage
   // Event detail fields
   ageLimit?: string; // 'all_ages', '18+', '21+'
+  isAllAges?: boolean;
   seatingType?: string; // 'standing', 'seated', 'mixed'
+  seatingArrangement?: string; // 'standing', 'seated', 'mixed'
   indoorOutdoor?: string; // 'indoor', 'outdoor', 'mixed'
   services?: EventService[];
+  // Provider-specific: contract amount from accepted offer (populated by useProviderJobs)
+  contractAmount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,6 +94,7 @@ export interface FirestoreOffer {
   eventId: string;
   eventTitle: string;
   eventDate?: string;
+  eventTime?: string;
   eventCity?: string;
   organizerId: string;
   organizerName: string;
@@ -88,10 +104,19 @@ export interface FirestoreOffer {
   providerName: string;
   providerImage?: string;
   providerPhone?: string;
+  providerBio?: string;
+  responseTime?: string;
   // For booking/artist requests
   artistId?: string;
   artistName?: string;
   artistImage?: string;
+  artistBio?: string;
+  artistGenres?: string[];
+  artistAlbumCount?: number;
+  artistFollowers?: number;
+  artistConcertCount?: number;
+  // Contract reference
+  contractId?: string;
   serviceCategory: string;
   // Request details
   requestType: 'request' | 'offer'; // request = organizer asking, offer = provider responding
@@ -122,6 +147,22 @@ export interface FirestoreOffer {
   formData?: Record<string, any>;
   serviceDates?: string[];
   validUntil?: Date;
+  // Inclusions/Exclusions from provider
+  inclusions?: string[];
+  exclusions?: string[];
+  // Full offer history for timeline
+  offerHistory?: {
+    type: 'quote' | 'counter' | 'accepted' | 'rejected';
+    by: 'organizer' | 'provider';
+    amount?: number;
+    message?: string | null;
+    timestamp: Date;
+  }[];
+  // Contract signature fields
+  contractSigned?: boolean;
+  contractSignedByOrganizer?: boolean;
+  contractSignedByProvider?: boolean;
+  contractSignedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -223,8 +264,22 @@ const docToOffer = (doc: any): FirestoreOffer => {
     formData: data.formData,
     serviceDates: data.serviceDates,
     validUntil: data.validUntil ? toDate(data.validUntil) : undefined,
+    inclusions: data.inclusions,
+    exclusions: data.exclusions,
+    offerHistory: data.offerHistory?.map((h: any) => ({
+      ...h,
+      timestamp: toDate(h.timestamp),
+    })),
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
+    // Contract signature fields
+    contractSigned: data.contractSigned || false,
+    contractSignedByOrganizer: data.contractSignedByOrganizer || false,
+    contractSignedByProvider: data.contractSignedByProvider || false,
+    contractSignedAt: data.contractSignedAt ? toDate(data.contractSignedAt) : undefined,
+    finalAmount: data.finalAmount,
+    acceptedBy: data.acceptedBy,
+    acceptedAt: data.acceptedAt ? toDate(data.acceptedAt) : undefined,
   };
 };
 
@@ -282,7 +337,7 @@ export function useUserEvents(userId: string | undefined, statusFilter?: string)
         setError(null);
       },
       (err) => {
-        console.error('Error fetching events:', err);
+        console.warn('Error fetching events:', err?.message || err);
         setError('Etkinlikler yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -315,7 +370,6 @@ export function useProviderJobs(providerId: string | undefined) {
     setLoading(true);
 
     // Query 1: Events where provider is in providerIds array
-    // Note: Removed orderBy to avoid needing composite index
     const providerQuery = query(
       collection(db, 'events'),
       where('providerIds', 'array-contains', providerId)
@@ -327,29 +381,140 @@ export function useProviderJobs(providerId: string | undefined) {
       where('organizerId', '==', providerId)
     );
 
-    // Run both queries
+    // Query 3: Offers where provider has accepted and contract is signed
+    // This catches jobs from contracts signed before the providerIds fix
+    const signedOffersQuery = query(
+      collection(db, 'offers'),
+      where('providerId', '==', providerId),
+      where('status', '==', 'accepted')
+    );
+
+    // Run all queries
     const fetchJobs = async () => {
       try {
-        const [providerSnapshot, organizerSnapshot] = await Promise.all([
+        const [providerSnapshot, organizerSnapshot, signedOffersSnapshot] = await Promise.all([
           getDocs(providerQuery),
-          getDocs(organizerQuery)
+          getDocs(organizerQuery),
+          getDocs(signedOffersQuery)
         ]);
+
+        // Build a map of eventId -> contractAmount from accepted offers
+        const contractAmountMap = new Map<string, number>();
+        signedOffersSnapshot.docs.forEach(d => {
+          const data = d.data();
+          if (data.eventId) {
+            // Use finalAmount if available, otherwise use amount
+            const amount = data.finalAmount ?? data.amount ?? 0;
+            if (amount > 0) {
+              contractAmountMap.set(data.eventId, amount);
+            }
+          }
+        });
+
+        console.log('[useProviderJobs] Contract amounts:', Object.fromEntries(contractAmountMap));
 
         // Combine results, avoiding duplicates
         const eventMap = new Map<string, FirestoreEvent>();
 
         console.log('[useProviderJobs] Provider query returned', providerSnapshot.docs.length, 'events');
         console.log('[useProviderJobs] Organizer query returned', organizerSnapshot.docs.length, 'events');
+        console.log('[useProviderJobs] Signed offers query returned', signedOffersSnapshot.docs.length, 'offers');
 
-        providerSnapshot.docs.forEach(doc => {
-          console.log('[useProviderJobs] Adding event from provider query:', doc.id, '-', doc.data().title);
-          eventMap.set(doc.id, docToEvent(doc));
+        providerSnapshot.docs.forEach(docSnap => {
+          const event = docToEvent(docSnap);
+          // Add contract amount if available
+          event.contractAmount = contractAmountMap.get(event.id);
+          eventMap.set(docSnap.id, event);
         });
 
-        organizerSnapshot.docs.forEach(doc => {
-          if (!eventMap.has(doc.id)) {
-            console.log('[useProviderJobs] Adding event from organizer query:', doc.id, '-', doc.data().title);
-            eventMap.set(doc.id, docToEvent(doc));
+        organizerSnapshot.docs.forEach(docSnap => {
+          if (!eventMap.has(docSnap.id)) {
+            const event = docToEvent(docSnap);
+            event.contractAmount = contractAmountMap.get(event.id);
+            eventMap.set(docSnap.id, event);
+          }
+        });
+
+        // Fetch events from signed offers (where contract is signed)
+        const signedOfferDocs = signedOffersSnapshot.docs.filter(d => {
+          const data = d.data();
+          // Only include if contract is fully signed
+          return data.contractSigned === true ||
+                 (data.contractSignedByOrganizer === true && data.contractSignedByProvider === true);
+        });
+
+        const eventIdsFromOffers = signedOfferDocs
+          .map(d => d.data().eventId)
+          .filter((id): id is string => !!id && !eventMap.has(id));
+
+        // Remove duplicates
+        const uniqueEventIds = [...new Set(eventIdsFromOffers)];
+        console.log('[useProviderJobs] Event IDs from signed offers:', uniqueEventIds);
+
+        // Fetch these events
+        if (uniqueEventIds.length > 0) {
+          const eventPromises = uniqueEventIds.map(async (eventId) => {
+            try {
+              const eventDoc = await getDoc(doc(db, 'events', eventId));
+              if (eventDoc.exists()) {
+                return { id: eventDoc.id, ...eventDoc.data() };
+              }
+            } catch (e) {
+              console.warn('[useProviderJobs] Error fetching event:', eventId, e);
+            }
+            return null;
+          });
+
+          const eventResults = await Promise.all(eventPromises);
+          eventResults.forEach(eventData => {
+            if (eventData && !eventMap.has(eventData.id)) {
+              const event = docToEvent({ id: eventData.id, data: () => eventData });
+              // Add contract amount
+              event.contractAmount = contractAmountMap.get(event.id);
+              eventMap.set(eventData.id, event);
+            }
+          });
+        }
+
+        // Fetch organizer data for all jobs
+        const organizerIds = [...new Set(Array.from(eventMap.values()).map(e => e.organizerId).filter(Boolean))];
+        console.log('[useProviderJobs] Fetching organizer data for:', organizerIds);
+
+        const organizerMap = new Map<string, { name: string; image?: string; phone?: string }>();
+        if (organizerIds.length > 0) {
+          const organizerPromises = organizerIds.map(async (orgId) => {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', orgId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                return {
+                  id: orgId,
+                  name: userData.displayName || userData.name || userData.companyName || 'Organizatör',
+                  image: userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image,
+                  phone: userData.phone || userData.phoneNumber,
+                };
+              }
+            } catch (e) {
+              console.warn('[useProviderJobs] Error fetching organizer:', orgId, e);
+            }
+            return null;
+          });
+
+          const organizerResults = await Promise.all(organizerPromises);
+          organizerResults.forEach(org => {
+            if (org) {
+              organizerMap.set(org.id, { name: org.name, image: org.image, phone: org.phone });
+            }
+          });
+        }
+
+        // Add organizer info to each event
+        eventMap.forEach((event, eventId) => {
+          const orgInfo = organizerMap.get(event.organizerId);
+          if (orgInfo) {
+            event.organizerName = orgInfo.name;
+            event.organizerImage = orgInfo.image;
+            event.organizerPhone = orgInfo.phone;
           }
         });
 
@@ -358,12 +523,12 @@ export function useProviderJobs(providerId: string | undefined) {
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
-        console.log('[useProviderJobs] Total jobs:', jobsList.length, 'IDs:', jobsList.map(j => j.id));
+        console.log('[useProviderJobs] Total jobs:', jobsList.length);
         setJobs(jobsList);
         setLoading(false);
         setError(null);
-      } catch (err) {
-        console.error('Error fetching provider jobs:', err);
+      } catch (err: any) {
+        console.warn('Error fetching provider jobs:', err?.message || err);
         setError('İşler yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -411,7 +576,7 @@ export function useOffers(userId: string | undefined, role: 'organizer' | 'provi
         setError(null);
       },
       (err) => {
-        console.error('Error fetching offers:', err);
+        console.warn('Error fetching offers:', err?.message || err);
         setError('Teklifler yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -458,7 +623,7 @@ export function useConversations(userId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching conversations:', err);
+        console.warn('Error fetching conversations:', err?.message || err);
         setError('Mesajlar yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -539,8 +704,8 @@ export function useOrganizerDashboard(userId: string | undefined) {
       });
       setUpcomingEvents(upcoming);
       setError(null);
-    } catch (err) {
-      console.error('Error fetching dashboard:', err);
+    } catch (err: any) {
+      console.warn('Error fetching dashboard:', err?.message || err);
       setError('Dashboard yüklenirken hata oluştu');
     } finally {
       setLoading(false);
@@ -678,8 +843,8 @@ export function useProviderDashboard(userId: string | undefined) {
       setUpcomingJobs(upcoming);
       setPendingOffers(offers);
       setError(null);
-    } catch (err) {
-      console.error('Error fetching provider dashboard:', err);
+    } catch (err: any) {
+      console.warn('Error fetching provider dashboard:', err?.message || err);
       setError('Dashboard yüklenirken hata oluştu');
     } finally {
       setLoading(false);
@@ -729,7 +894,7 @@ export function useEvent(eventId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('[useEvent] Error fetching event:', err);
+        console.warn('[useEvent] Error fetching event:', err?.message || err);
         setError('Etkinlik yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -750,6 +915,7 @@ export interface FirestoreArtist {
   description?: string;
   bio?: string;
   image?: string;
+  coverImage?: string;
   priceMin?: number;
   priceMax?: number;
   priceRange?: string;
@@ -779,6 +945,7 @@ const docToArtist = (doc: any): FirestoreArtist => {
     description: data.description,
     bio: data.bio,
     image: data.image,
+    coverImage: data.coverImage,
     priceMin: data.priceMin,
     priceMax: data.priceMax,
     priceRange: data.priceRange,
@@ -828,7 +995,7 @@ export function useArtists(ownerId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching artists:', err);
+        console.warn('Error fetching artists:', err?.message || err);
         setError('Sanatçılar yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -869,7 +1036,7 @@ export function useArtist(artistId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching artist:', err);
+        console.warn('Error fetching artist:', err?.message || err);
         setError('Sanatçı yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -907,7 +1074,7 @@ export function useAllArtists() {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching all artists:', err);
+        console.warn('Error fetching all artists:', err?.message || err);
         setError('Sanatçılar yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -994,7 +1161,7 @@ export function useBookingProviders() {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching booking providers:', err);
+        console.warn('Error fetching booking providers:', err?.message || err);
         setError('Booking firmaları yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1035,7 +1202,7 @@ export function useBookingProvider(providerId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching booking provider:', err);
+        console.warn('Error fetching booking provider:', err?.message || err);
         setError('Firma bilgileri yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1079,7 +1246,7 @@ export function useProviderArtists(providerId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching provider artists:', err);
+        console.warn('Error fetching provider artists:', err?.message || err);
         setError('Sanatçılar yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1190,8 +1357,8 @@ export async function getConversationById(conversationId: string): Promise<Fires
       return docToConversation(docSnap);
     }
     return null;
-  } catch (error) {
-    console.error('Error fetching conversation:', error);
+  } catch (error: any) {
+    console.warn('Error fetching conversation:', error?.message || error);
     return null;
   }
 }
@@ -1228,7 +1395,7 @@ export function useChatConversations(userId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching conversations:', err);
+        console.warn('Error fetching conversations:', err?.message || err);
         setError('Sohbetler yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1271,7 +1438,7 @@ export function useChatMessages(conversationId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching messages:', err);
+        console.warn('Error fetching messages:', err?.message || err);
         setError('Mesajlar yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1440,7 +1607,7 @@ export function useFavorites(userId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching favorites:', err);
+        console.warn('Error fetching favorites:', err?.message || err);
         setError('Favoriler yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1557,8 +1724,8 @@ export async function createOfferRequest(params: CreateOfferRequestParams): Prom
       params.providerImage || '',
       params.serviceCategory
     );
-  } catch (error) {
-    console.error('Error creating conversation:', error);
+  } catch (error: any) {
+    console.warn('Error creating conversation:', error?.message || error);
   }
 
   return offerRef.id;
@@ -1571,18 +1738,44 @@ export async function respondToOfferRequest(
   offerId: string,
   amount: number,
   message?: string,
-  validDays: number = 7
+  validDays: number = 7,
+  inclusions?: string[],
+  exclusions?: string[]
 ): Promise<void> {
   const validUntil = new Date();
   validUntil.setDate(validUntil.getDate() + validDays);
+  const now = Timestamp.now();
 
-  await updateDoc(doc(db, 'offers', offerId), {
+  // Create history entry for provider's quote
+  const historyEntry = {
+    type: 'quote',
+    by: 'provider',
     amount,
-    message,
+    message: message || null,
+    timestamp: now,
+  };
+
+  const updateData: Record<string, any> = {
+    amount,
     status: 'quoted',
     validUntil: Timestamp.fromDate(validUntil),
-    updatedAt: Timestamp.now(),
-  });
+    updatedAt: now,
+    offerHistory: arrayUnion(historyEntry),
+  };
+
+  // Only add message if it's defined (Firebase doesn't accept undefined)
+  if (message !== undefined && message !== null && message !== '') {
+    updateData.message = message;
+  }
+
+  if (inclusions && inclusions.length > 0) {
+    updateData.inclusions = inclusions;
+  }
+  if (exclusions && exclusions.length > 0) {
+    updateData.exclusions = exclusions;
+  }
+
+  await updateDoc(doc(db, 'offers', offerId), updateData);
 }
 
 /**
@@ -1643,22 +1836,35 @@ export async function sendCounterOffer(
   if (!offerDoc.exists()) {
     throw new Error('Teklif bulunamadı');
   }
-  const currentStatus = offerDoc.data()?.status;
+  const currentData = offerDoc.data();
+  const currentStatus = currentData?.status;
   if (currentStatus !== 'quoted' && currentStatus !== 'counter_offered') {
     throw new Error(`Bu durumda karşı teklif gönderilemez. Mevcut durum: ${currentStatus}`);
   }
 
+  const now = Timestamp.now();
+
+  // Create history entry for this counter offer
+  const historyEntry = {
+    type: 'counter',
+    by: counterBy,
+    amount: counterAmount,
+    message: message || null,
+    timestamp: now,
+  };
+
+  // Get existing history or create new array
+  const existingHistory = currentData?.offerHistory || [];
+
   const updateData: Record<string, any> = {
     counterAmount,
     counterBy,
-    counterAt: Timestamp.now(),
+    counterAt: now,
+    counterMessage: message || null,
     status: 'counter_offered',
-    updatedAt: Timestamp.now(),
+    updatedAt: now,
+    offerHistory: [...existingHistory, historyEntry],
   };
-
-  if (message) {
-    updateData.counterMessage = message;
-  }
 
   await updateDoc(doc(db, 'offers', offerId), updateData);
 }
@@ -1830,7 +2036,7 @@ export function useProviderOffers(providerId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching provider offers:', err);
+        console.warn('Error fetching provider offers:', err?.message || err);
         setError('Teklifler yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1840,6 +2046,68 @@ export function useProviderOffers(providerId: string | undefined) {
   }, [providerId]);
 
   return { offers, loading, error };
+}
+
+/**
+ * Hook to fetch provider's accepted/signed offer for a specific event
+ * Returns the contract amount (finalAmount or amount) for the provider's job
+ */
+export function useProviderEventOffer(providerId: string | undefined, eventId: string | undefined) {
+  const [offer, setOffer] = useState<FirestoreOffer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!providerId || !eventId) {
+      setOffer(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Query for accepted offers for this provider and event
+    const q = query(
+      collection(db, 'offers'),
+      where('providerId', '==', providerId),
+      where('eventId', '==', eventId),
+      where('status', '==', 'accepted')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          // Get the first accepted offer (there should only be one per event/provider)
+          const offerData = docToOffer(snapshot.docs[0]);
+          console.log('[useProviderEventOffer] Found accepted offer:', {
+            offerId: offerData.id,
+            finalAmount: offerData.finalAmount,
+            amount: offerData.amount,
+            contractSigned: offerData.contractSigned,
+          });
+          setOffer(offerData);
+        } else {
+          console.log('[useProviderEventOffer] No accepted offer found for provider:', providerId, 'event:', eventId);
+          setOffer(null);
+        }
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn('Error fetching provider event offer:', err?.message || err);
+        setError('Teklif yüklenirken hata oluştu');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [providerId, eventId]);
+
+  // Return the contract amount (finalAmount takes priority, then amount)
+  const contractAmount = offer?.finalAmount ?? offer?.amount ?? 0;
+
+  return { offer, contractAmount, loading, error };
 }
 
 /**
@@ -1871,7 +2139,7 @@ export function useOffer(offerId: string | undefined) {
         setError(null);
       },
       (err) => {
-        console.error('Error fetching offer:', err);
+        console.warn('Error fetching offer:', err?.message || err);
         setError('Teklif yüklenirken hata oluştu');
         setLoading(false);
       }
@@ -1923,10 +2191,12 @@ export function useOrganizerOffers(organizerId: string | undefined) {
         setLoading(false);
         setError(null);
       },
-      (err) => {
-        console.error('Error fetching organizer offers:', err);
-        setError('Teklifler yüklenirken hata oluştu');
+      (err: any) => {
+        // Use console.warn to avoid red error screen
+        console.warn('Error fetching organizer offers:', err?.message || err);
+        setOffers([]);
         setLoading(false);
+        setError(null);
       }
     );
 
@@ -1934,4 +2204,197 @@ export function useOrganizerOffers(organizerId: string | undefined) {
   }, [organizerId]);
 
   return { offers, loading, error };
+}
+
+/**
+ * Debug version of syncOffersToEventServices that returns info
+ */
+export async function syncOffersToEventServicesWithDebug(eventId: string): Promise<{
+  allOffers: number;
+  acceptedOffers: number;
+  services: string;
+  updated: boolean;
+  error?: string;
+}> {
+  const result = {
+    allOffers: -1,
+    acceptedOffers: -1,
+    services: '',
+    updated: false,
+    error: undefined as string | undefined,
+  };
+
+  // First, try to read the event
+  try {
+    const eventDoc = await getDoc(doc(db, 'events', eventId));
+    if (eventDoc.exists()) {
+      const data = eventDoc.data();
+      const services = data?.services || [];
+      result.services = services.map((s: any) => `${s.category}:${s.status}:${s.provider || 'yok'}`).join('\n') || 'Hizmet yok';
+    } else {
+      result.services = 'Event bulunamadı';
+    }
+  } catch (err: any) {
+    result.services = `Event okuma hatası: ${err?.message}`;
+  }
+
+  // Try to query offers - need to include organizerId for security rules
+  try {
+    const eventDoc = await getDoc(doc(db, 'events', eventId));
+    if (!eventDoc.exists()) {
+      result.error = 'Event bulunamadı';
+      return result;
+    }
+    const organizerId = eventDoc.data()?.organizerId;
+
+    if (!organizerId) {
+      result.error = 'Event organizerId yok';
+      return result;
+    }
+
+    // Query offers with organizerId (required for security rules)
+    const allOffersQuery = query(
+      collection(db, 'offers'),
+      where('eventId', '==', eventId),
+      where('organizerId', '==', organizerId)
+    );
+    const allOffersSnapshot = await getDocs(allOffersQuery);
+    result.allOffers = allOffersSnapshot.size;
+
+    // Check accepted offers
+    const acceptedQuery = query(
+      collection(db, 'offers'),
+      where('eventId', '==', eventId),
+      where('organizerId', '==', organizerId),
+      where('status', '==', 'accepted')
+    );
+    const acceptedSnapshot = await getDocs(acceptedQuery);
+    result.acceptedOffers = acceptedSnapshot.size;
+
+    // If we got here, try to sync
+    if (result.acceptedOffers > 0) {
+      await syncOffersToEventServices(eventId);
+      result.updated = true;
+    }
+  } catch (err: any) {
+    result.error = `Teklif okuma hatası: ${err?.code || ''} - ${err?.message || err}`;
+  }
+
+  return result;
+}
+
+/**
+ * Sync accepted offers to event services
+ * Uses organizerId in queries to satisfy Firebase security rules
+ */
+export async function syncOffersToEventServices(eventId: string): Promise<void> {
+  console.log('[syncOffersToEventServices] Starting sync for event:', eventId);
+  try {
+    // First, fetch the event to get organizerId (needed for security rules)
+    const eventRef = doc(db, 'events', eventId);
+    const eventDoc = await getDoc(eventRef);
+
+    if (!eventDoc.exists()) {
+      console.log('[syncOffersToEventServices] Event not found:', eventId);
+      return;
+    }
+
+    const eventData = eventDoc.data();
+    const organizerId = eventData?.organizerId;
+
+    if (!organizerId) {
+      console.log('[syncOffersToEventServices] Event has no organizerId');
+      return;
+    }
+
+    // Query offers with organizerId (required for Firebase security rules)
+    const offersQuery = query(
+      collection(db, 'offers'),
+      where('eventId', '==', eventId),
+      where('organizerId', '==', organizerId),
+      where('status', '==', 'accepted')
+    );
+    const offersSnapshot = await getDocs(offersQuery);
+    console.log('[syncOffersToEventServices] Found accepted offers:', offersSnapshot.size);
+
+    if (offersSnapshot.empty) {
+      console.log('[syncOffersToEventServices] No accepted offers found for event:', eventId);
+      return;
+    }
+
+    let services = eventData?.services || [];
+    let servicesUpdated = false;
+
+    // Category mapping
+    const categoryMapping: Record<string, string[]> = {
+      'booking': ['artist', 'booking'],
+      'artist': ['artist', 'booking'],
+      'technical': ['sound-light', 'technical'],
+      'sound-light': ['sound-light', 'technical'],
+    };
+
+    // Process each accepted offer
+    for (const offerDoc of offersSnapshot.docs) {
+      const offer = offerDoc.data();
+      const serviceCategory = offer.serviceCategory || 'other';
+      const matchCategories = categoryMapping[serviceCategory] || [serviceCategory];
+      const finalAmount = offer.finalAmount || offer.counterAmount || offer.amount || 0;
+
+      // Check if already confirmed for this provider
+      const alreadyConfirmed = services.some(
+        (s: any) => s.providerId === offer.providerId && s.status === 'confirmed'
+      );
+
+      if (alreadyConfirmed) {
+        continue;
+      }
+
+      // Find a pending service with matching category
+      const serviceIndex = services.findIndex(
+        (s: any) => matchCategories.includes(s.category) && (s.status === 'pending' || s.status === 'offered')
+      );
+
+      if (serviceIndex !== -1) {
+        services[serviceIndex] = {
+          ...services[serviceIndex],
+          status: 'confirmed',
+          price: finalAmount,
+          provider: offer.providerName || offer.artistName,
+          providerId: offer.providerId,
+          providerImage: offer.providerImage || '',
+          providerPhone: offer.providerPhone || '',
+          name: offer.artistName || services[serviceIndex].name,
+        };
+        servicesUpdated = true;
+      } else {
+        // Add new service if no match
+        const hasProviderService = services.some((s: any) => s.providerId === offer.providerId);
+        if (!hasProviderService) {
+          services.push({
+            id: `svc_${offerDoc.id}`,
+            category: serviceCategory,
+            name: offer.artistName || offer.providerName || serviceCategory,
+            status: 'confirmed',
+            price: finalAmount,
+            provider: offer.providerName,
+            providerId: offer.providerId,
+            providerImage: offer.providerImage || '',
+            providerPhone: offer.providerPhone || '',
+          });
+          servicesUpdated = true;
+        }
+      }
+    }
+
+    // Update event if services changed
+    if (servicesUpdated) {
+      await updateDoc(eventRef, {
+        services,
+        updatedAt: Timestamp.now(),
+      });
+      console.log('[syncOffersToEventServices] Event services updated successfully');
+    }
+  } catch (error: any) {
+    console.warn('[syncOffersToEventServices] Error:', error?.code, error?.message || error);
+  }
 }

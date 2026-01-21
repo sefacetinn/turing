@@ -163,6 +163,7 @@ export interface OrganizerOffer {
   eventDate?: string;
   serviceCategory: string;
   serviceName: string;
+  artistName?: string; // Artist/performer name for booking category
   provider: {
     name: string;
     image: string;
@@ -208,6 +209,8 @@ export interface ProviderOffer {
   role: string;
   artistName?: string; // For booking category - artist name separate from role
   amount: number;
+  requestedBudget?: string; // Organizer's requested budget for pending requests
+  originalBudget?: number; // Original budget amount
   status: OfferStatus;
   date: string;
   eventDate: string;

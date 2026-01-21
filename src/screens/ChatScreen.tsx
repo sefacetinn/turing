@@ -36,6 +36,8 @@ import {
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { gradients } from '../theme/colors';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase/config';
 
 interface ChatParams {
   conversationId?: string;
@@ -61,8 +63,77 @@ export function ChatScreen() {
   const [participantId, setParticipantId] = useState<string | undefined>(params?.providerId);
   const [participantName, setParticipantName] = useState(params?.providerName || 'Bilinmeyen');
   const [participantImage, setParticipantImage] = useState(params?.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+  const [participantRole, setParticipantRole] = useState<'organizer' | 'provider' | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+
+  // Fetch real user data from Firebase
+  const fetchParticipantData = async (userId: string) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role || userData.userType || null;
+        setParticipantRole(role);
+
+        // Update participant image from user data if available
+        const userImage = userData.photoURL || userData.profileImage || userData.image;
+        if (userImage) {
+          setParticipantImage(userImage);
+        }
+
+        // Update name if available
+        const userName = userData.displayName || userData.name || userData.companyName;
+        if (userName) {
+          setParticipantName(userName);
+        }
+
+        return { role, image: userImage, name: userName };
+      }
+    } catch (error) {
+      console.warn('Error fetching participant data:', error);
+    }
+    return null;
+  };
+
+  // Navigate to participant's profile based on their role
+  const navigateToProfile = async () => {
+    // Use participantId from state, or from params as fallback
+    const targetUserId = participantId || params?.providerId;
+
+    if (!targetUserId) {
+      Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
+      return;
+    }
+
+    try {
+      // Check if we already know the role
+      let role = participantRole;
+
+      if (!role) {
+        // Fetch user data from Firebase
+        const userData = await fetchParticipantData(targetUserId);
+        role = userData?.role || null;
+      }
+
+      console.log('[ChatScreen] Navigating to profile:', { targetUserId, role });
+
+      // Navigate based on role - use ProviderDetail for providers (correct screen name)
+      if (role === 'provider') {
+        navigation.navigate('ProviderDetail', { providerId: targetUserId });
+      } else if (role === 'organizer') {
+        navigation.navigate('OrganizerProfile', { organizerId: targetUserId });
+      } else {
+        // Default to organizer profile if role is unknown
+        console.log('[ChatScreen] Unknown role, defaulting to OrganizerProfile');
+        navigation.navigate('OrganizerProfile', { organizerId: targetUserId });
+      }
+    } catch (error) {
+      console.warn('Error navigating to profile:', error);
+      // Default to organizer profile on error
+      navigation.navigate('OrganizerProfile', { organizerId: targetUserId });
+    }
+  };
 
   // Fetch messages from Firebase
   const { messages: firebaseMessages, loading: messagesLoading } = useChatMessages(conversationId);
@@ -87,21 +158,28 @@ export function ChatScreen() {
               // Find the other participant (not the current user)
               const otherParticipantId = conversation.participantIds.find(id => id !== user.uid);
               if (otherParticipantId) {
-                const name = conversation.participantNames[otherParticipantId] || 'Kullanıcı';
-                const image = conversation.participantImages[otherParticipantId] || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400';
                 setParticipantId(otherParticipantId);
+                // Set initial values from conversation
+                const name = conversation.participantNames[otherParticipantId] || 'Kullanıcı';
                 setParticipantName(name);
-                setParticipantImage(image);
+
+                // Fetch real user data from Firebase to get actual profile photo
+                await fetchParticipantData(otherParticipantId);
               }
             }
           } catch (error) {
-            console.error('Error fetching conversation details:', error);
+            console.warn('Error fetching conversation details:', error);
           }
         } else {
           // We have provider info from params
           setParticipantId(params.providerId);
           setParticipantName(params.providerName);
-          setParticipantImage(params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+          // Fetch real user data from Firebase to get actual profile photo
+          if (params.providerId) {
+            await fetchParticipantData(params.providerId);
+          } else {
+            setParticipantImage(params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+          }
         }
         return;
       }
@@ -122,9 +200,10 @@ export function ChatScreen() {
           setConversationId(convId);
           setParticipantId(params.providerId);
           setParticipantName(params.providerName);
-          setParticipantImage(params.providerImage || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400');
+          // Fetch real user data from Firebase to get actual profile photo
+          await fetchParticipantData(params.providerId);
         } catch (error) {
-          console.error('Error creating conversation:', error);
+          console.warn('Error creating conversation:', error);
           Alert.alert('Hata', 'Sohbet başlatılamadı');
         } finally {
           setIsCreatingConversation(false);
@@ -236,11 +315,7 @@ export function ChatScreen() {
   const chatOptions = [
     { id: 'profile', label: 'Profili Görüntüle', icon: 'person-outline', action: () => {
       setShowOptionsModal(false);
-      if (participantId) {
-        navigation.navigate('ProviderDetail', { providerId: participantId });
-      } else {
-        Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
-      }
+      navigateToProfile();
     }},
     { id: 'mute', label: 'Bildirimleri Sessize Al', icon: 'notifications-off-outline', action: () => {
       setShowOptionsModal(false);
@@ -294,7 +369,7 @@ export function ChatScreen() {
         senderId: user.uid,
       });
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.warn('Error sending message:', error);
       Alert.alert('Hata', 'Mesaj gönderilemedi');
       setMessage(messageText); // Restore message on error
     }
@@ -329,7 +404,7 @@ export function ChatScreen() {
       setOfferAmount('');
       setOfferDescription('');
     } catch (error) {
-      console.error('Error sending offer:', error);
+      console.warn('Error sending offer:', error);
       Alert.alert('Hata', 'Teklif gönderilemedi');
     }
   };
@@ -362,7 +437,7 @@ export function ChatScreen() {
       setMeetingTime('');
       setMeetingLocation('');
     } catch (error) {
-      console.error('Error sending meeting:', error);
+      console.warn('Error sending meeting:', error);
       Alert.alert('Hata', 'Toplantı daveti gönderilemedi');
     }
   };
@@ -424,7 +499,7 @@ export function ChatScreen() {
         senderId: user.uid,
       });
     } catch (error) {
-      console.error('Error sending file:', error);
+      console.warn('Error sending file:', error);
       Alert.alert('Hata', 'Dosya gönderilemedi');
     }
   };
@@ -594,11 +669,7 @@ export function ChatScreen() {
 
         <TouchableOpacity
           style={styles.headerInfo}
-          onPress={() => {
-            if (participantId) {
-              navigation.navigate('ProviderDetail', { providerId: participantId });
-            }
-          }}
+          onPress={navigateToProfile}
           activeOpacity={0.7}
         >
           <OptimizedImage source={participantImage} style={styles.headerAvatar} />

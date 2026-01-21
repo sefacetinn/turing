@@ -18,6 +18,8 @@ import { scrollToTopEmitter } from '../utils/scrollToTop';
 // No mock data imports - conversations come from Firebase
 import { useAuth } from '../context/AuthContext';
 import { useConversations, type FirestoreConversation } from '../hooks';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase/config';
 
 // Default colors for static styles (dark theme)
 const colors = defaultColors;
@@ -55,6 +57,52 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   const { user } = useAuth();
   const { conversations: realConversations, loading: conversationsLoading } = useConversations(user?.uid);
 
+  // State to store real user display names fetched from Firebase
+  const [userDisplayNames, setUserDisplayNames] = useState<Record<string, { name: string; image: string }>>({});
+
+  // Fetch real user display names from Firebase
+  useEffect(() => {
+    const fetchUserDisplayNames = async () => {
+      if (!realConversations.length || !user?.uid) return;
+
+      const userIds = realConversations
+        .map(c => c.participantIds.find(id => id !== user.uid))
+        .filter((id): id is string => !!id);
+
+      // Get unique user IDs
+      const uniqueUserIds = [...new Set(userIds)];
+
+      // Fetch user data for each participant
+      const userDataPromises = uniqueUserIds.map(async (userId) => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // Prefer displayName (person's name) over companyName
+            const displayName = userData.displayName || userData.name || userData.companyName || 'Kullanıcı';
+            const userImage = userData.photoURL || userData.profileImage || userData.image || '';
+            return { id: userId, name: displayName, image: userImage };
+          }
+        } catch (error) {
+          console.warn('Error fetching user data for:', userId, error);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(userDataPromises);
+      const newUserNames: Record<string, { name: string; image: string }> = {};
+      results.forEach(result => {
+        if (result) {
+          newUserNames[result.id] = { name: result.name, image: result.image };
+        }
+      });
+
+      setUserDisplayNames(newUserNames);
+    };
+
+    fetchUserDisplayNames();
+  }, [realConversations, user?.uid]);
+
   // Check if user has real data
   const hasRealData = user && realConversations.length > 0;
   const isNewUser = user && !conversationsLoading && realConversations.length === 0;
@@ -64,8 +112,10 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
     if (!realConversations.length) return [];
     return realConversations.map(c => {
       const otherParticipantId = c.participantIds.find(id => id !== user?.uid) || '';
-      const otherParticipantName = c.participantNames[otherParticipantId] || 'Kullanıcı';
-      const otherParticipantImage = c.participantImages[otherParticipantId] || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200';
+      // Use fetched display name from Firebase (person's name), fallback to conversation's participantNames
+      const fetchedUserData = userDisplayNames[otherParticipantId];
+      const otherParticipantName = fetchedUserData?.name || c.participantNames[otherParticipantId] || 'Kullanıcı';
+      const otherParticipantImage = fetchedUserData?.image || c.participantImages[otherParticipantId] || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200';
       return {
         id: c.id,
         name: otherParticipantName,
@@ -74,9 +124,10 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
         time: formatConversationTime(c.lastMessageAt),
         unread: c.unreadCount[user?.uid || ''] || 0,
         archived: false, // TODO: Add archived field to Firestore
+        participantId: otherParticipantId, // Store for navigation
       };
     });
-  }, [realConversations, user?.uid]);
+  }, [realConversations, user?.uid, userDisplayNames]);
 
   // Use real conversations for logged-in users, empty for new users
   const baseConversations = useMemo(() => {
@@ -191,7 +242,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
     }
 
     return result;
-  }, [activeTab, searchQuery]);
+  }, [conversations, activeTab, searchQuery]);
 
   const unreadCount = conversations.filter(c => c.unread > 0 && !c.archived).length;
   const archivedCount = conversations.filter(c => c.archived).length;
@@ -305,7 +356,12 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
               key={chat.id}
               style={styles.conversationItem}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Chat', { conversationId: chat.id })}
+              onPress={() => navigation.navigate('Chat', {
+                conversationId: chat.id,
+                providerId: chat.participantId,
+                providerName: chat.name,
+                providerImage: chat.avatar,
+              })}
               onLongPress={() => handleLongPress(chat)}
               delayLongPress={500}
               accessibilityRole="button"

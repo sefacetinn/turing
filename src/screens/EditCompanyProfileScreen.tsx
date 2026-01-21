@@ -355,7 +355,7 @@ export function EditCompanyProfileScreen() {
         [{ text: 'Tamam', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error updating company profile:', error);
+      console.warn('Error updating company profile:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Profil güncellenirken bir hata oluştu.');
     } finally {

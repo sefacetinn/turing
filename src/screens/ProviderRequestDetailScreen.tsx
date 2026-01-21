@@ -20,9 +20,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
-import { useOffer, respondToOfferRequest, sendCounterOffer } from '../hooks';
+import { useOffer, useEvent, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { OfferTimeline } from '../components/offers/OfferTimeline';
+import type { OfferHistoryItem } from '../data/offersData';
 import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions } from '../data/createEventData';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -31,6 +34,85 @@ import * as Sharing from 'expo-sharing';
 const getOptionLabel = (options: { id: string; label: string }[], id: string | undefined): string | null => {
   if (!id) return null;
   return options.find(o => o.id === id)?.label || null;
+};
+
+// Build offer history from Firebase data
+const buildOfferHistory = (firebaseOffer: any): OfferHistoryItem[] => {
+  if (!firebaseOffer) return [];
+
+  const history: OfferHistoryItem[] = [];
+
+  // 1. Initial request from organizer (always first)
+  if (firebaseOffer.createdAt) {
+    history.push({
+      id: 'request',
+      type: 'submitted',
+      by: 'organizer',
+      date: firebaseOffer.createdAt.toLocaleDateString?.('tr-TR') || '',
+      message: firebaseOffer.notes,
+      amount: firebaseOffer.requestedBudget ? parseInt(firebaseOffer.requestedBudget) : undefined,
+    });
+  }
+
+  // 2. Use offerHistory array if available (new format)
+  if (firebaseOffer.offerHistory && firebaseOffer.offerHistory.length > 0) {
+    firebaseOffer.offerHistory.forEach((item: any, index: number) => {
+      history.push({
+        id: `history-${index}`,
+        type: item.type === 'quote' ? 'submitted' : item.type,
+        by: item.by,
+        date: item.timestamp?.toLocaleDateString?.('tr-TR') || '',
+        amount: item.amount,
+        message: item.message,
+      });
+    });
+  } else {
+    // Fallback: reconstruct from individual fields (old format)
+    // 2. Provider responds with quote
+    if (firebaseOffer.status !== 'pending' && firebaseOffer.amount) {
+      history.push({
+        id: 'quote',
+        type: 'submitted',
+        by: 'provider',
+        date: '',
+        amount: firebaseOffer.amount,
+        message: firebaseOffer.message,
+      });
+    }
+
+    // 3. Counter offer (if exists) - only the last one
+    if (firebaseOffer.counterAmount) {
+      history.push({
+        id: 'counter',
+        type: 'counter',
+        by: firebaseOffer.counterBy || 'organizer',
+        date: firebaseOffer.counterAt?.toLocaleDateString?.('tr-TR') || '',
+        amount: firebaseOffer.counterAmount,
+        message: firebaseOffer.counterMessage,
+      });
+    }
+  }
+
+  // 4. Final status (accepted/rejected)
+  if (firebaseOffer.status === 'accepted') {
+    history.push({
+      id: 'accepted',
+      type: 'accepted',
+      by: firebaseOffer.acceptedBy || 'organizer',
+      date: firebaseOffer.acceptedAt?.toLocaleDateString?.('tr-TR') || firebaseOffer.updatedAt?.toLocaleDateString?.('tr-TR') || '',
+      amount: firebaseOffer.finalAmount || firebaseOffer.counterAmount || firebaseOffer.amount,
+    });
+  } else if (firebaseOffer.status === 'rejected') {
+    history.push({
+      id: 'rejected',
+      type: 'rejected',
+      by: firebaseOffer.rejectedBy || 'organizer',
+      date: firebaseOffer.rejectedAt?.toLocaleDateString?.('tr-TR') || firebaseOffer.updatedAt?.toLocaleDateString?.('tr-TR') || '',
+      message: firebaseOffer.rejectionReason,
+    });
+  }
+
+  return history;
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -122,6 +204,9 @@ export function ProviderRequestDetailScreen() {
   // Fetch offer from Firebase
   const { offer: firebaseOffer, loading: isLoading } = useOffer(offerId);
 
+  // Fetch event details for venue information
+  const { event: eventData } = useEvent(firebaseOffer?.eventId);
+
   // Convert Firebase offer to local format
   const offer = useMemo(() => {
     if (!firebaseOffer) return null;
@@ -156,7 +241,7 @@ export function ProviderRequestDetailScreen() {
       } : null,
       rejectionReason: firebaseOffer.responseMessage,
       rejectedAt: firebaseOffer.status === 'rejected' ? firebaseOffer.updatedAt?.toLocaleDateString('tr-TR') : undefined,
-      history: [] as Array<{ type: string; by: string; date: string; amount?: number }>,
+      history: buildOfferHistory(firebaseOffer),
       createdAt: firebaseOffer.createdAt,
       validUntil: firebaseOffer.validUntil,
       eventVenue: firebaseOffer.formData?.venue || '',
@@ -168,17 +253,54 @@ export function ProviderRequestDetailScreen() {
       eventTime: firebaseOffer.formData?.time || '',
       formData: firebaseOffer.formData,
       requestedBudget: firebaseOffer.requestedBudget || '',
+      finalAmount: firebaseOffer.finalAmount,
+      acceptedBy: firebaseOffer.acceptedBy,
+      acceptedAt: firebaseOffer.acceptedAt,
+      contractId: firebaseOffer.contractId,
+      contractSigned: firebaseOffer.contractSigned || false,
+      contractSignedByOrganizer: firebaseOffer.contractSignedByOrganizer || false,
+      contractSignedByProvider: firebaseOffer.contractSignedByProvider || false,
     };
   }, [firebaseOffer]);
 
   const [showOfferModal, setShowOfferModal] = useState(false);
-  const [showVenueModal, setShowVenueModal] = useState(false);
   const [offerAmount, setOfferAmount] = useState('');
   const [offerNote, setOfferNote] = useState('');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [venueImageIndex, setVenueImageIndex] = useState(0);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [realOrganizerImage, setRealOrganizerImage] = useState<string | null>(null);
+
+  // Expandable card states
+  const [eventExpanded, setEventExpanded] = useState(false);
+  const [artistExpanded, setArtistExpanded] = useState(false);
+  const [venueExpanded, setVenueExpanded] = useState(false);
+  const [organizerExpanded, setOrganizerExpanded] = useState(false);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+
+  // Fetch organizer's real profile image from Firestore
+  React.useEffect(() => {
+    const fetchOrganizerImage = async () => {
+      if (!firebaseOffer?.organizerId) return;
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', firebaseOffer.organizerId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const profileImage = userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image;
+          if (profileImage) {
+            setRealOrganizerImage(profileImage);
+          }
+        }
+      } catch (error) {
+        console.warn('Error fetching organizer profile:', error);
+      }
+    };
+
+    fetchOrganizerImage();
+  }, [firebaseOffer?.organizerId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -280,16 +402,114 @@ export function ProviderRequestDetailScreen() {
     );
   }
 
-  // Venue info from event data
-  const venueInfo: VenueInfo | null = (!offer.eventVenue && !offer.location) ? null : {
+  // Known venue database for realistic data
+  const knownVenues: Record<string, Partial<VenueInfo>> = {
+    'Congresium': {
+      address: 'Söğütözü Caddesi No: 2',
+      venueType: 'arena',
+      capacity: 3000,
+      stageWidth: 18,
+      stageDepth: 12,
+      stageHeight: 8,
+      hasSoundSystem: true,
+      hasLightingSystem: true,
+      hasParkingArea: true,
+      parkingCapacity: 500,
+      backstage: {
+        hasBackstage: true,
+        roomCount: 4,
+        hasMirror: true,
+        hasShower: true,
+        hasPrivateToilet: true,
+        cateringAvailable: true,
+      },
+      images: [
+        'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
+        'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
+      ],
+      rating: 4.6,
+      reviewCount: 128,
+    },
+    'Volkswagen Arena': {
+      address: 'Huzur Mahallesi, Maslak Ayazağa Cd. No:4',
+      venueType: 'arena',
+      capacity: 5000,
+      stageWidth: 24,
+      stageDepth: 16,
+      stageHeight: 12,
+      hasSoundSystem: true,
+      hasLightingSystem: true,
+      hasParkingArea: true,
+      parkingCapacity: 1200,
+      backstage: {
+        hasBackstage: true,
+        roomCount: 8,
+        hasMirror: true,
+        hasShower: true,
+        hasPrivateToilet: true,
+        cateringAvailable: true,
+      },
+      images: [
+        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
+        'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
+      ],
+      rating: 4.8,
+      reviewCount: 342,
+    },
+    'Zorlu PSM': {
+      address: 'Levazım Mahallesi, Koru Sokağı No:2',
+      venueType: 'concert_hall',
+      capacity: 2200,
+      stageWidth: 20,
+      stageDepth: 14,
+      stageHeight: 10,
+      hasSoundSystem: true,
+      hasLightingSystem: true,
+      hasParkingArea: true,
+      parkingCapacity: 800,
+      backstage: {
+        hasBackstage: true,
+        roomCount: 6,
+        hasMirror: true,
+        hasShower: true,
+        hasPrivateToilet: true,
+        cateringAvailable: true,
+      },
+      images: [
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
+        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800',
+      ],
+      rating: 4.9,
+      reviewCount: 567,
+    },
+  };
+
+  // Get known venue data if available
+  const venueName = eventData?.venue || offer.eventVenue;
+  const knownVenueData = venueName ? knownVenues[venueName] : undefined;
+
+  // Venue info from event data merged with known venue data
+  const venueInfo: VenueInfo | null = (!venueName && !eventData?.city && !offer.location) ? null : {
     id: offer.eventId || '',
-    name: offer.eventVenue || '',
-    address: offer.formData?.venueAddress || '',
-    city: offer.location || '',
-    district: offer.eventDistrict || '',
-    capacity: offer.eventGuestCount ? parseInt(offer.eventGuestCount) : 0,
-    indoorOutdoor: (offer.eventIndoorOutdoor as 'indoor' | 'outdoor' | 'mixed') || 'indoor',
-    venueType: 'other' as const,
+    name: venueName || '',
+    address: eventData?.venueAddress || knownVenueData?.address || offer.formData?.venueAddress || '',
+    city: eventData?.city || offer.location || '',
+    district: eventData?.district || offer.eventDistrict || '',
+    capacity: eventData?.venueCapacity ? parseInt(eventData.venueCapacity) : (offer.eventGuestCount ? parseInt(offer.eventGuestCount) : (knownVenueData?.capacity || 0)),
+    indoorOutdoor: (eventData?.indoorOutdoor as 'indoor' | 'outdoor' | 'mixed') || (offer.eventIndoorOutdoor as 'indoor' | 'outdoor' | 'mixed') || 'indoor',
+    venueType: knownVenueData?.venueType || 'other' as const,
+    seatingType: (eventData?.seatingType as 'standing' | 'seated' | 'mixed') || (offer.eventSeatingType as 'standing' | 'seated' | 'mixed') || undefined,
+    stageWidth: knownVenueData?.stageWidth,
+    stageDepth: knownVenueData?.stageDepth,
+    stageHeight: knownVenueData?.stageHeight,
+    hasSoundSystem: knownVenueData?.hasSoundSystem,
+    hasLightingSystem: knownVenueData?.hasLightingSystem,
+    hasParkingArea: knownVenueData?.hasParkingArea,
+    parkingCapacity: knownVenueData?.parkingCapacity,
+    backstage: knownVenueData?.backstage,
+    images: knownVenueData?.images,
+    rating: knownVenueData?.rating,
+    reviewCount: knownVenueData?.reviewCount,
   };
 
   // Event details from offer
@@ -306,6 +526,12 @@ export function ProviderRequestDetailScreen() {
   const organizerBudget: number | null = offer.requestedBudget
     ? parseInt(offer.requestedBudget.replace(/\D/g, ''), 10) || null
     : null;
+
+  // Final accepted amount (when offer is accepted)
+  const finalAcceptedAmount: number | null = offer.finalAmount || null;
+
+  // Provider's current offer amount
+  const providerOfferAmount: number | null = offer.amount || null;
 
   const getStatusConfig = (status: string) => {
     const configs: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -332,8 +558,9 @@ export function ProviderRequestDetailScreen() {
   const handleChat = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate('Chat', {
-      chatId: `organizer_${offer.id}`,
-      recipientName: offer.organizer.name
+      providerId: offer.organizer.id,
+      providerName: offer.organizer.name,
+      providerImage: realOrganizerImage || offer.organizer.image,
     });
   };
 
@@ -361,9 +588,13 @@ export function ProviderRequestDetailScreen() {
       // Check if this is the first quote (status is 'pending') or a counter offer
       const isFirstQuote = firebaseOffer?.status === 'pending';
 
+      // Extract enabled inclusions and exclusions
+      const inclusions = includedItems.filter(item => item.enabled).map(item => item.label);
+      const exclusions = excludedItems.filter(item => item.enabled).map(item => item.label);
+
       if (isFirstQuote) {
         // Provider's first response to organizer's request
-        await respondToOfferRequest(offerId, amount, offerNote || undefined);
+        await respondToOfferRequest(offerId, amount, offerNote || undefined, 7, inclusions, exclusions);
       } else {
         // This is a counter offer in an ongoing negotiation
         await sendCounterOffer(offerId, amount, 'provider', offerNote || undefined);
@@ -376,10 +607,10 @@ export function ProviderRequestDetailScreen() {
       Alert.alert(
         'Teklif Gönderildi',
         `₺${amount.toLocaleString('tr-TR')} tutarındaki teklifiniz organizatöre iletildi.`,
-        [{ text: 'Tamam' }]
+        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error submitting offer:', error);
+      console.warn('Error submitting offer:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Teklif gönderilirken bir hata oluştu.');
     }
@@ -405,6 +636,36 @@ export function ProviderRequestDetailScreen() {
     }
   };
 
+  // Accept organizer's initial budget directly
+  const handleAcceptOrganizerBudget = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (organizerBudget) {
+      Alert.alert(
+        'Bütçeyi Kabul Et',
+        `Organizatörün ₺${organizerBudget.toLocaleString('tr-TR')} bütçe teklifini kabul etmek istiyor musunuz?`,
+        [
+          { text: 'İptal', style: 'cancel' },
+          {
+            text: 'Kabul Et',
+            onPress: async () => {
+              try {
+                // Accept the offer with the organizer's budget
+                await acceptOffer(offer.id, 'provider');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('Başarılı', 'Teklif kabul edildi. Sözleşme oluşturulacak.');
+                navigation.goBack();
+              } catch (error) {
+                console.warn('Error accepting offer:', error);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert('Hata', 'Teklif kabul edilirken bir hata oluştu.');
+              }
+            }
+          },
+        ]
+      );
+    }
+  };
+
   const handleRejectOffer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedRejectReason(null);
@@ -412,7 +673,7 @@ export function ProviderRequestDetailScreen() {
     setShowRejectModal(true);
   };
 
-  const confirmRejectOffer = () => {
+  const confirmRejectOffer = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (!selectedRejectReason) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -430,8 +691,17 @@ export function ProviderRequestDetailScreen() {
       : rejectionReasons.find(r => r.id === selectedRejectReason)?.label || '';
 
     setShowRejectModal(false);
-    Alert.alert('Reddedildi', `Talep reddedildi.\nNeden: ${reason}`);
-    navigation.goBack();
+
+    try {
+      await rejectOffer(offer.id, 'provider', reason);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Reddedildi', `Talep reddedildi.\nNeden: ${reason}`);
+      navigation.goBack();
+    } catch (error) {
+      console.warn('Error rejecting offer:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Teklif reddedilirken bir hata oluştu.');
+    }
   };
 
   const getSeatingTypeLabel = (type: string | undefined) => {
@@ -449,6 +719,21 @@ export function ProviderRequestDetailScreen() {
       indoor: 'Kapalı Alan',
       outdoor: 'Açık Alan',
       mixed: 'Karma',
+    };
+    return labels[type] || type;
+  };
+
+  const getVenueTypeLabel = (type: string | undefined) => {
+    if (!type) return 'Belirtilmedi';
+    const labels: Record<string, string> = {
+      concert_hall: 'Konser Salonu',
+      arena: 'Arena',
+      stadium: 'Stadyum',
+      hotel_ballroom: 'Otel Balo Salonu',
+      open_air: 'Açık Hava',
+      club: 'Kulüp / Gece Kulübü',
+      theater: 'Tiyatro',
+      other: 'Diğer',
     };
     return labels[type] || type;
   };
@@ -1127,19 +1412,19 @@ export function ProviderRequestDetailScreen() {
                 <div class="card-icon">🏛</div>
                 <div class="card-title">Mekan</div>
               </div>
-              <div class="venue-name">${venueInfo.name}</div>
-              <div class="venue-address">${venueInfo.district || ''}, ${venueInfo.city}</div>
+              <div class="venue-name">${venueInfo?.name || 'Belirtilmedi'}</div>
+              <div class="venue-address">${venueInfo?.district || ''}, ${venueInfo?.city || ''}</div>
               <div class="venue-specs">
                 <div class="venue-spec">
-                  <div class="venue-spec-value">${venueInfo.capacity.toLocaleString('tr-TR')}</div>
+                  <div class="venue-spec-value">${venueInfo?.capacity?.toLocaleString('tr-TR') || '-'}</div>
                   <div class="venue-spec-label">Kapasite</div>
                 </div>
                 <div class="venue-spec">
-                  <div class="venue-spec-value">${getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}</div>
+                  <div class="venue-spec-value">${venueInfo ? getIndoorOutdoorLabel(venueInfo.indoorOutdoor) : '-'}</div>
                   <div class="venue-spec-label">Tip</div>
                 </div>
                 <div class="venue-spec">
-                  <div class="venue-spec-value">${venueInfo.backstage?.hasBackstage ? 'Var' : 'Yok'}</div>
+                  <div class="venue-spec-value">${venueInfo?.backstage?.hasBackstage ? 'Var' : 'Yok'}</div>
                   <div class="venue-spec-label">Kulis</div>
                 </div>
               </div>
@@ -1233,7 +1518,7 @@ export function ProviderRequestDetailScreen() {
         });
       }
     } catch (error) {
-      console.error('PDF generation error:', error);
+      console.warn('PDF generation error:', error);
       Alert.alert('Hata', 'PDF oluşturulurken bir hata oluştu.');
     } finally {
       setIsGeneratingPDF(false);
@@ -1284,55 +1569,6 @@ export function ProviderRequestDetailScreen() {
           />
         }
       >
-        {/* Hero Header Card */}
-        <View style={[styles.heroCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <View style={styles.heroTop}>
-            <View style={[styles.categoryBadgeSmall, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
-              <Ionicons name="musical-notes" size={12} color="#6366F1" />
-              <Text style={styles.categoryTextSmall}>{getCategoryName(offer.serviceCategory)}</Text>
-            </View>
-            {/* Social Media - Inline */}
-            {(eventDetails.socialMedia.instagram || eventDetails.socialMedia.twitter || eventDetails.socialMedia.website) && (
-              <View style={styles.socialInline}>
-                {eventDetails.socialMedia.instagram && (
-                  <TouchableOpacity onPress={() => handleSocialMedia('instagram')} style={styles.socialIconSmall}>
-                    <Ionicons name="logo-instagram" size={16} color="#E1306C" />
-                  </TouchableOpacity>
-                )}
-                {eventDetails.socialMedia.twitter && (
-                  <TouchableOpacity onPress={() => handleSocialMedia('twitter')} style={styles.socialIconSmall}>
-                    <Ionicons name="logo-twitter" size={16} color="#1DA1F2" />
-                  </TouchableOpacity>
-                )}
-                {eventDetails.socialMedia.website && (
-                  <TouchableOpacity onPress={() => handleSocialMedia('website')} style={styles.socialIconSmall}>
-                    <Ionicons name="globe-outline" size={16} color="#6366F1" />
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-
-          <Text style={[styles.heroArtist, { color: colors.text }]}>
-            {offer.serviceCategory === 'booking' && offer.artistName
-              ? offer.artistName
-              : (offer.role.includes(' - ') ? offer.role.split(' - ')[0].trim() : offer.role)}
-          </Text>
-          <Text style={[styles.heroEvent, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
-
-          <View style={styles.heroMeta}>
-            <View style={styles.heroMetaItem}>
-              <Ionicons name="calendar" size={14} color="#6366F1" />
-              <Text style={[styles.heroMetaText, { color: colors.text }]}>{offer.eventDate}</Text>
-            </View>
-            <View style={[styles.heroMetaDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.15)' : '#E2E8F0' }]} />
-            <View style={styles.heroMetaItem}>
-              <Ionicons name="location" size={14} color="#EF4444" />
-              <Text style={[styles.heroMetaText, { color: colors.text }]}>{offer.location}</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Status Banner */}
         <View style={[styles.statusBannerCompact, { backgroundColor: statusConfig.bg }]}>
           <Ionicons name={statusConfig.icon as any} size={16} color={statusConfig.color} />
@@ -1353,195 +1589,557 @@ export function ProviderRequestDetailScreen() {
           </View>
         )}
 
-        {/* Organizer Card - Compact & Clickable */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('ProviderDetail', { providerId: offer.organizer.id || 'ORG001', providerName: offer.organizer.name })}
-        >
-          <View style={styles.organizerCompact}>
-            <OptimizedImage source={offer.organizer.image} style={styles.organizerImageSmall} />
-            <View style={styles.organizerInfoCompact}>
-              <Text style={[styles.organizerLabel, { color: colors.textSecondary }]}>ORGANİZATÖR</Text>
-              <Text style={[styles.organizerNameCompact, { color: colors.text }]}>{offer.organizer.name}</Text>
-              <View style={styles.organizerRatingCompact}>
-                <Ionicons name="star" size={12} color="#FBBF24" />
-                <Text style={[styles.ratingTextCompact, { color: colors.text }]}>4.7</Text>
-                <Text style={[styles.reviewCountCompact, { color: colors.textSecondary }]}>(45)</Text>
+        {/* Info Cards Section */}
+        <View style={styles.infoSection}>
+          {/* 1. Event Card - Expandable */}
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
+            onPress={() => setEventExpanded(!eventExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
+              <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                <Ionicons name="calendar" size={22} color="#6366F1" />
               </View>
-            </View>
-            <View style={styles.organizerActionsRow}>
-              <TouchableOpacity style={[styles.actionBtnSmall, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]} onPress={(e) => { e.stopPropagation(); handleCall(); }}>
-                <Ionicons name="call" size={16} color="#10B981" />
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtnSmall, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]} onPress={(e) => { e.stopPropagation(); handleChat(); }}>
-                <Ionicons name="chatbubble" size={16} color="#6366F1" />
-              </TouchableOpacity>
-              <View style={[styles.chevronIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.eventTitle}</Text>
+                <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
+                  <Ionicons name="calendar-outline" size={12} color="#6366F1" />
+                  <Text style={[styles.infoMetaText, { color: '#6366F1', fontWeight: '600' }]}>{offer.eventDate || 'Tarih Belirtilmedi'}</Text>
+                </View>
+                {offer.eventDate && (
+                  <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
+                    <Ionicons name="today-outline" size={12} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>
+                      {(() => {
+                        const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+                        const parts = offer.eventDate.split(/[\/\.\-]/);
+                        if (parts.length >= 3) {
+                          const day = parseInt(parts[0], 10);
+                          const month = parseInt(parts[1], 10) - 1;
+                          const year = parseInt(parts[2], 10);
+                          const date = new Date(year, month, day);
+                          return days[date.getDay()];
+                        }
+                        return '';
+                      })()}
+                    </Text>
+                  </View>
+                )}
               </View>
+              <Ionicons name={eventExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
             </View>
-          </View>
-        </TouchableOpacity>
 
-        {/* Offer Timeline / History */}
-        {offer.history && offer.history.length > 0 && (
-          <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>TEKLİF GEÇMİŞİ</Text>
-            <OfferTimeline history={offer.history} />
-          </View>
-        )}
+            {/* Expanded Content */}
+            {eventExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Event Stats Row 1 */}
+                <View style={styles.providerStats}>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="time-outline" size={16} color="#6366F1" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.eventTime || eventData?.startTime || '--:--'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Saat</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="people-outline" size={16} color="#EC4899" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{offer.eventGuestCount || eventData?.guestCount || '-'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konuk</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="location-outline" size={16} color="#EF4444" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>{offer.location || '-'}</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Şehir</Text>
+                  </View>
+                </View>
 
-        {/* Venue Summary Card - Tappable */}
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}
-          onPress={() => setShowVenueModal(true)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.venueSummaryHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginBottom: 0 }]}>MEKAN</Text>
-            <View style={styles.venueDetailBtn}>
-              <Text style={styles.venueDetailBtnText}>Detaylar</Text>
-              <Ionicons name="chevron-forward" size={14} color="#6366F1" />
-            </View>
-          </View>
+                {/* Event Stats Row 2 */}
+                <View style={[styles.providerStats, { marginTop: 8 }]}>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="musical-notes-outline" size={16} color="#F59E0B" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>
+                      {getCategoryName(offer.serviceCategory)}
+                    </Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Kategori</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>
+                      {getOptionLabel(ageLimitOptions, offer.eventAgeLimit) || 'Tüm Yaşlar'}
+                    </Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Yaş Sınırı</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="grid-outline" size={16} color="#0EA5E9" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>
+                      {getOptionLabel(seatingTypeOptions, offer.eventSeatingType) || '-'}
+                    </Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Düzen</Text>
+                  </View>
+                </View>
 
-          <View style={styles.venueSummaryContent}>
-            {venueInfo.images && venueInfo.images[0] && (
-              <OptimizedImage source={venueInfo.images[0]} style={styles.venueThumbnail} />
+                {/* View Event Button */}
+                <TouchableOpacity
+                  style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)', marginTop: 14 }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    navigation.navigate('ProviderEventDetail', { eventId: offer.eventId });
+                  }}
+                >
+                  <Ionicons name="eye" size={16} color="#6366F1" />
+                  <Text style={[styles.providerActionText, { color: '#6366F1' }]}>Etkinlik Detaylarını Görüntüle</Text>
+                </TouchableOpacity>
+              </View>
             )}
-            <View style={styles.venueSummaryInfo}>
-              <Text style={[styles.venueName, { color: colors.text }]}>{venueInfo.name}</Text>
-              <Text style={[styles.venueLocation, { color: colors.textSecondary }]}>
-                {venueInfo.district}, {venueInfo.city}
-              </Text>
-              {venueInfo.rating && (
-                <View style={styles.venueRating}>
+          </TouchableOpacity>
+
+          {/* 2. Artist Card - Expandable (only for booking) */}
+          {offer.serviceCategory === 'booking' && offer.artistName && (
+            <TouchableOpacity
+              style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+              onPress={() => setArtistExpanded(!artistExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
+                <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)' }]}>
+                  {offer.artistImage ? (
+                    <OptimizedImage source={offer.artistImage} style={{ width: 52, height: 52, borderRadius: 14 }} />
+                  ) : (
+                    <Ionicons name="musical-notes" size={22} color="#8B5CF6" />
+                  )}
+                </View>
+                <View style={styles.infoCardDetails}>
+                  <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.artistName}</Text>
+                  <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
+                    <Ionicons name="mic-outline" size={12} color="#8B5CF6" />
+                    <Text style={[styles.infoMetaText, { color: '#8B5CF6', fontWeight: '600' }]}>Sanatçı</Text>
+                  </View>
+                  <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
+                    <Ionicons name="musical-note-outline" size={12} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Canlı Performans</Text>
+                  </View>
+                </View>
+                <Ionicons name={artistExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+              </View>
+
+              {/* Expanded Content */}
+              {artistExpanded && (
+                <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                  {/* Artist Stats */}
+                  <View style={styles.providerStats}>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="disc-outline" size={16} color="#8B5CF6" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>10+</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Albüm</Text>
+                    </View>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="people-outline" size={16} color="#EC4899" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>500K+</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Takipçi</Text>
+                    </View>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="calendar-outline" size={16} color="#10B981" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>100+</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konser</Text>
+                    </View>
+                  </View>
+
+                  {/* View Profile Button */}
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)', marginTop: 14 }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      navigation.navigate('ArtistProfile', { artistId: offer.artistId });
+                    }}
+                  >
+                    <Ionicons name="person" size={16} color="#8B5CF6" />
+                    <Text style={[styles.providerActionText, { color: '#8B5CF6' }]}>Sanatçı Profilini Görüntüle</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* 3. Venue Card - Expandable */}
+          {venueInfo && (
+            <TouchableOpacity
+              style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+              onPress={() => setVenueExpanded(!venueExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
+                <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
+                  {venueInfo.images?.[0] ? (
+                    <OptimizedImage source={venueInfo.images[0]} style={{ width: 52, height: 52, borderRadius: 14 }} />
+                  ) : (
+                    <Ionicons name="location" size={22} color="#10B981" />
+                  )}
+                </View>
+                <View style={styles.infoCardDetails}>
+                  <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{venueInfo.name}</Text>
+                  <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
+                    <Ionicons name="location-outline" size={12} color="#10B981" />
+                    <Text style={[styles.infoMetaText, { color: '#10B981', fontWeight: '600' }]}>{venueInfo.district}, {venueInfo.city}</Text>
+                  </View>
+                  <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
+                    <Ionicons name="people-outline" size={12} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>{venueInfo.capacity?.toLocaleString('tr-TR')} kişilik kapasite</Text>
+                  </View>
+                </View>
+                <Ionicons name={venueExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+              </View>
+
+              {/* Expanded Content */}
+              {venueExpanded && (
+                <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                  {/* Venue Stats */}
+                  <View style={styles.providerStats}>
+                    <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name={venueInfo.indoorOutdoor === 'outdoor' ? 'sunny-outline' : 'home-outline'} size={16} color="#10B981" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Tip</Text>
+                    </View>
+                    {venueInfo.rating && (
+                      <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                        <Ionicons name="star" size={16} color="#FBBF24" />
+                        <Text style={[styles.providerStatValue, { color: colors.text }]}>{venueInfo.rating}</Text>
+                        <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Puan</Text>
+                      </View>
+                    )}
+                    {venueInfo.backstage?.hasBackstage && (
+                      <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                        <Text style={[styles.providerStatValue, { color: colors.text }]}>Var</Text>
+                        <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Kulis</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* View Venue Button */}
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)', marginTop: 14 }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      navigation.navigate('VenueDetail', {
+                        venueName: venueInfo.name,
+                        venueAddress: venueInfo.address || '',
+                        venueCity: venueInfo.city || '',
+                        venueDistrict: venueInfo.district || '',
+                        venueCapacity: venueInfo.capacity ? String(venueInfo.capacity) : '',
+                        venueImage: venueInfo.images?.[0] || '',
+                        indoorOutdoor: venueInfo.indoorOutdoor || '',
+                        seatingType: venueInfo.seatingType || '',
+                      });
+                    }}
+                  >
+                    <Ionicons name="eye" size={16} color="#10B981" />
+                    <Text style={[styles.providerActionText, { color: '#10B981' }]}>Mekan Detaylarını Görüntüle</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* 4. Organizer Card - Expandable */}
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+            onPress={() => setOrganizerExpanded(!organizerExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
+              <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                <Ionicons name="person" size={22} color="#6366F1" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.organizer.name}</Text>
+                <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
                   <Ionicons name="star" size={12} color="#FBBF24" />
-                  <Text style={[styles.venueRatingText, { color: colors.text }]}>{venueInfo.rating}</Text>
-                  <Text style={[styles.venueReviewCount, { color: colors.textSecondary }]}>
-                    ({venueInfo.reviewCount})
+                  <Text style={[styles.infoMetaText, { color: '#FBBF24', fontWeight: '600' }]}>4.7 · 45 etkinlik düzenlendi</Text>
+                </View>
+                <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
+                  <Ionicons name="briefcase-outline" size={12} color={colors.textSecondary} />
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Organizatör</Text>
+                </View>
+              </View>
+              <Ionicons name={organizerExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+            </View>
+
+            {/* Expanded Content */}
+            {organizerExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Organizer Stats */}
+                <View style={styles.providerStats}>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="calendar-outline" size={16} color="#6366F1" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>45</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Etkinlik</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="star" size={16} color="#FBBF24" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>4.7</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Puan</Text>
+                  </View>
+                  <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>%98</Text>
+                    <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Onay</Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={[styles.providerActions, { marginTop: 14 }]}>
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}
+                    onPress={(e) => { e.stopPropagation(); handleCall(); }}
+                  >
+                    <Ionicons name="call" size={16} color="#10B981" />
+                    <Text style={[styles.providerActionText, { color: '#10B981' }]}>Ara</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.providerActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}
+                    onPress={(e) => { e.stopPropagation(); handleChat(); }}
+                  >
+                    <Ionicons name="chatbubble" size={16} color="#6366F1" />
+                    <Text style={[styles.providerActionText, { color: '#6366F1' }]}>Mesaj</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* View Profile Button */}
+                <TouchableOpacity
+                  style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)', marginTop: 8 }]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    navigation.navigate('ProviderDetail', { providerId: offer.organizer.id || 'ORG001', providerName: offer.organizer.name });
+                  }}
+                >
+                  <Ionicons name="person" size={16} color="#6366F1" />
+                  <Text style={[styles.providerActionText, { color: '#6366F1' }]}>Profili Görüntüle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* 5. Timeline Card - Expandable */}
+          {offer.history && offer.history.length > 0 && (
+            <TouchableOpacity
+              style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+              onPress={() => setTimelineExpanded(!timelineExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.infoCardContent, { minHeight: 72, padding: 16 }]}>
+                <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(249, 115, 22, 0.1)' : 'rgba(249, 115, 22, 0.06)' }]}>
+                  <Ionicons name="git-branch" size={18} color="#F97316" />
+                </View>
+                <View style={styles.infoCardDetails}>
+                  <Text style={[styles.infoName, { color: colors.text }]}>Teklif Süreci</Text>
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="swap-horizontal-outline" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>{offer.history.length} adım</Text>
+                  </View>
+                </View>
+                <Ionicons name={timelineExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+              </View>
+
+              {/* Expanded Content */}
+              {timelineExpanded && (
+                <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                  <OfferTimeline history={offer.history} currentUserRole="provider" />
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* 6. Notes Card - Expandable */}
+          {offer.notes && (
+            <TouchableOpacity
+              style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+              onPress={() => setNotesExpanded(!notesExpanded)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.infoCardContent, { minHeight: 72, padding: 16 }]}>
+                <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.06)' }]}>
+                  <Ionicons name="document-text" size={18} color="#EC4899" />
+                </View>
+                <View style={styles.infoCardDetails}>
+                  <Text style={[styles.infoName, { color: colors.text }]}>Talep Notu</Text>
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="chatbox-outline" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {offer.notes.length > 30 ? offer.notes.substring(0, 30) + '...' : offer.notes}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name={notesExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+              </View>
+
+              {/* Expanded Content */}
+              {notesExpanded && (
+                <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                  <Text style={[styles.providerBio, { color: colors.text }]}>{offer.notes}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* 7. Event Details Card - Expandable */}
+          <TouchableOpacity
+            style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
+            onPress={() => setDetailsExpanded(!detailsExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.infoCardContent, { minHeight: 72, padding: 16 }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                <Ionicons name="list" size={18} color="#6366F1" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>Etkinlik Detayları</Text>
+                <View style={styles.infoMetaRow}>
+                  <Ionicons name="information-circle-outline" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Organizatör tarafından girilen bilgiler</Text>
+                </View>
+              </View>
+              <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+            </View>
+
+            {/* Expanded Content */}
+            {detailsExpanded && (
+              <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Detail Items */}
+                <View style={styles.detailsList}>
+                  {offer.eventTime && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="time-outline" size={16} color="#6366F1" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Etkinlik Saati</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.eventTime}</Text>
+                    </View>
+                  )}
+
+                  {offer.formData?.duration && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="hourglass-outline" size={16} color="#8B5CF6" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Performans Süresi</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.formData.duration}</Text>
+                    </View>
+                  )}
+
+                  {offer.eventGuestCount && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="people-outline" size={16} color="#EC4899" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Tahmini Katılımcı</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.eventGuestCount} kişi</Text>
+                    </View>
+                  )}
+
+                  {offer.eventAgeLimit && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Yaş Sınırı</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{getOptionLabel(ageLimitOptions, offer.eventAgeLimit) || offer.eventAgeLimit}</Text>
+                    </View>
+                  )}
+
+                  {offer.eventSeatingType && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="grid-outline" size={16} color="#0EA5E9" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Oturma Düzeni</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{getOptionLabel(seatingTypeOptions, offer.eventSeatingType) || offer.eventSeatingType}</Text>
+                    </View>
+                  )}
+
+                  {offer.eventIndoorOutdoor && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name={offer.eventIndoorOutdoor === 'outdoor' ? 'sunny-outline' : 'home-outline'} size={16} color="#10B981" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Mekan Tipi</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{getOptionLabel(indoorOutdoorOptions, offer.eventIndoorOutdoor) || offer.eventIndoorOutdoor}</Text>
+                    </View>
+                  )}
+
+                  {offer.formData?.soundSystem && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="volume-high-outline" size={16} color="#F59E0B" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Ses Sistemi</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.formData.soundSystem === 'provided' ? 'Sağlanacak' : 'Sanatçı Getirecek'}</Text>
+                    </View>
+                  )}
+
+                  {offer.formData?.lighting && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="flashlight-outline" size={16} color="#FBBF24" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Işık Sistemi</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.formData.lighting === 'provided' ? 'Sağlanacak' : 'Sanatçı Getirecek'}</Text>
+                    </View>
+                  )}
+
+                  {offer.formData?.backstage !== undefined && (
+                    <View style={[styles.detailRow, { borderBottomColor: 'transparent' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="enter-outline" size={16} color="#6366F1" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Kulis</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.formData.backstage ? 'Mevcut' : 'Yok'}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* 8. Current Offer Amount Card */}
+          <View style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}>
+            <View style={[styles.infoCardContent, { minHeight: 72, padding: 16 }]}>
+              <View style={[styles.infoIconBox, {
+                backgroundColor: offer.status === 'accepted'
+                  ? (isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)')
+                  : offer.counterOffer
+                    ? (isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.06)')
+                    : (isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)')
+              }]}>
+                <Ionicons
+                  name={offer.status === 'accepted' ? 'checkmark-circle' : offer.counterOffer ? 'swap-horizontal' : 'cash'}
+                  size={18}
+                  color={offer.status === 'accepted' ? '#10B981' : offer.counterOffer ? '#F59E0B' : '#6366F1'}
+                />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>
+                  {offer.status === 'accepted' ? 'Onaylanan Tutar' : offer.counterOffer ? 'Karşı Teklif' : providerOfferAmount ? 'Güncel Teklif' : 'Talep Edilen Bütçe'}
+                </Text>
+                <View style={styles.infoMetaRow}>
+                  <Text style={[styles.infoMetaText, {
+                    color: offer.status === 'accepted' ? '#10B981' : offer.counterOffer ? '#F59E0B' : providerOfferAmount ? '#10B981' : '#6366F1',
+                    fontSize: 18,
+                    fontWeight: '700'
+                  }]}>
+                    {offer.status === 'accepted' && finalAcceptedAmount
+                      ? `₺${finalAcceptedAmount.toLocaleString('tr-TR')}`
+                      : offer.counterOffer
+                        ? `₺${offer.counterOffer.amount.toLocaleString('tr-TR')}`
+                        : providerOfferAmount
+                          ? `₺${providerOfferAmount.toLocaleString('tr-TR')}`
+                          : organizerBudget
+                            ? `₺${organizerBudget.toLocaleString('tr-TR')}`
+                            : 'Belirtilmedi'}
                   </Text>
                 </View>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.venueQuickInfo}>
-            <View style={styles.venueQuickItem}>
-              <Ionicons name="people-outline" size={14} color="#6366F1" />
-              <Text style={[styles.venueQuickText, { color: colors.text }]}>{venueInfo.capacity.toLocaleString('tr-TR')}</Text>
-            </View>
-            <View style={styles.venueQuickItem}>
-              <Ionicons name={venueInfo.indoorOutdoor === 'outdoor' ? 'sunny-outline' : 'home-outline'} size={14} color="#10B981" />
-              <Text style={[styles.venueQuickText, { color: colors.text }]}>{getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}</Text>
-            </View>
-            {venueInfo.backstage?.hasBackstage && (
-              <View style={styles.venueQuickItem}>
-                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
-                <Text style={[styles.venueQuickText, { color: colors.text }]}>Kulis</Text>
               </View>
-            )}
-            {venueInfo.halls && venueInfo.halls.length > 1 && (
-              <View style={styles.venueQuickItem}>
-                <Ionicons name="grid-outline" size={14} color="#F59E0B" />
-                <Text style={[styles.venueQuickText, { color: colors.text }]}>{venueInfo.halls.length} Salon</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-
-        {/* Performance Details Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>PERFORMANS DETAYLARI</Text>
-
-          <View style={styles.detailsGrid}>
-            <View style={[styles.detailItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
-              <View style={styles.detailLeft}>
-                <View style={[styles.detailIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="time-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Konser Saati</Text>
-              </View>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{eventDetails.concertTime}</Text>
-            </View>
-
-            <View style={[styles.detailItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
-              <View style={styles.detailLeft}>
-                <View style={[styles.detailIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="hourglass-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Performans Süresi</Text>
-              </View>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{eventDetails.eventDuration}</Text>
-            </View>
-
-            <View style={[styles.detailItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
-              <View style={styles.detailLeft}>
-                <View style={[styles.detailIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="alert-circle-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Yaş Sınırı</Text>
-              </View>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{eventDetails.ageLimit}</Text>
-            </View>
-
-            <View style={[styles.detailItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9', borderBottomWidth: 0 }]}>
-              <View style={styles.detailLeft}>
-                <View style={[styles.detailIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="people-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Katılımcı Türü</Text>
-              </View>
-              <Text style={[styles.detailValue, { color: colors.text }]}>{eventDetails.participantType}</Text>
             </View>
           </View>
         </View>
-
-        {/* Budget Card */}
-        <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>BÜTÇE TEKLİFİ</Text>
-
-          {organizerBudget ? (
-            <View style={[styles.budgetBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
-              <Text style={[styles.budgetLabel, { color: '#10B981' }]}>Organizatör Bütçe Teklifi</Text>
-              <Text style={[styles.budgetAmount, { color: '#10B981' }]}>
-                ₺{organizerBudget.toLocaleString('tr-TR')}
-              </Text>
-            </View>
-          ) : (
-            <View style={[styles.budgetBox, styles.budgetNotProvided, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC' }]}>
-              <Ionicons name="information-circle-outline" size={24} color={colors.textSecondary} />
-              <Text style={[styles.budgetNotProvidedText, { color: colors.textSecondary }]}>
-                Bütçe İletilmedi
-              </Text>
-              <Text style={[styles.budgetNotProvidedSubtext, { color: colors.textSecondary }]}>
-                Organizatör bütçe bilgisi paylaşmadı
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Counter Offer Box (if exists) */}
-        {offer.counterOffer && (
-          <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>KARŞI TEKLİF</Text>
-            <View style={[styles.counterOfferBox, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.06)' }]}>
-              <View style={styles.counterOfferHeader}>
-                <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
-                <Text style={[styles.counterOfferTitle, { color: '#3B82F6' }]}>Organizatörden Karşı Teklif</Text>
-              </View>
-              <Text style={[styles.counterOfferAmount, { color: colors.text }]}>
-                ₺{offer.counterOffer.amount.toLocaleString('tr-TR')}
-              </Text>
-              {offer.counterOffer.message && (
-                <Text style={[styles.counterOfferMessage, { color: colors.textSecondary }]}>
-                  "{offer.counterOffer.message}"
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
 
         {/* Event Images - Gallery Thumbnails */}
         {eventDetails.images.length > 0 && (
@@ -1595,7 +2193,8 @@ export function ProviderRequestDetailScreen() {
               <Text style={styles.acceptBtnText}>Kabul Et</Text>
             </TouchableOpacity>
           </>
-        ) : offer.status === 'accepted' ? (
+        ) : offer.status === 'accepted' && offer.contractSigned ? (
+          // Sözleşme imzalandı - Etkinliği Görüntüle
           <TouchableOpacity
             style={styles.operationsBtn}
             onPress={() => navigation.navigate('ProviderEventDetail', {
@@ -1605,12 +2204,44 @@ export function ProviderRequestDetailScreen() {
             <Ionicons name="calendar-outline" size={20} color="white" />
             <Text style={styles.operationsBtnText}>Etkinliği Görüntüle</Text>
           </TouchableOpacity>
+        ) : offer.status === 'accepted' ? (
+          // Teklif kabul edildi ama sözleşme henüz imzalanmadı
+          <TouchableOpacity
+            style={styles.contractBtn}
+            onPress={() => navigation.navigate('Contract', {
+              offerId: offer.id,
+              eventId: offer.eventId,
+              eventTitle: offer.eventTitle,
+              eventDate: offer.eventDate,
+              artistName: offer.artistName,
+              organizerName: offer.organizer.name,
+              amount: offer.finalAmount || offer.amount,
+            })}
+          >
+            <Ionicons name="document-text-outline" size={20} color="white" />
+            <Text style={styles.contractBtnText}>Sözleşmeyi Görüntüle</Text>
+          </TouchableOpacity>
         ) : offer.status === 'rejected' ? (
           <View style={styles.rejectedBottomInfo}>
             <Ionicons name="close-circle" size={20} color="#EF4444" />
             <Text style={styles.rejectedBottomText}>Bu talep reddedildi</Text>
           </View>
+        ) : organizerBudget ? (
+          // Organizatör bütçe göndermiş - Kabul Et ve Karşı Teklif butonları
+          <>
+            <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectOffer}>
+              <Ionicons name="close" size={22} color="#EF4444" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.counterOfferBtn} onPress={() => setShowOfferModal(true)}>
+              <Ionicons name="swap-horizontal" size={18} color="#6366F1" />
+              <Text style={styles.counterOfferBtnText}>Karşı Teklif</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.acceptBtn} onPress={handleAcceptOrganizerBudget}>
+              <Text style={styles.acceptBtnText}>Kabul Et</Text>
+            </TouchableOpacity>
+          </>
         ) : (
+          // Bütçe yok - sadece Teklif Ver butonu
           <>
             <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectOffer}>
               <Ionicons name="close" size={22} color="#EF4444" />
@@ -1638,17 +2269,33 @@ export function ProviderRequestDetailScreen() {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              {/* Budget Reference */}
-              {organizerBudget ? (
+              {/* Current Offer Reference - Show latest state */}
+              {offer.counterOffer ? (
+                <View style={[styles.budgetRef, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                  <Text style={[styles.budgetRefLabel, { color: '#F59E0B' }]}>
+                    {offer.counterOffer.by === 'organizer' ? 'Organizatör Karşı Teklifi' : 'Sizin Son Teklifiniz'}
+                  </Text>
+                  <Text style={[styles.budgetRefValue, { color: '#F59E0B' }]}>
+                    ₺{offer.counterOffer.amount.toLocaleString('tr-TR')}
+                  </Text>
+                </View>
+              ) : providerOfferAmount ? (
                 <View style={[styles.budgetRef, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
-                  <Text style={[styles.budgetRefLabel, { color: '#10B981' }]}>Organizatör Bütçe Teklifi</Text>
+                  <Text style={[styles.budgetRefLabel, { color: '#10B981' }]}>Sizin Mevcut Teklifiniz</Text>
                   <Text style={[styles.budgetRefValue, { color: '#10B981' }]}>
+                    ₺{providerOfferAmount.toLocaleString('tr-TR')}
+                  </Text>
+                </View>
+              ) : organizerBudget ? (
+                <View style={[styles.budgetRef, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                  <Text style={[styles.budgetRefLabel, { color: '#6366F1' }]}>Organizatör Bütçe Teklifi</Text>
+                  <Text style={[styles.budgetRefValue, { color: '#6366F1' }]}>
                     ₺{organizerBudget.toLocaleString('tr-TR')}
                   </Text>
                 </View>
               ) : (
                 <View style={[styles.budgetRef, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F8FAFC' }]}>
-                  <Text style={[styles.budgetRefLabel, { color: colors.textSecondary }]}>Organizatör Bütçe Teklifi</Text>
+                  <Text style={[styles.budgetRefLabel, { color: colors.textSecondary }]}>Referans Bütçe</Text>
                   <Text style={[styles.budgetRefValue, { color: colors.textSecondary }]}>Bütçe İletilmedi</Text>
                 </View>
               )}
@@ -1744,233 +2391,6 @@ export function ProviderRequestDetailScreen() {
                 <Text style={styles.modalSubmitText}>Teklifi Gönder</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Venue Detail Modal */}
-      <Modal visible={showVenueModal} animationType="slide" transparent onRequestClose={() => setShowVenueModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.venueModalContent, { backgroundColor: isDark ? '#09090B' : '#F8FAFC' }]}>
-            {/* Modal Header */}
-            <View style={[styles.venueModalHeader, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-              <View style={styles.modalHandle}>
-                <View style={[styles.modalHandleBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#E2E8F0' }]} />
-              </View>
-              <View style={styles.venueModalHeaderRow}>
-                <Text style={[styles.venueModalTitle, { color: colors.text }]}>Mekan Detayları</Text>
-                <TouchableOpacity onPress={() => setShowVenueModal(false)} style={styles.venueModalClose}>
-                  <Ionicons name="close" size={24} color={colors.text} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView style={styles.venueModalBody} showsVerticalScrollIndicator={false}>
-              {/* Venue Images */}
-              {venueInfo.images && venueInfo.images.length > 0 && (
-                <View style={styles.venueImagesSection}>
-                  <ScrollView
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={(e) => {
-                      const index = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 32));
-                      setVenueImageIndex(index);
-                    }}
-                    scrollEventThrottle={16}
-                  >
-                    {venueInfo.images.map((img, index) => (
-                      <OptimizedImage key={index} source={img} style={styles.venueModalImage} contentFit="cover" />
-                    ))}
-                  </ScrollView>
-                  {venueInfo.images.length > 1 && (
-                    <View style={styles.imageIndicators}>
-                      {venueInfo.images.map((_, index) => (
-                        <View
-                          key={index}
-                          style={[styles.imageIndicator, { backgroundColor: index === venueImageIndex ? '#6366F1' : 'rgba(255,255,255,0.5)' }]}
-                        />
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Venue Name & Address */}
-              <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                <Text style={[styles.venueModalName, { color: colors.text }]}>{venueInfo.name}</Text>
-                <View style={styles.venueModalAddressRow}>
-                  <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
-                  <Text style={[styles.venueModalAddress, { color: colors.textSecondary }]}>
-                    {venueInfo.address}, {venueInfo.district}, {venueInfo.city}
-                  </Text>
-                </View>
-                {venueInfo.rating && (
-                  <View style={styles.venueModalRating}>
-                    <Ionicons name="star" size={14} color="#FBBF24" />
-                    <Text style={[styles.venueModalRatingText, { color: colors.text }]}>{venueInfo.rating}</Text>
-                    <Text style={[styles.venueModalReviewCount, { color: colors.textSecondary }]}>
-                      ({venueInfo.reviewCount} değerlendirme)
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Quick Stats */}
-              <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                <Text style={[styles.venueModalSectionTitle, { color: colors.textSecondary }]}>GENEL BİLGİLER</Text>
-                <View style={styles.venueStatsGrid}>
-                  <View style={[styles.venueStatItem, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
-                    <Ionicons name="people" size={20} color="#6366F1" />
-                    <Text style={[styles.venueStatValue, { color: colors.text }]}>{venueInfo.capacity.toLocaleString('tr-TR')}</Text>
-                    <Text style={[styles.venueStatLabel, { color: colors.textSecondary }]}>Kapasite</Text>
-                  </View>
-                  <View style={[styles.venueStatItem, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
-                    <Ionicons name={venueInfo.indoorOutdoor === 'outdoor' ? 'sunny' : 'home'} size={20} color="#10B981" />
-                    <Text style={[styles.venueStatValue, { color: colors.text }]}>{getIndoorOutdoorLabel(venueInfo.indoorOutdoor)}</Text>
-                    <Text style={[styles.venueStatLabel, { color: colors.textSecondary }]}>Alan Tipi</Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Multi-Hall Section */}
-              {venueInfo.halls && venueInfo.halls.length > 1 && (
-                <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                  <Text style={[styles.venueModalSectionTitle, { color: colors.textSecondary }]}>SALONLAR ({venueInfo.halls.length})</Text>
-                  {venueInfo.halls.map((hall) => (
-                    <View
-                      key={hall.id}
-                      style={[
-                        styles.hallItem,
-                        {
-                          backgroundColor: hall.id === venueInfo.selectedHallId
-                            ? (isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)')
-                            : (isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC'),
-                          borderColor: hall.id === venueInfo.selectedHallId ? '#6366F1' : 'transparent'
-                        }
-                      ]}
-                    >
-                      <View style={styles.hallHeader}>
-                        <Text style={[styles.hallName, { color: colors.text }]}>{hall.name}</Text>
-                        {hall.id === venueInfo.selectedHallId && (
-                          <View style={styles.selectedBadge}>
-                            <Text style={styles.selectedBadgeText}>Seçili</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.hallDetails}>
-                        <Text style={[styles.hallDetail, { color: colors.textSecondary }]}>
-                          {hall.capacity} kişi • {hall.stageWidth}x{hall.stageDepth}m sahne
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {/* Stage Dimensions */}
-              {(venueInfo.stageWidth || (venueInfo.halls && venueInfo.selectedHallId)) && (
-                <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                  <Text style={[styles.venueModalSectionTitle, { color: colors.textSecondary }]}>SAHNE ÖLÇÜLERİ</Text>
-                  <View style={styles.stageDimensions}>
-                    <View style={styles.stageDimItem}>
-                      <Text style={[styles.stageDimValue, { color: '#6366F1' }]}>
-                        {venueInfo.stageWidth || venueInfo.halls?.find(h => h.id === venueInfo.selectedHallId)?.stageWidth || '-'}m
-                      </Text>
-                      <Text style={[styles.stageDimLabel, { color: colors.textSecondary }]}>Genişlik</Text>
-                    </View>
-                    <View style={[styles.stageDimDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} />
-                    <View style={styles.stageDimItem}>
-                      <Text style={[styles.stageDimValue, { color: '#6366F1' }]}>
-                        {venueInfo.stageDepth || venueInfo.halls?.find(h => h.id === venueInfo.selectedHallId)?.stageDepth || '-'}m
-                      </Text>
-                      <Text style={[styles.stageDimLabel, { color: colors.textSecondary }]}>Derinlik</Text>
-                    </View>
-                    {(venueInfo.stageHeight || venueInfo.halls?.find(h => h.id === venueInfo.selectedHallId)?.stageHeight) && (
-                      <>
-                        <View style={[styles.stageDimDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} />
-                        <View style={styles.stageDimItem}>
-                          <Text style={[styles.stageDimValue, { color: '#6366F1' }]}>
-                            {venueInfo.stageHeight || venueInfo.halls?.find(h => h.id === venueInfo.selectedHallId)?.stageHeight}m
-                          </Text>
-                          <Text style={[styles.stageDimLabel, { color: colors.textSecondary }]}>Yükseklik</Text>
-                        </View>
-                      </>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* Backstage Info */}
-              {venueInfo.backstage?.hasBackstage && (
-                <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                  <Text style={[styles.venueModalSectionTitle, { color: colors.textSecondary }]}>KULİS</Text>
-                  <View style={styles.backstageInfo}>
-                    <View style={styles.backstageRow}>
-                      <View style={styles.backstageItem}>
-                        <Ionicons name={venueInfo.backstage.roomCount ? 'checkmark-circle' : 'close-circle'} size={18} color={venueInfo.backstage.roomCount ? '#10B981' : '#EF4444'} />
-                        <Text style={[styles.backstageText, { color: colors.text }]}>{venueInfo.backstage.roomCount || 0} Oda</Text>
-                      </View>
-                      <View style={styles.backstageItem}>
-                        <Ionicons name={venueInfo.backstage.hasShower ? 'checkmark-circle' : 'close-circle'} size={18} color={venueInfo.backstage.hasShower ? '#10B981' : '#EF4444'} />
-                        <Text style={[styles.backstageText, { color: colors.text }]}>Duş</Text>
-                      </View>
-                      <View style={styles.backstageItem}>
-                        <Ionicons name={venueInfo.backstage.hasPrivateToilet ? 'checkmark-circle' : 'close-circle'} size={18} color={venueInfo.backstage.hasPrivateToilet ? '#10B981' : '#EF4444'} />
-                        <Text style={[styles.backstageText, { color: colors.text }]}>WC</Text>
-                      </View>
-                    </View>
-                    {venueInfo.backstage.notes && (
-                      <Text style={[styles.backstageNotes, { color: colors.textSecondary }]}>
-                        {venueInfo.backstage.notes}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* Technical & Parking */}
-              <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                <Text style={[styles.venueModalSectionTitle, { color: colors.textSecondary }]}>TESİSLER</Text>
-                <View style={styles.facilitiesGrid}>
-                  <View style={[styles.facilityItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                    <Ionicons name={venueInfo.hasSoundSystem ? 'checkmark-circle' : 'close-circle'} size={20} color={venueInfo.hasSoundSystem ? '#10B981' : '#9CA3AF'} />
-                    <Text style={[styles.facilityText, { color: venueInfo.hasSoundSystem ? colors.text : colors.textSecondary }]}>Ses Sistemi</Text>
-                  </View>
-                  <View style={[styles.facilityItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                    <Ionicons name={venueInfo.hasLightingSystem ? 'checkmark-circle' : 'close-circle'} size={20} color={venueInfo.hasLightingSystem ? '#10B981' : '#9CA3AF'} />
-                    <Text style={[styles.facilityText, { color: venueInfo.hasLightingSystem ? colors.text : colors.textSecondary }]}>Işık Sistemi</Text>
-                  </View>
-                  <View style={[styles.facilityItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                    <Ionicons name={venueInfo.hasParkingArea ? 'checkmark-circle' : 'close-circle'} size={20} color={venueInfo.hasParkingArea ? '#10B981' : '#9CA3AF'} />
-                    <Text style={[styles.facilityText, { color: venueInfo.hasParkingArea ? colors.text : colors.textSecondary }]}>
-                      Otopark {venueInfo.parkingCapacity ? `(${venueInfo.parkingCapacity})` : ''}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Contact */}
-              {venueInfo.contactName && (
-                <View style={[styles.venueModalCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-                  <Text style={[styles.venueModalSectionTitle, { color: colors.textSecondary }]}>MEKAN İLETİŞİM</Text>
-                  <View style={styles.contactRow}>
-                    <View style={styles.contactInfo}>
-                      <Text style={[styles.contactName, { color: colors.text }]}>{venueInfo.contactName}</Text>
-                      <Text style={[styles.contactPhone, { color: colors.textSecondary }]}>{venueInfo.contactPhone}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.contactCallBtn}
-                      onPress={() => venueInfo.contactPhone && Linking.openURL(`tel:${venueInfo.contactPhone}`)}
-                    >
-                      <Ionicons name="call" size={18} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
-              <View style={{ height: 40 }} />
-            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -2206,6 +2626,126 @@ const styles = StyleSheet.create({
   rejectionReasonDate: {
     fontSize: 11,
     marginTop: 8,
+  },
+
+  // Info Section with Expandable Cards
+  infoSection: {
+    paddingHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  infoCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  infoCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    minHeight: 72,
+  },
+  infoAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  infoIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCardDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoName: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  infoMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    gap: 4,
+  },
+  infoMetaText: {
+    fontSize: 12,
+  },
+  scopeExpandedContent: {
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 4,
+  },
+  providerBio: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  providerStats: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  providerStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 4,
+  },
+  providerStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  providerStatLabel: {
+    fontSize: 10,
+  },
+  providerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  providerActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 6,
+  },
+  providerActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  detailsList: {
+    gap: 0,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  detailRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  detailRowLabel: {
+    fontSize: 13,
+  },
+  detailRowValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   // Status Banner
@@ -2526,6 +3066,20 @@ const styles = StyleSheet.create({
   },
   venueModalRatingText: { fontSize: 14, fontWeight: '600' },
   venueModalReviewCount: { fontSize: 12 },
+  venueMapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  venueMapButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
   venueModalSectionTitle: {
     fontSize: 11,
     fontWeight: '600',
@@ -2661,11 +3215,46 @@ const styles = StyleSheet.create({
   },
   budgetLabel: { fontSize: 12, marginBottom: 4 },
   budgetAmount: { fontSize: 28, fontWeight: '700' },
+  budgetNote: { fontSize: 13, fontStyle: 'italic', marginTop: 8 },
   budgetNotProvided: {
     gap: 8,
   },
   budgetNotProvidedText: { fontSize: 16, fontWeight: '600' },
   budgetNotProvidedSubtext: { fontSize: 13 },
+  finalAmountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  timelineContainer: {
+    paddingLeft: 8,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  timelineDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  timelineTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  timelineDetail: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
 
   // Counter Offer Box
   counterOfferBox: {
@@ -2725,6 +3314,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   counterBtnText: { fontSize: 14, fontWeight: '600' },
+  counterOfferBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    flex: 0.6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#6366F1',
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  },
+  counterOfferBtnText: { color: '#6366F1', fontSize: 14, fontWeight: '600' },
   acceptBtn: {
     flex: 1,
     backgroundColor: '#10B981',
@@ -2752,6 +3354,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   operationsBtnText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  contractBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  contractBtnText: { color: 'white', fontSize: 16, fontWeight: '600' },
 
   // Rejected Bottom Info
   rejectedBottomInfo: {

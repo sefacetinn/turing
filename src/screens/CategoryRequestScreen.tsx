@@ -43,7 +43,7 @@ export function CategoryRequestScreen() {
     draftId?: string;
   }) || { category: 'booking' };
   const { colors, isDark, helpers } = useTheme();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
 
   // Fetch user's events from Firebase
   const { events: firebaseEvents, loading: eventsLoading } = useUserEvents(user?.uid);
@@ -174,8 +174,8 @@ export function CategoryRequestScreen() {
         eventTitle: selectedEventData?.title || '',
         // Organizer info
         organizerId: user.uid,
-        organizerName: user.displayName || 'Organizatör',
-        organizerImage: user.photoURL || '',
+        organizerName: userProfile?.displayName || user.displayName || 'Organizatör',
+        organizerImage: userProfile?.photoURL || userProfile?.userPhotoURL || user.photoURL || '',
         // Provider info
         providerId: provider.id,
         providerName: provider.name || '',
@@ -210,7 +210,7 @@ export function CategoryRequestScreen() {
         [{ text: 'Tamam', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error creating offer request:', error);
+      console.warn('Error creating offer request:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Teklif talebi gönderilemedi. Lütfen tekrar deneyin.');
     } finally {

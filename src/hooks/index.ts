@@ -2,6 +2,14 @@ export { useNetworkStatus, isOnline, type NetworkStatus } from './useNetworkStat
 export { useKeyboard, dismissKeyboard, getKeyboardBehavior, getKeyboardVerticalOffset } from './useKeyboard';
 export { useForm, useFieldValidation } from './useForm';
 
+// Admin hooks
+export { useAdminPermissions, type AdminPermissionsResult } from './useAdminPermissions';
+export { useAdminDashboard, type UseAdminDashboardResult } from './useAdminDashboard';
+export { useAdminUsers, type UseAdminUsersResult } from './useAdminUsers';
+export { useAdminEvents, type UseAdminEventsResult } from './useAdminEvents';
+export { useAdminFinance, type UseAdminFinanceResult } from './useAdminFinance';
+export { useAdminRoles, type UseAdminRolesResult } from './useAdminRoles';
+
 // Firestore data hooks
 export {
   useUserEvents,
@@ -37,8 +45,11 @@ export {
   rejectOffer,
   cancelOffer,
   useOffer,
+  useProviderEventOffer,
   useProviderOffers,
   useOrganizerOffers,
+  syncOffersToEventServices,
+  syncOffersToEventServicesWithDebug,
   type CreateOfferRequestParams,
   type FirestoreEvent,
   type FirestoreOffer,

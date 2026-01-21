@@ -26,7 +26,7 @@ export async function uploadFile(
     const downloadURL = await getDownloadURL(storageRef);
     return downloadURL;
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.warn('Error uploading file:', error);
     throw error;
   }
 }
@@ -48,7 +48,7 @@ export function uploadFileWithProgress(
       onProgress(progress);
     },
     (error) => {
-      console.error('Upload error:', error);
+      console.warn('Upload error:', error);
     }
   );
 
@@ -61,7 +61,7 @@ export async function getFileURL(path: string): Promise<string> {
     const storageRef = ref(storage, path);
     return await getDownloadURL(storageRef);
   } catch (error) {
-    console.error('Error getting file URL:', error);
+    console.warn('Error getting file URL:', error);
     throw error;
   }
 }
@@ -72,7 +72,7 @@ export async function deleteFile(path: string): Promise<void> {
     const storageRef = ref(storage, path);
     await deleteObject(storageRef);
   } catch (error) {
-    console.error('Error deleting file:', error);
+    console.warn('Error deleting file:', error);
     throw error;
   }
 }
@@ -87,7 +87,7 @@ export async function listFiles(folderPath: string): Promise<string[]> {
     );
     return urls;
   } catch (error) {
-    console.error('Error listing files:', error);
+    console.warn('Error listing files:', error);
     throw error;
   }
 }

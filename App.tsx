@@ -19,6 +19,7 @@ import { NetworkStatusBar } from './src/components/NetworkStatusBar';
 import { RBACProvider } from './src/context/RBACContext';
 import { ModuleProvider } from './src/context/ModuleContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { AdminProvider } from './src/context/AdminContext';
 import { hasCompletedOnboarding, setOnboardingCompleted } from './src/utils/storage';
 import { onAuthChange, getUserProfile, logoutUser, updateUserProfile, UserProfile } from './src/services/firebase';
 import { User } from 'firebase/auth';
@@ -83,6 +84,7 @@ import { ServiceOperationsScreen } from './src/screens/ServiceOperationsScreen';
 import { ProviderRequestDetailScreen } from './src/screens/ProviderRequestDetailScreen';
 import { OperationHubScreen } from './src/screens/OperationHubScreen';
 import { OperationSectionDetailScreen } from './src/screens/OperationSectionDetailScreen';
+import { VenueDetailScreen } from './src/screens/VenueDetailScreen';
 
 // Provider-specific screens
 import { ArtistRosterScreen } from './src/screens/provider/booking/ArtistRosterScreen';
@@ -96,6 +98,19 @@ import { FleetManagementScreen } from './src/screens/provider/transport/FleetMan
 import { PersonnelManagementScreen } from './src/screens/provider/security/PersonnelManagementScreen';
 import { RequestOrganizerModeScreen } from './src/screens/RequestOrganizerModeScreen';
 import { RequestProviderModeScreen } from './src/screens/RequestProviderModeScreen';
+
+// Admin Screens
+import {
+  AdminDashboardScreen,
+  AdminUsersScreen,
+  AdminUserDetailScreen,
+  AdminEventsScreen,
+  AdminEventDetailScreen,
+  AdminFinanceScreen,
+  AdminReportsScreen,
+  AdminRolesScreen,
+  AdminSettingsScreen,
+} from './src/screens/admin';
 
 // Auth Screens
 import {
@@ -155,6 +170,7 @@ function HomeStack() {
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="OfferDetail" component={OfferDetailScreen} />
+      <Stack.Screen name="ProviderRequestDetail" component={ProviderRequestDetailScreen} />
       <Stack.Screen name="Contract" component={ContractScreen} />
       <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
       <Stack.Screen name="OrganizerEventDetail" component={OrganizerEventDetailScreen} />
@@ -170,6 +186,7 @@ function HomeStack() {
         {() => <CalendarViewScreen isProviderMode={isProviderMode} />}
       </Stack.Screen>
       <Stack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />
+      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -204,6 +221,7 @@ function EventsStack() {
       <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
       <Stack.Screen name="OperationHub" component={OperationHubScreen} />
       <Stack.Screen name="OperationSectionDetail" component={OperationSectionDetailScreen} />
+      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -227,6 +245,8 @@ function OffersStack() {
       <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
       <Stack.Screen name="OrganizerProfile" component={OrganizerProfileScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="BookingProviderProfile" component={BookingProviderProfileScreen} />
+      <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="CategoryRequest" component={CategoryRequestScreen} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} />
@@ -234,6 +254,7 @@ function OffersStack() {
       <Stack.Screen name="ServiceOperations" component={ServiceOperationsScreen} />
       <Stack.Screen name="OperationHub" component={OperationHubScreen} />
       <Stack.Screen name="OperationSectionDetail" component={OperationSectionDetailScreen} />
+      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -249,8 +270,12 @@ function MessagesStack() {
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="ProviderDetail" component={ProviderDetailScreen} />
+      <Stack.Screen name="BookingProviderProfile" component={BookingProviderProfileScreen} />
+      <Stack.Screen name="ArtistProfile" component={ArtistProfileScreen} />
+      <Stack.Screen name="OrganizerProfile" component={OrganizerProfileScreen} />
       <Stack.Screen name="PortfolioGallery" component={PortfolioGalleryScreen} />
       <Stack.Screen name="ProviderReviews" component={ProviderReviewsScreen} />
+      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -315,6 +340,17 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       <Stack.Screen name="PersonnelManagement" component={PersonnelManagementScreen} />
       <Stack.Screen name="RequestOrganizerMode" component={RequestOrganizerModeScreen} />
       <Stack.Screen name="RequestProviderMode" component={RequestProviderModeScreen} />
+      <Stack.Screen name="VenueDetail" component={VenueDetailScreen} />
+      {/* Admin Screens */}
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+      <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <Stack.Screen name="AdminUserDetail" component={AdminUserDetailScreen} />
+      <Stack.Screen name="AdminEvents" component={AdminEventsScreen} />
+      <Stack.Screen name="AdminEventDetail" component={AdminEventDetailScreen} />
+      <Stack.Screen name="AdminFinance" component={AdminFinanceScreen} />
+      <Stack.Screen name="AdminReports" component={AdminReportsScreen} />
+      <Stack.Screen name="AdminRoles" component={AdminRolesScreen} />
+      <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
     </Stack.Navigator>
   );
 }
@@ -375,6 +411,16 @@ function AuthStack({ onLogin }: { onLogin: (asProvider: boolean, account?: TestA
       <Stack.Screen name="AccountPending">
         {() => <AccountPendingScreen onLogout={() => {}} />}
       </Stack.Screen>
+      {/* Admin Screens - accessible from login for admin users */}
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+      <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <Stack.Screen name="AdminUserDetail" component={AdminUserDetailScreen} />
+      <Stack.Screen name="AdminEvents" component={AdminEventsScreen} />
+      <Stack.Screen name="AdminEventDetail" component={AdminEventDetailScreen} />
+      <Stack.Screen name="AdminFinance" component={AdminFinanceScreen} />
+      <Stack.Screen name="AdminReports" component={AdminReportsScreen} />
+      <Stack.Screen name="AdminRoles" component={AdminRolesScreen} />
+      <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
     </Stack.Navigator>
   );
 }
@@ -567,9 +613,13 @@ function AppContent() {
     return (
       <>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <NavigationContainer theme={isDark ? CustomDarkTheme : CustomLightTheme}>
-          <AuthStack onLogin={handleLogin} />
-        </NavigationContainer>
+        <AuthProvider>
+          <AdminProvider>
+            <NavigationContainer theme={isDark ? CustomDarkTheme : CustomLightTheme}>
+              <AuthStack onLogin={handleLogin} />
+            </NavigationContainer>
+          </AdminProvider>
+        </AuthProvider>
       </>
     );
   }
@@ -591,7 +641,8 @@ function AppContent() {
       <AppContext.Provider value={{ isProviderMode, toggleMode, canSwitchMode, providerServices, setProviderServices, currentAccount }}>
         <AuthProvider>
           <RBACProvider isProvider={isProviderMode}>
-            <ModuleProvider>
+            <AdminProvider>
+              <ModuleProvider>
               <NavigationContainer
                 ref={navigationRef}
                 key={navigationKey}
@@ -601,6 +652,7 @@ function AppContent() {
               </NavigationContainer>
               <NetworkStatusBar />
             </ModuleProvider>
+            </AdminProvider>
           </RBACProvider>
         </AuthProvider>
       </AppContext.Provider>

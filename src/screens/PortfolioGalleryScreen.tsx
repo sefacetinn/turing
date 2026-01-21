@@ -170,7 +170,7 @@ export function PortfolioGalleryScreen() {
         url: images[currentIndex],
       });
     } catch (error) {
-      console.error('Share error:', error);
+      console.warn('Share error:', error);
     }
   };
 
@@ -188,7 +188,9 @@ export function PortfolioGalleryScreen() {
 
       const imageUrl = images[currentIndex];
       const filename = `portfolio_${Date.now()}.jpg`;
-      const fileUri = (FileSystem.cacheDirectory || '') + filename;
+      const cacheDir = (FileSystem as any).cacheDirectory as string | null;
+      const docDir = (FileSystem as any).documentDirectory as string | null;
+      const fileUri = (cacheDir || docDir || '') + filename;
 
       const downloadResult = await FileSystem.downloadAsync(imageUrl, fileUri);
 

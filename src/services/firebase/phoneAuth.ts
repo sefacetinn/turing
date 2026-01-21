@@ -57,7 +57,7 @@ export async function sendPhoneVerificationCode(
       message: 'Doğrulama kodu telefonunuza gönderildi.',
     };
   } catch (error: any) {
-    console.error('Phone verification error:', error);
+    console.warn('Phone verification error:', error);
 
     if (error.code === 'auth/invalid-phone-number') {
       throw new Error('Geçersiz telefon numarası.');
@@ -111,7 +111,7 @@ export async function verifyPhoneCode(
       message: 'Telefon numarası doğrulandı!',
     };
   } catch (error: any) {
-    console.error('Phone code verification error:', error);
+    console.warn('Phone code verification error:', error);
 
     if (error.code === 'auth/invalid-verification-code') {
       throw new Error('Doğrulama kodu hatalı.');
@@ -149,7 +149,7 @@ export async function linkStoredPhoneCredential(): Promise<{ success: boolean; m
       message: 'Telefon numarası hesaba bağlandı!',
     };
   } catch (error: any) {
-    console.error('Link phone credential error:', error);
+    console.warn('Link phone credential error:', error);
 
     if (error.code === 'auth/credential-already-in-use') {
       throw new Error('Bu telefon numarası başka bir hesaba bağlı.');

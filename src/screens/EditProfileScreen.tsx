@@ -132,7 +132,7 @@ export function EditProfileScreen() {
         [{ text: 'Tamam', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.warn('Error updating profile:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Hata', 'Profil güncellenirken bir hata oluştu.');
     } finally {
@@ -152,7 +152,7 @@ export function EditProfileScreen() {
         setUserPhoto(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.warn('Error picking image:', error);
       Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
     }
   };
@@ -173,7 +173,7 @@ export function EditProfileScreen() {
         setUserPhoto(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      console.warn('Error taking photo:', error);
       Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu.');
     }
   };

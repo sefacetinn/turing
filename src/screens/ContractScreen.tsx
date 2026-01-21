@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Modal, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,31 +7,336 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { ContractStatus, ContractParams, Contract, mockContract, getContractTemplate, fillTemplate, getContractStatusInfo } from '../data/contractData';
+import { useOffer } from '../hooks';
+import { doc, updateDoc, Timestamp, getDoc, arrayUnion } from 'firebase/firestore';
+import { db } from '../services/firebase/config';
+import { useAuth } from '../context/AuthContext';
 
 const colors = defaultColors;
+
+interface RouteParams {
+  offerId?: string;
+  contractId?: string; // Backwards compatibility - some screens pass contractId instead of offerId
+  eventId?: string;
+  eventTitle?: string;
+  eventDate?: string;
+  artistName?: string;
+  organizerName?: string;
+  amount?: number;
+}
 
 export function ContractScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { colors, isDark } = useTheme();
-  const params = (route.params || {}) as ContractParams;
+  const { user } = useAuth();
+  const params = (route.params || {}) as RouteParams;
 
-  const [contract, setContract] = useState<Contract>(mockContract);
+  // Support both offerId and contractId for backwards compatibility
+  const effectiveOfferId = params.offerId || params.contractId;
+
+  // Fetch real offer data if offerId is provided
+  const { offer: firebaseOffer, loading: offerLoading } = useOffer(effectiveOfferId);
+
+  // Determine if user is organizer or provider
+  const isOrganizer = useMemo(() => {
+    if (firebaseOffer && user?.uid) {
+      const result = firebaseOffer.organizerId === user.uid;
+      console.log('[ContractScreen] Role check - isOrganizer:', result, {
+        userId: user.uid,
+        organizerId: firebaseOffer.organizerId,
+        providerId: firebaseOffer.providerId,
+      });
+      return result;
+    }
+    return false;
+  }, [firebaseOffer, user?.uid]);
+
+  const isProvider = useMemo(() => {
+    if (firebaseOffer && user?.uid) {
+      const result = firebaseOffer.providerId === user.uid;
+      console.log('[ContractScreen] Role check - isProvider:', result, {
+        userId: user.uid,
+        organizerId: firebaseOffer.organizerId,
+        providerId: firebaseOffer.providerId,
+      });
+      return result;
+    }
+    return false;
+  }, [firebaseOffer, user?.uid]);
+
+  // Build contract from offer data or use mock
+  const contract = useMemo<Contract>(() => {
+    if (firebaseOffer) {
+      // Debug: Log signature status from Firebase
+      console.log('[ContractScreen] Signature status from Firebase:', {
+        offerId: firebaseOffer.id,
+        contractSigned: firebaseOffer.contractSigned,
+        contractSignedByOrganizer: firebaseOffer.contractSignedByOrganizer,
+        contractSignedByProvider: firebaseOffer.contractSignedByProvider,
+      });
+
+      // Determine contract status based on both signatures
+      let status: ContractStatus = 'pending_organizer';
+      if (firebaseOffer.contractSigned) {
+        status = 'signed';
+      } else if (firebaseOffer.contractSignedByOrganizer && firebaseOffer.contractSignedByProvider) {
+        status = 'signed';
+      } else if (firebaseOffer.contractSignedByOrganizer && !firebaseOffer.contractSignedByProvider) {
+        status = 'pending_provider';
+      } else if (!firebaseOffer.contractSignedByOrganizer && firebaseOffer.contractSignedByProvider) {
+        status = 'pending_organizer';
+      }
+
+      console.log('[ContractScreen] Calculated status:', status);
+
+      return {
+        ...mockContract,
+        id: firebaseOffer.id,
+        eventName: firebaseOffer.eventTitle || params.eventTitle || 'Etkinlik',
+        eventDate: firebaseOffer.eventDate || params.eventDate || '',
+        eventLocation: firebaseOffer.eventCity || '',
+        serviceName: firebaseOffer.artistName || params.artistName || 'Hizmet',
+        amount: firebaseOffer.finalAmount || firebaseOffer.amount || params.amount || 0,
+        organizer: {
+          ...mockContract.organizer,
+          name: firebaseOffer.organizerName || params.organizerName || 'Organizatör',
+        },
+        provider: {
+          ...mockContract.provider,
+          name: firebaseOffer.providerName || 'Hizmet Sağlayıcı',
+        },
+        organizerSignature: {
+          signed: firebaseOffer.contractSignedByOrganizer || false,
+          signedAt: firebaseOffer.contractSignedByOrganizer ? new Date().toLocaleDateString('tr-TR') : '',
+          signatureData: '',
+        },
+        providerSignature: {
+          signed: firebaseOffer.contractSignedByProvider || false,
+          signedAt: firebaseOffer.contractSignedByProvider ? new Date().toLocaleDateString('tr-TR') : '',
+          signatureData: '',
+        },
+        status,
+      };
+    }
+    return mockContract;
+  }, [firebaseOffer, params]);
+
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [signaturePoints, setSignaturePoints] = useState<{ x: number; y: number }[]>([]);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
 
   const contractTemplate = getContractTemplate(contract.category);
   const statusInfo = getContractStatusInfo(contract.status, colors);
-  const canSign = contract.status === 'pending_provider' && !contract.providerSignature.signed;
+
+  // User can sign if they haven't signed yet and contract is not fully signed
+  const canOrganizerSign = isOrganizer && !contract.organizerSignature.signed && contract.status !== 'signed';
+  const canProviderSign = isProvider && !contract.providerSignature.signed && contract.status !== 'signed';
+  const canSign = canOrganizerSign || canProviderSign;
 
   const handleSign = useCallback(() => setShowSignatureModal(true), []);
 
-  const handleSignatureComplete = useCallback(() => {
-    setContract(prev => ({ ...prev, status: 'signed' as ContractStatus, providerSignature: { signed: true, signedAt: new Date().toISOString(), signatureData: 'signature_data' } }));
-    setShowSignatureModal(false);
-    Alert.alert('Sözleşme İmzalandı', 'Sözleşmeniz başarıyla imzalandı.', [{ text: 'Tamam' }]);
-  }, []);
+  const handleSignatureComplete = useCallback(async () => {
+    console.log('[ContractScreen] handleSignatureComplete called', {
+      effectiveOfferId,
+      isOrganizer,
+      isProvider,
+      userId: user?.uid,
+    });
+
+    if (!effectiveOfferId) {
+      // Mock mode - just show success
+      console.log('[ContractScreen] No offerId - mock mode');
+      setShowSignatureModal(false);
+      Alert.alert('Sözleşme İmzalandı', 'Sözleşmeniz başarıyla imzalandı.', [{ text: 'Tamam' }]);
+      return;
+    }
+
+    setIsSigning(true);
+    try {
+      const offerRef = doc(db, 'offers', effectiveOfferId);
+
+      // Check current signature states
+      const organizerAlreadySigned = firebaseOffer?.contractSignedByOrganizer || false;
+      const providerAlreadySigned = firebaseOffer?.contractSignedByProvider || false;
+
+      console.log('[ContractScreen] Signature states before update:', {
+        isOrganizer,
+        isProvider,
+        organizerAlreadySigned,
+        providerAlreadySigned,
+      });
+
+      // Determine what to update based on user role
+      let updateData: any = {
+        updatedAt: Timestamp.now(),
+      };
+
+      if (isOrganizer && !organizerAlreadySigned) {
+        // Organizer is signing
+        console.log('[ContractScreen] Organizer is signing');
+        updateData.contractSignedByOrganizer = true;
+        const bothSigned = providerAlreadySigned; // Provider already signed?
+        updateData.contractSigned = bothSigned;
+        if (bothSigned) {
+          updateData.contractSignedAt = Timestamp.now();
+        }
+      } else if (isProvider && !providerAlreadySigned) {
+        // Provider is signing
+        console.log('[ContractScreen] Provider is signing');
+        updateData.contractSignedByProvider = true;
+        const bothSigned = organizerAlreadySigned; // Organizer already signed?
+        updateData.contractSigned = bothSigned;
+        if (bothSigned) {
+          updateData.contractSignedAt = Timestamp.now();
+        }
+      } else {
+        // User already signed or not authorized
+        console.log('[ContractScreen] User already signed or not authorized', {
+          isOrganizer,
+          isProvider,
+          organizerAlreadySigned,
+          providerAlreadySigned,
+        });
+        setShowSignatureModal(false);
+        Alert.alert('Bilgi', 'Bu sözleşmeyi zaten imzaladınız.');
+        setIsSigning(false);
+        return;
+      }
+
+      console.log('[ContractScreen] Updating offer with:', updateData);
+      await updateDoc(offerRef, updateData);
+      console.log('[ContractScreen] Update successful');
+
+      setShowSignatureModal(false);
+
+      const bothNowSigned = updateData.contractSigned;
+
+      if (bothNowSigned) {
+        // Update the event to mark the service as confirmed
+        const eventId = firebaseOffer?.eventId || params.eventId;
+        if (eventId) {
+          try {
+            const eventRef = doc(db, 'events', eventId);
+            const eventDoc = await getDoc(eventRef);
+
+            if (eventDoc.exists()) {
+              const eventData = eventDoc.data();
+              const services = eventData?.services || [];
+              const serviceCategory = firebaseOffer?.serviceCategory || 'booking';
+
+              // Map offer serviceCategory to event service category
+              // 'booking' in offers maps to 'artist' in events
+              const categoryMapping: Record<string, string[]> = {
+                'booking': ['artist', 'booking'],
+                'artist': ['artist', 'booking'],
+                'technical': ['sound-light', 'technical'],
+                'sound-light': ['sound-light', 'technical'],
+              };
+              const matchCategories = categoryMapping[serviceCategory] || [serviceCategory];
+
+              // Find the specific service to update
+              // First priority: match by providerId and category (existing offered service)
+              // Second priority: first pending service of matching category
+              let serviceUpdated = false;
+              const updatedServices = services.map((s: any) => {
+                if (serviceUpdated) return s; // Only update one service
+
+                // Match by providerId (if service was already assigned to this provider)
+                if (s.providerId === firebaseOffer?.providerId && matchCategories.includes(s.category)) {
+                  serviceUpdated = true;
+                  return {
+                    ...s,
+                    status: 'confirmed',
+                    provider: firebaseOffer?.providerName || firebaseOffer?.artistName || s.provider,
+                    providerId: firebaseOffer?.providerId || s.providerId,
+                    providerImage: firebaseOffer?.providerImage || s.providerImage,
+                    providerPhone: firebaseOffer?.providerPhone || s.providerPhone,
+                    price: firebaseOffer?.finalAmount || firebaseOffer?.amount || s.price,
+                    name: firebaseOffer?.artistName || s.name,
+                  };
+                }
+                return s;
+              });
+
+              // If no service was updated by providerId match, update first pending/offered service
+              if (!serviceUpdated) {
+                for (let i = 0; i < updatedServices.length; i++) {
+                  const s = updatedServices[i];
+                  if (matchCategories.includes(s.category) && (s.status === 'offered' || s.status === 'pending')) {
+                    updatedServices[i] = {
+                      ...s,
+                      status: 'confirmed',
+                      provider: firebaseOffer?.providerName || firebaseOffer?.artistName || s.provider,
+                      providerId: firebaseOffer?.providerId || s.providerId,
+                      providerImage: firebaseOffer?.providerImage || s.providerImage,
+                      providerPhone: firebaseOffer?.providerPhone || s.providerPhone,
+                      price: firebaseOffer?.finalAmount || firebaseOffer?.amount || s.price,
+                      name: firebaseOffer?.artistName || s.name,
+                    };
+                    break; // Only update one service
+                  }
+                }
+              }
+
+              // Build update object - add providerId to providerIds array
+              const eventUpdateData: any = {
+                services: updatedServices,
+                updatedAt: Timestamp.now(),
+              };
+
+              // Add providerId to providerIds array so the job appears in provider's "İşlerim"
+              if (firebaseOffer?.providerId) {
+                eventUpdateData.providerIds = arrayUnion(firebaseOffer.providerId);
+              }
+
+              await updateDoc(eventRef, eventUpdateData);
+
+              console.log('[ContractScreen] Event updated after contract signing - providerId added to providerIds array');
+            }
+          } catch (eventError) {
+            console.warn('[ContractScreen] Error updating event:', eventError);
+            // Don't block the success flow, event update is secondary
+          }
+        }
+
+        Alert.alert(
+          'Sözleşme Tamamlandı',
+          'Her iki taraf da sözleşmeyi imzaladı. Artık etkinliği görüntüleyebilirsiniz.',
+          [{
+            text: 'Etkinliği Görüntüle',
+            onPress: () => {
+              const navigateEventId = firebaseOffer?.eventId || params.eventId;
+              if (isProvider) {
+                navigation.replace('ProviderEventDetail', { eventId: navigateEventId });
+              } else {
+                navigation.replace('OrganizerEventDetail', { eventId: navigateEventId });
+              }
+            }
+          }]
+        );
+      } else {
+        const waitingFor = isOrganizer ? 'Hizmet sağlayıcının' : 'Organizatörün';
+        Alert.alert(
+          'Sözleşme İmzalandı',
+          `Sözleşmenizi imzaladınız. ${waitingFor} imzası bekleniyor.`,
+          [{
+            text: 'Tamam',
+            onPress: () => {
+              // Navigate back and re-open to refresh the screen
+              navigation.goBack();
+            }
+          }]
+        );
+      }
+    } catch (error) {
+      console.warn('Error signing contract:', error);
+      Alert.alert('Hata', 'Sözleşme imzalanırken bir hata oluştu.');
+    } finally {
+      setIsSigning(false);
+    }
+  }, [effectiveOfferId, params.eventId, firebaseOffer, navigation, isOrganizer, isProvider, user]);
 
   const handleDownloadPDF = useCallback(async () => {
     setIsDownloading(true);
@@ -39,6 +344,27 @@ export function ContractScreen() {
   }, []);
 
   const handleShare = useCallback(() => Alert.alert('Paylaş', 'Sözleşme paylaşım seçenekleri', [{ text: 'E-posta ile Gönder' }, { text: 'WhatsApp' }, { text: 'İptal', style: 'cancel' }]), []);
+
+  // Show loading while fetching offer
+  if (offerLoading && effectiveOfferId) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleSection}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Sözleşme</Text>
+          </View>
+          <View style={{ width: 88 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.brand[400]} />
+          <Text style={{ color: colors.textMuted, marginTop: 16 }}>Sözleşme yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -102,7 +428,7 @@ export function ContractScreen() {
         <View style={styles.signatureSection}>
           <Text style={[styles.signatureSectionTitle, { color: colors.text }]}>İmza Bölümü</Text>
           <View style={styles.signatureBoxes}>
-            {[{ label: 'Organizatör İmzası', signature: contract.organizerSignature, canSign: false }, { label: 'Hizmet Sağlayıcı İmzası', signature: contract.providerSignature, canSign }].map((box, i) => (
+            {[{ label: 'Organizatör İmzası', signature: contract.organizerSignature, canSign: canOrganizerSign }, { label: 'Hizmet Sağlayıcı İmzası', signature: contract.providerSignature, canSign: canProviderSign }].map((box, i) => (
               <View key={i} style={styles.signatureBox}>
                 <Text style={[styles.signatureBoxLabel, { color: colors.textMuted }]}>{box.label}</Text>
                 <View style={[styles.signatureArea, box.signature.signed && styles.signatureAreaSigned]}>

@@ -162,51 +162,48 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
       </View>
 
       <View style={styles.serviceSection}>
-        <View style={styles.serviceBadge}>
-          <LinearGradient
-            colors={getCategoryGradient(offer.serviceCategory)}
-            style={styles.serviceBadgeGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons
-              name={getCategoryIcon(offer.serviceCategory) as keyof typeof Ionicons.glyphMap}
-              size={12}
-              color="white"
-            />
-            <Text style={styles.serviceBadgeText}>
-              {getCategoryShortLabel(offer.serviceCategory)}
-            </Text>
-          </LinearGradient>
+        <View style={styles.serviceBadgeRow}>
+          <View style={styles.serviceBadge}>
+            <LinearGradient
+              colors={getCategoryGradient(offer.serviceCategory)}
+              style={styles.serviceBadgeGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Ionicons
+                name={getCategoryIcon(offer.serviceCategory) as keyof typeof Ionicons.glyphMap}
+                size={12}
+                color="white"
+              />
+              <Text style={styles.serviceBadgeText}>
+                {getCategoryShortLabel(offer.serviceCategory)}
+              </Text>
+            </LinearGradient>
+          </View>
+          {offer.artistName && (
+            <Text style={[styles.artistName, { color: colors.text }]}>{offer.artistName}</Text>
+          )}
         </View>
-        <Text style={[styles.eventTitle, { color: colors.textSecondary }]}>{offer.eventTitle}</Text>
+        <Text style={[styles.eventTitle, { color: colors.text }]}>{offer.eventTitle}</Text>
         {(offer.eventCity || offer.eventVenue || offer.eventDate) && (
-          <View style={styles.eventLocationRow}>
+          <View style={styles.eventInfoRow}>
             {offer.eventDate && (
-              <View style={styles.eventLocationItem}>
-                <Ionicons name="calendar-outline" size={12} color={colors.textMuted} />
-                <Text style={[styles.eventLocationText, { color: colors.textMuted }]}>{offer.eventDate}</Text>
+              <View style={styles.eventInfoItem}>
+                <Ionicons name="calendar" size={16} color={colors.brand[400]} />
+                <Text style={[styles.eventInfoText, { color: colors.text }]}>{offer.eventDate}</Text>
               </View>
             )}
             {(offer.eventVenue || offer.eventCity) && (
-              <View style={styles.eventLocationItem}>
-                <Ionicons name="location-outline" size={12} color={colors.textMuted} />
-                <Text style={[styles.eventLocationText, { color: colors.textMuted }]}>
-                  {[offer.eventVenue, offer.eventDistrict, offer.eventCity].filter(Boolean).join(', ')}
+              <View style={styles.eventInfoItem}>
+                <Ionicons name="location" size={16} color={colors.brand[400]} />
+                <Text style={[styles.eventInfoText, { color: colors.text }]}>
+                  {[offer.eventCity, offer.eventDistrict].filter(Boolean).join(', ')}
                 </Text>
               </View>
             )}
           </View>
         )}
       </View>
-
-      {/* Message section - only for active offers */}
-      {!isCompleted && (
-        <View style={styles.messageSection}>
-          <Ionicons name="chatbubble-outline" size={14} color={colors.textMuted} />
-          <Text style={[styles.messageText, { color: colors.textMuted }]} numberOfLines={2}>{offer.message}</Text>
-        </View>
-      )}
 
       {/* Counter offer section - only for active offers */}
       {!isCompleted && offer.counterOffer && (
@@ -334,18 +331,11 @@ export function OrganizerOfferCard({ offer, onPress, onAccept, onReject, onCount
             </View>
           </View>
 
-          <View style={styles.deliverySection}>
-            <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-            <Text style={[styles.deliveryText, { color: colors.textMuted }]}>Teslim: {offer.deliveryTime}</Text>
-          </View>
         </>
       )}
 
       <View style={styles.footer}>
-        <View style={styles.footerLeft}>
-          <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-          <Text style={[styles.footerTime, { color: colors.textMuted }]}>{offer.date}</Text>
-        </View>
+        <View style={styles.footerLeft} />
 
         {showActions && (
           <View style={styles.actionButtonsRow}>
@@ -525,9 +515,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
   },
-  serviceBadge: {
+  serviceBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     marginBottom: 8,
   },
+  serviceBadge: {},
   serviceBadgeGradient: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -544,22 +538,28 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
-  eventTitle: {
-    fontSize: 13,
+  artistName: {
+    fontSize: 15,
+    fontWeight: '600',
   },
-  eventLocationRow: {
+  eventTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  eventInfoRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 6,
+    gap: 16,
   },
-  eventLocationItem: {
+  eventInfoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  eventLocationText: {
-    fontSize: 11,
+  eventInfoText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   messageSection: {
     flexDirection: 'row',

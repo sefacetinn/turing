@@ -161,7 +161,7 @@ export function NotificationSettingsScreen() {
         }
       }
     } catch (error) {
-      console.error('Error loading notification settings:', error);
+      console.warn('Error loading notification settings:', error);
     } finally {
       setIsLoaded(true);
     }
@@ -185,7 +185,7 @@ export function NotificationSettingsScreen() {
       };
       await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.error('Error saving notification settings:', error);
+      console.warn('Error saving notification settings:', error);
     }
   };
 

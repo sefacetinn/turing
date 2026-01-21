@@ -178,7 +178,7 @@ export function EventDetailScreen() {
 
   const confirmedServices = event.services?.filter((s: any) => s.status === 'confirmed').length || 0;
   const totalServices = event.services?.length || 0;
-  const budgetUsedPercent = event.budget ? Math.round((event.spent / event.budget) * 100) : 0;
+  const budgetUsedPercent = event.budget ? Math.round(((event.spent || 0) / event.budget) * 100) : 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -242,7 +242,7 @@ export function EventDetailScreen() {
             </View>
             <View style={styles.quickInfoItem}>
               <Ionicons name="people-outline" size={16} color={colors.textMuted} />
-              <Text style={[styles.quickInfoText, { color: colors.textMuted }]}>{event.attendees.toLocaleString()} katılımcı</Text>
+              <Text style={[styles.quickInfoText, { color: colors.textMuted }]}>{(event.attendees || 0).toLocaleString()} katılımcı</Text>
             </View>
           </View>
         </View>
@@ -312,7 +312,7 @@ export function EventDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'services' && (
           <View style={styles.servicesSection}>
-            {event.services.map((service: any, index: number) => {
+            {(event.services || []).map((service: any, index: number) => {
               const statusInfo = getStatusInfo(service.status);
               return (
                 <TouchableOpacity key={service.id} style={[styles.serviceCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
@@ -387,24 +387,24 @@ export function EventDetailScreen() {
             <View style={[styles.budgetSummary, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }, ...(isDark ? [] : [helpers.getShadow('sm')])]}>
               <View style={styles.budgetItem}>
                 <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Toplam Bütçe</Text>
-                <Text style={[styles.budgetValue, { color: colors.text }]}>₺{event.budget.toLocaleString()}</Text>
+                <Text style={[styles.budgetValue, { color: colors.text }]}>₺{(event.budget || 0).toLocaleString()}</Text>
               </View>
               <View style={styles.budgetItem}>
                 <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Harcanan</Text>
                 <Text style={[styles.budgetValue, { color: colors.warning }]}>
-                  ₺{event.spent.toLocaleString()}
+                  ₺{(event.spent || 0).toLocaleString()}
                 </Text>
               </View>
               <View style={styles.budgetItem}>
                 <Text style={[styles.budgetLabel, { color: colors.textSecondary }]}>Kalan</Text>
                 <Text style={[styles.budgetValue, { color: colors.success }]}>
-                  ₺{(event.budget - event.spent).toLocaleString()}
+                  ₺{((event.budget || 0) - (event.spent || 0)).toLocaleString()}
                 </Text>
               </View>
             </View>
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Harcama Dağılımı</Text>
-            {event.services.filter((s: any) => s.status === 'confirmed').map((service: any) => (
+            {(event.services || []).filter((s: any) => s.status === 'confirmed').map((service: any) => (
               <View key={service.id} style={[styles.budgetRow, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
                 <View style={styles.budgetRowLeft}>
                   <View style={[styles.budgetDot, { backgroundColor: getCategoryGradient(service.category)[0] }]} />
@@ -474,10 +474,10 @@ export function EventDetailScreen() {
               </View>
               <View style={styles.occupancyFooter}>
                 <Text style={[styles.occupancyFooterText, { color: colors.textMuted }]}>
-                  {totalTicketsSold.toLocaleString()} / {event.ticketCapacity.toLocaleString()} bilet satıldı
+                  {totalTicketsSold.toLocaleString()} / {(event.ticketCapacity || 0).toLocaleString()} bilet satıldı
                 </Text>
                 <Text style={[styles.occupancyFooterText, { color: colors.success }]}>
-                  {(event.ticketCapacity - totalTicketsSold).toLocaleString()} kalan
+                  {((event.ticketCapacity || 0) - totalTicketsSold).toLocaleString()} kalan
                 </Text>
               </View>
             </View>

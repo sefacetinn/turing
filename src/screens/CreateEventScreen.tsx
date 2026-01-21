@@ -330,7 +330,7 @@ export function CreateEventScreen() {
         [{ text: 'Tamam', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.warn('Error creating event:', error);
       Alert.alert('Hata', 'Etkinlik oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setIsCreating(false);

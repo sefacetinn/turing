@@ -284,7 +284,7 @@ export function ArtistDetailManageScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header with Cover Image */}
       <View style={styles.headerContainer}>
-        <OptimizedImage source={artist.image || 'https://via.placeholder.com/400x300'} style={styles.coverImage} />
+        <OptimizedImage source={artist.coverImage || artist.image || 'https://via.placeholder.com/400x300'} style={styles.coverImage} />
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.8)']}
           style={styles.coverGradient}

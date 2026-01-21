@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Linking,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,77 +18,41 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeContext';
 import { OptimizedImage } from '../components/OptimizedImage';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../services/firebase/config';
+import { useUserEvents, useOrganizerOffers } from '../hooks/useFirestoreData';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Sample organizer data
-const organizersData: Record<string, any> = {
-  '1': {
-    id: '1',
-    name: 'Pasion Türk',
-    title: 'Etkinlik Organizasyonu',
-    image: 'https://i.pravatar.cc/200?img=68',
-    coverImage: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800',
-    verified: true,
-    rating: 4.8,
-    reviewCount: 127,
-    eventCount: 89,
-    memberSince: '2019',
-    location: 'İstanbul, Türkiye',
-    phone: '+90 532 123 4567',
-    email: 'info@pasionturk.com',
-    website: 'www.pasionturk.com',
-    about: 'Türkiye\'nin önde gelen etkinlik organizasyon şirketlerinden biri. 2019\'dan bu yana konserler, festivaller ve kurumsal etkinlikler düzenliyoruz. Müzik ve eğlence sektöründe güvenilir iş ortağınız.',
-    stats: {
-      totalEvents: 89,
-      thisYear: 24,
-      totalArtists: 156,
-      totalAttendees: '2.5M+',
-    },
-    recentEvents: [
-      { id: 'e1', title: 'Harbiye Açıkhava - Sıla', date: '20 Ağustos 2026', image: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400' },
-      { id: 'e2', title: 'Zeytinli Rock Festivali', date: '15-17 Temmuz 2026', image: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400' },
-      { id: 'e3', title: 'İstanbul Jazz Festival', date: '1-10 Temmuz 2026', image: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400' },
-    ],
-    socialMedia: {
-      instagram: '@pasionturk',
-      twitter: '@pasionturk',
-      facebook: 'PasionTurkEvents',
-    },
-  },
-  '2': {
-    id: '2',
-    name: 'Live Nation Turkey',
-    title: 'Konser & Festival Organizasyonu',
-    image: 'https://i.pravatar.cc/200?img=50',
-    coverImage: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
-    verified: true,
-    rating: 4.9,
-    reviewCount: 312,
-    eventCount: 245,
-    memberSince: '2015',
-    location: 'İstanbul, Türkiye',
-    phone: '+90 212 555 1234',
-    email: 'turkey@livenation.com',
-    website: 'www.livenation.com.tr',
-    about: 'Dünyanın en büyük canlı eğlence şirketi Live Nation\'ın Türkiye operasyonu. Uluslararası ve yerli sanatçıların konserlerini düzenliyoruz.',
-    stats: {
-      totalEvents: 245,
-      thisYear: 52,
-      totalArtists: 420,
-      totalAttendees: '8M+',
-    },
-    recentEvents: [
-      { id: 'e1', title: 'Coldplay İstanbul', date: '10 Eylül 2026', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400' },
-      { id: 'e2', title: 'Ed Sheeran Concert', date: '5 Ağustos 2026', image: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400' },
-    ],
-    socialMedia: {
-      instagram: '@livenationtr',
-      twitter: '@livenationtr',
-      facebook: 'LiveNationTurkey',
-    },
-  },
-};
+// Firebase user type
+interface FirebaseUser {
+  id: string;
+  displayName?: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  phoneNumber?: string;
+  photoURL?: string;
+  coverImage?: string;
+  bio?: string;
+  city?: string;
+  website?: string;
+  role?: string;
+  userType?: string;
+  isVerified?: boolean;
+  isOrganizer?: boolean;
+  isProvider?: boolean;
+  createdAt?: any;
+  // Social media
+  instagram?: string;
+  twitter?: string;
+  facebook?: string;
+  socialMedia?: {
+    instagram?: string;
+    twitter?: string;
+    facebook?: string;
+  };
+}
 
 type OrganizerProfileParams = {
   organizerId: string;
@@ -98,38 +64,150 @@ export function OrganizerProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
-  const organizerId = route.params?.organizerId || '1';
-  const organizer = organizersData[organizerId] || organizersData['1'];
+  const organizerId = route.params?.organizerId;
 
+  const [organizer, setOrganizer] = useState<FirebaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onRefresh = useCallback(() => {
+  // Fetch organizer's events for stats
+  const { events: organizerEvents } = useUserEvents(organizerId);
+  const { offers: organizerOffers } = useOrganizerOffers(organizerId);
+
+  // Fetch organizer data from Firebase
+  const fetchOrganizer = useCallback(async () => {
+    if (!organizerId) {
+      setError('Kullanıcı ID\'si bulunamadı');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('[OrganizerProfileScreen] Fetching user:', organizerId);
+      const userDoc = await getDoc(doc(db, 'users', organizerId));
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        console.log('[OrganizerProfileScreen] User data found:', userData.displayName || userData.companyName);
+        setOrganizer({
+          id: userDoc.id,
+          ...userData,
+        } as FirebaseUser);
+        setError(null);
+      } else {
+        console.log('[OrganizerProfileScreen] User not found:', organizerId);
+        setError('Kullanıcı bulunamadı');
+      }
+    } catch (err) {
+      console.warn('[OrganizerProfileScreen] Error fetching user:', err);
+      setError('Profil yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  }, [organizerId]);
+
+  useEffect(() => {
+    fetchOrganizer();
+  }, [fetchOrganizer]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    await fetchOrganizer();
+    setRefreshing(false);
+  }, [fetchOrganizer]);
 
   const handleCall = () => {
+    if (!organizer?.phone && !organizer?.phoneNumber) {
+      Alert.alert('Telefon Yok', 'Bu kullanıcının telefon numarası kayıtlı değil.');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL(`tel:${organizer.phone}`);
+    Linking.openURL(`tel:${organizer.phone || organizer.phoneNumber}`);
   };
 
   const handleEmail = () => {
+    if (!organizer?.email) {
+      Alert.alert('E-posta Yok', 'Bu kullanıcının e-posta adresi kayıtlı değil.');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.openURL(`mailto:${organizer.email}`);
   };
 
   const handleWebsite = () => {
+    if (!organizer?.website) {
+      Alert.alert('Website Yok', 'Bu kullanıcının website adresi kayıtlı değil.');
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL(`https://${organizer.website}`);
+    const url = organizer.website.startsWith('http') ? organizer.website : `https://${organizer.website}`;
+    Linking.openURL(url);
   };
 
   const handleMessage = () => {
+    if (!organizer) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     navigation.navigate('Chat', {
       providerId: organizer.id,
-      providerName: organizer.name,
-      providerImage: organizer.avatar,
+      providerName: organizer.displayName || organizer.companyName || 'Kullanıcı',
+      providerImage: organizer.photoURL,
     });
+  };
+
+  // Calculate stats from real data
+  const stats = {
+    totalEvents: organizerEvents.length,
+    completedEvents: organizerEvents.filter(e => e.status === 'completed').length,
+    activeOffers: organizerOffers.filter(o => o.status === 'pending' || o.status === 'quoted').length,
+    memberSince: organizer?.createdAt ? new Date(organizer.createdAt.toDate?.() || organizer.createdAt).getFullYear().toString() : '-',
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.brand[500]} />
+        <Text style={[styles.loadingText, { color: colors.textMuted }]}>Profil yükleniyor...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error || !organizer) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.centerContent, { flex: 1 }]}>
+          <Ionicons name="person-outline" size={64} color={colors.textMuted} />
+          <Text style={[styles.errorTitle, { color: colors.text }]}>Profil Bulunamadı</Text>
+          <Text style={[styles.errorText, { color: colors.textMuted }]}>{error || 'Bu kullanıcı mevcut değil veya silinmiş olabilir.'}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.brand[500] }]}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.retryButtonText}>Geri Dön</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Get display values with fallbacks
+  const displayName = organizer.displayName || organizer.companyName || 'İsimsiz Kullanıcı';
+  const profileImage = organizer.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200';
+  const coverImage = organizer.coverImage || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800';
+  const location = organizer.city || 'Türkiye';
+  const title = organizer.isProvider ? 'Hizmet Sağlayıcı' : 'Etkinlik Organizatörü';
+  const bio = organizer.bio || 'Bu kullanıcı henüz bir açıklama eklememiş.';
+  const socialMedia = organizer.socialMedia || {
+    instagram: organizer.instagram,
+    twitter: organizer.twitter,
+    facebook: organizer.facebook,
   };
 
   return (
@@ -160,7 +238,7 @@ export function OrganizerProfileScreen() {
       >
         {/* Cover Image */}
         <View style={styles.coverContainer}>
-          <OptimizedImage source={organizer.coverImage} style={styles.coverImage} />
+          <OptimizedImage source={coverImage} style={styles.coverImage} />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.coverGradient}
@@ -170,41 +248,38 @@ export function OrganizerProfileScreen() {
         {/* Profile Info Card */}
         <View style={[styles.profileCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
           <View style={styles.profileHeader}>
-            <OptimizedImage source={organizer.image} style={styles.profileImage} />
+            <OptimizedImage source={profileImage} style={styles.profileImage} />
             <View style={styles.profileInfo}>
               <View style={styles.nameRow}>
-                <Text style={[styles.profileName, { color: colors.text }]}>{organizer.name}</Text>
-                {organizer.verified && (
+                <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
+                {organizer.isVerified && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={18} color="#3B82F6" />
                   </View>
                 )}
               </View>
-              <Text style={[styles.profileTitle, { color: colors.textSecondary }]}>{organizer.title}</Text>
+              <Text style={[styles.profileTitle, { color: colors.textSecondary }]}>{title}</Text>
               <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-                <Text style={[styles.locationText, { color: colors.textMuted }]}>{organizer.location}</Text>
+                <Text style={[styles.locationText, { color: colors.textMuted }]}>{location}</Text>
               </View>
             </View>
           </View>
 
-          {/* Rating & Stats Row */}
+          {/* Stats Row */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={16} color="#F59E0B" />
-                <Text style={[styles.ratingText, { color: colors.text }]}>{organizer.rating}</Text>
-              </View>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{organizer.reviewCount} değerlendirme</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]} />
-            <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.text }]}>{organizer.eventCount}</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.totalEvents}</Text>
               <Text style={[styles.statLabel, { color: colors.textMuted }]}>etkinlik</Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]} />
             <View style={styles.statItem}>
-              <Text style={[styles.statValue, { color: colors.text }]}>{organizer.memberSince}</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.completedEvents}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>tamamlanan</Text>
+            </View>
+            <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]} />
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.text }]}>{stats.memberSince}</Text>
               <Text style={[styles.statLabel, { color: colors.textMuted }]}>yılından beri</Text>
             </View>
           </View>
@@ -243,7 +318,7 @@ export function OrganizerProfileScreen() {
         {/* About Section */}
         <View style={[styles.section, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Hakkında</Text>
-          <Text style={[styles.aboutText, { color: colors.textSecondary }]}>{organizer.about}</Text>
+          <Text style={[styles.aboutText, { color: colors.textSecondary }]}>{bio}</Text>
         </View>
 
         {/* Stats Grid */}
@@ -251,96 +326,124 @@ export function OrganizerProfileScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>İstatistikler</Text>
           <View style={styles.statsGrid}>
             <View style={[styles.statsGridItem, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}>
-              <Text style={[styles.statsGridValue, { color: colors.brand[400] }]}>{organizer.stats.totalEvents}</Text>
+              <Text style={[styles.statsGridValue, { color: colors.brand[400] }]}>{stats.totalEvents}</Text>
               <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Toplam Etkinlik</Text>
             </View>
             <View style={[styles.statsGridItem, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]}>
-              <Text style={[styles.statsGridValue, { color: '#10B981' }]}>{organizer.stats.thisYear}</Text>
-              <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Bu Yıl</Text>
+              <Text style={[styles.statsGridValue, { color: '#10B981' }]}>{stats.completedEvents}</Text>
+              <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Tamamlanan</Text>
             </View>
             <View style={[styles.statsGridItem, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.08)' }]}>
-              <Text style={[styles.statsGridValue, { color: '#F59E0B' }]}>{organizer.stats.totalArtists}</Text>
-              <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Sanatçı</Text>
+              <Text style={[styles.statsGridValue, { color: '#F59E0B' }]}>{stats.activeOffers}</Text>
+              <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Aktif Teklif</Text>
             </View>
             <View style={[styles.statsGridItem, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)' }]}>
-              <Text style={[styles.statsGridValue, { color: '#3B82F6' }]}>{organizer.stats.totalAttendees}</Text>
-              <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Katılımcı</Text>
+              <Text style={[styles.statsGridValue, { color: '#3B82F6' }]}>{stats.memberSince}</Text>
+              <Text style={[styles.statsGridLabel, { color: colors.textMuted }]}>Üyelik Yılı</Text>
             </View>
           </View>
         </View>
 
         {/* Recent Events */}
-        <View style={[styles.section, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Son Etkinlikler</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.eventsScroll}>
-            {organizer.recentEvents.map((event: any) => (
-              <TouchableOpacity key={event.id} style={styles.eventCard}>
-                <OptimizedImage source={event.image} style={styles.eventImage} />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.eventGradient}
-                />
-                <View style={styles.eventInfo}>
-                  <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
-                  <Text style={styles.eventDate}>{event.date}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+        {organizerEvents.length > 0 && (
+          <View style={[styles.section, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Son Etkinlikler</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.eventsScroll}>
+              {organizerEvents.slice(0, 5).map((event) => (
+                <TouchableOpacity
+                  key={event.id}
+                  style={styles.eventCard}
+                  onPress={() => navigation.navigate('OrganizerEventDetail', { eventId: event.id })}
+                >
+                  <OptimizedImage
+                    source={event.image || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=400'}
+                    style={styles.eventImage}
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={styles.eventGradient}
+                  />
+                  <View style={styles.eventInfo}>
+                    <Text style={styles.eventTitle} numberOfLines={2}>{event.title}</Text>
+                    <Text style={styles.eventDate}>{event.date}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Contact Info */}
         <View style={[styles.section, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>İletişim</Text>
 
-          <TouchableOpacity style={styles.contactItem} onPress={handleCall}>
-            <View style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]}>
-              <Ionicons name="call-outline" size={18} color="#10B981" />
-            </View>
-            <View style={styles.contactInfo}>
-              <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Telefon</Text>
-              <Text style={[styles.contactValue, { color: colors.text }]}>{organizer.phone}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
+          {(organizer.phone || organizer.phoneNumber) && (
+            <TouchableOpacity style={styles.contactItem} onPress={handleCall}>
+              <View style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]}>
+                <Ionicons name="call-outline" size={18} color="#10B981" />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Telefon</Text>
+                <Text style={[styles.contactValue, { color: colors.text }]}>{organizer.phone || organizer.phoneNumber}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity style={styles.contactItem} onPress={handleEmail}>
-            <View style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)' }]}>
-              <Ionicons name="mail-outline" size={18} color="#3B82F6" />
-            </View>
-            <View style={styles.contactInfo}>
-              <Text style={[styles.contactLabel, { color: colors.textMuted }]}>E-posta</Text>
-              <Text style={[styles.contactValue, { color: colors.text }]}>{organizer.email}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
+          {organizer.email && (
+            <TouchableOpacity style={styles.contactItem} onPress={handleEmail}>
+              <View style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)' }]}>
+                <Ionicons name="mail-outline" size={18} color="#3B82F6" />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={[styles.contactLabel, { color: colors.textMuted }]}>E-posta</Text>
+                <Text style={[styles.contactValue, { color: colors.text }]}>{organizer.email}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity style={styles.contactItem} onPress={handleWebsite}>
-            <View style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}>
-              <Ionicons name="globe-outline" size={18} color="#6366F1" />
-            </View>
-            <View style={styles.contactInfo}>
-              <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Website</Text>
-              <Text style={[styles.contactValue, { color: colors.text }]}>{organizer.website}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
+          {organizer.website && (
+            <TouchableOpacity style={styles.contactItem} onPress={handleWebsite}>
+              <View style={[styles.contactIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}>
+                <Ionicons name="globe-outline" size={18} color="#6366F1" />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Website</Text>
+                <Text style={[styles.contactValue, { color: colors.text }]}>{organizer.website}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          )}
+
+          {!organizer.phone && !organizer.phoneNumber && !organizer.email && !organizer.website && (
+            <Text style={[styles.noInfoText, { color: colors.textMuted }]}>İletişim bilgisi eklenmemiş</Text>
+          )}
         </View>
 
         {/* Social Media */}
-        <View style={[styles.section, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginBottom: insets.bottom + 20 }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Sosyal Medya</Text>
-          <View style={styles.socialRow}>
-            <TouchableOpacity style={[styles.socialButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-              <Ionicons name="logo-instagram" size={22} color="#E4405F" />
-              <Text style={[styles.socialHandle, { color: colors.textSecondary }]}>{organizer.socialMedia.instagram}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
-              <Ionicons name="logo-twitter" size={22} color="#1DA1F2" />
-              <Text style={[styles.socialHandle, { color: colors.textSecondary }]}>{organizer.socialMedia.twitter}</Text>
-            </TouchableOpacity>
+        {(socialMedia.instagram || socialMedia.twitter || socialMedia.facebook) && (
+          <View style={[styles.section, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginBottom: insets.bottom + 20 }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Sosyal Medya</Text>
+            <View style={styles.socialRow}>
+              {socialMedia.instagram && (
+                <TouchableOpacity style={[styles.socialButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                  <Ionicons name="logo-instagram" size={22} color="#E4405F" />
+                  <Text style={[styles.socialHandle, { color: colors.textSecondary }]}>{socialMedia.instagram}</Text>
+                </TouchableOpacity>
+              )}
+              {socialMedia.twitter && (
+                <TouchableOpacity style={[styles.socialButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F3F4F6' }]}>
+                  <Ionicons name="logo-twitter" size={22} color="#1DA1F2" />
+                  <Text style={[styles.socialHandle, { color: colors.textSecondary }]}>{socialMedia.twitter}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        </View>
+        )}
+
+        {/* Bottom spacing */}
+        <View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
     </View>
   );
@@ -349,6 +452,42 @@ export function OrganizerProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  noInfoText: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingVertical: 16,
   },
   header: {
     position: 'absolute',
@@ -456,15 +595,6 @@ const styles = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: '700',
   },
   statValue: {
     fontSize: 16,

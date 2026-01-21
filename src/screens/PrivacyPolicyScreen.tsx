@@ -231,7 +231,7 @@ export function PrivacyPolicyScreen() {
         title: 'Gizlilik Politikası',
       });
     } catch (error) {
-      console.error('Share error:', error);
+      console.warn('Share error:', error);
     }
   };
 

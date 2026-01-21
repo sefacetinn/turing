@@ -636,6 +636,7 @@ export type HomeStackParamList = {
   OrganizerEventDetail: { eventId: string };
   ProviderEventDetail: { eventId: string };
   OfferDetail: { offerId: string };
+  ProviderRequestDetail: { offerId: string };
   AnalyticsDashboard: undefined;
 };
 

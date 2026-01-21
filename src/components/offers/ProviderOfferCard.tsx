@@ -257,17 +257,28 @@ export function ProviderOfferCard({ offer, onPress, onAccept, onReject, onCounte
       <View style={styles.amountSection}>
         <View style={styles.amountLeft}>
           <Text style={[styles.amountLabel, { color: colors.textMuted }]}>
-            {offer.counterOffer ? 'İlk Teklifiniz' : 'Teklif Tutarınız'}
+            {offer.status === 'pending'
+              ? 'Talep Edilen Bütçe'
+              : (offer.counterOffer ? 'İlk Teklifiniz' : 'Teklif Tutarınız')}
           </Text>
           <Text style={[
             styles.amountValue,
-            { color: colors.success },
+            { color: offer.status === 'pending' ? colors.brand[400] : colors.success },
             offer.counterOffer && [styles.amountValueOld, { color: colors.textMuted }]
           ]}>
-            ₺{(offer.amount ?? 0).toLocaleString('tr-TR')}
+            {offer.status === 'pending' && offer.originalBudget
+              ? `₺${offer.originalBudget.toLocaleString('tr-TR')}`
+              : `₺${(offer.amount ?? 0).toLocaleString('tr-TR')}`}
           </Text>
         </View>
-        {!offer.counterOffer && (
+        {offer.status === 'pending' ? (
+          <View style={styles.amountRight}>
+            <View style={[styles.amountSuccessIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+              <Ionicons name="pricetag" size={16} color="#3B82F6" />
+            </View>
+            <Text style={[styles.amountHint, { color: '#3B82F6' }]}>Teklif Bekliyor</Text>
+          </View>
+        ) : !offer.counterOffer && (
           <View style={styles.amountRight}>
             <View style={styles.amountSuccessIcon}>
               <Ionicons name="checkmark-circle" size={16} color={colors.success} />

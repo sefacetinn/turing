@@ -94,7 +94,7 @@ export function SecurityScreen() {
         }
       }
     } catch (error) {
-      console.error('Biometric check error:', error);
+      console.warn('Biometric check error:', error);
     }
   };
 

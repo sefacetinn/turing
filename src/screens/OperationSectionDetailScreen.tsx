@@ -764,8 +764,25 @@ export function OperationSectionDetailScreen() {
 
   if (!section) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Bölüm bulunamadı</Text>
+      <View style={styles.container}>
+        <TouchableOpacity
+          style={[styles.backButton, { top: insets.top + 8 }]}
+          onPress={handleBack}
+        >
+          <Ionicons name="chevron-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <View style={styles.emptyStateContainer}>
+          <View style={[styles.emptyStateIcon, { backgroundColor: meta.color + '20' }]}>
+            <Ionicons name={meta.icon as any} size={48} color={meta.color} />
+          </View>
+          <Text style={styles.emptyStateTitle}>{meta.name}</Text>
+          <Text style={styles.emptyStateText}>
+            Bu bölüm için henüz veri oluşturulmamış.
+          </Text>
+          <Text style={styles.emptyStateSubtext}>
+            Etkinlik operasyonları başladığında burada ilgili bilgiler görüntülenecek.
+          </Text>
+        </View>
       </View>
     );
   }
@@ -1561,6 +1578,27 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#EF4444',
+  },
+  // Full screen empty state (for no section)
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyStateIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
