@@ -8,6 +8,7 @@ import {
   Dimensions,
   Modal,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,21 +24,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { useTheme } from '../theme/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useProviderFinance } from '../hooks/useProviderFinance';
 import {
-  financialSummary,
-  monthlyEarnings,
-  recentTransactions,
-  invoices,
-  overdueInvoices,
-  pendingPaymentsDetail,
-  incomeByService,
-  topClients,
-  yearlyComparison,
-  expenseCategories,
-  Transaction,
   Invoice,
 } from '../data/financeData';
-import { providerStats } from '../data/homeData';
 
 const { width } = Dimensions.get('window');
 
@@ -47,10 +38,19 @@ export function ProviderFinanceScreen() {
   const navigation = useNavigation();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedClient, setSelectedClient] = useState<typeof topClients[0] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Fetch real financial data from Firebase
+  const {
+    summary: financialSummary,
+    monthlyEarnings,
+    incomeByService,
+    transactions: recentTransactions,
+    loading: financeLoading,
+  } = useProviderFinance(user?.uid);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -128,14 +128,8 @@ export function ProviderFinanceScreen() {
     }
   };
 
-  const handleClientPress = (client: typeof topClients[0]) => {
-    setSelectedClient(client);
-  };
-
-  const allInvoices = [...invoices, ...overdueInvoices].sort((a, b) => {
-    const statusOrder = { overdue: 0, pending: 1, paid: 2, cancelled: 3 };
-    return statusOrder[a.status] - statusOrder[b.status];
-  });
+  // No invoices for now - will be implemented later
+  const allInvoices: Invoice[] = [];
 
   const renderOverviewTab = () => (
     <>
@@ -158,13 +152,15 @@ export function ProviderFinanceScreen() {
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Bu Ay Kazanç</Text>
               </View>
               <Text style={[styles.mainStatValue, { color: colors.text }]}>
-                {formatCurrency(providerStats.monthlyEarnings)}
+                {formatCurrency(financialSummary.thisMonthEarnings)}
               </Text>
             </View>
-            <View style={[styles.growthBadge, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-              <Ionicons name="trending-up" size={14} color={colors.success} />
-              <Text style={[styles.growthText, { color: colors.success }]}>+{yearlyComparison.growth.incomeGrowth}%</Text>
-            </View>
+            {financialSummary.growthPercentage !== 0 && (
+              <View style={[styles.growthBadge, { backgroundColor: financialSummary.growthPercentage >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name={financialSummary.growthPercentage >= 0 ? 'trending-up' : 'trending-down'} size={14} color={financialSummary.growthPercentage >= 0 ? colors.success : colors.error} />
+                <Text style={[styles.growthText, { color: financialSummary.growthPercentage >= 0 ? colors.success : colors.error }]}>{financialSummary.growthPercentage >= 0 ? '+' : ''}{financialSummary.growthPercentage}%</Text>
+              </View>
+            )}
           </View>
 
           <View style={[styles.mainStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
@@ -197,12 +193,12 @@ export function ProviderFinanceScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Aylık Kazanç Grafiği</Text>
         <View style={[styles.chartCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
           <View style={styles.chartContainer}>
-            {monthlyEarnings.slice(-6).map((item, index) => {
-              const maxIncome = Math.max(...monthlyEarnings.slice(-6).map(m => m.income));
-              const height = (item.income / maxIncome) * 100;
+            {monthlyEarnings.map((item, index) => {
+              const maxAmount = Math.max(...monthlyEarnings.map(m => m.amount), 1);
+              const height = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 10;
               return (
                 <View key={index} style={styles.chartBarContainer}>
-                  <View style={[styles.chartBar, { height: `${height}%`, backgroundColor: accentColor }]}>
+                  <View style={[styles.chartBar, { height: `${Math.max(height, 5)}%`, backgroundColor: accentColor }]}>
                     <LinearGradient
                       colors={[accentColor, isDark ? 'rgba(75, 48, 184, 0.5)' : 'rgba(75, 48, 184, 0.3)']}
                       style={StyleSheet.absoluteFill}
@@ -210,207 +206,174 @@ export function ProviderFinanceScreen() {
                       end={{ x: 0, y: 1 }}
                     />
                   </View>
-                  <Text style={[styles.chartLabel, { color: colors.textMuted }]}>{item.month.slice(0, 3)}</Text>
+                  <Text style={[styles.chartLabel, { color: colors.textMuted }]}>{item.month}</Text>
                 </View>
               );
             })}
           </View>
           <View style={styles.chartLegend}>
             <Text style={[styles.chartLegendText, { color: colors.textMuted }]}>
-              Son 6 ay toplam: {formatCurrency(monthlyEarnings.slice(-6).reduce((sum, m) => sum + m.income, 0))}
+              Son 6 ay toplam: {formatCurrency(monthlyEarnings.reduce((sum, m) => sum + m.amount, 0))}
             </Text>
           </View>
         </View>
       </View>
 
       {/* Pending Payments Alert */}
-      {pendingPaymentsDetail.some(p => p.status === 'overdue') && (
+      {financialSummary.pendingPayments > 0 && (
         <View style={styles.section}>
-          <View style={[styles.alertCard, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
-            <View style={[styles.alertIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-              <Ionicons name="alert-circle" size={20} color={colors.error} />
+          <View style={[styles.alertCard, { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)' }]}>
+            <View style={[styles.alertIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+              <Ionicons name="time" size={20} color={colors.warning} />
             </View>
             <View style={styles.alertContent}>
-              <Text style={[styles.alertTitle, { color: colors.error }]}>Vadesi Geçmiş Ödeme</Text>
+              <Text style={[styles.alertTitle, { color: colors.warning }]}>Bekleyen Ödeme</Text>
               <Text style={[styles.alertText, { color: colors.textSecondary }]}>
-                {pendingPaymentsDetail.filter(p => p.status === 'overdue').length} adet faturanın vadesi geçmiş
+                {formatCurrency(financialSummary.pendingPayments)} tutarında ödeme bekleniyor
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.error} />
+            <Ionicons name="chevron-forward" size={20} color={colors.warning} />
           </View>
         </View>
       )}
 
       {/* Income by Service */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmet Bazlı Gelir</Text>
-        <View style={[styles.serviceCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-          {incomeByService.map((item, index) => (
-            <View
-              key={index}
-              style={[
-                styles.serviceRow,
-                index !== incomeByService.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
-              ]}
-            >
-              <View style={[styles.serviceDot, { backgroundColor: item.color }]} />
-              <View style={styles.serviceInfo}>
-                <Text style={[styles.serviceName, { color: colors.text }]}>{item.service}</Text>
-                <View style={[styles.serviceProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                  <View style={[styles.serviceProgress, { width: `${item.percentage}%`, backgroundColor: item.color }]} />
-                </View>
-              </View>
-              <View style={styles.serviceValue}>
-                <Text style={[styles.serviceAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
-                <Text style={[styles.servicePercent, { color: colors.textMuted }]}>{item.percentage}%</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Top Clients */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>En İyi Müşteriler</Text>
-          <TouchableOpacity onPress={() => {}}>
-            <Text style={[styles.seeAllText, { color: accentColor }]}>Tümü</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.clientsScroll}>
-          {topClients.map((client) => (
-            <TouchableOpacity
-              key={client.id}
-              style={[styles.clientCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}
-              onPress={() => handleClientPress(client)}
-              activeOpacity={0.7}
-            >
-              <OptimizedImage source={client.logo} style={styles.clientLogo} />
-              <Text style={[styles.clientName, { color: colors.text }]} numberOfLines={1}>{client.name}</Text>
-              <Text style={[styles.clientRevenue, { color: accentColor }]}>{formatCurrency(client.totalRevenue)}</Text>
-              <Text style={[styles.clientJobs, { color: colors.textMuted }]}>{client.jobCount} iş</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Expense Categories */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Gider Dağılımı</Text>
-        <View style={[styles.expenseCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-          <View style={styles.expenseChart}>
-            {expenseCategories.map((item, index) => (
+      {incomeByService.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmet Bazlı Gelir</Text>
+          <View style={[styles.serviceCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+            {incomeByService.map((item, index) => (
               <View
                 key={index}
-                style={[styles.expenseSegment, { width: `${item.percentage}%`, backgroundColor: item.color }]}
-              />
-            ))}
-          </View>
-          <View style={styles.expenseLegend}>
-            {expenseCategories.map((item, index) => (
-              <View key={index} style={styles.expenseLegendItem}>
-                <View style={[styles.expenseLegendDot, { backgroundColor: item.color }]} />
-                <Text style={[styles.expenseLegendText, { color: colors.textSecondary }]}>{item.category}</Text>
+                style={[
+                  styles.serviceRow,
+                  index !== incomeByService.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
+                ]}
+              >
+                <View style={[styles.serviceDot, { backgroundColor: item.color }]} />
+                <View style={styles.serviceInfo}>
+                  <Text style={[styles.serviceName, { color: colors.text }]}>{item.category}</Text>
+                  <View style={[styles.serviceProgressBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+                    <View style={[styles.serviceProgress, { width: `${item.percentage}%`, backgroundColor: item.color }]} />
+                  </View>
+                </View>
+                <View style={styles.serviceValue}>
+                  <Text style={[styles.serviceAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                  <Text style={[styles.servicePercent, { color: colors.textMuted }]}>{item.percentage}%</Text>
+                </View>
               </View>
             ))}
           </View>
-          <View style={[styles.expenseTotal, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-            <Text style={[styles.expenseTotalLabel, { color: colors.textMuted }]}>Toplam Gider (12 ay)</Text>
-            <Text style={[styles.expenseTotalValue, { color: colors.text }]}>{formatCurrency(financialSummary.totalExpenses)}</Text>
+        </View>
+      )}
+
+      {/* Empty State for no data */}
+      {!financeLoading && financialSummary.totalEarnings === 0 && (
+        <View style={styles.section}>
+          <View style={[styles.emptyCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+            <Ionicons name="wallet-outline" size={48} color={colors.textMuted} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz Kazanç Yok</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+              Sözleşme imzaladığınızda kazançlarınız burada görünecek
+            </Text>
           </View>
         </View>
-      </View>
+      )}
+
     </>
   );
 
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   const renderTransactionsTab = () => (
     <View style={styles.section}>
-      <View style={[styles.transactionsCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-        {recentTransactions.map((transaction, index) => (
-          <View
-            key={transaction.id}
-            style={[
-              styles.transactionRow,
-              index !== recentTransactions.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
-            ]}
-          >
+      {recentTransactions.length === 0 ? (
+        <View style={[styles.emptyCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+          <Ionicons name="swap-horizontal-outline" size={48} color={colors.textMuted} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Henüz İşlem Yok</Text>
+          <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+            Tamamlanan işlemleriniz burada görünecek
+          </Text>
+        </View>
+      ) : (
+        <View style={[styles.transactionsCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+          {recentTransactions.map((transaction, index) => (
             <View
+              key={transaction.id}
               style={[
-                styles.transactionIcon,
-                {
-                  backgroundColor:
-                    transaction.type === 'income'
-                      ? 'rgba(16, 185, 129, 0.1)'
-                      : transaction.type === 'expense'
-                      ? 'rgba(239, 68, 68, 0.1)'
-                      : transaction.type === 'pending'
-                      ? 'rgba(245, 158, 11, 0.1)'
-                      : 'rgba(156, 163, 175, 0.1)',
-                },
+                styles.transactionRow,
+                index !== recentTransactions.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
               ]}
             >
-              <Ionicons
-                name={getTransactionIcon(transaction.type) as any}
-                size={18}
-                color={
-                  transaction.type === 'income'
-                    ? colors.success
-                    : transaction.type === 'expense'
-                    ? colors.error
-                    : transaction.type === 'pending'
-                    ? colors.warning
-                    : colors.textMuted
-                }
-              />
-            </View>
-            <View style={styles.transactionContent}>
-              <Text style={[styles.transactionTitle, { color: colors.text }]} numberOfLines={1}>
-                {transaction.description}
-              </Text>
-              <Text style={[styles.transactionMeta, { color: colors.textMuted }]}>
-                {transaction.category} • {transaction.date}
-              </Text>
-              {transaction.eventName && (
-                <Text style={[styles.transactionEvent, { color: colors.textSecondary }]}>{transaction.eventName}</Text>
-              )}
-            </View>
-            <View style={styles.transactionAmount}>
-              <Text
+              <View
                 style={[
-                  styles.transactionValue,
+                  styles.transactionIcon,
                   {
-                    color:
+                    backgroundColor:
                       transaction.type === 'income'
-                        ? colors.success
-                        : transaction.type === 'expense' || transaction.type === 'refund'
-                        ? colors.error
-                        : colors.warning,
+                        ? 'rgba(16, 185, 129, 0.1)'
+                        : 'rgba(239, 68, 68, 0.1)',
                   },
                 ]}
               >
-                {transaction.type === 'expense' || transaction.type === 'refund' ? '-' : '+'}
-                {formatCurrency(transaction.amount)}
-              </Text>
-              <View
-                style={[
-                  styles.transactionStatus,
-                  { backgroundColor: `${getStatusColor(transaction.status)}15` },
-                ]}
-              >
-                <Text style={[styles.transactionStatusText, { color: getStatusColor(transaction.status) }]}>
-                  {getStatusLabel(transaction.status)}
+                <Ionicons
+                  name={getTransactionIcon(transaction.type) as any}
+                  size={18}
+                  color={transaction.type === 'income' ? colors.success : colors.error}
+                />
+              </View>
+              <View style={styles.transactionContent}>
+                <Text style={[styles.transactionTitle, { color: colors.text }]} numberOfLines={1}>
+                  {transaction.description}
                 </Text>
+                <Text style={[styles.transactionMeta, { color: colors.textMuted }]}>
+                  {formatDate(transaction.date)}
+                </Text>
+                {transaction.eventTitle && (
+                  <Text style={[styles.transactionEvent, { color: colors.textSecondary }]}>{transaction.eventTitle}</Text>
+                )}
+              </View>
+              <View style={styles.transactionAmount}>
+                <Text
+                  style={[
+                    styles.transactionValue,
+                    { color: transaction.type === 'income' ? colors.success : colors.error },
+                  ]}
+                >
+                  {transaction.type === 'expense' ? '-' : '+'}
+                  {formatCurrency(transaction.amount)}
+                </Text>
+                <View
+                  style={[
+                    styles.transactionStatus,
+                    { backgroundColor: `${getStatusColor(transaction.status)}15` },
+                  ]}
+                >
+                  <Text style={[styles.transactionStatusText, { color: getStatusColor(transaction.status) }]}>
+                    {getStatusLabel(transaction.status)}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 
   const renderInvoicesTab = () => (
     <View style={styles.section}>
-      {/* Invoice Stats */}
+      {/* Empty State for invoices - to be implemented */}
+      <View style={[styles.emptyCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
+        <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>Faturalar Yakında</Text>
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+          Fatura yönetimi özelliği yakında eklenecek
+        </Text>
+      </View>
+      {/* Original Invoice Stats - hidden for now
       <View style={styles.invoiceStatsRow}>
         <View style={[styles.invoiceStatCard, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
           <Text style={[styles.invoiceStatValue, { color: colors.success }]}>
@@ -431,35 +394,7 @@ export function ProviderFinanceScreen() {
           <Text style={[styles.invoiceStatLabel, { color: colors.error }]}>Gecikmiş</Text>
         </View>
       </View>
-
-      {/* Invoice List */}
-      <View style={[styles.invoicesCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-        {allInvoices.map((invoice, index) => (
-          <TouchableOpacity
-            key={invoice.id}
-            style={[
-              styles.invoiceRow,
-              index !== allInvoices.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border },
-            ]}
-            onPress={() => setSelectedInvoice(invoice)}
-          >
-            <OptimizedImage source={invoice.organizerLogo} style={styles.invoiceLogo} />
-            <View style={styles.invoiceContent}>
-              <Text style={[styles.invoiceNumber, { color: colors.textMuted }]}>{invoice.invoiceNumber}</Text>
-              <Text style={[styles.invoiceEvent, { color: colors.text }]} numberOfLines={1}>{invoice.eventName}</Text>
-              <Text style={[styles.invoiceOrganizer, { color: colors.textSecondary }]}>{invoice.organizerName}</Text>
-            </View>
-            <View style={styles.invoiceRight}>
-              <Text style={[styles.invoiceAmount, { color: colors.text }]}>{formatCurrency(invoice.totalAmount)}</Text>
-              <View style={[styles.invoiceStatusBadge, { backgroundColor: `${getStatusColor(invoice.status)}15` }]}>
-                <Text style={[styles.invoiceStatusText, { color: getStatusColor(invoice.status) }]}>
-                  {getStatusLabel(invoice.status)}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+      */}
     </View>
   );
 
@@ -653,94 +588,6 @@ export function ProviderFinanceScreen() {
         </View>
       </Modal>
 
-      {/* Client Detail Modal */}
-      <Modal
-        visible={selectedClient !== null}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setSelectedClient(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-              <View>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Müşteri Detayı</Text>
-                {selectedClient && (
-                  <Text style={[styles.modalSubtitle, { color: colors.textMuted }]}>{selectedClient.name}</Text>
-                )}
-              </View>
-              <TouchableOpacity onPress={() => setSelectedClient(null)}>
-                <Ionicons name="close" size={24} color={colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedClient && (
-              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                {/* Client Header */}
-                <View style={styles.clientDetailHeader}>
-                  <OptimizedImage source={selectedClient.logo} style={styles.clientDetailLogo} />
-                  <View style={styles.clientDetailInfo}>
-                    <Text style={[styles.clientDetailName, { color: colors.text }]}>{selectedClient.name}</Text>
-                    <Text style={[styles.clientDetailJobs, { color: colors.textSecondary }]}>
-                      {selectedClient.jobCount} iş tamamlandı
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Stats */}
-                <View style={[styles.clientStatsCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-                  <View style={styles.clientStatItem}>
-                    <Ionicons name="wallet-outline" size={20} color={accentColor} />
-                    <Text style={[styles.clientStatLabel, { color: colors.textMuted }]}>Toplam Gelir</Text>
-                    <Text style={[styles.clientStatValue, { color: colors.text }]}>{formatCurrency(selectedClient.totalRevenue)}</Text>
-                  </View>
-                  <View style={[styles.clientStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]} />
-                  <View style={styles.clientStatItem}>
-                    <Ionicons name="briefcase-outline" size={20} color={accentColor} />
-                    <Text style={[styles.clientStatLabel, { color: colors.textMuted }]}>İş Sayısı</Text>
-                    <Text style={[styles.clientStatValue, { color: colors.text }]}>{selectedClient.jobCount}</Text>
-                  </View>
-                  <View style={[styles.clientStatDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : colors.border }]} />
-                  <View style={styles.clientStatItem}>
-                    <Ionicons name="calculator-outline" size={20} color={accentColor} />
-                    <Text style={[styles.clientStatLabel, { color: colors.textMuted }]}>Ort. İş Değeri</Text>
-                    <Text style={[styles.clientStatValue, { color: colors.text }]}>
-                      {formatCurrency(Math.round(selectedClient.totalRevenue / selectedClient.jobCount))}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Last Job */}
-                <View style={[styles.clientLastJob, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.cardBackground }]}>
-                  <Text style={[styles.clientLastJobTitle, { color: colors.text }]}>Son İş</Text>
-                  <View style={styles.clientLastJobRow}>
-                    <Ionicons name="calendar-outline" size={16} color={colors.textMuted} />
-                    <Text style={[styles.clientLastJobText, { color: colors.textSecondary }]}>{selectedClient.lastJob}</Text>
-                  </View>
-                </View>
-
-                {/* Actions */}
-                <View style={styles.clientActions}>
-                  <TouchableOpacity style={[styles.clientActionBtn, { backgroundColor: accentBg, borderColor: accentColor }]}>
-                    <Ionicons name="call-outline" size={18} color={accentColor} />
-                    <Text style={[styles.clientActionText, { color: accentColor }]}>Ara</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.clientActionBtn, { backgroundColor: accentBg, borderColor: accentColor }]}>
-                    <Ionicons name="mail-outline" size={18} color={accentColor} />
-                    <Text style={[styles.clientActionText, { color: accentColor }]}>E-posta</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.clientActionBtn, { backgroundColor: accentBg, borderColor: accentColor }]}>
-                    <Ionicons name="document-text-outline" size={18} color={accentColor} />
-                    <Text style={[styles.clientActionText, { color: accentColor }]}>Faturalar</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={{ height: 40 }} />
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -788,6 +635,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
+  },
+
+  // Empty State
+  emptyCard: {
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 
   // Main Stats Card

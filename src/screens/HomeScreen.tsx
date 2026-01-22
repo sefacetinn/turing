@@ -242,7 +242,7 @@ function OrganizerHomeContent() {
     activeEvents: number;
     totalEvents: number;
     pendingOffers: number;
-    activeEventsList: { id: string; title: string; date: string; image: string; progress: number }[];
+    activeEventsList: { id: string; title: string; date: string; image: string; progress: number; location: string; venue: string }[];
     nextEvent: { id: string; title: string; date: string; venue: string; image: string; daysUntil: number; progress: number } | null;
     pendingActions: PendingAction[];
     recentActivity: ActivityItem[];
@@ -257,6 +257,8 @@ function OrganizerHomeContent() {
       date: e.date,
       image: e.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
       progress: 50,
+      location: `${e.district ? `${e.district}, ` : ''}${e.city}`,
+      venue: e.venue,
     })),
     nextEvent: realUpcomingEvents[0] ? {
       id: realUpcomingEvents[0].id,
@@ -384,20 +386,24 @@ function OrganizerHomeContent() {
           </View>
         )}
 
-        {/* Quick Actions Row */}
-        <View style={styles.quickActionsRow}>
-          {/* Create Event Card */}
-          <TouchableOpacity
-            style={[styles.quickActionCard, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.12)' : 'rgba(75, 48, 184, 0.08)' }]}
-            onPress={() => navigation.navigate('CreateEvent')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: accentColor }]}>
-              <Ionicons name="add" size={20} color="white" />
-            </View>
-            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Etkinlik Oluştur</Text>
-          </TouchableOpacity>
+        {/* Create Event - Full Width */}
+        <TouchableOpacity
+          style={[styles.createEventButton, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}
+          onPress={() => navigation.navigate('CreateEvent')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.createEventIcon, { backgroundColor: accentColor }]}>
+            <Ionicons name="add" size={22} color="white" />
+          </View>
+          <View style={styles.createEventContent}>
+            <Text style={[styles.createEventTitle, { color: colors.text }]}>Etkinlik Oluştur</Text>
+            <Text style={[styles.createEventSubtitle, { color: colors.textMuted }]}>Yeni bir etkinlik planla</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </TouchableOpacity>
 
+        {/* Quick Actions Row - Analytics & Calendar */}
+        <View style={styles.quickActionsRow}>
           {/* Analytics Card */}
           <TouchableOpacity
             style={[styles.quickActionCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.08)' }]}
@@ -409,13 +415,19 @@ function OrganizerHomeContent() {
             </View>
             <Text style={[styles.quickActionTitle, { color: colors.text }]}>Analizler</Text>
           </TouchableOpacity>
-        </View>
 
-        {/* Calendar Widget */}
-        <CalendarWidget
-          events={calendarEvents}
-          onPress={() => navigation.navigate('CalendarView')}
-        />
+          {/* Calendar Card */}
+          <TouchableOpacity
+            style={[styles.quickActionCard, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.08)' }]}
+            onPress={() => navigation.navigate('CalendarView')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: '#6366F1' }]}>
+              <Ionicons name="calendar" size={20} color="white" />
+            </View>
+            <Text style={[styles.quickActionTitle, { color: colors.text }]}>Takvim</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Next Event Card - Minimal */}
         {dashboard.nextEvent && (
@@ -498,6 +510,18 @@ function OrganizerHomeContent() {
                 <View style={styles.eventCardBody}>
                   <Text style={[styles.eventCardTitle, { color: colors.text }]} numberOfLines={1}>{event.title}</Text>
                   <Text style={[styles.eventCardDate, { color: colors.textMuted }]}>{event.date}</Text>
+                  {event.location && (
+                    <View style={styles.eventCardLocation}>
+                      <Ionicons name="location-outline" size={10} color={colors.textMuted} />
+                      <Text style={[styles.eventCardLocationText, { color: colors.textMuted }]} numberOfLines={1}>{event.location}</Text>
+                    </View>
+                  )}
+                  {event.venue && (
+                    <View style={styles.eventCardLocation}>
+                      <Ionicons name="business-outline" size={10} color={colors.textMuted} />
+                      <Text style={[styles.eventCardLocationText, { color: colors.textMuted }]} numberOfLines={1}>{event.venue}</Text>
+                    </View>
+                  )}
                   <View style={styles.eventCardFooter}>
                     <View style={[styles.miniProgressBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)' }]}>
                       <View style={[styles.miniProgressFill, { width: `${event.progress}%`, backgroundColor: accentColor }]} />
@@ -747,7 +771,7 @@ function ProviderHomeContent() {
       date: job.date,
       location: job.venue,
       role: 'Hizmet',
-      earnings: job.budget || 0,
+      earnings: job.contractAmount || job.budget || 0,
       daysUntil: Math.max(0, Math.ceil((new Date(job.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
       status: job.status,
       image: job.image || 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=400',
@@ -771,7 +795,7 @@ function ProviderHomeContent() {
       return {
         id: offer.id,
         title: offer.eventTitle || 'Yeni Talep',
-        category: offer.serviceCategory || 'Hizmet',
+        category: offer.artistName || offer.serviceCategory || 'Hizmet',
         organizer: offer.organizerName || 'Organizatör',
         organizerImage: offer.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
         location: offer.eventCity || 'İstanbul',
@@ -782,6 +806,8 @@ function ProviderHomeContent() {
         timeAgo: '1s önce',
         matchScore: 85,
         serviceType: offer.serviceCategory || 'technical',
+        artistName: offer.artistName,
+        eventDate: offer.eventDate,
       };
     });
   }, [realOffers]);
@@ -1371,6 +1397,13 @@ function RequestCard({
         <Text style={[styles.requestDot, { color: colors.textMuted }]}>•</Text>
         <Ionicons name="location" size={12} color={colors.textMuted} />
         <Text style={[styles.requestLocation, { color: colors.textMuted }]}>{location}</Text>
+        {date && (
+          <>
+            <Text style={[styles.requestDot, { color: colors.textMuted }]}>•</Text>
+            <Ionicons name="calendar" size={12} color={colors.textMuted} />
+            <Text style={[styles.requestLocation, { color: colors.textMuted }]}>{date}</Text>
+          </>
+        )}
       </View>
 
       <View style={styles.requestFooter}>
@@ -1597,6 +1630,35 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
+  // Create Event Button (Full Width)
+  createEventButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
+  },
+  createEventIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createEventContent: {
+    flex: 1,
+  },
+  createEventTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  createEventSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
   // Quick Actions Row (Organizer)
   quickActionsRow: {
     flexDirection: 'row',
@@ -1652,35 +1714,6 @@ const styles = StyleSheet.create({
   providerQuickValue: {
     fontSize: 16,
     fontWeight: '700',
-  },
-
-  // Create Event Card (kept for compatibility)
-  createEventCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 14,
-    gap: 14,
-  },
-  createEventIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createEventContent: {
-    flex: 1,
-  },
-  createEventTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  createEventSubtitle: {
-    fontSize: 12,
-    marginTop: 2,
   },
 
   // Next Event Card - Minimal
@@ -1801,30 +1834,40 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   eventCard: {
-    width: 150,
+    width: 170,
     borderRadius: 12,
     overflow: 'hidden',
   },
   eventCardImage: {
     width: '100%',
-    height: 90,
+    height: 95,
   },
   eventCardBody: {
-    padding: 10,
+    padding: 12,
   },
   eventCardTitle: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   eventCardDate: {
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 3,
+  },
+  eventCardLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  eventCardLocationText: {
+    fontSize: 10,
+    flex: 1,
   },
   eventCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 8,
+    marginTop: 10,
   },
   miniProgressBar: {
     flex: 1,
@@ -1840,7 +1883,7 @@ const styles = StyleSheet.create({
   },
   addEventCard: {
     width: 80,
-    height: 140,
+    height: 180,
     borderRadius: 12,
     borderWidth: 1,
     borderStyle: 'dashed',

@@ -198,15 +198,165 @@ export const allCategories: Record<string, CategoryInfo> = {
   ...subCategories,
 };
 
+// Kategori alias mapping - farklı yazım varyasyonlarını standart kategorilere eşle
+export const categoryAliases: Record<string, string> = {
+  // Booking / Artist varyasyonları
+  'artist': 'booking',
+  'sanatci': 'booking',
+  'sanatçı': 'booking',
+  'Sanatçı': 'booking',
+  'Artist': 'booking',
+  'Booking': 'booking',
+
+  // Technical / Sound-Light varyasyonları
+  'sound-light': 'technical',
+  'sound_light': 'technical',
+  'soundlight': 'technical',
+  'ses-isik': 'technical',
+  'ses_isik': 'technical',
+  'sesisik': 'technical',
+  'Ses & Işık': 'technical',
+  'Teknik': 'technical',
+  'Technical': 'technical',
+
+  // Venue varyasyonları
+  'mekan': 'venue',
+  'Mekan': 'venue',
+  'Venue': 'venue',
+
+  // Accommodation varyasyonları
+  'konaklama': 'accommodation',
+  'Konaklama': 'accommodation',
+  'otel': 'accommodation',
+  'Otel': 'accommodation',
+  'Accommodation': 'accommodation',
+
+  // Transport varyasyonları
+  'ulasim': 'transport',
+  'ulaşım': 'transport',
+  'Ulaşım': 'transport',
+  'Transport': 'transport',
+
+  // Operation varyasyonları
+  'operasyon': 'operation',
+  'Operasyon': 'operation',
+  'Operation': 'operation',
+
+  // Operation alt kategorileri varyasyonları
+  'guvenlik': 'security',
+  'güvenlik': 'security',
+  'Güvenlik': 'security',
+  'Security': 'security',
+
+  'Catering': 'catering',
+  'yemek': 'catering',
+
+  'ucus': 'flight',
+  'uçuş': 'flight',
+  'Uçuş': 'flight',
+  'Flight': 'flight',
+
+  'jenerator': 'generator',
+  'jeneratör': 'generator',
+  'Jeneratör': 'generator',
+  'Generator': 'generator',
+
+  'icecek': 'beverage',
+  'içecek': 'beverage',
+  'İçecek': 'beverage',
+  'Beverage': 'beverage',
+
+  'medikal': 'medical',
+  'Medikal': 'medical',
+  'Medical': 'medical',
+
+  'sanitasyon': 'sanitation',
+  'Sanitasyon': 'sanitation',
+  'Sanitation': 'sanitation',
+
+  'medya': 'media',
+  'Medya': 'media',
+  'Media': 'media',
+
+  'bariyer': 'barrier',
+  'Bariyer': 'barrier',
+  'Barrier': 'barrier',
+
+  'cadir': 'tent',
+  'çadır': 'tent',
+  'Çadır': 'tent',
+  'tente': 'tent',
+  'Tente': 'tent',
+  'Tent': 'tent',
+
+  'biletleme': 'ticketing',
+  'Biletleme': 'ticketing',
+  'Ticketing': 'ticketing',
+
+  'dekorasyon': 'decoration',
+  'Dekorasyon': 'decoration',
+  'Decoration': 'decoration',
+
+  'produksiyon': 'production',
+  'prodüksiyon': 'production',
+  'Prodüksiyon': 'production',
+  'Production': 'production',
+};
+
+/**
+ * Kategori ID'sini normalize eder (alias'ları standart ID'ye çevirir)
+ * @param categoryId - Ham kategori ID'si
+ * @returns Normalize edilmiş kategori ID'si
+ */
+export const normalizeCategoryId = (categoryId: string): string => {
+  if (!categoryId) return categoryId;
+
+  // Önce direkt kategorilerde ara
+  if (allCategories[categoryId]) {
+    return categoryId;
+  }
+
+  // Alias mapping'de ara
+  if (categoryAliases[categoryId]) {
+    return categoryAliases[categoryId];
+  }
+
+  // Küçük harfe çevirip tekrar dene
+  const lowerCaseId = categoryId.toLowerCase();
+  if (allCategories[lowerCaseId]) {
+    return lowerCaseId;
+  }
+
+  if (categoryAliases[lowerCaseId]) {
+    return categoryAliases[lowerCaseId];
+  }
+
+  return categoryId;
+};
+
 /**
  * Kategori ID'sine göre kategori bilgisini döndürür
  * @param categoryId - Kategori ID'si (booking, technical, security, vb.)
  * @returns CategoryInfo veya varsayılan değer
  */
 export const getCategoryInfo = (categoryId: string): CategoryInfo => {
-  // Önce tüm kategorilerde ara
-  if (allCategories[categoryId]) {
-    return allCategories[categoryId];
+  if (!categoryId) {
+    return {
+      id: 'unknown',
+      label: 'Bilinmiyor',
+      shortLabel: 'Bilinmiyor',
+      icon: 'briefcase',
+      gradient: gradients.primary,
+      isSubCategory: false,
+    };
+  }
+
+  // Normalize edilmiş ID'yi al
+  const normalizedId = normalizeCategoryId(categoryId);
+
+  // Normalize edilmiş ID ile kategorilerde ara
+  if (allCategories[normalizedId]) {
+    return allCategories[normalizedId];
   }
 
   // Bulunamazsa varsayılan döndür

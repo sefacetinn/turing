@@ -41,6 +41,7 @@ export interface FirestoreEvent {
   venueAddress?: string;
   venueCapacity?: string;
   venueImage?: string;
+  venuePhone?: string;
   status: 'draft' | 'planning' | 'confirmed' | 'completed' | 'cancelled';
   organizerId: string;
   // Organizer info (populated by useProviderJobs)
@@ -85,8 +86,16 @@ export interface EventService {
   name: string;
   provider?: string;
   providerId?: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  providerPhone?: string;
+  providerImage?: string;
+  status: 'pending' | 'confirmed' | 'contract_pending' | 'cancelled' | 'offered';
   price?: number;
+  offerId?: string;
+  contractId?: string;
+  // Artist info for booking services (multiple artists per event supported)
+  artistId?: string;
+  artistName?: string;
+  artistImage?: string;
 }
 
 export interface FirestoreOffer {
@@ -96,6 +105,8 @@ export interface FirestoreOffer {
   eventDate?: string;
   eventTime?: string;
   eventCity?: string;
+  eventDistrict?: string;
+  eventVenue?: string;
   // Legacy fields (backward compatible)
   organizerId: string;
   organizerName: string;
@@ -230,19 +241,43 @@ const docToEvent = (doc: any): FirestoreEvent => {
     description: data.description,
     date: data.date || '',
     time: data.time || '',
+    startTime: data.startTime,
+    endTime: data.endTime,
     endDate: data.endDate,
     city: data.city || '',
     district: data.district,
     venue: data.venue || '',
     venueAddress: data.venueAddress,
+    venueCapacity: data.venueCapacity,
+    venueImage: data.venueImage,
+    venuePhone: data.venuePhone,
     status: data.status || 'draft',
     organizerId: data.organizerId || '',
+    providerIds: data.providerIds,
     artistId: data.artistId,
     artistName: data.artistName,
     artistImage: data.artistImage,
     image: data.image,
     budget: data.budget,
+    spent: data.spent,
     expectedAttendees: data.expectedAttendees,
+    attendees: data.attendees,
+    guestCount: data.guestCount,
+    // Event type and category
+    eventType: data.eventType,
+    category: data.category,
+    // Ticketing
+    isTicketed: data.isTicketed,
+    ticketCapacity: data.ticketCapacity,
+    ticketsSold: data.ticketsSold,
+    // Progress tracking
+    progress: data.progress,
+    // Event detail fields
+    ageLimit: data.ageLimit,
+    isAllAges: data.isAllAges,
+    seatingType: data.seatingType,
+    seatingArrangement: data.seatingArrangement,
+    indoorOutdoor: data.indoorOutdoor,
     services: data.services || [],
     createdAt: toDate(data.createdAt),
     updatedAt: toDate(data.updatedAt),
@@ -256,6 +291,7 @@ const docToOffer = (doc: any): FirestoreOffer => {
     eventId: data.eventId || '',
     eventTitle: data.eventTitle || '',
     eventDate: data.eventDate,
+    eventTime: data.eventTime,
     eventCity: data.eventCity,
     // Legacy fields
     organizerId: data.organizerId || '',
@@ -266,6 +302,8 @@ const docToOffer = (doc: any): FirestoreOffer => {
     providerName: data.providerCompanyName || data.providerName || '',
     providerImage: data.providerCompanyLogo || data.providerImage,
     providerPhone: data.providerPhone,
+    providerBio: data.providerBio,
+    responseTime: data.responseTime,
     // Company-based fields
     organizerCompanyId: data.organizerCompanyId,
     organizerCompanyName: data.organizerCompanyName,
@@ -283,6 +321,11 @@ const docToOffer = (doc: any): FirestoreOffer => {
     artistId: data.artistId,
     artistName: data.artistName,
     artistImage: data.artistImage,
+    artistBio: data.artistBio,
+    artistGenres: data.artistGenres,
+    artistAlbumCount: data.artistAlbumCount,
+    artistFollowers: data.artistFollowers,
+    artistConcertCount: data.artistConcertCount,
     serviceCategory: data.serviceCategory || '',
     requestType: data.requestType || 'request',
     amount: data.amount,
@@ -398,6 +441,12 @@ export function useProviderJobs(providerId: string | undefined) {
   const [jobs, setJobs] = useState<FirestoreEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Refetch function to manually trigger refresh
+  const refetch = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!providerId) {
@@ -408,175 +457,182 @@ export function useProviderJobs(providerId: string | undefined) {
 
     setLoading(true);
 
-    // Query 1: Events where provider is in providerIds array
+    // Query 1: Events where provider is in providerIds array (realtime listener)
     const providerQuery = query(
       collection(db, 'events'),
       where('providerIds', 'array-contains', providerId)
     );
 
-    // Query 2: Events where provider is the organizer (self-created events)
-    const organizerQuery = query(
-      collection(db, 'events'),
-      where('organizerId', '==', providerId)
-    );
+    // Use onSnapshot for realtime updates on the main query
+    const unsubscribe = onSnapshot(
+      providerQuery,
+      async (providerSnapshot) => {
+        try {
+          // Query 2: Events where provider is the organizer (self-created events)
+          const organizerQuery = query(
+            collection(db, 'events'),
+            where('organizerId', '==', providerId)
+          );
 
-    // Query 3: Offers where provider has accepted and contract is signed
-    // This catches jobs from contracts signed before the providerIds fix
-    const signedOffersQuery = query(
-      collection(db, 'offers'),
-      where('providerId', '==', providerId),
-      where('status', '==', 'accepted')
-    );
+          // Query 3: Offers where provider has accepted and contract is signed
+          // This catches jobs from contracts signed before the providerIds fix
+          const signedOffersQuery = query(
+            collection(db, 'offers'),
+            where('providerId', '==', providerId),
+            where('status', '==', 'accepted')
+          );
 
-    // Run all queries
-    const fetchJobs = async () => {
-      try {
-        const [providerSnapshot, organizerSnapshot, signedOffersSnapshot] = await Promise.all([
-          getDocs(providerQuery),
-          getDocs(organizerQuery),
-          getDocs(signedOffersQuery)
-        ]);
+          const [organizerSnapshot, signedOffersSnapshot] = await Promise.all([
+            getDocs(organizerQuery),
+            getDocs(signedOffersQuery)
+          ]);
 
-        // Build a map of eventId -> contractAmount from accepted offers
-        const contractAmountMap = new Map<string, number>();
-        signedOffersSnapshot.docs.forEach(d => {
-          const data = d.data();
-          if (data.eventId) {
-            // Use finalAmount if available, otherwise use amount
-            const amount = data.finalAmount ?? data.amount ?? 0;
-            if (amount > 0) {
-              contractAmountMap.set(data.eventId, amount);
+          // Build a map of eventId -> contractAmount from accepted offers
+          const contractAmountMap = new Map<string, number>();
+          signedOffersSnapshot.docs.forEach(d => {
+            const data = d.data();
+            if (data.eventId) {
+              // Use finalAmount if available, otherwise use amount
+              const amount = data.finalAmount ?? data.amount ?? 0;
+              if (amount > 0) {
+                contractAmountMap.set(data.eventId, amount);
+              }
             }
-          }
-        });
+          });
 
-        console.log('[useProviderJobs] Contract amounts:', Object.fromEntries(contractAmountMap));
+          console.log('[useProviderJobs] Contract amounts:', Object.fromEntries(contractAmountMap));
 
-        // Combine results, avoiding duplicates
-        const eventMap = new Map<string, FirestoreEvent>();
+          // Combine results, avoiding duplicates
+          const eventMap = new Map<string, FirestoreEvent>();
 
-        console.log('[useProviderJobs] Provider query returned', providerSnapshot.docs.length, 'events');
-        console.log('[useProviderJobs] Organizer query returned', organizerSnapshot.docs.length, 'events');
-        console.log('[useProviderJobs] Signed offers query returned', signedOffersSnapshot.docs.length, 'offers');
+          console.log('[useProviderJobs] Provider query returned', providerSnapshot.docs.length, 'events');
+          console.log('[useProviderJobs] Organizer query returned', organizerSnapshot.docs.length, 'events');
+          console.log('[useProviderJobs] Signed offers query returned', signedOffersSnapshot.docs.length, 'offers');
 
-        providerSnapshot.docs.forEach(docSnap => {
-          const event = docToEvent(docSnap);
-          // Add contract amount if available
-          event.contractAmount = contractAmountMap.get(event.id);
-          eventMap.set(docSnap.id, event);
-        });
-
-        organizerSnapshot.docs.forEach(docSnap => {
-          if (!eventMap.has(docSnap.id)) {
+          providerSnapshot.docs.forEach(docSnap => {
             const event = docToEvent(docSnap);
+            // Add contract amount if available
             event.contractAmount = contractAmountMap.get(event.id);
             eventMap.set(docSnap.id, event);
-          }
-        });
-
-        // Fetch events from signed offers (where contract is signed)
-        const signedOfferDocs = signedOffersSnapshot.docs.filter(d => {
-          const data = d.data();
-          // Only include if contract is fully signed
-          return data.contractSigned === true ||
-                 (data.contractSignedByOrganizer === true && data.contractSignedByProvider === true);
-        });
-
-        const eventIdsFromOffers = signedOfferDocs
-          .map(d => d.data().eventId)
-          .filter((id): id is string => !!id && !eventMap.has(id));
-
-        // Remove duplicates
-        const uniqueEventIds = [...new Set(eventIdsFromOffers)];
-        console.log('[useProviderJobs] Event IDs from signed offers:', uniqueEventIds);
-
-        // Fetch these events
-        if (uniqueEventIds.length > 0) {
-          const eventPromises = uniqueEventIds.map(async (eventId) => {
-            try {
-              const eventDoc = await getDoc(doc(db, 'events', eventId));
-              if (eventDoc.exists()) {
-                return { id: eventDoc.id, ...eventDoc.data() };
-              }
-            } catch (e) {
-              console.warn('[useProviderJobs] Error fetching event:', eventId, e);
-            }
-            return null;
           });
 
-          const eventResults = await Promise.all(eventPromises);
-          eventResults.forEach(eventData => {
-            if (eventData && !eventMap.has(eventData.id)) {
-              const event = docToEvent({ id: eventData.id, data: () => eventData });
-              // Add contract amount
+          organizerSnapshot.docs.forEach(docSnap => {
+            if (!eventMap.has(docSnap.id)) {
+              const event = docToEvent(docSnap);
               event.contractAmount = contractAmountMap.get(event.id);
-              eventMap.set(eventData.id, event);
+              eventMap.set(docSnap.id, event);
             }
           });
-        }
 
-        // Fetch organizer data for all jobs
-        const organizerIds = [...new Set(Array.from(eventMap.values()).map(e => e.organizerId).filter(Boolean))];
-        console.log('[useProviderJobs] Fetching organizer data for:', organizerIds);
+          // Fetch events from signed offers (where contract is signed)
+          const signedOfferDocs = signedOffersSnapshot.docs.filter(d => {
+            const data = d.data();
+            // Only include if contract is fully signed
+            return data.contractSigned === true ||
+                   (data.contractSignedByOrganizer === true && data.contractSignedByProvider === true);
+          });
 
-        const organizerMap = new Map<string, { name: string; image?: string; phone?: string }>();
-        if (organizerIds.length > 0) {
-          const organizerPromises = organizerIds.map(async (orgId) => {
-            try {
-              const userDoc = await getDoc(doc(db, 'users', orgId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-                return {
-                  id: orgId,
-                  name: userData.displayName || userData.name || userData.companyName || 'Organizatör',
-                  image: userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image,
-                  phone: userData.phone || userData.phoneNumber,
-                };
+          const eventIdsFromOffers = signedOfferDocs
+            .map(d => d.data().eventId)
+            .filter((id): id is string => !!id && !eventMap.has(id));
+
+          // Remove duplicates
+          const uniqueEventIds = [...new Set(eventIdsFromOffers)];
+          console.log('[useProviderJobs] Event IDs from signed offers:', uniqueEventIds);
+
+          // Fetch these events
+          if (uniqueEventIds.length > 0) {
+            const eventPromises = uniqueEventIds.map(async (eventId) => {
+              try {
+                const eventDoc = await getDoc(doc(db, 'events', eventId));
+                if (eventDoc.exists()) {
+                  return { id: eventDoc.id, ...eventDoc.data() };
+                }
+              } catch (e) {
+                console.warn('[useProviderJobs] Error fetching event:', eventId, e);
               }
-            } catch (e) {
-              console.warn('[useProviderJobs] Error fetching organizer:', orgId, e);
-            }
-            return null;
-          });
+              return null;
+            });
 
-          const organizerResults = await Promise.all(organizerPromises);
-          organizerResults.forEach(org => {
-            if (org) {
-              organizerMap.set(org.id, { name: org.name, image: org.image, phone: org.phone });
-            }
-          });
-        }
-
-        // Add organizer info to each event
-        eventMap.forEach((event, eventId) => {
-          const orgInfo = organizerMap.get(event.organizerId);
-          if (orgInfo) {
-            event.organizerName = orgInfo.name;
-            event.organizerImage = orgInfo.image;
-            event.organizerPhone = orgInfo.phone;
+            const eventResults = await Promise.all(eventPromises);
+            eventResults.forEach(eventData => {
+              if (eventData && !eventMap.has(eventData.id)) {
+                const event = docToEvent({ id: eventData.id, data: () => eventData });
+                // Add contract amount
+                event.contractAmount = contractAmountMap.get(event.id);
+                eventMap.set(eventData.id, event);
+              }
+            });
           }
-        });
 
-        // Sort by date descending (client-side)
-        const jobsList = Array.from(eventMap.values()).sort((a, b) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
+          // Fetch organizer data for all jobs
+          const organizerIds = [...new Set(Array.from(eventMap.values()).map(e => e.organizerId).filter(Boolean))];
+          console.log('[useProviderJobs] Fetching organizer data for:', organizerIds);
 
-        console.log('[useProviderJobs] Total jobs:', jobsList.length);
-        setJobs(jobsList);
-        setLoading(false);
-        setError(null);
-      } catch (err: any) {
-        console.warn('Error fetching provider jobs:', err?.message || err);
+          const organizerMap = new Map<string, { name: string; image?: string; phone?: string }>();
+          if (organizerIds.length > 0) {
+            const organizerPromises = organizerIds.map(async (orgId) => {
+              try {
+                const userDoc = await getDoc(doc(db, 'users', orgId));
+                if (userDoc.exists()) {
+                  const userData = userDoc.data();
+                  return {
+                    id: orgId,
+                    name: userData.displayName || userData.name || userData.companyName || 'Organizatör',
+                    image: userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image,
+                    phone: userData.phone || userData.phoneNumber,
+                  };
+                }
+              } catch (e) {
+                console.warn('[useProviderJobs] Error fetching organizer:', orgId, e);
+              }
+              return null;
+            });
+
+            const organizerResults = await Promise.all(organizerPromises);
+            organizerResults.forEach(org => {
+              if (org) {
+                organizerMap.set(org.id, { name: org.name, image: org.image, phone: org.phone });
+              }
+            });
+          }
+
+          // Add organizer info to each event
+          eventMap.forEach((event, eventId) => {
+            const orgInfo = organizerMap.get(event.organizerId);
+            if (orgInfo) {
+              event.organizerName = orgInfo.name;
+              event.organizerImage = orgInfo.image;
+              event.organizerPhone = orgInfo.phone;
+            }
+          });
+
+          // Sort by date descending (client-side)
+          const jobsList = Array.from(eventMap.values()).sort((a, b) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+          console.log('[useProviderJobs] Total jobs:', jobsList.length);
+          setJobs(jobsList);
+          setLoading(false);
+          setError(null);
+        } catch (err: any) {
+          console.warn('Error fetching provider jobs:', err?.message || err);
+          setError('İşler yüklenirken hata oluştu');
+          setLoading(false);
+        }
+      },
+      (err) => {
+        console.warn('Error in provider jobs listener:', err?.message || err);
         setError('İşler yüklenirken hata oluştu');
         setLoading(false);
       }
-    };
+    );
 
-    fetchJobs();
-  }, [providerId]);
+    return () => unsubscribe();
+  }, [providerId, refreshKey]);
 
-  return { jobs, loading, error };
+  return { jobs, loading, error, refetch };
 }
 
 /**
@@ -586,6 +642,12 @@ export function useOffers(userId: string | undefined, role: 'organizer' | 'provi
   const [offers, setOffers] = useState<FirestoreOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Force refresh function
+  const refetch = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -606,10 +668,13 @@ export function useOffers(userId: string | undefined, role: 'organizer' | 'provi
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        console.log('[useOffers] Snapshot received:', snapshot.docs.length, 'offers');
         // Sort client-side by createdAt desc
         const offersList = snapshot.docs
           .map(docToOffer)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        // Log status changes for debugging
+        offersList.forEach(o => console.log(`[useOffers] Offer ${o.id}: status=${o.status}`));
         setOffers(offersList);
         setLoading(false);
         setError(null);
@@ -622,9 +687,9 @@ export function useOffers(userId: string | undefined, role: 'organizer' | 'provi
     );
 
     return () => unsubscribe();
-  }, [userId, role]);
+  }, [userId, role, refreshKey]);
 
-  return { offers, loading, error };
+  return { offers, loading, error, refetch };
 }
 
 /**
@@ -1134,15 +1199,34 @@ export interface FirestoreBookingProvider {
   email: string;
   phone?: string;
   photoURL?: string;
+  coverImage?: string;
   bio?: string;
   city?: string;
+  address?: string;
   website?: string;
   providerServices: string[];
+  serviceCategories?: string[];
+  serviceRegions?: string[];
   isVerified: boolean;
   isActive: boolean;
   rating?: number;
   reviewCount?: number;
   completedJobs?: number;
+  foundedYear?: string;
+  employeeCount?: string;
+  socialMedia?: {
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+    youtube?: string;
+  };
+  workingHours?: {
+    day: string;
+    enabled: boolean;
+    start: string;
+    end: string;
+  }[];
+  responseRate?: number;
   createdAt: Date;
 }
 
@@ -1156,15 +1240,24 @@ const docToBookingProvider = (doc: any): FirestoreBookingProvider => {
     email: data.email || '',
     phone: data.phone || data.phoneNumber,
     photoURL: data.photoURL,
+    coverImage: data.coverImage,
     bio: data.bio,
     city: data.city,
+    address: data.address,
     website: data.website,
     providerServices: data.providerServices || [],
+    serviceCategories: data.serviceCategories || [],
+    serviceRegions: data.serviceRegions || [],
     isVerified: data.isVerified || false,
     isActive: data.isActive !== false,
     rating: data.rating || 0,
     reviewCount: data.reviewCount || 0,
     completedJobs: data.completedJobs || 0,
+    foundedYear: data.foundedYear,
+    employeeCount: data.employeeCount,
+    socialMedia: data.socialMedia || {},
+    workingHours: data.workingHours || [],
+    responseRate: data.responseRate || 95,
     createdAt: toDate(data.createdAt),
   };
 };
@@ -1554,55 +1647,106 @@ export async function createOrGetConversation(
   otherUserImage: string,
   serviceCategory?: string
 ): Promise<string> {
+  console.log('[createOrGetConversation] Starting with:', { userId, otherUserId, userName, otherUserName });
+
   // Generate deterministic conversation ID to prevent race conditions
   const conversationId = generateConversationId(userId, otherUserId);
+  console.log('[createOrGetConversation] Generated conversationId:', conversationId);
+
   const conversationRef = doc(db, 'conversations', conversationId);
 
   // Check if conversation already exists
-  const existingDoc = await getDoc(conversationRef);
+  console.log('[createOrGetConversation] Checking if conversation exists...');
+  let existingDoc;
+  let conversationExists = false;
 
-  if (existingDoc.exists()) {
+  try {
+    existingDoc = await getDoc(conversationRef);
+    conversationExists = existingDoc.exists();
+    console.log('[createOrGetConversation] Conversation exists:', conversationExists);
+  } catch (readError: any) {
+    // If we get a permission error, the conversation might exist but user can't read it
+    // This can happen if the conversation format changed or there's a data inconsistency
+    console.warn('[createOrGetConversation] Read error (might be permission issue):', readError?.code, readError?.message);
+    // We'll try to create a new conversation instead
+    conversationExists = false;
+  }
+
+  if (conversationExists && existingDoc) {
     // Update participant info in case names/images have changed
-    await updateDoc(conversationRef, {
-      [`participantNames.${userId}`]: userName,
-      [`participantNames.${otherUserId}`]: otherUserName,
-      [`participantImages.${userId}`]: userImage || '',
-      [`participantImages.${otherUserId}`]: otherUserImage || '',
-    });
+    console.log('[createOrGetConversation] Updating existing conversation...');
+    try {
+      await updateDoc(conversationRef, {
+        [`participantNames.${userId}`]: userName,
+        [`participantNames.${otherUserId}`]: otherUserName,
+        [`participantImages.${userId}`]: userImage || '',
+        [`participantImages.${otherUserId}`]: otherUserImage || '',
+      });
+      console.log('[createOrGetConversation] Updated successfully');
+    } catch (updateError: any) {
+      console.error('[createOrGetConversation] Update error:', updateError?.code, updateError?.message);
+      // If update fails, try to continue - maybe we need to recreate
+      if (updateError?.code === 'permission-denied') {
+        console.log('[createOrGetConversation] Permission denied on update, will try to use existing or create new');
+        return conversationId; // Return existing ID, user might still be able to send messages
+      }
+      throw updateError;
+    }
     return conversationId;
   }
 
   // Create new conversation with deterministic ID using setDoc
   // This prevents duplicates even if two users create simultaneously
+  console.log('[createOrGetConversation] Creating new conversation...');
   const now = Timestamp.now();
-  await setDoc(conversationRef, {
-    participantIds: [userId, otherUserId].sort(), // Sorted for consistency
-    participantNames: {
-      [userId]: userName,
-      [otherUserId]: otherUserName,
-    },
-    participantImages: {
-      [userId]: userImage || '',
-      [otherUserId]: otherUserImage || '',
-    },
-    lastMessage: '',
-    lastMessageAt: now,
-    unreadCount: {
-      [userId]: 0,
-      [otherUserId]: 0,
-    },
-    createdAt: now,
-  });
+  try {
+    // Use merge: true to avoid overwriting if document somehow exists
+    await setDoc(conversationRef, {
+      participantIds: [userId, otherUserId].sort(), // Sorted for consistency
+      participantNames: {
+        [userId]: userName,
+        [otherUserId]: otherUserName,
+      },
+      participantImages: {
+        [userId]: userImage || '',
+        [otherUserId]: otherUserImage || '',
+      },
+      lastMessage: '',
+      lastMessageAt: now,
+      unreadCount: {
+        [userId]: 0,
+        [otherUserId]: 0,
+      },
+      createdAt: now,
+    }, { merge: true });
+    console.log('[createOrGetConversation] Conversation created successfully');
+  } catch (setDocError: any) {
+    console.error('[createOrGetConversation] setDoc error:', setDocError?.code, setDocError?.message);
+
+    // If permission denied, the conversation might exist but we can't access it
+    // Return the conversation ID anyway - user might be able to send messages
+    if (setDocError?.code === 'permission-denied') {
+      console.warn('[createOrGetConversation] Permission denied on create - returning ID anyway');
+      return conversationId;
+    }
+    throw setDocError;
+  }
 
   // Add welcome message
-  await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
-    senderId: 'system',
-    text: `Sohbet başlatıldı. ${otherUserName} ile iletişime geçebilirsiniz.`,
-    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-    date: new Date().toLocaleDateString('tr-TR'),
-    type: 'text',
-    createdAt: now,
-  });
+  try {
+    await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
+      senderId: 'system',
+      text: `Sohbet başlatıldı. ${otherUserName} ile iletişime geçebilirsiniz.`,
+      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      date: new Date().toLocaleDateString('tr-TR'),
+      type: 'text',
+      createdAt: now,
+    });
+    console.log('[createOrGetConversation] Welcome message added');
+  } catch (msgError: any) {
+    console.warn('[createOrGetConversation] Welcome message error (non-critical):', msgError?.message);
+    // Don't throw - the conversation was created, message is optional
+  }
 
   return conversationId;
 }
@@ -1832,6 +1976,8 @@ export interface CreateOfferRequestParams {
   eventTitle: string;
   eventDate?: string;
   eventCity?: string;
+  eventDistrict?: string;
+  eventVenue?: string;
   // Organizer info (legacy)
   organizerId: string;
   organizerName: string;
@@ -2063,7 +2209,7 @@ export async function sendCounterOffer(
 type OfferStatus = 'pending' | 'quoted' | 'counter_offered' | 'accepted' | 'rejected' | 'expired' | 'cancelled';
 
 const VALID_TRANSITIONS: Record<OfferStatus, OfferStatus[]> = {
-  'pending': ['quoted', 'cancelled'],
+  'pending': ['quoted', 'cancelled', 'accepted', 'rejected'], // accepted/rejected when organizer sends budget
   'quoted': ['accepted', 'rejected', 'counter_offered', 'expired'],
   'counter_offered': ['accepted', 'rejected', 'counter_offered', 'expired'],
   'accepted': [], // terminal
@@ -2092,13 +2238,15 @@ export async function acceptOffer(
   const data = offerDoc.data();
   const currentStatus = data?.status as OfferStatus;
 
-  // Can only accept from quoted or counter_offered states
+  // Check valid transition
   if (!isValidTransition(currentStatus, 'accepted')) {
     throw new Error(`Bu durumda teklif kabul edilemez. Mevcut durum: ${currentStatus}`);
   }
 
-  // Determine final amount: use counterAmount if exists, otherwise use amount
-  const finalAmount = data?.counterAmount || data?.amount || 0;
+  // Determine final amount: use counterAmount if exists, otherwise use amount or requestedBudget
+  // For pending state (when organizer sends budget directly), use requestedBudget
+  const requestedBudget = data?.requestedBudget ? parseInt(data.requestedBudget) : 0;
+  const finalAmount = data?.counterAmount || data?.amount || requestedBudget || 0;
 
   await updateDoc(doc(db, 'offers', offerId), {
     status: 'accepted',
@@ -2518,51 +2666,108 @@ export async function syncOffersToEventServices(eventId: string): Promise<void> 
     for (const offerDoc of offersSnapshot.docs) {
       const offer = offerDoc.data();
       const serviceCategory = offer.serviceCategory || 'other';
-      const matchCategories = categoryMapping[serviceCategory] || [serviceCategory];
       const finalAmount = offer.finalAmount || offer.counterAmount || offer.amount || 0;
 
-      // Check if already confirmed for this provider
-      const alreadyConfirmed = services.some(
-        (s: any) => s.providerId === offer.providerId && s.status === 'confirmed'
+      // Determine service status based on contract signing
+      const isContractSigned = offer.contractSigned === true ||
+        (offer.contractSignedByOrganizer === true && offer.contractSignedByProvider === true);
+      const serviceStatus = isContractSigned ? 'confirmed' : 'contract_pending';
+
+      // First, check if this specific offer already has a service (by offerId)
+      const existingServiceByOfferId = services.findIndex(
+        (s: any) => s.offerId === offerDoc.id
       );
 
-      if (alreadyConfirmed) {
+      if (existingServiceByOfferId !== -1) {
+        // Update existing service for this offer (status might have changed)
+        services[existingServiceByOfferId] = {
+          ...services[existingServiceByOfferId],
+          status: serviceStatus,
+          price: finalAmount,
+          contractId: offer.contractId || offerDoc.id,
+        };
+        servicesUpdated = true;
         continue;
       }
 
-      // Find a pending service with matching category
-      const serviceIndex = services.findIndex(
-        (s: any) => matchCategories.includes(s.category) && (s.status === 'pending' || s.status === 'offered')
+      // Check if this provider already has a confirmed service for this event
+      const alreadyConfirmedForProvider = services.some(
+        (s: any) => s.providerId === offer.providerId &&
+                    s.offerId === offerDoc.id
       );
 
-      if (serviceIndex !== -1) {
-        services[serviceIndex] = {
-          ...services[serviceIndex],
-          status: 'confirmed',
+      if (alreadyConfirmedForProvider) {
+        continue;
+      }
+
+      // For booking/artist category: Allow multiple artists
+      // Each accepted offer creates its own service entry
+      // For other categories: Find and update pending service OR add new
+
+      const isBookingCategory = serviceCategory === 'booking' || serviceCategory === 'artist';
+
+      if (isBookingCategory) {
+        // For booking: Always add as new service (multiple artists allowed)
+        services.push({
+          id: `svc_${offerDoc.id}`,
+          category: serviceCategory,
+          name: offer.artistName || offer.providerName || 'Sanatçı',
+          status: serviceStatus,
           price: finalAmount,
-          provider: offer.providerName || offer.artistName,
+          provider: offer.providerName,
           providerId: offer.providerId,
-          providerImage: offer.providerImage || '',
+          providerImage: offer.providerImage || offer.artistImage || '',
           providerPhone: offer.providerPhone || '',
-          name: offer.artistName || services[serviceIndex].name,
-        };
+          offerId: offerDoc.id,
+          contractId: offer.contractId || offerDoc.id,
+          // Store artist info separately for booking services
+          artistId: offer.artistId,
+          artistName: offer.artistName,
+          artistImage: offer.artistImage,
+        });
         servicesUpdated = true;
       } else {
-        // Add new service if no match
-        const hasProviderService = services.some((s: any) => s.providerId === offer.providerId);
-        if (!hasProviderService) {
-          services.push({
-            id: `svc_${offerDoc.id}`,
-            category: serviceCategory,
-            name: offer.artistName || offer.providerName || serviceCategory,
-            status: 'confirmed',
+        // For non-booking categories: Find pending service to update or add new
+        const matchCategories = categoryMapping[serviceCategory] || [serviceCategory];
+        const serviceIndex = services.findIndex(
+          (s: any) => matchCategories.includes(s.category) &&
+            (s.status === 'pending' || s.status === 'offered') &&
+            !s.offerId // Only update services that don't have an offerId yet
+        );
+
+        if (serviceIndex !== -1) {
+          services[serviceIndex] = {
+            ...services[serviceIndex],
+            status: serviceStatus,
             price: finalAmount,
             provider: offer.providerName,
             providerId: offer.providerId,
             providerImage: offer.providerImage || '',
             providerPhone: offer.providerPhone || '',
-          });
+            name: offer.artistName || services[serviceIndex].name,
+            offerId: offerDoc.id,
+            contractId: offer.contractId || offerDoc.id,
+          };
           servicesUpdated = true;
+        } else {
+          // Add new service
+          const hasProviderService = services.some((s: any) => s.offerId === offerDoc.id);
+          if (!hasProviderService) {
+            services.push({
+              id: `svc_${offerDoc.id}`,
+              category: serviceCategory,
+              name: offer.artistName || offer.providerName || serviceCategory,
+              status: serviceStatus,
+              price: finalAmount,
+              provider: offer.providerName,
+              providerId: offer.providerId,
+              providerImage: offer.providerImage || '',
+              providerPhone: offer.providerPhone || '',
+              offerId: offerDoc.id,
+              contractId: offer.contractId || offerDoc.id,
+            });
+            servicesUpdated = true;
+          }
         }
       }
     }
@@ -2578,4 +2783,321 @@ export async function syncOffersToEventServices(eventId: string): Promise<void> 
   } catch (error: any) {
     console.warn('[syncOffersToEventServices] Error:', error?.code, error?.message || error);
   }
+}
+
+// ============================================
+// ARTIST TEAM MANAGEMENT
+// ============================================
+
+export interface ArtistTeamMember {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role: string;
+  roleCategory: string;
+  notes?: string;
+  status: 'active' | 'inactive';
+  joinedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ArtistRider {
+  id: string;
+  type: 'technical' | 'hospitality' | 'general';
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  url: string;
+  uploadedAt: Date;
+  uploadedBy: string;
+}
+
+/**
+ * Hook to fetch artist team members
+ */
+export function useArtistTeam(artistId: string | undefined) {
+  const [teamMembers, setTeamMembers] = useState<ArtistTeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = useCallback(() => setRefreshKey(k => k + 1), []);
+
+  useEffect(() => {
+    if (!artistId) {
+      setTeamMembers([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const teamRef = collection(db, 'artists', artistId, 'team');
+    const teamQuery = query(teamRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      teamQuery,
+      (snapshot) => {
+        const members = snapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            name: data.name || '',
+            email: data.email,
+            phone: data.phone,
+            role: data.role || '',
+            roleCategory: data.roleCategory || 'other',
+            notes: data.notes,
+            status: data.status || 'active',
+            joinedAt: toDate(data.joinedAt),
+            createdAt: toDate(data.createdAt),
+            updatedAt: toDate(data.updatedAt),
+          } as ArtistTeamMember;
+        });
+        setTeamMembers(members);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn('Error fetching artist team:', err?.message || err);
+        setError('Ekip üyeleri yüklenirken hata oluştu');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [artistId, refreshKey]);
+
+  return { teamMembers, loading, error, refetch };
+}
+
+/**
+ * Add a team member to an artist
+ */
+export async function addArtistTeamMember(
+  artistId: string,
+  memberData: {
+    name: string;
+    email?: string;
+    phone?: string;
+    role: string;
+    roleCategory: string;
+    notes?: string;
+  }
+): Promise<string> {
+  const teamRef = collection(db, 'artists', artistId, 'team');
+  const now = Timestamp.now();
+
+  const docRef = await addDoc(teamRef, {
+    ...memberData,
+    status: 'active',
+    joinedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return docRef.id;
+}
+
+/**
+ * Remove a team member from an artist
+ */
+export async function removeArtistTeamMember(artistId: string, memberId: string): Promise<void> {
+  const memberRef = doc(db, 'artists', artistId, 'team', memberId);
+  await deleteDoc(memberRef);
+}
+
+/**
+ * Hook to fetch artist riders
+ */
+export function useArtistRiders(artistId: string | undefined) {
+  const [riders, setRiders] = useState<ArtistRider[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = useCallback(() => setRefreshKey(k => k + 1), []);
+
+  useEffect(() => {
+    if (!artistId) {
+      setRiders([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const ridersRef = collection(db, 'artists', artistId, 'riders');
+    const ridersQuery = query(ridersRef, orderBy('uploadedAt', 'desc'));
+
+    const unsubscribe = onSnapshot(
+      ridersQuery,
+      (snapshot) => {
+        const ridersList = snapshot.docs.map(docSnap => {
+          const data = docSnap.data();
+          return {
+            id: docSnap.id,
+            type: data.type || 'general',
+            fileName: data.fileName || '',
+            fileSize: data.fileSize || 0,
+            mimeType: data.mimeType || 'application/pdf',
+            url: data.url || '',
+            uploadedAt: toDate(data.uploadedAt),
+            uploadedBy: data.uploadedBy || '',
+          } as ArtistRider;
+        });
+        setRiders(ridersList);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn('Error fetching artist riders:', err?.message || err);
+        setError('Rider dosyaları yüklenirken hata oluştu');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [artistId, refreshKey]);
+
+  return { riders, loading, error, refetch };
+}
+
+/**
+ * Upload a rider document for an artist
+ */
+export async function uploadArtistRider(
+  artistId: string,
+  riderData: {
+    type: 'technical' | 'hospitality' | 'general';
+    fileName: string;
+    fileUri: string;
+    fileSize: number;
+    mimeType: string;
+  }
+): Promise<string> {
+  // For now, store the file URI directly (in production, upload to Firebase Storage)
+  // This is a simplified version - real implementation would upload to storage
+  const ridersRef = collection(db, 'artists', artistId, 'riders');
+  const now = Timestamp.now();
+
+  const docRef = await addDoc(ridersRef, {
+    type: riderData.type,
+    fileName: riderData.fileName,
+    fileSize: riderData.fileSize,
+    mimeType: riderData.mimeType,
+    url: riderData.fileUri, // In production, this would be the storage URL
+    uploadedAt: now,
+    uploadedBy: '', // Add current user ID in real implementation
+  });
+
+  return docRef.id;
+}
+
+/**
+ * Delete a rider document from an artist
+ */
+export async function deleteArtistRider(artistId: string, riderId: string): Promise<void> {
+  const riderRef = doc(db, 'artists', artistId, 'riders', riderId);
+  // In production, also delete from Firebase Storage
+  await deleteDoc(riderRef);
+}
+
+// Artist show type for display
+export interface ArtistShow {
+  id: string;
+  offerId: string;
+  eventId: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime?: string;
+  venue: string;
+  city: string;
+  organizerName: string;
+  organizerImage?: string;
+  contractAmount: number;
+  status: 'upcoming' | 'completed' | 'cancelled';
+  eventImage?: string;
+}
+
+/**
+ * Hook to fetch shows/events for a specific artist
+ * Fetches accepted offers where artistId matches
+ */
+export function useArtistShows(artistId: string | undefined) {
+  const [shows, setShows] = useState<ArtistShow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!artistId) {
+      setShows([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Query offers where artistId matches and status is accepted
+    const offersRef = collection(db, 'offers');
+    const q = query(
+      offersRef,
+      where('artistId', '==', artistId),
+      where('status', '==', 'accepted'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      async (snapshot) => {
+        const showsList: ArtistShow[] = [];
+
+        for (const offerDoc of snapshot.docs) {
+          const offerData = offerDoc.data();
+
+          // Determine show status based on event date
+          let showStatus: 'upcoming' | 'completed' | 'cancelled' = 'upcoming';
+          if (offerData.eventDate) {
+            const eventDate = new Date(offerData.eventDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (eventDate < today) {
+              showStatus = 'completed';
+            }
+          }
+
+          showsList.push({
+            id: offerDoc.id,
+            offerId: offerDoc.id,
+            eventId: offerData.eventId || '',
+            eventTitle: offerData.eventTitle || offerData.eventName || 'Etkinlik',
+            eventDate: offerData.eventDate || '',
+            eventTime: offerData.eventTime,
+            venue: offerData.eventVenue || offerData.venue || '',
+            city: offerData.eventCity || '',
+            organizerName: offerData.organizerName || 'Organizatör',
+            organizerImage: offerData.organizerImage,
+            contractAmount: offerData.finalAmount || offerData.amount || 0,
+            status: showStatus,
+            eventImage: offerData.eventImage,
+          });
+        }
+
+        setShows(showsList);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn('Error fetching artist shows:', err?.message || err);
+        setError('Gösteriler yüklenirken hata oluştu');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [artistId]);
+
+  return { shows, loading, error };
 }

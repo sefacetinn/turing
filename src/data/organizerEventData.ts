@@ -12,6 +12,8 @@ export interface Service {
   providerPhone?: string;
   providerImage?: string;
   price: number;
+  offerId?: string;
+  contractId?: string;
 }
 
 export interface TimelineItem {
@@ -45,17 +47,94 @@ export interface EventTeamMember {
 // Category info helper
 export const getCategoryInfo = (category: string) => {
   const categories: Record<string, { name: string; icon: keyof typeof Ionicons.glyphMap; gradient: readonly [string, string] }> = {
+    // Artist/Booking categories
     booking: { name: 'Booking', icon: 'musical-notes', gradient: gradients.booking },
+    artist: { name: 'Sanatçı', icon: 'musical-notes', gradient: gradients.booking },
+    sanatci: { name: 'Sanatçı', icon: 'musical-notes', gradient: gradients.booking },
+
+    // Technical categories - Ses & Işık
     technical: { name: 'Teknik', icon: 'volume-high', gradient: gradients.technical },
+    'sound-light': { name: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+    sound_light: { name: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+    soundlight: { name: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+    'ses-isik': { name: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+    ses_isik: { name: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+    sesisik: { name: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+    stage: { name: 'Sahne', icon: 'easel', gradient: gradients.technical },
+    sahne: { name: 'Sahne', icon: 'easel', gradient: gradients.technical },
+
+    // Venue & Location
     venue: { name: 'Mekan', icon: 'business', gradient: gradients.venue },
+    mekan: { name: 'Mekan', icon: 'business', gradient: gradients.venue },
     accommodation: { name: 'Konaklama', icon: 'bed', gradient: gradients.accommodation },
+    konaklama: { name: 'Konaklama', icon: 'bed', gradient: gradients.accommodation },
+    otel: { name: 'Konaklama', icon: 'bed', gradient: gradients.accommodation },
+
+    // Transportation
     transport: { name: 'Ulaşım', icon: 'car', gradient: gradients.transport },
+    transportation: { name: 'Ulaşım', icon: 'car', gradient: gradients.transport },
+    ulasim: { name: 'Ulaşım', icon: 'car', gradient: gradients.transport },
     flight: { name: 'Uçak', icon: 'airplane', gradient: gradients.flight },
+    ucus: { name: 'Uçak', icon: 'airplane', gradient: gradients.flight },
+
+    // Operations & Support
     operation: { name: 'Operasyon', icon: 'settings', gradient: gradients.operation },
+    operasyon: { name: 'Operasyon', icon: 'settings', gradient: gradients.operation },
     security: { name: 'Güvenlik', icon: 'shield', gradient: ['#ef4444', '#dc2626'] as const },
+    guvenlik: { name: 'Güvenlik', icon: 'shield', gradient: ['#ef4444', '#dc2626'] as const },
     catering: { name: 'Catering', icon: 'restaurant', gradient: ['#f97316', '#ea580c'] as const },
+    yemek: { name: 'Catering', icon: 'restaurant', gradient: ['#f97316', '#ea580c'] as const },
+    beverage: { name: 'İçecek', icon: 'cafe', gradient: ['#f97316', '#ea580c'] as const },
+    icecek: { name: 'İçecek', icon: 'cafe', gradient: ['#f97316', '#ea580c'] as const },
+
+    // Media & Production
+    media: { name: 'Medya', icon: 'videocam', gradient: ['#8b5cf6', '#7c3aed'] as const },
+    medya: { name: 'Medya', icon: 'videocam', gradient: ['#8b5cf6', '#7c3aed'] as const },
+    photography: { name: 'Fotoğraf', icon: 'camera', gradient: ['#06b6d4', '#0891b2'] as const },
+    fotograf: { name: 'Fotoğraf', icon: 'camera', gradient: ['#06b6d4', '#0891b2'] as const },
+    production: { name: 'Prodüksiyon', icon: 'film', gradient: ['#8b5cf6', '#7c3aed'] as const },
+    produksiyon: { name: 'Prodüksiyon', icon: 'film', gradient: ['#8b5cf6', '#7c3aed'] as const },
+
+    // Other services
+    decoration: { name: 'Dekorasyon', icon: 'color-palette', gradient: ['#ec4899', '#db2777'] as const },
+    dekorasyon: { name: 'Dekorasyon', icon: 'color-palette', gradient: ['#ec4899', '#db2777'] as const },
+    generator: { name: 'Jeneratör', icon: 'flash', gradient: ['#eab308', '#ca8a04'] as const },
+    jenerator: { name: 'Jeneratör', icon: 'flash', gradient: ['#eab308', '#ca8a04'] as const },
+    medical: { name: 'Sağlık', icon: 'medkit', gradient: ['#ef4444', '#dc2626'] as const },
+    medikal: { name: 'Sağlık', icon: 'medkit', gradient: ['#ef4444', '#dc2626'] as const },
+    saglik: { name: 'Sağlık', icon: 'medkit', gradient: ['#ef4444', '#dc2626'] as const },
+    barrier: { name: 'Bariyer', icon: 'remove', gradient: ['#64748b', '#475569'] as const },
+    bariyer: { name: 'Bariyer', icon: 'remove', gradient: ['#64748b', '#475569'] as const },
+    ticketing: { name: 'Biletleme', icon: 'ticket', gradient: ['#f97316', '#ea580c'] as const },
+    biletleme: { name: 'Biletleme', icon: 'ticket', gradient: ['#f97316', '#ea580c'] as const },
+    marketing: { name: 'Pazarlama', icon: 'megaphone', gradient: ['#8b5cf6', '#7c3aed'] as const },
+    pazarlama: { name: 'Pazarlama', icon: 'megaphone', gradient: ['#8b5cf6', '#7c3aed'] as const },
+    sanitation: { name: 'Sanitasyon', icon: 'water', gradient: ['#06b6d4', '#0891b2'] as const },
+    sanitasyon: { name: 'Sanitasyon', icon: 'water', gradient: ['#06b6d4', '#0891b2'] as const },
+    tent: { name: 'Çadır / Tente', icon: 'home', gradient: ['#64748b', '#475569'] as const },
+    cadir: { name: 'Çadır / Tente', icon: 'home', gradient: ['#64748b', '#475569'] as const },
+    tente: { name: 'Çadır / Tente', icon: 'home', gradient: ['#64748b', '#475569'] as const },
   };
-  return categories[category] || { name: category, icon: 'help-circle' as const, gradient: gradients.primary };
+
+  // Direkt eşleşme varsa döndür
+  if (categories[category]) {
+    return categories[category];
+  }
+
+  // Küçük harfe çevirip tekrar dene
+  const lowerCategory = category?.toLowerCase?.() || category;
+  if (categories[lowerCategory]) {
+    return categories[lowerCategory];
+  }
+
+  // Tire ve alt çizgileri normalize et
+  const normalizedCategory = lowerCategory?.replace?.(/[-_]/g, '') || lowerCategory;
+  if (categories[normalizedCategory]) {
+    return categories[normalizedCategory];
+  }
+
+  // Bulunamazsa varsayılan döndür
+  return { name: category, icon: 'help-circle' as const, gradient: gradients.primary };
 };
 
 // Big Bang Summer Festival 2026 - Timeline
@@ -359,6 +438,8 @@ export const getServiceStatusInfo = (status: string, colors: ThemeColors) => {
   switch (status) {
     case 'confirmed':
       return { label: 'Onaylandı', color: colors.success, icon: 'checkmark-circle' as const };
+    case 'contract_pending':
+      return { label: 'Sözleşme Bekliyor', color: colors.brand[400], icon: 'document-text' as const };
     case 'pending':
       return { label: 'Bekliyor', color: colors.warning, icon: 'time' as const };
     case 'offered':
@@ -390,15 +471,18 @@ export const getBudgetStatusInfo = (status: string, colors: ThemeColors) => {
 export const calculateEventStats = (services: Service[]) => {
   const totalBudget = services.reduce((sum, s) => sum + s.price, 0);
   const confirmedServices = services.filter(s => s.status === 'confirmed');
+  const contractPendingServices = services.filter(s => s.status === 'contract_pending');
   const confirmedSpent = confirmedServices.reduce((sum, s) => sum + s.price, 0);
   const pendingCount = services.filter(s => s.status === 'pending').length;
   const offeredCount = services.filter(s => s.status === 'offered').length;
+  const contractPendingCount = contractPendingServices.length;
   const draftCount = services.filter(s => s.status === 'draft').length;
 
   return {
     totalBudget,
     confirmedSpent,
     confirmedCount: confirmedServices.length,
+    contractPendingCount,
     pendingCount,
     offeredCount,
     draftCount,

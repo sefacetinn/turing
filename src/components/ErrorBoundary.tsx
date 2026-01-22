@@ -8,6 +8,7 @@ import {
   useColorScheme,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { captureException, addBreadcrumb } from '../services/sentry';
 
 interface Props {
   children: ReactNode;
@@ -80,7 +81,21 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    // Here you could send error to a logging service
+
+    // Send error to Sentry
+    addBreadcrumb({
+      category: 'error-boundary',
+      message: 'App-level error boundary triggered',
+      level: 'error',
+      data: {
+        componentStack: errorInfo.componentStack,
+      },
+    });
+
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: 'AppErrorBoundary',
+    });
   }
 
   handleRetry = () => {
@@ -195,7 +210,25 @@ export class ScreenErrorBoundary extends Component<ScreenErrorBoundaryProps, Scr
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`ScreenErrorBoundary [${this.props.screenName || 'Unknown'}]:`, error, errorInfo);
+    const screenName = this.props.screenName || 'Unknown';
+    console.error(`ScreenErrorBoundary [${screenName}]:`, error, errorInfo);
+
+    // Send error to Sentry
+    addBreadcrumb({
+      category: 'error-boundary',
+      message: `Screen error boundary triggered: ${screenName}`,
+      level: 'error',
+      data: {
+        screenName,
+        componentStack: errorInfo.componentStack,
+      },
+    });
+
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: 'ScreenErrorBoundary',
+      screenName,
+    });
   }
 
   handleRetry = () => {

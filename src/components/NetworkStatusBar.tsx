@@ -21,8 +21,8 @@ export function NetworkStatusBar() {
 
   // Only show offline banner when definitely not connected
   // isInternetReachable can be null or false in simulators even with working connection
-  // Also require isInternetReachable to be explicitly false (not null) for extra certainty
-  const isOffline = isConnected === false || (isConnected === true && isInternetReachable === false);
+  // So we only check isConnected to avoid false positives
+  const isOffline = isConnected === false;
 
   // Add a delay before showing the banner to prevent flashing on app startup
   // and handle brief network hiccups

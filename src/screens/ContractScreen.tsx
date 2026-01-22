@@ -255,16 +255,18 @@ export function ContractScreen() {
                     providerPhone: firebaseOffer?.providerPhone || s.providerPhone,
                     price: firebaseOffer?.finalAmount || firebaseOffer?.amount || s.price,
                     name: firebaseOffer?.artistName || s.name,
+                    offerId: firebaseOffer?.id || s.offerId,
+                    contractId: firebaseOffer?.contractId || firebaseOffer?.id || s.contractId,
                   };
                 }
                 return s;
               });
 
-              // If no service was updated by providerId match, update first pending/offered service
+              // If no service was updated by providerId match, update first pending/offered/contract_pending service
               if (!serviceUpdated) {
                 for (let i = 0; i < updatedServices.length; i++) {
                   const s = updatedServices[i];
-                  if (matchCategories.includes(s.category) && (s.status === 'offered' || s.status === 'pending')) {
+                  if (matchCategories.includes(s.category) && (s.status === 'offered' || s.status === 'pending' || s.status === 'contract_pending')) {
                     updatedServices[i] = {
                       ...s,
                       status: 'confirmed',
@@ -274,7 +276,10 @@ export function ContractScreen() {
                       providerPhone: firebaseOffer?.providerPhone || s.providerPhone,
                       price: firebaseOffer?.finalAmount || firebaseOffer?.amount || s.price,
                       name: firebaseOffer?.artistName || s.name,
+                      offerId: firebaseOffer?.id || s.offerId,
+                      contractId: firebaseOffer?.contractId || firebaseOffer?.id || s.contractId,
                     };
+                    serviceUpdated = true;
                     break; // Only update one service
                   }
                 }

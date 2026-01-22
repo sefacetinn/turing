@@ -189,6 +189,8 @@ export function CategoryRequestScreen() {
       // Add optional fields only if they have values
       if (selectedEventData?.date) requestData.eventDate = selectedEventData.date;
       if (selectedEventData?.city) requestData.eventCity = selectedEventData.city;
+      if (selectedEventData?.district) requestData.eventDistrict = selectedEventData.district;
+      if (selectedEventData?.venue) requestData.eventVenue = selectedEventData.venue;
       if (budget && budget.trim()) requestData.requestedBudget = budget.trim();
       if (notes && notes.trim()) requestData.notes = notes.trim();
 

@@ -14,6 +14,7 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "scheme": "turing",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.turing.mobile",
@@ -22,8 +23,12 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Profil fotoğrafı ve etkinlik görselleri için kamera erişimi gereklidir.",
         "NSPhotoLibraryUsageDescription": "Profil fotoğrafı ve etkinlik görselleri yüklemek için galeri erişimi gereklidir.",
-        "NSLocationWhenInUseUsageDescription": "Yakındaki etkinlikleri ve mekanları göstermek için konum erişimi gereklidir."
-      }
+        "NSLocationWhenInUseUsageDescription": "Yakındaki etkinlikleri ve mekanları göstermek için konum erişimi gereklidir.",
+        "NSFaceIDUsageDescription": "Biyometrik kimlik doğrulama için Face ID erişimi gereklidir."
+      },
+      "associatedDomains": [
+        "applinks:app.turing.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +42,26 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.turing.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "turing"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -61,6 +85,14 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#7c3aed"
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "your-sentry-org",
+          "project": "turing-mobile",
+          "url": "https://sentry.io/"
         }
       ]
     ],

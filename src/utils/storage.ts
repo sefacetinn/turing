@@ -1,5 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, AuthUser } from '../types/auth';
+import {
+  saveAuthTokenSecure,
+  getAuthTokenSecure,
+  clearAuthTokenSecure,
+  clearAllSecureData,
+} from './secureStorage';
 
 // Check if user has completed onboarding
 export const hasCompletedOnboarding = async (): Promise<boolean> => {
@@ -47,28 +53,28 @@ export const clearRememberedEmail = async (): Promise<void> => {
   }
 };
 
-// Save auth token
+// Save auth token (uses SecureStore for sensitive data)
 export const saveAuthToken = async (token: string): Promise<void> => {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    await saveAuthTokenSecure(token);
   } catch (error) {
     console.error('Failed to save auth token:', error);
   }
 };
 
-// Get auth token
+// Get auth token (uses SecureStore for sensitive data)
 export const getAuthToken = async (): Promise<string | null> => {
   try {
-    return await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    return await getAuthTokenSecure();
   } catch {
     return null;
   }
 };
 
-// Clear auth token
+// Clear auth token (uses SecureStore for sensitive data)
 export const clearAuthToken = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    await clearAuthTokenSecure();
   } catch (error) {
     console.error('Failed to clear auth token:', error);
   }
@@ -105,10 +111,11 @@ export const clearUserData = async (): Promise<void> => {
 // Clear all auth data (logout)
 export const clearAllAuthData = async (): Promise<void> => {
   try {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.AUTH_TOKEN,
-      STORAGE_KEYS.USER_DATA,
-    ]);
+    // Clear secure storage data (auth tokens, session)
+    await clearAllSecureData();
+
+    // Clear AsyncStorage user data
+    await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
   } catch (error) {
     console.error('Failed to clear auth data:', error);
   }

@@ -45,7 +45,7 @@ import { PosterGenerator } from '../components/poster';
 import { RatingModal } from '../components/rating';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { useEvent, syncOffersToEventServices, syncOffersToEventServicesWithDebug } from '../hooks';
-import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions } from '../data/createEventData';
+import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions, eventTypes } from '../data/createEventData';
 import { deleteDocument, Collections } from '../services/firebase/firestore';
 
 // Helper to get label from option arrays
@@ -218,7 +218,11 @@ export function OrganizerEventDetailScreen() {
       status: s.status,
       provider: s.provider || null,
       providerId: s.providerId,
+      providerPhone: s.providerPhone,
+      providerImage: s.providerImage,
       price: s.price || 0,
+      offerId: s.offerId,
+      contractId: s.contractId,
     }));
 
     return {
@@ -243,6 +247,7 @@ export function OrganizerEventDetailScreen() {
       indoorOutdoor: firebaseEvent.indoorOutdoor || '',
       venueCapacity: firebaseEvent.venueCapacity || '',
       guestCount: firebaseEvent.guestCount || '',
+      eventType: firebaseEvent.eventType || '',
     };
   }, [firebaseEvent]);
 
@@ -316,11 +321,12 @@ export function OrganizerEventDetailScreen() {
   }, [event?.services]);
 
   const stats = useMemo(() => {
-    if (!event) return { confirmed: 0, pending: 0, offered: 0, total: 0 };
+    if (!event) return { confirmed: 0, contractPending: 0, pending: 0, offered: 0, total: 0 };
     const confirmed = event.services.filter((s: Service) => s.status === 'confirmed').length;
+    const contractPending = event.services.filter((s: Service) => s.status === 'contract_pending').length;
     const pending = event.services.filter((s: Service) => s.status === 'pending').length;
     const offered = event.services.filter((s: Service) => s.status === 'offered').length;
-    return { confirmed, pending, offered, total: event.services.length };
+    return { confirmed, contractPending, pending, offered, total: event.services.length };
   }, [event?.services]);
 
   // Budget calculations
@@ -423,6 +429,7 @@ export function OrganizerEventDetailScreen() {
       'Etkinlik Seçenekleri',
       'Ne yapmak istiyorsunuz?',
       [
+        { text: '🚀 Etkinliği Yayınla', onPress: () => Alert.alert('Etkinliği Yayınla', 'Etkinliğinizi yayınlamak istediğinize emin misiniz?', [{ text: 'İptal', style: 'cancel' }, { text: 'Yayınla', onPress: () => Alert.alert('Başarılı', 'Etkinliğiniz yayınlandı!') }]) },
         { text: 'PDF Rapor İndir', onPress: () => Alert.alert('İndiriliyor', 'Etkinlik raporu PDF olarak hazırlanıyor...') },
         { text: 'E-posta ile Gönder', onPress: () => Linking.openURL(`mailto:?subject=${encodeURIComponent(event.title)}&body=${encodeURIComponent(`Etkinlik Detayları:\n\n${event.title}\nTarih: ${event.date}\nMekan: ${event.venue}\nBütçe: ₺${event.budget.toLocaleString('tr-TR')}`)}`) },
         { text: 'Etkinliği Klonla', onPress: () => Alert.alert('Klonlandı', 'Etkinlik taslak olarak kopyalandı. Etkinliklerim sayfasından düzenleyebilirsiniz.') },
@@ -684,12 +691,22 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
 
   const handleServicePress = (service: Service) => {
     if (service.status === 'confirmed' && service.providerId) {
-      navigation.navigate('ProviderDetail', { providerId: service.providerId });
+      // Onaylı hizmetler için operasyon sayfasına git
+      navigation.navigate('ServiceOperations' as any, {
+        eventId: event.id,
+        serviceId: service.id,
+        serviceName: service.name,
+        providerName: service.provider,
+        providerId: service.providerId,
+      });
+    } else if (service.status === 'contract_pending' && service.providerId) {
+      // Sözleşme bekleyen hizmetler için sözleşme sayfasına git
+      navigation.navigate('Contract', { contractId: service.contractId || service.offerId || service.id });
     } else if (service.status === 'offered') {
-      // TODO: Get offer from Firebase by service ID
-      // For now, navigate to offers tab
+      // Teklif durumundaki hizmetler için teklifler sekmesine git
       navigation.navigate('OffersTab');
     } else if (service.status === 'pending') {
+      // Bekleyen hizmetler için tedarikçi arama sayfasına git
       navigation.navigate('ServiceProviders', { category: service.category });
     }
   };
@@ -773,7 +790,7 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           </TouchableOpacity>
         )}
 
-        {service.status === 'confirmed' && service.provider && (
+        {(service.status === 'confirmed' || service.status === 'contract_pending') && service.provider && (
           <View style={styles.confirmedServiceActions}>
             <TouchableOpacity
               style={[styles.confirmedActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}
@@ -790,27 +807,33 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
               <Ionicons name="chatbubble" size={14} color={colors.brand[400]} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.confirmedActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)' }]}
+              style={[styles.confirmedActionBtn, { flex: 1, backgroundColor: service.status === 'contract_pending'
+                ? (isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)')
+                : (isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)') }]}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Contract', { contractId: service.id })}
+              onPress={() => navigation.navigate('Contract', { contractId: service.contractId || service.offerId || service.id })}
             >
-              <Ionicons name="document-text" size={14} color={colors.info} />
-              <Text style={[styles.confirmedActionText, { color: colors.info }]}>Sözleşme</Text>
+              <Ionicons name="document-text" size={14} color={service.status === 'contract_pending' ? '#8B5CF6' : colors.info} />
+              <Text style={[styles.confirmedActionText, { color: service.status === 'contract_pending' ? '#8B5CF6' : colors.info }]}>
+                {service.status === 'contract_pending' ? 'Sözleşmeyi İmzala' : 'Sözleşme'}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.confirmedActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}
-              activeOpacity={0.7}
-              onPress={() => navigation.navigate('ServiceOperations' as any, {
-                eventId: event.id,
-                serviceId: service.id,
-                serviceCategory: service.category,
-                serviceName: service.name,
-                providerName: service.provider
-              })}
-            >
-              <Ionicons name="settings" size={14} color="#8B5CF6" />
-              <Text style={[styles.confirmedActionText, { color: '#8B5CF6' }]}>Operasyon</Text>
-            </TouchableOpacity>
+            {service.status === 'confirmed' && (
+              <TouchableOpacity
+                style={[styles.confirmedActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate('ServiceOperations' as any, {
+                  eventId: event.id,
+                  serviceId: service.id,
+                  serviceCategory: service.category,
+                  serviceName: service.name,
+                  providerName: service.provider
+                })}
+              >
+                <Ionicons name="settings" size={14} color="#8B5CF6" />
+                <Text style={[styles.confirmedActionText, { color: '#8B5CF6' }]}>Operasyon</Text>
+              </TouchableOpacity>
+            )}
             {event?.status === 'completed' && (
               <TouchableOpacity
                 style={[styles.confirmedActionBtn, { flex: 1, backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}
@@ -904,26 +927,51 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
               </Text>
             </View>
             <Text style={styles.eventTitle}>{event.title}</Text>
-            <View style={styles.eventMeta}>
-              <View style={styles.eventMetaItem}><Ionicons name="calendar" size={14} color="white" /><Text style={styles.eventMetaText}>{event.date}</Text></View>
-              <View style={styles.eventMetaItem}><Ionicons name="location" size={14} color="white" /><Text style={styles.eventMetaText}>{event.venue}, {event.district}</Text></View>
-            </View>
           </View>
         </View>
 
-        {/* Progress Section */}
-        <View style={[styles.progressSection, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
-          <View style={styles.progressHeader}>
-            <Text style={[styles.progressTitle, { color: colors.text }]}>Genel İlerleme</Text>
-            <Text style={[styles.progressPercent, { color: colors.brand[400] }]}>{event.progress}%</Text>
+        {/* Event Info Card - Date, Time, Location */}
+        <View style={[styles.eventInfoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground }]}>
+          <View style={styles.eventInfoRow}>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
+                <Ionicons name="calendar" size={18} color="#6366F1" />
+              </View>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>Tarih</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{event.date}</Text>
+              </View>
+            </View>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                <Ionicons name="time" size={18} color="#F59E0B" />
+              </View>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>Saat</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{event.time.split(' - ')[0]}</Text>
+              </View>
+            </View>
           </View>
-          <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border }]}>
-            <LinearGradient colors={gradients.primary} style={[styles.progressFill, { width: `${event.progress}%` }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
-          </View>
-          <View style={styles.progressStats}>
-            <View style={styles.progressStatItem}><View style={[styles.progressStatDot, { backgroundColor: colors.success }]} /><Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.confirmed} Onaylı</Text></View>
-            <View style={styles.progressStatItem}><View style={[styles.progressStatDot, { backgroundColor: colors.warning }]} /><Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.pending} Bekliyor</Text></View>
-            <View style={styles.progressStatItem}><View style={[styles.progressStatDot, { backgroundColor: colors.info }]} /><Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.offered} Teklif</Text></View>
+          <View style={[styles.eventInfoDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]} />
+          <View style={styles.eventInfoRow}>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="business" size={18} color="#10B981" />
+              </View>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>Mekan</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]} numberOfLines={1}>{event.venue}</Text>
+              </View>
+            </View>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="location" size={18} color="#8B5CF6" />
+              </View>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>Konum</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{event.district ? `${event.district}, ` : ''}{event.location?.split(',')[0] || ''}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -943,10 +991,21 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         </View>
 
         {/* Event Details Tags */}
-        {(event.ageLimit || event.seatingType || event.indoorOutdoor) && (
+        {(event.eventType || event.ageLimit || event.seatingType || event.indoorOutdoor) && (
           <View style={[styles.eventDetailsContainer, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
             <Text style={[styles.eventDetailsTitle, { color: colors.textMuted }]}>Etkinlik Detaylari</Text>
             <View style={styles.eventDetailsTags}>
+              {event.eventType && (() => {
+                const typeInfo = eventTypes.find(t => t.id === event.eventType);
+                return (
+                  <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                    <Ionicons name={(typeInfo?.icon || 'calendar') as any} size={14} color="#8B5CF6" />
+                    <Text style={[styles.eventDetailTagText, { color: '#8B5CF6' }]}>
+                      {typeInfo?.name || event.eventType}
+                    </Text>
+                  </View>
+                );
+              })()}
               {event.ageLimit && (
                 <View style={[styles.eventDetailTag, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
                   <Ionicons name="shield-checkmark-outline" size={14} color="#EF4444" />
@@ -1011,28 +1070,28 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
                 {services.map(service => renderServiceCard(service))}
               </View>
             ))}
-            {/* Operation Hub Button */}
-            <TouchableOpacity
-              style={[styles.operationHubButton, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)', borderColor: isDark ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)' }]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                navigation.navigate('OperationHub' as any, { eventId: event.id });
-              }}
-            >
-              <View style={styles.operationHubIcon}>
-                <Ionicons name="grid" size={24} color="#8B5CF6" />
-              </View>
-              <View style={styles.operationHubContent}>
-                <Text style={[styles.operationHubTitle, { color: colors.text }]}>Operasyon Merkezi</Text>
-                <Text style={[styles.operationHubSubtitle, { color: colors.textMuted }]}>Tüm operasyonları tek yerden yönet</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.addServiceButton} onPress={() => Alert.alert('Hizmet Ekle', 'Hangi kategoriden hizmet eklemek istiyorsunuz?', [{ text: 'Booking', onPress: () => navigation.navigate('ServiceProviders', { category: 'booking' }) }, { text: 'Teknik', onPress: () => navigation.navigate('ServiceProviders', { category: 'technical' }) }, { text: 'Operasyon', onPress: () => navigation.navigate('ServiceProviders', { category: 'operation' }) }, { text: 'İptal', style: 'cancel' }])}>
               <Ionicons name="add" size={20} color={colors.brand[400]} />
               <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Progress Section - At the bottom of services */}
+        {activeSection === 'services' && (
+          <View style={[styles.progressSectionBottom, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground }]}>
+            <View style={styles.progressHeader}>
+              <Text style={[styles.progressTitle, { color: colors.text }]}>Genel İlerleme</Text>
+              <Text style={[styles.progressPercent, { color: colors.brand[400] }]}>{event.progress}%</Text>
+            </View>
+            <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border }]}>
+              <LinearGradient colors={gradients.primary} style={[styles.progressFill, { width: `${event.progress}%` }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+            </View>
+            <View style={styles.progressStats}>
+              <View style={styles.progressStatItem}><View style={[styles.progressStatDot, { backgroundColor: colors.success }]} /><Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.confirmed} Onaylı</Text></View>
+              <View style={styles.progressStatItem}><View style={[styles.progressStatDot, { backgroundColor: colors.warning }]} /><Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.pending} Bekliyor</Text></View>
+              <View style={styles.progressStatItem}><View style={[styles.progressStatDot, { backgroundColor: colors.info }]} /><Text style={[styles.progressStatText, { color: colors.textMuted }]}>{stats.offered} Teklif</Text></View>
+            </View>
           </View>
         )}
 
@@ -1473,18 +1532,8 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
               </TouchableOpacity>
             </View>
 
-            {/* Bottom Actions - In Scroll */}
-            <View style={[styles.bottomActionsInScroll, { paddingBottom: insets.bottom + TAB_BAR_HEIGHT }]}>
-              <TouchableOpacity style={[styles.messageButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }, isDark ? {} : helpers.getShadow('sm')]} onPress={() => navigation.navigate('MessagesTab')}>
-                <Ionicons name="chatbubble-outline" size={20} color={colors.brand[400]} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.primaryButton} onPress={() => Alert.alert('Etkinliği Yayınla', 'Etkinliğinizi yayınlamak istediğinize emin misiniz?', [{ text: 'İptal', style: 'cancel' }, { text: 'Yayınla', onPress: () => Alert.alert('Başarılı', 'Etkinliğiniz yayınlandı!') }])}>
-                <LinearGradient colors={gradients.primary} style={styles.primaryButtonGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <Ionicons name="rocket" size={18} color="white" />
-                  <Text style={styles.primaryButtonText}>Etkinliği Yayınla</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+            {/* Bottom Spacing */}
+            <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 20 }} />
           </>
         )}
 
@@ -1846,11 +1895,17 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, gap: 6, marginBottom: 10 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusBadgeText: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
-  eventTitle: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 10 },
-  eventMeta: { flexDirection: 'row', gap: 16 },
-  eventMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  eventMetaText: { fontSize: 13, color: 'rgba(255, 255, 255, 0.8)' },
+  eventTitle: { fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 0 },
+  eventInfoCard: { marginHorizontal: 16, marginTop: 16, marginBottom: 16, borderRadius: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  eventInfoRow: { flexDirection: 'row', gap: 12 },
+  eventInfoItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  eventInfoIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  eventInfoContent: { flex: 1 },
+  eventInfoLabel: { fontSize: 11, fontWeight: '500', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.3 },
+  eventInfoValue: { fontSize: 14, fontWeight: '600' },
+  eventInfoDivider: { height: 1, marginVertical: 12 },
   progressSection: { padding: 20, borderBottomWidth: 1 },
+  progressSectionBottom: { marginHorizontal: 20, marginTop: 8, marginBottom: 20, padding: 16, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   progressTitle: { fontSize: 16, fontWeight: '600' },
   progressPercent: { fontSize: 18, fontWeight: '700' },
@@ -1905,11 +1960,6 @@ const styles = StyleSheet.create({
   confirmedActionText: { fontSize: 12, fontWeight: '600' },
   addServiceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(75, 48, 184, 0.3)', borderStyle: 'dashed', gap: 8 },
   addServiceText: { fontSize: 14, fontWeight: '500' },
-  operationHubButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
-  operationHubIcon: { width: 48, height: 48, borderRadius: 12, backgroundColor: 'rgba(139, 92, 246, 0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  operationHubContent: { flex: 1 },
-  operationHubTitle: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
-  operationHubSubtitle: { fontSize: 13 },
   timelineSection: { padding: 20 },
   timelineItem: { flexDirection: 'row', marginBottom: 0 },
   timelineLeft: { alignItems: 'center', marginRight: 16 },
@@ -1940,11 +1990,6 @@ const styles = StyleSheet.create({
   actionButtons: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginBottom: 20 },
   actionButtonSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, borderWidth: 1, gap: 8 },
   actionButtonSecondaryText: { fontSize: 14, fontWeight: '500' },
-  bottomActionsInScroll: { flexDirection: 'row', paddingHorizontal: 20, paddingTop: 16, gap: 12 },
-  messageButton: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  primaryButton: { flex: 1, borderRadius: 16, overflow: 'hidden' },
-  primaryButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 52, gap: 8 },
-  primaryButtonText: { fontSize: 15, fontWeight: '600', color: 'white' },
   // Tickets Section Styles
   ticketsSection: { padding: 20 },
   posterSection: { padding: 20 },

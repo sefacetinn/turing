@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +18,14 @@ import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { sanitizeEmail } from '../utils/validation';
+import {
+  isRateLimited,
+  recordFailedAttempt,
+  recordSuccessfulAttempt,
+  formatRemainingTime,
+  RATE_LIMIT_ACTIONS,
+  PASSWORD_RESET_RATE_LIMIT_CONFIG,
+} from '../utils/rateLimiter';
 
 // Default colors for static styles
 const colors = defaultColors;
@@ -33,9 +42,71 @@ export function ForgotPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockRemainingTime, setLockRemainingTime] = useState(0);
 
-  const handleSendCode = () => {
+  // Check rate limit on mount
+  useEffect(() => {
+    checkRateLimit();
+  }, []);
+
+  // Countdown timer for rate limit
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isLocked && lockRemainingTime > 0) {
+      interval = setInterval(() => {
+        setLockRemainingTime((prev) => {
+          const newTime = prev - 1000;
+          if (newTime <= 0) {
+            setIsLocked(false);
+            return 0;
+          }
+          return newTime;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLocked, lockRemainingTime]);
+
+  const checkRateLimit = async () => {
+    const result = await isRateLimited(
+      RATE_LIMIT_ACTIONS.PASSWORD_RESET,
+      PASSWORD_RESET_RATE_LIMIT_CONFIG
+    );
+    if (result.limited) {
+      setIsLocked(true);
+      setLockRemainingTime(result.remainingTime);
+    }
+  };
+
+  const handleSendCode = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Check rate limit
+    if (isLocked) {
+      Alert.alert(
+        'Istek Limiti',
+        `Cok fazla istek gonderdiniz. Lutfen ${formatRemainingTime(lockRemainingTime)} sonra tekrar deneyin.`,
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
+
+    // Record attempt (you might want to move this after actual API call)
+    const result = await recordFailedAttempt(
+      RATE_LIMIT_ACTIONS.PASSWORD_RESET,
+      PASSWORD_RESET_RATE_LIMIT_CONFIG
+    );
+
+    if (result.locked) {
+      setIsLocked(true);
+      setLockRemainingTime(result.lockoutEndsAt ? result.lockoutEndsAt - Date.now() : 0);
+    }
+
     // API call to send verification code
     setStep('code');
   };
@@ -46,14 +117,19 @@ export function ForgotPasswordScreen() {
     setStep('newPassword');
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (newPassword !== confirmPassword) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Hata', 'Sifreler eslesmiyor.');
       return;
     }
     // API call to reset password
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // Clear rate limit on successful password reset
+    await recordSuccessfulAttempt(RATE_LIMIT_ACTIONS.PASSWORD_RESET);
+
     setStep('success');
   };
 

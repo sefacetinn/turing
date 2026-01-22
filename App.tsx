@@ -1,6 +1,10 @@
 import React, { useState, useCallback, createContext, useContext, useEffect, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
+import { initSentry, setUser as setSentryUser, clearUser as clearSentryUser, wrap as sentryWrap } from './src/services/sentry';
+
+// Initialize Sentry before any other code
+initSentry();
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -331,6 +335,7 @@ function ProfileStack({ onLogout }: { onLogout: () => void }) {
       {/* Provider-specific management screens */}
       <Stack.Screen name="ArtistRoster" component={ArtistRosterScreen} />
       <Stack.Screen name="ArtistDetailManage" component={ArtistDetailManageScreen} />
+      <Stack.Screen name="ProviderEventDetail" component={ProviderEventDetailScreen} />
       <Stack.Screen name="AddEditArtist" component={AddEditArtistScreen} />
       <Stack.Screen name="EditRider" component={EditRiderScreen} />
       <Stack.Screen name="CrewManagement" component={CrewManagementScreen} />
@@ -492,6 +497,14 @@ function AppContent() {
               setProviderServices(profile.providerServices);
             }
             setCanSwitchMode(profile.isProvider && profile.isOrganizer);
+
+            // Set Sentry user context
+            setSentryUser({
+              id: profile.uid,
+              email: profile.email,
+              username: profile.displayName,
+              role: profile.role,
+            });
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
@@ -560,6 +573,9 @@ function AppContent() {
     } catch (error) {
       console.error('Error signing out:', error);
     }
+
+    // Clear Sentry user context
+    clearSentryUser();
 
     setIsLoggedIn(false);
     setIsProviderMode(false);
@@ -660,7 +676,7 @@ function AppContent() {
   );
 }
 
-export default function App() {
+function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
@@ -673,3 +689,6 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+// Wrap with Sentry for crash tracking
+export default sentryWrap(App);

@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
-import { useOffer, useEvent, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
+import { useOffer, useEvent, useArtist, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
 import { useAuth } from '../context/AuthContext';
@@ -207,6 +207,9 @@ export function ProviderRequestDetailScreen() {
   // Fetch event details for venue information
   const { event: eventData } = useEvent(firebaseOffer?.eventId);
 
+  // Fetch artist details for real data
+  const { artist: artistData } = useArtist(firebaseOffer?.artistId);
+
   // Convert Firebase offer to local format
   const offer = useMemo(() => {
     if (!firebaseOffer) return null;
@@ -226,7 +229,9 @@ export function ProviderRequestDetailScreen() {
       amount: firebaseOffer.amount || 0,
       organizer: {
         id: firebaseOffer.organizerId,
-        name: firebaseOffer.organizerName || 'Organizatör',
+        name: firebaseOffer.organizerCompanyName || firebaseOffer.organizerName || 'Organizatör',
+        userName: firebaseOffer.organizerUserName || '',
+        userRole: firebaseOffer.organizerUserRole || '',
         image: firebaseOffer.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
         rating: 4.5,
         reviewCount: 0,
@@ -626,9 +631,18 @@ export function ProviderRequestDetailScreen() {
           { text: 'İptal', style: 'cancel' },
           {
             text: 'Kabul Et',
-            onPress: () => {
-              Alert.alert('Başarılı', 'Teklif kabul edildi. Sözleşme oluşturulacak.');
-              navigation.goBack();
+            onPress: async () => {
+              try {
+                // Accept the counter offer in Firebase
+                await acceptOffer(offer.id, 'provider');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Alert.alert('Başarılı', 'Teklif kabul edildi. Sözleşme oluşturulacak.');
+                navigation.goBack();
+              } catch (error) {
+                console.warn('Error accepting counter offer:', error);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert('Hata', 'Teklif kabul edilirken bir hata oluştu.');
+              }
             }
           },
         ]
@@ -1692,56 +1706,72 @@ export function ProviderRequestDetailScreen() {
             )}
           </TouchableOpacity>
 
-          {/* 2. Artist Card - Expandable (only for booking) */}
-          {offer.serviceCategory === 'booking' && offer.artistName && (
+          {/* 2. Artist Card - Expandable (for booking/artist categories or when artist info exists) */}
+          {((offer.serviceCategory === 'booking' || offer.serviceCategory === 'artist') || (offer.artistId || offer.artistName)) && (offer.artistName || artistData?.name) && (
             <TouchableOpacity
               style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
               onPress={() => setArtistExpanded(!artistExpanded)}
               activeOpacity={0.7}
             >
-              <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
-                <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)' }]}>
-                  {offer.artistImage ? (
-                    <OptimizedImage source={offer.artistImage} style={{ width: 52, height: 52, borderRadius: 14 }} />
-                  ) : (
-                    <Ionicons name="musical-notes" size={22} color="#8B5CF6" />
-                  )}
+              <View style={styles.infoCardContent}>
+                <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)' }]}>
+                  <Ionicons name="musical-notes" size={18} color="#8B5CF6" />
                 </View>
                 <View style={styles.infoCardDetails}>
-                  <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.artistName}</Text>
-                  <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
-                    <Ionicons name="mic-outline" size={12} color="#8B5CF6" />
-                    <Text style={[styles.infoMetaText, { color: '#8B5CF6', fontWeight: '600' }]}>Sanatçı</Text>
+                  <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{artistData?.stageName || artistData?.name || offer.artistName}</Text>
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="mic-outline" size={11} color="#8B5CF6" />
+                    <Text style={[styles.infoMetaText, { color: '#8B5CF6' }]}>Sanatçı</Text>
                   </View>
-                  <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
-                    <Ionicons name="musical-note-outline" size={12} color={colors.textSecondary} />
-                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Canlı Performans</Text>
-                  </View>
+                  {artistData?.genre && artistData.genre.length > 0 && (
+                    <View style={styles.infoMetaRow}>
+                      <Ionicons name="musical-note-outline" size={11} color={colors.textSecondary} />
+                      <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>{artistData.genre.slice(0, 2).join(', ')}</Text>
+                    </View>
+                  )}
                 </View>
-                <Ionicons name={artistExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+                <Ionicons name={artistExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
               </View>
 
               {/* Expanded Content */}
               {artistExpanded && (
                 <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
-                  {/* Artist Stats */}
+                  {/* Artist Bio */}
+                  {(artistData?.bio || artistData?.description) && (
+                    <Text style={[styles.providerBio, { color: colors.textSecondary }]}>
+                      {artistData?.bio || artistData?.description}
+                    </Text>
+                  )}
+
+                  {/* Artist Stats - Using real data from artist profile */}
                   <View style={styles.providerStats}>
                     <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                      <Ionicons name="disc-outline" size={16} color="#8B5CF6" />
-                      <Text style={[styles.providerStatValue, { color: colors.text }]}>10+</Text>
-                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Albüm</Text>
+                      <Ionicons name="star" size={16} color="#FBBF24" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{artistData?.rating?.toFixed(1) || '0.0'}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Puan</Text>
                     </View>
                     <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                      <Ionicons name="people-outline" size={16} color="#EC4899" />
-                      <Text style={[styles.providerStatValue, { color: colors.text }]}>500K+</Text>
-                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Takipçi</Text>
+                      <Ionicons name="chatbubble-outline" size={16} color="#EC4899" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{artistData?.reviewCount || 0}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Değerlendirme</Text>
                     </View>
                     <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                      <Ionicons name="calendar-outline" size={16} color="#10B981" />
-                      <Text style={[styles.providerStatValue, { color: colors.text }]}>100+</Text>
+                      <Ionicons name="musical-notes-outline" size={16} color="#10B981" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{artistData?.totalShows || 0}</Text>
                       <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konser</Text>
                     </View>
                   </View>
+
+                  {/* Genre Tags */}
+                  {artistData?.genre && artistData.genre.length > 0 && (
+                    <View style={styles.artistGenres}>
+                      {artistData.genre.slice(0, 3).map((genre: string, index: number) => (
+                        <View key={index} style={[styles.artistGenreTag, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                          <Text style={styles.artistGenreText}>{genre}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
 
                   {/* View Profile Button */}
                   <TouchableOpacity
@@ -1845,22 +1875,26 @@ export function ProviderRequestDetailScreen() {
             onPress={() => setOrganizerExpanded(!organizerExpanded)}
             activeOpacity={0.7}
           >
-            <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
-              <View style={[styles.infoIconBox, { width: 52, height: 52, borderRadius: 14, backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
-                <Ionicons name="person" size={22} color="#6366F1" />
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.06)' }]}>
+                <Ionicons name="business" size={18} color="#6366F1" />
               </View>
               <View style={styles.infoCardDetails}>
-                <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.organizer.name}</Text>
-                <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
-                  <Ionicons name="star" size={12} color="#FBBF24" />
-                  <Text style={[styles.infoMetaText, { color: '#FBBF24', fontWeight: '600' }]}>4.7 · 45 etkinlik düzenlendi</Text>
-                </View>
-                <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
-                  <Ionicons name="briefcase-outline" size={12} color={colors.textSecondary} />
-                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Organizatör</Text>
+                <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{offer.organizer.name}</Text>
+                {offer.organizer.userName ? (
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="person-outline" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>
+                      {offer.organizer.userName}{offer.organizer.userRole ? ` (${offer.organizer.userRole})` : ''}
+                    </Text>
+                  </View>
+                ) : null}
+                <View style={styles.infoMetaRow}>
+                  <Ionicons name="briefcase-outline" size={11} color="#6366F1" />
+                  <Text style={[styles.infoMetaText, { color: '#6366F1' }]}>Organizatör</Text>
                 </View>
               </View>
-              <Ionicons name={organizerExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+              <Ionicons name={organizerExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
             </View>
 
             {/* Expanded Content */}
@@ -2707,6 +2741,22 @@ const styles = StyleSheet.create({
   },
   providerStatLabel: {
     fontSize: 10,
+  },
+  artistGenres: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  artistGenreTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  artistGenreText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B5CF6',
   },
   providerActions: {
     flexDirection: 'row',

@@ -31,6 +31,7 @@ import { useAuth } from '../context/AuthContext';
 import { useProviderJobs } from '../hooks';
 import {
   TabType,
+  ServiceCategory,
   ProviderEvent,
   getServiceTypeInfo,
   getStatusInfo,
@@ -116,6 +117,91 @@ export function ProviderEventsScreen() {
     return realJobs.map(job => {
       // Use contract amount (from accepted offer) if available, otherwise fall back to event budget
       const earnings = job.contractAmount ?? job.budget ?? 0;
+
+      // Determine service type from event data
+      const serviceCategory = job.services?.[0]?.category || job.category || 'technical';
+      const isBooking = serviceCategory === 'booking' || serviceCategory === 'artist' || !!job.artistId;
+
+      // Normalize category (handle aliases like sound-light, artist, etc.)
+      const normalizeCategory = (cat: string): string => {
+        const normalized = cat?.toLowerCase?.()?.replace?.(/[-_]/g, '') || cat;
+        const aliases: Record<string, string> = {
+          // Sound-Light -> Technical
+          'soundlight': 'technical',
+          'sound-light': 'technical',
+          'sound_light': 'technical',
+          'sesisik': 'technical',
+          'ses-isik': 'technical',
+          // Artist -> Booking
+          'artist': 'booking',
+          'sanatci': 'booking',
+          // Transport
+          'ulasim': 'transport',
+          'transportation': 'transport',
+          // Venue
+          'mekan': 'venue',
+          // Operation subcategories
+          'guvenlik': 'security',
+          'yemek': 'catering',
+          'medikal': 'medical',
+          'saglik': 'medical',
+        };
+        return aliases[normalized] || aliases[cat] || cat;
+      };
+
+      const normalizedCategory = normalizeCategory(serviceCategory);
+
+      // Map category to service type (ServiceCategory from providerEventsData)
+      const categoryToType: Record<string, ServiceCategory> = {
+        // Main categories
+        technical: 'technical',
+        booking: 'booking',
+        transport: 'transport',
+        transportation: 'transport',
+        venue: 'venue',
+        accommodation: 'accommodation',
+        // Operation subcategories (keep as is - they are valid ServiceCategory)
+        catering: 'catering',
+        security: 'security',
+        decoration: 'decoration',
+        media: 'media',
+        photography: 'media',
+        generator: 'generator',
+        medical: 'medical',
+        barrier: 'barrier',
+        ticketing: 'ticketing',
+        sanitation: 'sanitation',
+        beverage: 'beverage',
+        tent: 'tent',
+        flight: 'flight',
+      };
+
+      // Get service label - uses normalized category for matching
+      const categoryLabels: Record<string, string> = {
+        technical: 'Ses & Işık',
+        catering: 'Catering',
+        security: 'Güvenlik',
+        decoration: 'Dekorasyon',
+        media: 'Medya & Prodüksiyon',
+        transport: 'Ulaşım',
+        venue: 'Mekan',
+        booking: job.artistName || 'Booking',
+        accommodation: 'Konaklama',
+        generator: 'Enerji Sistemleri',
+        medical: 'Sağlık Hizmetleri',
+        barrier: 'Bariyer & Güvenlik',
+        operation: 'Operasyon',
+        production: 'Prodüksiyon',
+        ticketing: 'Biletleme',
+        sanitation: 'Sanitasyon',
+        beverage: 'İçecek Hizmetleri',
+        tent: 'Çadır & Tente',
+        flight: 'Uçuş Hizmetleri',
+      };
+
+      const serviceType = isBooking ? 'booking' : (categoryToType[normalizedCategory] || 'technical');
+      const serviceLabel = isBooking ? (job.artistName || 'Booking') : (categoryLabels[normalizedCategory] || categoryLabels[serviceCategory] || 'Hizmet');
+
       return {
         id: job.id,
         eventTitle: job.title,
@@ -127,14 +213,14 @@ export function ProviderEventsScreen() {
         organizerName: job.organizerName || 'Organizatör',
         organizerImage: job.organizerImage || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
         status: job.status === 'completed' ? 'past' : job.status === 'confirmed' ? 'active' : 'planned',
-        serviceType: 'technical' as const,
-        serviceLabel: 'Hizmet',
+        serviceType: serviceType,
+        serviceLabel: serviceLabel,
         earnings: earnings,
-        paidAmount: 0,
+        paidAmount: 0, // TODO: Track actual payments in Firebase
         paymentStatus: 'unpaid' as const,
         daysUntil: Math.max(0, Math.ceil((new Date(job.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))),
-        tasks: { total: 5, completed: 2 },
-        teamSize: 3,
+        tasks: { total: 5, completed: 2 }, // TODO: Get from Firebase
+        teamSize: 3, // TODO: Get from Firebase
       };
     });
   }, [realJobs]);

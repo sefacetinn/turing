@@ -135,8 +135,12 @@ export interface EventService {
   subCategory?: OperationSubCategory;
   providerId?: string;
   providerName?: string;
-  status: 'pending' | 'requested' | 'offered' | 'confirmed' | 'completed';
+  providerPhone?: string;
+  providerImage?: string;
+  status: 'pending' | 'requested' | 'offered' | 'contract_pending' | 'confirmed' | 'completed';
   budget?: number;
+  offerId?: string;
+  contractId?: string;
 }
 
 // Offer Interface

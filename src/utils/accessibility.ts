@@ -367,3 +367,182 @@ export const combineChildrenA11yProps = {
   accessible: true,
   accessibilityRole: 'text' as const,
 };
+
+/**
+ * Common accessibility labels for Turkish UI
+ */
+export const A11Y_LABELS = {
+  // Navigation
+  BACK: 'Geri',
+  CLOSE: 'Kapat',
+  MENU: 'Menu',
+  SETTINGS: 'Ayarlar',
+  SEARCH: 'Ara',
+  FILTER: 'Filtrele',
+  SORT: 'Sirala',
+  REFRESH: 'Yenile',
+  MORE_OPTIONS: 'Daha fazla secenek',
+  HOME: 'Ana Sayfa',
+  PROFILE: 'Profil',
+  NOTIFICATIONS: 'Bildirimler',
+
+  // Common actions
+  SUBMIT: 'Gonder',
+  SAVE: 'Kaydet',
+  CANCEL: 'Iptal',
+  DELETE: 'Sil',
+  EDIT: 'Duzenle',
+  ADD: 'Ekle',
+  SHARE: 'Paylas',
+  COPY: 'Kopyala',
+  DOWNLOAD: 'Indir',
+  UPLOAD: 'Yukle',
+  CONFIRM: 'Onayla',
+  REJECT: 'Reddet',
+  RETRY: 'Tekrar Dene',
+
+  // Authentication
+  LOGIN: 'Giris yap',
+  LOGOUT: 'Cikis yap',
+  REGISTER: 'Kayit ol',
+  FORGOT_PASSWORD: 'Sifremi unuttum',
+  SHOW_PASSWORD: 'Sifreyi goster',
+  HIDE_PASSWORD: 'Sifreyi gizle',
+  BIOMETRIC_LOGIN: 'Biyometrik giris',
+
+  // Form elements
+  EMAIL_INPUT: 'E-posta adresi',
+  PASSWORD_INPUT: 'Sifre',
+  NAME_INPUT: 'Ad Soyad',
+  PHONE_INPUT: 'Telefon numarasi',
+  SEARCH_INPUT: 'Arama alani',
+  MESSAGE_INPUT: 'Mesaj alani',
+  DATE_PICKER: 'Tarih secici',
+  TIME_PICKER: 'Saat secici',
+
+  // Status
+  LOADING: 'Yukleniyor',
+  ERROR: 'Hata',
+  SUCCESS: 'Basarili',
+  WARNING: 'Uyari',
+  EMPTY: 'Bos',
+  OFFLINE: 'Cevrimdisi',
+  ONLINE: 'Cevrimici',
+
+  // Media
+  PLAY: 'Oynat',
+  PAUSE: 'Duraklat',
+  STOP: 'Durdur',
+  MUTE: 'Sesi kapat',
+  UNMUTE: 'Sesi ac',
+  FULLSCREEN: 'Tam ekran',
+  EXIT_FULLSCREEN: 'Tam ekrandan cik',
+
+  // Lists & Content
+  EMPTY_LIST: 'Liste bos',
+  LOAD_MORE: 'Daha fazla yukle',
+  PULL_TO_REFRESH: 'Yenilemek icin asagi cekin',
+  NO_RESULTS: 'Sonuc bulunamadi',
+  END_OF_LIST: 'Liste sonu',
+
+  // Events & Bookings
+  EVENT_CARD: 'Etkinlik karti',
+  BOOKING_CARD: 'Rezervasyon karti',
+  OFFER_CARD: 'Teklif karti',
+  ARTIST_CARD: 'Sanatci karti',
+  VENUE_CARD: 'Mekan karti',
+  CREATE_EVENT: 'Etkinlik olustur',
+  VIEW_DETAILS: 'Detaylari gor',
+  SEND_OFFER: 'Teklif gonder',
+  ACCEPT_OFFER: 'Teklifi kabul et',
+  REJECT_OFFER: 'Teklifi reddet',
+
+  // Chat
+  SEND_MESSAGE: 'Mesaj gonder',
+  ATTACH_FILE: 'Dosya ekle',
+  VOICE_MESSAGE: 'Sesli mesaj',
+  CHAT_INPUT: 'Mesaj yaz',
+
+  // Favorites
+  ADD_FAVORITE: 'Favorilere ekle',
+  REMOVE_FAVORITE: 'Favorilerden kaldir',
+  FAVORITE: 'Favori',
+  NOT_FAVORITE: 'Favori degil',
+};
+
+/**
+ * Common accessibility hints for Turkish UI
+ */
+export const A11Y_HINTS = {
+  // Navigation
+  OPENS_SCREEN: 'Yeni bir ekran acar',
+  GOES_BACK: 'Onceki ekrana doner',
+  OPENS_MENU: 'Menu acar',
+  OPENS_MODAL: 'Acilan pencere gosterir',
+  OPENS_LINK: 'Tarayicide acar',
+  OPENS_CALL: 'Telefon uygulamasini acar',
+  OPENS_EMAIL: 'E-posta uygulamasini acar',
+
+  // Actions
+  DOUBLE_TAP_TO_ACTIVATE: 'Etkinlestirmek icin iki kez dokun',
+  DOUBLE_TAP_TO_TOGGLE: 'Degistirmek icin iki kez dokun',
+  DOUBLE_TAP_TO_SELECT: 'Secmek icin iki kez dokun',
+  SWIPE_TO_DELETE: 'Silmek icin sola kaydir',
+  SWIPE_FOR_OPTIONS: 'Secenekler icin kaydirin',
+  LONG_PRESS_FOR_OPTIONS: 'Secenekler icin uzun basin',
+  PINCH_TO_ZOOM: 'Yakinlastirmak icin kistin',
+
+  // Form
+  REQUIRED_FIELD: 'Bu alan zorunludur',
+  OPTIONAL_FIELD: 'Bu alan istege baglidir',
+  ENTER_TEXT: 'Metin girin',
+  SELECT_OPTION: 'Bir secenek secin',
+  SELECT_DATE: 'Tarih secin',
+  SELECT_TIME: 'Saat secin',
+  CHARACTER_LIMIT: 'Karakter siniri',
+
+  // Status
+  LOADING_CONTENT: 'Icerik yukleniyor, lutfen bekleyin',
+  REFRESHING: 'Icerik yenileniyor',
+  SUBMITTING: 'Gonderiliyor',
+  PROCESSING: 'Isleniyor',
+
+  // Events
+  TAP_FOR_EVENT_DETAILS: 'Etkinlik detaylari icin dokun',
+  TAP_TO_VIEW_PROFILE: 'Profili gormek icin dokun',
+  TAP_TO_START_CHAT: 'Sohbet baslatmak icin dokun',
+  TAP_TO_SEND_OFFER: 'Teklif gondermek icin dokun',
+};
+
+/**
+ * Hook to manage accessibility announcements
+ */
+export function useAccessibilityAnnouncement() {
+  const announcePolite = useCallback((message: string) => {
+    AccessibilityInfo.announceForAccessibility(message);
+  }, []);
+
+  const announceAssertive = useCallback((message: string) => {
+    // For assertive announcements, we announce immediately
+    AccessibilityInfo.announceForAccessibility(message);
+  }, []);
+
+  return { announcePolite, announceAssertive };
+}
+
+/**
+ * Hook to check accessibility preferences
+ */
+export function useAccessibilityPreferences() {
+  const isScreenReaderEnabled = useScreenReader();
+  const isReduceMotionEnabled = useReduceMotion();
+  const isBoldTextEnabled = useBoldText();
+
+  return {
+    isScreenReaderEnabled,
+    isReduceMotionEnabled,
+    isBoldTextEnabled,
+    shouldReduceMotion: isReduceMotionEnabled,
+    shouldAnnounce: isScreenReaderEnabled,
+  };
+}

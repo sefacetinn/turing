@@ -65,11 +65,16 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
     userRole?: string;
     displayName: string;
   }>>({});
+  const [userDataLoading, setUserDataLoading] = useState(true);
 
   // Fetch real user display names from Firebase (including company info)
   useEffect(() => {
     const fetchUserDisplayNames = async () => {
-      if (!realConversations.length || !user?.uid) return;
+      if (!realConversations.length || !user?.uid) {
+        setUserDataLoading(false);
+        return;
+      }
+      setUserDataLoading(true);
 
       const userIds = realConversations
         .map(c => c.participantIds.find(id => id !== user.uid))
@@ -147,6 +152,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
       });
 
       setUserDisplayNames(newUserNames);
+      setUserDataLoading(false);
     };
 
     fetchUserDisplayNames();
@@ -236,9 +242,10 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
   }, []);
 
   // Loading state - use real loading for logged-in users, simulate for demo
+  // Include userDataLoading to prevent showing stale profile images
   useEffect(() => {
     if (user) {
-      setIsLoading(conversationsLoading);
+      setIsLoading(conversationsLoading || userDataLoading);
     } else {
       // Demo mode - simulate loading
       const timer = setTimeout(() => {
@@ -246,7 +253,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
       }, 600);
       return () => clearTimeout(timer);
     }
-  }, [user, conversationsLoading]);
+  }, [user, conversationsLoading, userDataLoading]);
 
   // Handle long press on conversation
   const handleLongPress = (chat: typeof conversations[0]) => {

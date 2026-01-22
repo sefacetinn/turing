@@ -214,7 +214,19 @@ export interface ProviderOffer {
   status: OfferStatus;
   date: string;
   eventDate: string;
+  eventTime?: string;
   location: string;
+  eventCity?: string;
+  eventDistrict?: string;
+  eventVenue?: string;
+  // Event details from formData
+  eventGuestCount?: string;
+  eventVenueCapacity?: string;
+  eventIndoorOutdoor?: string;
+  eventSeatingType?: string;
+  eventAgeLimit?: string;
+  // Form data for additional details
+  formData?: Record<string, any>;
   counterOffer: CounterOffer | null;
   // Rejection details
   rejectedAt?: string;

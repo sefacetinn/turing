@@ -27,6 +27,14 @@ import {
 import { validateEmail, sanitizeEmail } from '../utils/validation';
 import { validateCredentials, TestAccount, testAccounts } from '../data/testAccounts';
 import { loginUser, getAuthErrorMessage, getUserProfile } from '../services/firebase';
+import {
+  isRateLimited,
+  recordFailedAttempt,
+  recordSuccessfulAttempt,
+  formatRemainingTime,
+  RATE_LIMIT_ACTIONS,
+  AUTH_RATE_LIMIT_CONFIG,
+} from '../utils/rateLimiter';
 
 interface LoginScreenProps {
   onLogin: (asProvider: boolean, account?: TestAccount) => void;
@@ -41,11 +49,47 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [rememberMe, setRememberMe] = useState(false);
   const [selectedMode, setSelectedMode] = useState<'organizer' | 'provider'>('organizer');
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockRemainingTime, setLockRemainingTime] = useState(0);
+  const [remainingAttempts, setRemainingAttempts] = useState(AUTH_RATE_LIMIT_CONFIG.maxAttempts);
 
   // Load remembered email on mount
   useEffect(() => {
     loadRememberedEmail();
+    checkRateLimit();
   }, []);
+
+  // Countdown timer for rate limit
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isLocked && lockRemainingTime > 0) {
+      interval = setInterval(() => {
+        setLockRemainingTime((prev) => {
+          const newTime = prev - 1000;
+          if (newTime <= 0) {
+            setIsLocked(false);
+            setRemainingAttempts(AUTH_RATE_LIMIT_CONFIG.maxAttempts);
+            return 0;
+          }
+          return newTime;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLocked, lockRemainingTime]);
+
+  const checkRateLimit = async () => {
+    const result = await isRateLimited(RATE_LIMIT_ACTIONS.LOGIN, AUTH_RATE_LIMIT_CONFIG);
+    if (result.limited) {
+      setIsLocked(true);
+      setLockRemainingTime(result.remainingTime);
+    }
+    setRemainingAttempts(AUTH_RATE_LIMIT_CONFIG.maxAttempts - result.attempts);
+  };
 
   const loadRememberedEmail = async () => {
     const savedEmail = await getRememberedEmail();
@@ -58,6 +102,16 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const handleSubmit = async () => {
     // Haptic feedback on button press
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Check rate limit first
+    if (isLocked) {
+      Alert.alert(
+        'Hesap Kilitli',
+        `Çok fazla başarısız deneme. Lütfen ${formatRemainingTime(lockRemainingTime)} sonra tekrar deneyin.`,
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
 
     // Validate
     const newErrors: { email?: string; password?: string } = {};
@@ -101,6 +155,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
       // Haptic feedback for successful login
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Clear rate limit on successful login
+      await recordSuccessfulAttempt(RATE_LIMIT_ACTIONS.LOGIN);
+
       onLogin(selectedMode === 'provider', demoAccount);
       return;
     }
@@ -136,15 +194,37 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       // Haptic feedback for successful login
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      // Clear rate limit on successful login
+      await recordSuccessfulAttempt(RATE_LIMIT_ACTIONS.LOGIN);
+
       // Firebase login successful - App.tsx onAuthChange will handle the rest
       // Just call onLogin to update local state
       onLogin(selectedMode === 'provider');
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+
+      // Record failed attempt
+      const result = await recordFailedAttempt(RATE_LIMIT_ACTIONS.LOGIN, AUTH_RATE_LIMIT_CONFIG);
+      setRemainingAttempts(result.remainingAttempts);
+
+      if (result.locked) {
+        setIsLocked(true);
+        setLockRemainingTime(result.lockoutEndsAt ? result.lockoutEndsAt - Date.now() : 0);
+        Alert.alert(
+          'Hesap Kilitli',
+          `Çok fazla başarısız deneme. Hesabınız ${formatRemainingTime(AUTH_RATE_LIMIT_CONFIG.lockoutDuration)} süreyle kilitlendi.`,
+          [{ text: 'Tamam' }]
+        );
+        return;
+      }
+
       const errorCode = error.code || '';
+      const attemptsMessage = result.remainingAttempts > 0
+        ? `\n\nKalan deneme hakkı: ${result.remainingAttempts}`
+        : '';
       Alert.alert(
         'Giriş Başarısız',
-        getAuthErrorMessage(errorCode) + '\n\nDemo hesapları:\n• demo@organizer.com\n• demo@booking.com\n\nŞifre: demo123',
+        getAuthErrorMessage(errorCode) + attemptsMessage + '\n\nDemo hesapları:\n• demo@organizer.com\n• demo@booking.com\n\nŞifre: demo123',
         [{ text: 'Tamam' }]
       );
     }
@@ -352,15 +432,28 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             </View>
 
             {/* Submit Button */}
-            <TouchableOpacity onPress={handleSubmit} activeOpacity={0.8}>
+            <TouchableOpacity
+              onPress={handleSubmit}
+              activeOpacity={0.8}
+              disabled={isLocked}
+            >
               <LinearGradient
-                colors={gradients.primary}
-                style={styles.submitButton}
+                colors={isLocked ? ['#6b7280', '#4b5563'] : gradients.primary}
+                style={[styles.submitButton, isLocked && { opacity: 0.7 }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <Text style={styles.submitText}>Giriş Yap</Text>
-                <Ionicons name="arrow-forward" size={18} color="white" />
+                {isLocked ? (
+                  <>
+                    <Ionicons name="lock-closed" size={18} color="white" />
+                    <Text style={styles.submitText}>{formatRemainingTime(lockRemainingTime)}</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.submitText}>Giriş Yap</Text>
+                    <Ionicons name="arrow-forward" size={18} color="white" />
+                  </>
+                )}
               </LinearGradient>
             </TouchableOpacity>
 

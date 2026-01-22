@@ -8,6 +8,7 @@ import {
   Dimensions,
   RefreshControl,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -241,6 +242,127 @@ export function BookingProviderProfileScreen() {
             </>
           )}
 
+          {/* Contact & Social Media Section */}
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>İletişim Bilgileri</Text>
+          <View style={[styles.contactCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground, borderColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+            {/* Phone */}
+            {provider.phone && (
+              <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL(`tel:${provider.phone}`)}>
+                <View style={[styles.contactIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                  <Ionicons name="call" size={18} color="#10B981" />
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Telefon</Text>
+                  <Text style={[styles.contactValue, { color: colors.text }]}>{provider.phone}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+
+            {/* Email */}
+            {provider.email && (
+              <TouchableOpacity style={[styles.contactRow, provider.phone && styles.contactRowBorder, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]} onPress={() => Linking.openURL(`mailto:${provider.email}`)}>
+                <View style={[styles.contactIconBox, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <Ionicons name="mail" size={18} color="#3B82F6" />
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactLabel, { color: colors.textMuted }]}>E-posta</Text>
+                  <Text style={[styles.contactValue, { color: colors.text }]}>{provider.email}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+
+            {/* Website */}
+            {provider.website && (
+              <TouchableOpacity style={[styles.contactRow, styles.contactRowBorder, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]} onPress={() => Linking.openURL(provider.website!.startsWith('http') ? provider.website! : `https://${provider.website}`)}>
+                <View style={[styles.contactIconBox, { backgroundColor: 'rgba(75, 48, 184, 0.1)' }]}>
+                  <Ionicons name="globe" size={18} color={colors.brand[400]} />
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Website</Text>
+                  <Text style={[styles.contactValue, { color: colors.brand[400] }]}>{provider.website}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+
+            {/* Message Button */}
+            <TouchableOpacity
+              style={[styles.contactRow, styles.contactRowBorder, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}
+              onPress={handleContactProvider}
+            >
+              <View style={[styles.contactIconBox, { backgroundColor: 'rgba(75, 48, 184, 0.15)' }]}>
+                <Ionicons name="chatbubble" size={18} color={colors.brand[400]} />
+              </View>
+              <View style={styles.contactInfo}>
+                <Text style={[styles.contactLabel, { color: colors.textMuted }]}>Mesaj Gönder</Text>
+                <Text style={[styles.contactValue, { color: colors.brand[400] }]}>Sohbet başlat</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Social Media */}
+          {provider.socialMedia && (provider.socialMedia.instagram || provider.socialMedia.youtube || provider.socialMedia.linkedin || provider.socialMedia.twitter) && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Sosyal Medya</Text>
+              <View style={styles.socialMediaRow}>
+                {provider.socialMedia.instagram && (
+                  <TouchableOpacity
+                    style={[styles.socialMediaButton, { backgroundColor: isDark ? 'rgba(228, 64, 95, 0.15)' : 'rgba(228, 64, 95, 0.1)' }]}
+                    onPress={() => Linking.openURL(`https://instagram.com/${provider.socialMedia!.instagram}`)}
+                  >
+                    <Ionicons name="logo-instagram" size={22} color="#E4405F" />
+                    <Text style={[styles.socialMediaText, { color: '#E4405F' }]}>Instagram</Text>
+                  </TouchableOpacity>
+                )}
+                {provider.socialMedia.youtube && (
+                  <TouchableOpacity
+                    style={[styles.socialMediaButton, { backgroundColor: isDark ? 'rgba(255, 0, 0, 0.15)' : 'rgba(255, 0, 0, 0.1)' }]}
+                    onPress={() => Linking.openURL(`https://youtube.com/@${provider.socialMedia!.youtube}`)}
+                  >
+                    <Ionicons name="logo-youtube" size={22} color="#FF0000" />
+                    <Text style={[styles.socialMediaText, { color: '#FF0000' }]}>YouTube</Text>
+                  </TouchableOpacity>
+                )}
+                {provider.socialMedia.linkedin && (
+                  <TouchableOpacity
+                    style={[styles.socialMediaButton, { backgroundColor: isDark ? 'rgba(10, 102, 194, 0.15)' : 'rgba(10, 102, 194, 0.1)' }]}
+                    onPress={() => Linking.openURL(`https://linkedin.com/company/${provider.socialMedia!.linkedin}`)}
+                  >
+                    <Ionicons name="logo-linkedin" size={22} color="#0A66C2" />
+                    <Text style={[styles.socialMediaText, { color: '#0A66C2' }]}>LinkedIn</Text>
+                  </TouchableOpacity>
+                )}
+                {provider.socialMedia.twitter && (
+                  <TouchableOpacity
+                    style={[styles.socialMediaButton, { backgroundColor: isDark ? 'rgba(29, 161, 242, 0.15)' : 'rgba(29, 161, 242, 0.1)' }]}
+                    onPress={() => Linking.openURL(`https://twitter.com/${provider.socialMedia!.twitter}`)}
+                  >
+                    <Ionicons name="logo-twitter" size={22} color="#1DA1F2" />
+                    <Text style={[styles.socialMediaText, { color: '#1DA1F2' }]}>Twitter</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Service Regions */}
+          {provider.serviceRegions && provider.serviceRegions.length > 0 && (
+            <>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Hizmet Bölgeleri</Text>
+              <View style={styles.regionsRow}>
+                {provider.serviceRegions.map((region, index) => (
+                  <View key={index} style={[styles.regionTag, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                    <Ionicons name="location" size={12} color={colors.textMuted} />
+                    <Text style={[styles.regionText, { color: colors.textSecondary }]}>{region}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
           {/* Artist Roster */}
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Sanatçı Kadrosu ({artists.length})
@@ -315,29 +437,10 @@ export function BookingProviderProfileScreen() {
             </View>
           )}
 
-          {/* Spacer for bottom button */}
-          <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 100 }} />
+          {/* Spacer for tab bar */}
+          <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 24 }} />
         </View>
       </ScrollView>
-
-      {/* Bottom Action */}
-      <View style={[styles.bottomAction, { backgroundColor: isDark ? 'rgba(9, 9, 11, 0.95)' : 'rgba(255, 255, 255, 0.95)', borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border, paddingBottom: insets.bottom + TAB_BAR_HEIGHT + 16 }]}>
-        <TouchableOpacity
-          style={[styles.contactButton, { borderColor: colors.brand[400] }]}
-          onPress={handleContactProvider}
-        >
-          <Ionicons name="chatbubble-outline" size={20} color={colors.brand[400]} />
-          <Text style={[styles.contactButtonText, { color: colors.brand[400] }]}>İletişim</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.callButton}
-          onPress={() => {}}
-        >
-          <View style={[styles.callButtonInner, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
-            <Ionicons name="call" size={20} color="#10B981" />
-          </View>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -488,6 +591,77 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
+  // Contact Card Styles
+  contactCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  contactRowBorder: {
+    borderTopWidth: 1,
+  },
+  contactIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  contactLabel: {
+    fontSize: 11,
+    marginBottom: 2,
+  },
+  contactValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  // Social Media Styles
+  socialMediaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 24,
+  },
+  socialMediaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  socialMediaText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // Service Regions Styles
+  regionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 24,
+  },
+  regionTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  regionText: {
+    fontSize: 13,
+  },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -586,40 +760,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bottomAction: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-    borderTopWidth: 1,
-  },
-  contactButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  contactButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  callButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  callButtonInner: {
-    width: 50,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
   },
 });

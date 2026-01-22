@@ -48,7 +48,7 @@ import {
   getDocumentIcon,
   formatFileSize,
 } from '../data/providerEventData';
-import { useEvent, useProviderEventOffer } from '../hooks';
+import { useEvent, useProviderEventOffer, useArtist } from '../hooks';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
@@ -137,6 +137,10 @@ export function ProviderEventDetailScreen() {
   // Fetch provider's accepted offer for this event to get contract amount
   const { contractAmount, offer: providerOffer } = useProviderEventOffer(user?.uid, eventId);
 
+  // Fetch artist data if this is a booking event
+  const artistId = firebaseEvent?.artistId || providerOffer?.artistId;
+  const { artist: artistData } = useArtist(artistId);
+
   // State
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -160,6 +164,10 @@ export function ProviderEventDetailScreen() {
 
   // Rating Modal State
   const [showRatingModal, setShowRatingModal] = useState(false);
+
+  // Card expanded states
+  const [artistExpanded, setArtistExpanded] = useState(false);
+  const [venueExpanded, setVenueExpanded] = useState(false);
 
   // Organizer data state
   const [organizerData, setOrganizerData] = useState<{
@@ -304,6 +312,113 @@ export function ProviderEventDetailScreen() {
     const pending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + p.amount, 0);
     return { paid, pending, total: event?.earnings || 0 };
   }, [payments, event?.earnings]);
+
+  // Performance details from Firebase event
+  const performanceDetails = useMemo(() => {
+    if (!firebaseEvent) {
+      return {
+        stageTime: 'Belirtilmedi',
+        duration: 'Belirtilmedi',
+        setCount: 'Belirtilmedi',
+        expectedAttendance: 'Belirtilmedi',
+      };
+    }
+
+    // Stage time - use startTime or time
+    const stageTime = firebaseEvent.startTime || firebaseEvent.time || 'Belirtilmedi';
+
+    // Calculate duration from startTime and endTime
+    let duration = 'Belirtilmedi';
+    if (firebaseEvent.startTime && firebaseEvent.endTime) {
+      try {
+        const [startHour, startMin] = firebaseEvent.startTime.split(':').map(Number);
+        const [endHour, endMin] = firebaseEvent.endTime.split(':').map(Number);
+        let totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+        if (totalMinutes < 0) totalMinutes += 24 * 60; // Handle overnight events
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        if (hours > 0 && minutes > 0) {
+          duration = `${hours} saat ${minutes} dk`;
+        } else if (hours > 0) {
+          duration = `${hours} saat`;
+        } else if (minutes > 0) {
+          duration = `${minutes} dk`;
+        }
+      } catch (e) {
+        duration = 'Belirtilmedi';
+      }
+    }
+
+    // Set count - check offer or event formData
+    const setCount = providerOffer?.formData?.setCount || 'Belirtilmedi';
+
+    // Expected attendance - use guestCount or venueCapacity
+    let expectedAttendance = 'Belirtilmedi';
+    if (firebaseEvent.guestCount) {
+      expectedAttendance = `~${firebaseEvent.guestCount} kişi`;
+    } else if (firebaseEvent.venueCapacity) {
+      expectedAttendance = `~${firebaseEvent.venueCapacity} kişi`;
+    }
+
+    return {
+      stageTime,
+      duration,
+      setCount,
+      expectedAttendance,
+    };
+  }, [firebaseEvent, providerOffer]);
+
+  // Service badge based on category
+  const serviceBadge = useMemo(() => {
+    const rawCategory = event?.category || firebaseEvent?.services?.[0]?.category || 'technical';
+
+    // Normalize category (handle aliases like sound-light, artist, etc.)
+    const normalizeCategory = (cat: string): string => {
+      if (!cat) return 'technical';
+      const normalized = cat.toLowerCase().replace(/[-_]/g, '');
+      const aliases: Record<string, string> = {
+        // Sound-Light -> Technical
+        'soundlight': 'technical',
+        'sesisik': 'technical',
+        // Artist -> Booking
+        'artist': 'booking',
+        'sanatci': 'booking',
+        // Transport
+        'ulasim': 'transport',
+        'transport': 'transport',
+        // Photography/Media
+        'media': 'photography',
+        'medya': 'photography',
+      };
+      return aliases[normalized] || cat;
+    };
+
+    const category = normalizeCategory(rawCategory);
+
+    const categoryConfig: Record<string, { label: string; icon: string; gradient: readonly string[] }> = {
+      booking: { label: 'Booking', icon: 'musical-notes', gradient: gradients.booking },
+      artist: { label: 'Sanatçı', icon: 'musical-notes', gradient: gradients.booking },
+      technical: { label: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+      'sound-light': { label: 'Ses & Işık', icon: 'volume-high', gradient: gradients.technical },
+      catering: { label: 'Catering', icon: 'restaurant', gradient: gradients.operation },
+      security: { label: 'Güvenlik', icon: 'shield-checkmark', gradient: ['#EF4444', '#DC2626'] as const },
+      decoration: { label: 'Dekorasyon', icon: 'color-palette', gradient: gradients.accommodation },
+      photography: { label: 'Medya & Prodüksiyon', icon: 'camera', gradient: gradients.venue },
+      media: { label: 'Medya & Prodüksiyon', icon: 'videocam', gradient: gradients.venue },
+      transportation: { label: 'Ulaşım', icon: 'car', gradient: gradients.transport },
+      transport: { label: 'Ulaşım', icon: 'car', gradient: gradients.transport },
+      venue: { label: 'Mekan', icon: 'business', gradient: gradients.venue },
+      accommodation: { label: 'Konaklama', icon: 'bed', gradient: gradients.accommodation },
+      operation: { label: 'Operasyon', icon: 'construct', gradient: gradients.operation },
+      generator: { label: 'Enerji Sistemleri', icon: 'flash', gradient: ['#EAB308', '#CA8A04'] as const },
+      medical: { label: 'Sağlık Hizmetleri', icon: 'medkit', gradient: ['#EF4444', '#DC2626'] as const },
+      barrier: { label: 'Bariyer & Güvenlik', icon: 'remove-circle', gradient: gradients.flight },
+      ticketing: { label: 'Biletleme', icon: 'ticket', gradient: gradients.operation },
+      flight: { label: 'Uçuş Hizmetleri', icon: 'airplane', gradient: gradients.flight },
+    };
+
+    return categoryConfig[category] || categoryConfig.technical;
+  }, [event?.category, firebaseEvent?.services]);
 
   // If event not found
   if (isLoading) {
@@ -583,7 +698,7 @@ export function ProviderEventDetailScreen() {
         { text: 'Takvime Ekle', onPress: () => Alert.alert('Eklendi', 'Etkinlik takviminize eklendi.') },
         { text: 'Hatırlatıcı Kur', onPress: () => Alert.alert('Ayarlandı', 'Etkinlikten 1 gün önce hatırlatılacak.') },
         { text: 'Sorun Bildir', onPress: () => navigation.navigate('Chat', { providerId: event.organizerId, providerName: event.organizerName, providerImage: event.organizerImage }) },
-        { text: 'Sözleşmeyi Görüntüle', onPress: () => Alert.alert('Sözleşme', 'Sözleşme dökümanı açılıyor...') },
+        { text: 'Sözleşmeyi Görüntüle', onPress: () => navigation.navigate('Contract' as any, { contractId: providerOffer?.contractId || providerOffer?.id }) },
         { text: 'İptal', style: 'cancel' },
       ]
     );
@@ -872,67 +987,72 @@ export function ProviderEventDetailScreen() {
           />
         }
       >
-        {/* Hero Image - Clean */}
+        {/* Hero Image with Event Title Overlay */}
         <View style={styles.heroImage}>
           <OptimizedImage source={event.image} style={styles.heroEventImage} />
           <LinearGradient
-            colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.6)']}
-            locations={[0, 0.5, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
             style={styles.heroGradient}
           />
-        </View>
-
-        {/* Event Details Card - Below Image */}
-        <View style={[
-          styles.eventDetailsCard,
-          {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-          },
-        ]}>
-          {/* Event Title & Role */}
-          <Text style={[styles.cardEventTitle, { color: colors.text }]}>{event.eventTitle}</Text>
-          <View style={styles.detailsHeader}>
+          {/* Event Title & Category on Image */}
+          <View style={styles.heroContent}>
             <LinearGradient
-              colors={gradients.technical}
-              style={styles.detailsRoleBadge}
+              colors={serviceBadge.gradient as [string, string, ...string[]]}
+              style={styles.heroCategoryBadge}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Ionicons name="volume-high" size={14} color="white" />
-              <Text style={styles.detailsRoleText}>
-                {event.role.includes(' - ') ? event.role.split(' - ')[0].trim() : event.role}
-              </Text>
+              <Ionicons name={serviceBadge.icon as any} size={12} color="white" />
+              <Text style={styles.heroCategoryText}>{serviceBadge.label}</Text>
             </LinearGradient>
+            <Text style={styles.heroEventTitle}>{event.eventTitle}</Text>
           </View>
+        </View>
 
-          {/* Date, Time, Venue Grid */}
-          <View style={styles.detailsGrid}>
-            <View style={styles.detailItem}>
-              <View style={[styles.detailIconBox, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
-                <Ionicons name="calendar" size={16} color={colors.brand[400]} />
+        {/* Event Info Card - Date, Time, Venue, Location */}
+        <View style={[styles.eventInfoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground }]}>
+          <View style={styles.eventInfoRow}>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
+                <Ionicons name="calendar" size={18} color="#6366F1" />
               </View>
-              <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Tarih</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>{event.eventDate}</Text>
-              </View>
-            </View>
-            <View style={styles.detailItem}>
-              <View style={[styles.detailIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
-                <Ionicons name="time" size={16} color="#10B981" />
-              </View>
-              <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Saat</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>20:00 - 23:00</Text>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>TARİH</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{event.eventDate}</Text>
               </View>
             </View>
-            <View style={[styles.detailItem, styles.detailItemFull]}>
-              <View style={[styles.detailIconBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}>
-                <Ionicons name="location" size={16} color="#EF4444" />
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)' }]}>
+                <Ionicons name="time" size={18} color="#F59E0B" />
               </View>
-              <View style={styles.detailContent}>
-                <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Mekan</Text>
-                <Text style={[styles.detailValue, { color: colors.text }]}>{event.venue}</Text>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>SAAT</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>
+                  {firebaseEvent?.startTime && firebaseEvent?.endTime
+                    ? `${firebaseEvent.startTime} - ${firebaseEvent.endTime}`
+                    : firebaseEvent?.time || event.eventTime || 'Belirtilmedi'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <View style={[styles.eventInfoDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]} />
+          <View style={styles.eventInfoRow}>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                <Ionicons name="business" size={18} color="#10B981" />
+              </View>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>MEKAN</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]} numberOfLines={1}>{event.venue}</Text>
+              </View>
+            </View>
+            <View style={styles.eventInfoItem}>
+              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                <Ionicons name="location" size={18} color="#8B5CF6" />
+              </View>
+              <View style={styles.eventInfoContent}>
+                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>KONUM</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{firebaseEvent?.district ? `${firebaseEvent.district}, ` : ''}{firebaseEvent?.city || ''}</Text>
               </View>
             </View>
           </View>
@@ -974,52 +1094,190 @@ export function ProviderEventDetailScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* Venue Card */}
-        <View style={[
-          styles.venueCard,
-          {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-          },
-        ]}>
-          <View style={styles.venueHeader}>
-            <View style={[styles.venueIconBox, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)' }]}>
-              <Ionicons name="business" size={18} color="#EF4444" />
+        {/* Artist Card - Expandable */}
+        {(artistId || artistData || firebaseEvent?.artistName) && (
+          <TouchableOpacity
+            style={[
+              styles.infoCard,
+              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground, marginTop: 8, marginHorizontal: 16 },
+            ]}
+            onPress={() => setArtistExpanded(!artistExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.06)' }]}>
+                <Ionicons name="musical-notes" size={18} color="#8B5CF6" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>
+                  {artistData?.stageName || artistData?.name || firebaseEvent?.artistName || 'Sanatçı'}
+                </Text>
+                <View style={styles.infoMetaRow}>
+                  <Ionicons name="mic-outline" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Sanatçı</Text>
+                </View>
+                {artistData?.genre && artistData.genre.length > 0 && (
+                  <View style={styles.infoMetaRow}>
+                    <Ionicons name="musical-note-outline" size={11} color={colors.textSecondary} />
+                    <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>{artistData.genre.slice(0, 2).join(', ')}</Text>
+                  </View>
+                )}
+              </View>
+              <Ionicons name={artistExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
             </View>
-            <View style={styles.venueInfo}>
-              <Text style={[styles.venueLabel, { color: colors.textMuted }]}>Mekan</Text>
-              <Text style={[styles.venueName, { color: colors.text }]}>{event.venue}</Text>
+
+            {/* Expanded Content */}
+            {artistExpanded && (
+              <View style={[styles.expandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Artist Bio */}
+                <Text style={[styles.expandedBio, { color: colors.textSecondary }]}>
+                  {artistData?.bio || artistData?.description || `${firebaseEvent?.artistName || 'Sanatçı'} hakkında detaylı bilgi için profili ziyaret edin.`}
+                </Text>
+
+                {/* Artist Stats */}
+                <View style={styles.expandedStats}>
+                  <View style={[styles.expandedStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="star" size={16} color="#FBBF24" />
+                    <Text style={[styles.expandedStatValue, { color: colors.text }]}>{artistData?.rating?.toFixed(1) || '0.0'}</Text>
+                    <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Puan</Text>
+                  </View>
+                  <View style={[styles.expandedStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="chatbubble-outline" size={16} color="#EC4899" />
+                    <Text style={[styles.expandedStatValue, { color: colors.text }]}>{artistData?.reviewCount || 0}</Text>
+                    <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Değerlendirme</Text>
+                  </View>
+                  <View style={[styles.expandedStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name="musical-notes-outline" size={16} color="#10B981" />
+                    <Text style={[styles.expandedStatValue, { color: colors.text }]}>{artistData?.totalShows || 0}</Text>
+                    <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Konser</Text>
+                  </View>
+                </View>
+
+                {/* Genre Tags */}
+                {artistData?.genre && artistData.genre.length > 0 && (
+                  <View style={styles.artistGenres}>
+                    {artistData.genre.slice(0, 3).map((genre: string, index: number) => (
+                      <View key={index} style={[styles.artistGenreTag, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
+                        <Text style={styles.artistGenreText}>{genre}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* View Profile Button */}
+                {artistId && (
+                  <TouchableOpacity
+                    style={[styles.expandedActionBtn, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)', marginTop: 8 }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      (navigation as any).navigate('ArtistProfile', { artistId: artistId });
+                    }}
+                  >
+                    <Ionicons name="person" size={16} color="#8B5CF6" />
+                    <Text style={[styles.expandedActionText, { color: '#8B5CF6' }]}>Sanatçı Profilini Görüntüle</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Venue Card - Expandable */}
+        {event.venue && (
+          <TouchableOpacity
+            style={[
+              styles.infoCard,
+              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground, marginTop: 8, marginHorizontal: 16 },
+            ]}
+            onPress={() => setVenueExpanded(!venueExpanded)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.06)' }]}>
+                <Ionicons name="location" size={18} color="#EC4899" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{event.venue}</Text>
+                <View style={styles.infoMetaRow}>
+                  <Ionicons name="navigate-outline" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {event.location || firebaseEvent?.city || ''}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name={venueExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
             </View>
-          </View>
-          <View style={styles.venueDetails}>
-            <View style={styles.venueDetailRow}>
-              <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-              <Text style={[styles.venueDetailText, { color: colors.textSecondary }]}>
-                Harbiye Mah. Taşkışla Cad. No:1, Şişli/İstanbul
-              </Text>
-            </View>
-            <View style={styles.venueDetailRow}>
-              <Ionicons name="people-outline" size={14} color={colors.textMuted} />
-              <Text style={[styles.venueDetailText, { color: colors.textSecondary }]}>Kapasite: 12.000 kişi</Text>
-            </View>
-          </View>
-          <View style={styles.venueActions}>
-            <TouchableOpacity
-              style={[styles.venueActionBtn, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)' }]}
-              onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(event.venue + ' İstanbul')}`)}
-            >
-              <Ionicons name="map-outline" size={14} color="#3B82F6" />
-              <Text style={[styles.venueActionText, { color: '#3B82F6' }]}>Haritada Gör</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.venueActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
-              onPress={() => Linking.openURL('tel:+902122315400')}
-            >
-              <Ionicons name="call-outline" size={14} color="#10B981" />
-              <Text style={[styles.venueActionText, { color: '#10B981' }]}>Mekanı Ara</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
+            {/* Expanded Content */}
+            {venueExpanded && (
+              <View style={[styles.expandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                {/* Address */}
+                {(firebaseEvent?.venueAddress || event.location) && (
+                  <View style={styles.venueInfoRow}>
+                    <Ionicons name="map-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.venueInfoText, { color: colors.textSecondary }]}>
+                      {firebaseEvent?.venueAddress || event.location}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Venue Stats */}
+                <View style={styles.expandedStats}>
+                  {(firebaseEvent?.venueCapacity || firebaseEvent?.guestCount) && (
+                    <View style={[styles.expandedStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name="people-outline" size={16} color="#EC4899" />
+                      <Text style={[styles.expandedStatValue, { color: colors.text }]}>{firebaseEvent.venueCapacity || firebaseEvent.guestCount}</Text>
+                      <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Kapasite</Text>
+                    </View>
+                  )}
+                  <View style={[styles.expandedStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                    <Ionicons name={firebaseEvent?.indoorOutdoor === 'outdoor' ? 'sunny-outline' : 'home-outline'} size={16} color="#6366F1" />
+                    <Text style={[styles.expandedStatValue, { color: colors.text }]}>
+                      {firebaseEvent?.indoorOutdoor === 'outdoor' ? 'Açık' : firebaseEvent?.indoorOutdoor === 'indoor' ? 'Kapalı' : 'Karma'}
+                    </Text>
+                    <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Alan</Text>
+                  </View>
+                  {(firebaseEvent?.seatingType || firebaseEvent?.seatingArrangement) && (
+                    <View style={[styles.expandedStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
+                      <Ionicons name={(firebaseEvent.seatingType || firebaseEvent.seatingArrangement) === 'standing' ? 'walk-outline' : 'grid-outline'} size={16} color="#10B981" />
+                      <Text style={[styles.expandedStatValue, { color: colors.text }]}>
+                        {(firebaseEvent.seatingType || firebaseEvent.seatingArrangement) === 'standing' ? 'Ayakta' : (firebaseEvent.seatingType || firebaseEvent.seatingArrangement) === 'seated' ? 'Oturmalı' : 'Karma'}
+                      </Text>
+                      <Text style={[styles.expandedStatLabel, { color: colors.textSecondary }]}>Düzen</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Actions */}
+                <View style={styles.expandedActions}>
+                  <TouchableOpacity
+                    style={[styles.expandedActionBtn, { backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : 'rgba(236, 72, 153, 0.08)' }]}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      const address = firebaseEvent?.venueAddress || `${event.venue}, ${event.location}`;
+                      Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(address)}`);
+                    }}
+                  >
+                    <Ionicons name="navigate" size={16} color="#EC4899" />
+                    <Text style={[styles.expandedActionText, { color: '#EC4899' }]}>Yol Tarifi</Text>
+                  </TouchableOpacity>
+                  {firebaseEvent?.venuePhone && (
+                    <TouchableOpacity
+                      style={[styles.expandedActionBtn, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        Linking.openURL(`tel:${firebaseEvent.venuePhone}`);
+                      }}
+                    >
+                      <Ionicons name="call" size={16} color="#10B981" />
+                      <Text style={[styles.expandedActionText, { color: '#10B981' }]}>Mekanı Ara</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Performance Details Card */}
         <View style={[
@@ -1039,7 +1297,7 @@ export function ProviderEventDetailScreen() {
                 </View>
                 <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Sahne Saati</Text>
               </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>20:00</Text>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.stageTime}</Text>
             </View>
 
             <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
@@ -1049,7 +1307,7 @@ export function ProviderEventDetailScreen() {
                 </View>
                 <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Performans Süresi</Text>
               </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>2 saat 30 dk</Text>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.duration}</Text>
             </View>
 
             <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
@@ -1059,7 +1317,7 @@ export function ProviderEventDetailScreen() {
                 </View>
                 <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Set Sayısı</Text>
               </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>2 set</Text>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.setCount}</Text>
             </View>
 
             <View style={[styles.performanceItem, { borderBottomWidth: 0 }]}>
@@ -1069,7 +1327,7 @@ export function ProviderEventDetailScreen() {
                 </View>
                 <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Beklenen Katılım</Text>
               </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>~10.000 kişi</Text>
+              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.expectedAttendance}</Text>
             </View>
           </View>
         </View>
@@ -1408,7 +1666,7 @@ const styles = StyleSheet.create({
   },
   // New Hero styles
   heroImage: {
-    height: 180,
+    height: 220,
     position: 'relative',
   },
   heroEventImage: {
@@ -1417,12 +1675,88 @@ const styles = StyleSheet.create({
   },
   heroGradient: {
     position: 'absolute',
-    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
+    height: 150,
   },
-  // Event Details Card
+  heroContent: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  heroCategoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 5,
+    marginBottom: 10,
+  },
+  heroCategoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'white',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  heroEventTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  // Event Info Card
+  eventInfoCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  eventInfoRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  eventInfoItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  eventInfoIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eventInfoContent: {
+    flex: 1,
+  },
+  eventInfoLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  eventInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  eventInfoDivider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  // Event Details Card (kept for backwards compatibility)
   eventDetailsCard: {
     marginHorizontal: 16,
     marginTop: -24,
@@ -2512,5 +2846,120 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: 'white',
+  },
+  // Expandable Info Cards (Artist & Venue)
+  infoCard: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  infoCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    minHeight: 72,
+  },
+  infoIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCardDetails: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  infoName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  infoMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    gap: 4,
+  },
+  infoMetaText: {
+    fontSize: 12,
+  },
+  // Expanded Content
+  expandedContent: {
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
+  expandedBio: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  expandedStats: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  expandedStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 4,
+  },
+  expandedStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  expandedStatLabel: {
+    fontSize: 10,
+  },
+  expandedActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  expandedActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    gap: 6,
+  },
+  expandedActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // Artist Genres
+  artistGenres: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 6,
+  },
+  artistGenreTag: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  artistGenreText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+  // Venue Info Row
+  venueInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 12,
+  },
+  venueInfoText: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
   },
 });

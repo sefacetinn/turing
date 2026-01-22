@@ -23,7 +23,7 @@ import { getCategoryGradient, OfferHistoryItem } from '../data/offersData';
 import { useApp } from '../../App';
 import { OfferTimeline } from '../components/offers/OfferTimeline';
 import { OptimizedImage } from '../components/OptimizedImage';
-import { useOffer, useEvent, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
+import { useOffer, useEvent, useArtist, respondToOfferRequest, sendCounterOffer, acceptOffer, rejectOffer } from '../hooks';
 import { useAuth } from '../context/AuthContext';
 
 interface OfferData {
@@ -75,6 +75,9 @@ export function OfferDetailScreen() {
 
   // Fetch event details for venue information
   const { event: eventData } = useEvent(firebaseOffer?.eventId);
+
+  // Fetch artist details for real data
+  const { artist: artistData } = useArtist(firebaseOffer?.artistId);
 
   // Convert Firebase offer to local format
   const offer: OfferData | null = React.useMemo(() => {
@@ -381,10 +384,18 @@ export function OfferDetailScreen() {
   const handleChat = () => {
     if (!offer || !firebaseOffer) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Navigate with correct participant info based on who the user is
-    const otherUserId = isUserProvider ? firebaseOffer.organizerId : firebaseOffer.providerId;
-    const otherUserName = isUserProvider ? (firebaseOffer.organizerName || 'Organizatör') : (firebaseOffer.providerName || 'Tedarikçi');
-    const otherUserImage = isUserProvider ? firebaseOffer.organizerImage : firebaseOffer.providerImage;
+
+    // Use offer object which has correctly computed counterparty info
+    const otherUserId = offer.counterpartyId;
+    const otherUserName = offer.counterpartyCompanyName || offer.counterpartyName || 'Kullanıcı';
+    const otherUserImage = offer.counterpartyImage;
+
+    // Validate otherUserId before navigation
+    if (!otherUserId) {
+      Alert.alert('Hata', 'Karşı tarafın bilgilerine ulaşılamadı.');
+      return;
+    }
+
     navigation.navigate('Chat', {
       providerId: otherUserId,
       providerName: otherUserName,
@@ -602,12 +613,19 @@ export function OfferDetailScreen() {
                   </View>
                   <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
                     <Ionicons name="people-outline" size={16} color="#EC4899" />
-                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData?.guestCount || eventData?.venueCapacity || '-'}</Text>
+                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData?.guestCount || eventData?.expectedAttendees || '-'}</Text>
                     <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konuk</Text>
                   </View>
                   <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
                     <Ionicons name="pricetag-outline" size={16} color="#10B981" />
-                    <Text style={[styles.providerStatValue, { color: colors.text }]}>{eventData?.category || offer.category || '-'}</Text>
+                    <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>
+                      {eventData?.eventType === 'festival' ? 'Festival' :
+                       eventData?.eventType === 'concert' ? 'Konser' :
+                       eventData?.eventType === 'municipality' ? 'Belediye' :
+                       eventData?.eventType === 'corporate' ? 'Kurumsal' :
+                       eventData?.eventType === 'private' ? 'Özel' :
+                       eventData?.eventType || '-'}
+                    </Text>
                     <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Kategori</Text>
                   </View>
                 </View>
@@ -615,13 +633,12 @@ export function OfferDetailScreen() {
                 {/* Event Stats Row 2 */}
                 <View style={[styles.providerStats, { marginTop: 8 }]}>
                   <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                    <Ionicons name="musical-notes-outline" size={16} color="#F59E0B" />
+                    <Ionicons name="business-outline" size={16} color="#F59E0B" />
                     <Text style={[styles.providerStatValue, { color: colors.text }]} numberOfLines={1}>
-                      {eventData?.eventType === 'festival' ? 'Festival' :
-                       eventData?.eventType === 'concert' ? 'Konser' :
-                       eventData?.eventType === 'corporate' ? 'Kurumsal' :
-                       eventData?.eventType === 'private' ? 'Özel' :
-                       eventData?.eventType || 'Etkinlik'}
+                      {eventData?.indoorOutdoor === 'outdoor' ? 'Açık Alan' :
+                       eventData?.indoorOutdoor === 'indoor' ? 'Kapalı Alan' :
+                       eventData?.indoorOutdoor === 'mixed' ? 'Karma' :
+                       eventData?.indoorOutdoor || '-'}
                     </Text>
                     <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Tür</Text>
                   </View>
@@ -661,7 +678,7 @@ export function OfferDetailScreen() {
           </TouchableOpacity>
 
           {/* 2. Artist Row - Expandable */}
-          {firebaseOffer?.artistId && firebaseOffer?.artistName && (
+          {(firebaseOffer?.artistId || firebaseOffer?.artistName || artistData) && (firebaseOffer?.artistName || artistData?.name) && (
             <TouchableOpacity
               style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginTop: 8 }]}
               onPress={() => setArtistExpanded(!artistExpanded)}
@@ -672,11 +689,17 @@ export function OfferDetailScreen() {
                   <Ionicons name="musical-notes" size={18} color="#8B5CF6" />
                 </View>
                 <View style={styles.infoCardDetails}>
-                  <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{firebaseOffer.artistName}</Text>
+                  <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{artistData?.stageName || artistData?.name || firebaseOffer?.artistName}</Text>
                   <View style={styles.infoMetaRow}>
                     <Ionicons name="mic-outline" size={11} color={colors.textSecondary} />
                     <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Sanatçı</Text>
                   </View>
+                  {artistData?.genre && artistData.genre.length > 0 && (
+                    <View style={styles.infoMetaRow}>
+                      <Ionicons name="musical-note-outline" size={11} color={colors.textSecondary} />
+                      <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>{artistData.genre.slice(0, 2).join(', ')}</Text>
+                    </View>
+                  )}
                 </View>
                 <Ionicons name={artistExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
               </View>
@@ -686,32 +709,32 @@ export function OfferDetailScreen() {
                 <View style={[styles.scopeExpandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
                   {/* Artist Bio */}
                   <Text style={[styles.providerBio, { color: colors.textSecondary }]}>
-                    {firebaseOffer?.artistBio || `${firebaseOffer.artistName}, Türkiye'nin önde gelen sanatçılarından biridir.`}
+                    {artistData?.bio || artistData?.description || firebaseOffer?.artistBio || `${firebaseOffer?.artistName || 'Sanatçı'} hakkında detaylı bilgi için profili ziyaret edin.`}
                   </Text>
 
-                  {/* Artist Stats */}
+                  {/* Artist Stats - Using real data from artist profile */}
                   <View style={styles.providerStats}>
                     <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                      <Ionicons name="disc-outline" size={16} color="#8B5CF6" />
-                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.artistAlbumCount || '10+'}</Text>
-                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Albüm</Text>
+                      <Ionicons name="star" size={16} color="#FBBF24" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{artistData?.rating?.toFixed(1) || '0.0'}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Puan</Text>
                     </View>
                     <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                      <Ionicons name="people-outline" size={16} color="#EC4899" />
-                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.artistFollowers || '500K+'}</Text>
-                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Takipçi</Text>
+                      <Ionicons name="chatbubble-outline" size={16} color="#EC4899" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{artistData?.reviewCount || 0}</Text>
+                      <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Değerlendirme</Text>
                     </View>
                     <View style={[styles.providerStatItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }]}>
-                      <Ionicons name="calendar-outline" size={16} color="#10B981" />
-                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{firebaseOffer?.artistConcertCount || '100+'}</Text>
+                      <Ionicons name="musical-notes-outline" size={16} color="#10B981" />
+                      <Text style={[styles.providerStatValue, { color: colors.text }]}>{artistData?.totalShows || 0}</Text>
                       <Text style={[styles.providerStatLabel, { color: colors.textSecondary }]}>Konser</Text>
                     </View>
                   </View>
 
-                  {/* Genre Tags */}
-                  {firebaseOffer?.artistGenres && (
+                  {/* Genre Tags - Using real data from artist profile */}
+                  {(artistData?.genre || firebaseOffer?.artistGenres) && (
                     <View style={styles.artistGenres}>
-                      {(firebaseOffer.artistGenres as string[]).slice(0, 3).map((genre: string, index: number) => (
+                      {((artistData?.genre || firebaseOffer?.artistGenres) as string[]).slice(0, 3).map((genre: string, index: number) => (
                         <View key={index} style={[styles.artistGenreTag, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
                           <Text style={styles.artistGenreText}>{genre}</Text>
                         </View>
@@ -724,7 +747,7 @@ export function OfferDetailScreen() {
                     style={[styles.providerActionBtn, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)', marginTop: 8 }]}
                     onPress={(e) => {
                       e.stopPropagation();
-                      navigation.navigate('ArtistProfile', { artistId: firebaseOffer.artistId });
+                      navigation.navigate('ArtistProfile', { artistId: firebaseOffer?.artistId || artistData?.id });
                     }}
                   >
                     <Ionicons name="person" size={16} color="#8B5CF6" />
@@ -840,29 +863,31 @@ export function OfferDetailScreen() {
             onPress={() => setProviderExpanded(!providerExpanded)}
             activeOpacity={0.7}
           >
-            <View style={[styles.infoCardContent, { minHeight: 82, padding: 18 }]}>
-              <OptimizedImage source={offer.counterpartyImage} style={[styles.infoAvatar, { width: 52, height: 52, borderRadius: 26 }]} />
+            <View style={styles.infoCardContent}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
+                <Ionicons name="business" size={18} color="#10B981" />
+              </View>
               <View style={styles.infoCardDetails}>
                 <View style={styles.infoNameRow}>
-                  <Text style={[styles.infoName, { color: colors.text, fontSize: 16, fontWeight: '700' }]} numberOfLines={1}>{offer.counterpartyName}</Text>
+                  <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>{offer.counterpartyName}</Text>
                   {offer.counterpartyVerified && (
                     <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginLeft: 4 }} />
                   )}
                 </View>
-                <View style={[styles.infoMetaRow, { marginTop: 5 }]}>
-                  <Ionicons name="star" size={13} color="#FBBF24" />
-                  <Text style={[styles.infoMetaText, { color: '#FBBF24', fontSize: 13, fontWeight: '600' }]}>
+                <View style={styles.infoMetaRow}>
+                  <Ionicons name="star" size={11} color="#FBBF24" />
+                  <Text style={[styles.infoMetaText, { color: '#FBBF24' }]}>
                     {offer.counterpartyRating} · {offer.counterpartyCompletedJobs} iş tamamlandı
                   </Text>
                 </View>
-                <View style={[styles.infoMetaRow, { marginTop: 3 }]}>
-                  <Ionicons name="briefcase-outline" size={12} color={colors.textSecondary} />
+                <View style={styles.infoMetaRow}>
+                  <Ionicons name="briefcase-outline" size={11} color={colors.textSecondary} />
                   <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>
                     {offer.category || 'Hizmet Sağlayıcı'}
                   </Text>
                 </View>
               </View>
-              <Ionicons name={providerExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+              <Ionicons name={providerExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
             </View>
 
             {/* Expanded Content */}
@@ -1028,8 +1053,8 @@ export function OfferDetailScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Counter Offer Section */}
-        {firebaseOffer?.counterAmount && (
+        {/* Counter Offer Section - Only show during negotiation, not after acceptance */}
+        {firebaseOffer?.counterAmount && offer.status !== 'accepted' && offer.status !== 'rejected' && (
           <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderLeftWidth: 3, borderLeftColor: colors.brand[400] }]}>
             <View style={styles.counterOfferHeader}>
               <View style={[styles.counterOfferIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
@@ -1089,29 +1114,17 @@ export function OfferDetailScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Amount Card - Only show if amount exists */}
-        {offer.amount > 0 && (
-          <View style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}>
-            <View style={styles.infoCardContent}>
-              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
-                <Ionicons name="cash" size={18} color="#10B981" />
-              </View>
-              <View style={styles.infoCardDetails}>
-                <Text style={[styles.infoName, { color: colors.text }]}>₺{offer.amount.toLocaleString('tr-TR')}</Text>
-                <View style={styles.infoMetaRow}>
-                  <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>Teklif Tutarı</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
         {/* Contract Link (if accepted) */}
         {offer.status === 'accepted' && (
           <TouchableOpacity
-            style={[styles.contractCard, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
+            style={[styles.contractCard, {
+              backgroundColor: firebaseOffer?.contractSigned
+                ? (isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)')
+                : (isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.08)')
+            }]}
             onPress={() => navigation.navigate('Contract', {
               offerId: offer.id,
+              contractId: firebaseOffer?.contractId || offer.id,
               eventId: firebaseOffer?.eventId,
               eventTitle: firebaseOffer?.eventTitle,
               eventDate: firebaseOffer?.eventDate,
@@ -1120,129 +1133,193 @@ export function OfferDetailScreen() {
               amount: firebaseOffer?.finalAmount || firebaseOffer?.amount,
             })}
           >
-            <View style={styles.contractIcon}>
-              <Ionicons name="document-text-outline" size={24} color="#10B981" />
+            <View style={[styles.contractIcon, {
+              backgroundColor: firebaseOffer?.contractSigned
+                ? (isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.15)')
+                : (isDark ? 'rgba(139, 92, 246, 0.2)' : 'rgba(139, 92, 246, 0.15)')
+            }]}>
+              <Ionicons
+                name={firebaseOffer?.contractSigned ? "checkmark-circle" : "finger-print"}
+                size={24}
+                color={firebaseOffer?.contractSigned ? '#10B981' : '#8B5CF6'}
+              />
             </View>
             <View style={styles.contractInfo}>
               <Text style={[styles.contractTitle, { color: colors.text }]}>Sozlesme</Text>
-              <Text style={[styles.contractStatus, { color: firebaseOffer?.contractSigned ? '#10B981' : '#F59E0B' }]}>
-                {firebaseOffer?.contractSigned ? 'Imzalandi - Sozlesmeyi Gor' : 'Imza bekliyor'}
-              </Text>
+              {firebaseOffer?.contractSigned ? (
+                <Text style={[styles.contractStatus, { color: '#10B981' }]}>
+                  Her iki taraf imzaladi
+                </Text>
+              ) : (
+                <View>
+                  <Text style={[styles.contractStatus, { color: '#8B5CF6', marginBottom: 4 }]}>
+                    {(isUserProvider && !firebaseOffer?.contractSignedByProvider) ||
+                     (!isUserProvider && !firebaseOffer?.contractSignedByOrganizer)
+                      ? 'Imzaniz bekleniyor' : 'Karsi tarafin imzasi bekleniyor'}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons
+                        name={firebaseOffer?.contractSignedByOrganizer ? "checkmark-circle" : "ellipse-outline"}
+                        size={14}
+                        color={firebaseOffer?.contractSignedByOrganizer ? '#10B981' : colors.textMuted}
+                      />
+                      <Text style={{ fontSize: 11, color: firebaseOffer?.contractSignedByOrganizer ? '#10B981' : colors.textMuted }}>
+                        Organizator
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons
+                        name={firebaseOffer?.contractSignedByProvider ? "checkmark-circle" : "ellipse-outline"}
+                        size={14}
+                        color={firebaseOffer?.contractSignedByProvider ? '#10B981' : colors.textMuted}
+                      />
+                      <Text style={{ fontSize: 11, color: firebaseOffer?.contractSignedByProvider ? '#10B981' : colors.textMuted }}>
+                        Hizmet Saglayici
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#10B981" />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={firebaseOffer?.contractSigned ? '#10B981' : '#8B5CF6'}
+            />
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 150 }} />
+        {/* Bottom Actions - Organizer (when provider sent a quote) */}
+        {!isUserProvider && offer.status === 'quoted' && (
+          <View style={[styles.inlineBottomBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+            <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectOffer}>
+              <Ionicons name="close" size={22} color="#EF4444" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.negotiateBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={() => setShowNegotiate(true)}>
+              <Ionicons name="swap-horizontal" size={18} color={colors.text} />
+              <Text style={[styles.negotiateBtnText, { color: colors.text }]}>Pazarlik</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.acceptBtn} onPress={handleAcceptOffer}>
+              <Text style={styles.acceptBtnText}>Kabul Et</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Bottom Actions - Organizer (waiting for provider quote) */}
+        {!isUserProvider && offer.status === 'pending' && (
+          <View style={[styles.inlineBottomBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+            <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj Gonder</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.secondaryBtn, { borderColor: '#EF4444', flex: 0.8 }]} onPress={handleRejectOffer}>
+              <Ionicons name="close-outline" size={18} color="#EF4444" />
+              <Text style={[styles.secondaryBtnText, { color: '#EF4444' }]}>Iptal Et</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Bottom Actions - Provider (incoming request, needs to send quote) */}
+        {isUserProvider && offer.status === 'pending' && (
+          <View style={[styles.inlineBottomBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+            <TouchableOpacity style={styles.rejectBtn} onPress={handleProviderReject}>
+              <Ionicons name="close" size={22} color="#EF4444" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.acceptBtn} onPress={() => setShowQuoteModal(true)}>
+              <Text style={styles.acceptBtnText}>Teklif Ver</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Bottom Actions - Provider (quote sent, waiting for organizer) */}
+        {isUserProvider && offer.status === 'quoted' && (
+          <View style={[styles.inlineBottomBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+            <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0', flex: 1 }]} onPress={handleChat}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj Gonder</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Bottom Actions - Counter offer state */}
+        {offer.status === 'counter_offered' && (
+          <View style={[styles.inlineBottomBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+            <TouchableOpacity style={styles.rejectBtn} onPress={isUserProvider ? handleProviderReject : handleRejectOffer}>
+              <Ionicons name="close" size={22} color="#EF4444" />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.acceptBtn} onPress={isUserProvider ? () => setShowQuoteModal(true) : handleAcceptOffer}>
+              <Text style={styles.acceptBtnText}>{isUserProvider ? 'Yeni Teklif' : 'Kabul Et'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Accepted State Actions */}
+        {offer.status === 'accepted' && (
+          <View style={[styles.inlineBottomBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC', borderColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
+            <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
+              <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
+              <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
+            </TouchableOpacity>
+            {firebaseOffer?.contractSigned ? (
+              // Sözleşme her iki tarafça imzalandı - Etkinliği Görüntüle
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => {
+                if (isUserProvider) {
+                  navigation.navigate('ProviderEventDetail', { eventId: firebaseOffer?.eventId });
+                } else {
+                  navigation.navigate('OrganizerEventDetail', { eventId: firebaseOffer?.eventId });
+                }
+              }}>
+                <Text style={styles.primaryBtnText}>Etkinligi Goruntule</Text>
+              </TouchableOpacity>
+            ) : (
+              // Sözleşme henüz tamamlanmadı - imza durumuna göre buton göster
+              <TouchableOpacity
+                style={[styles.primaryBtn, {
+                  backgroundColor: (isUserProvider && !firebaseOffer?.contractSignedByProvider) ||
+                                   (!isUserProvider && !firebaseOffer?.contractSignedByOrganizer)
+                    ? '#8B5CF6' : '#10B981'
+                }]}
+                onPress={() => navigation.navigate('Contract', {
+                  offerId: offer.id,
+                  contractId: firebaseOffer?.contractId || offer.id,
+                  eventId: firebaseOffer?.eventId,
+                  eventTitle: firebaseOffer?.eventTitle,
+                  eventDate: firebaseOffer?.eventDate,
+                  artistName: firebaseOffer?.artistName,
+                  organizerName: firebaseOffer?.organizerName,
+                  amount: firebaseOffer?.finalAmount || firebaseOffer?.amount,
+                })}
+              >
+                <Ionicons
+                  name={(isUserProvider && !firebaseOffer?.contractSignedByProvider) ||
+                        (!isUserProvider && !firebaseOffer?.contractSignedByOrganizer)
+                    ? "finger-print" : "document-text"}
+                  size={18}
+                  color="white"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.primaryBtnText}>
+                  {(isUserProvider && !firebaseOffer?.contractSignedByProvider) ||
+                   (!isUserProvider && !firebaseOffer?.contractSignedByOrganizer)
+                    ? 'Sozlesmeyi Imzala' : 'Sozlesmeyi Gor'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Bottom Spacing */}
+        <View style={{ height: insets.bottom + 100 }} />
       </ScrollView>
-
-      {/* Bottom Actions - Organizer (when provider sent a quote) */}
-      {!isUserProvider && offer.status === 'quoted' && (
-        <View style={[styles.bottomBar, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 34) + 70, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-          <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectOffer}>
-            <Ionicons name="close" size={22} color="#EF4444" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.negotiateBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={() => setShowNegotiate(true)}>
-            <Ionicons name="swap-horizontal" size={18} color={colors.text} />
-            <Text style={[styles.negotiateBtnText, { color: colors.text }]}>Pazarlik</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.acceptBtn} onPress={handleAcceptOffer}>
-            <Text style={styles.acceptBtnText}>Kabul Et</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Bottom Actions - Organizer (waiting for provider quote) */}
-      {!isUserProvider && offer.status === 'pending' && (
-        <View style={[styles.bottomBar, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 34) + 70, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj Gonder</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: '#EF4444', flex: 0.8 }]} onPress={handleRejectOffer}>
-            <Ionicons name="close-outline" size={18} color="#EF4444" />
-            <Text style={[styles.secondaryBtnText, { color: '#EF4444' }]}>Iptal Et</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Bottom Actions - Provider (incoming request, needs to send quote) */}
-      {isUserProvider && offer.status === 'pending' && (
-        <View style={[styles.bottomBar, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 34) + 70, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-          <TouchableOpacity style={styles.rejectBtn} onPress={handleProviderReject}>
-            <Ionicons name="close" size={22} color="#EF4444" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.acceptBtn} onPress={() => setShowQuoteModal(true)}>
-            <Text style={styles.acceptBtnText}>Teklif Ver</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Bottom Actions - Provider (quote sent, waiting for organizer) */}
-      {isUserProvider && offer.status === 'quoted' && (
-        <View style={[styles.bottomBar, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 34) + 70, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0', flex: 1 }]} onPress={handleChat}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj Gonder</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Bottom Actions - Counter offer state */}
-      {offer.status === 'counter_offered' && (
-        <View style={[styles.bottomBar, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 34) + 70, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-          <TouchableOpacity style={styles.rejectBtn} onPress={isUserProvider ? handleProviderReject : handleRejectOffer}>
-            <Ionicons name="close" size={22} color="#EF4444" />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.acceptBtn} onPress={isUserProvider ? () => setShowQuoteModal(true) : handleAcceptOffer}>
-            <Text style={styles.acceptBtnText}>{isUserProvider ? 'Yeni Teklif' : 'Kabul Et'}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Accepted State Actions */}
-      {offer.status === 'accepted' && (
-        <View style={[styles.bottomBar, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', paddingBottom: Math.max(insets.bottom, 34) + 70, borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }]}>
-          <TouchableOpacity style={[styles.secondaryBtn, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E2E8F0' }]} onPress={handleChat}>
-            <Ionicons name="chatbubble-outline" size={18} color={colors.text} />
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Mesaj</Text>
-          </TouchableOpacity>
-          {firebaseOffer?.contractSigned ? (
-            // Sözleşme imzalandı - Etkinliği Görüntüle
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => {
-              // Navigate based on user role
-              if (isUserProvider) {
-                navigation.navigate('ProviderEventDetail', { eventId: firebaseOffer?.eventId });
-              } else {
-                navigation.navigate('OrganizerEventDetail', { eventId: firebaseOffer?.eventId });
-              }
-            }}>
-              <Text style={styles.primaryBtnText}>Etkinligi Goruntule</Text>
-            </TouchableOpacity>
-          ) : (
-            // Sözleşme henüz imzalanmadı - Sözleşmeyi Gör
-            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate('Contract', {
-                offerId: offer.id,
-                eventId: firebaseOffer?.eventId,
-                eventTitle: firebaseOffer?.eventTitle,
-                eventDate: firebaseOffer?.eventDate,
-                artistName: firebaseOffer?.artistName,
-                organizerName: firebaseOffer?.organizerName,
-                amount: firebaseOffer?.finalAmount || firebaseOffer?.amount,
-              })}>
-              <Text style={styles.primaryBtnText}>Sozlesmeyi Gor</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
 
       {/* Counter Offer Modal */}
       <Modal visible={showNegotiate} animationType="slide" transparent onRequestClose={() => setShowNegotiate(false)}>
@@ -1631,6 +1708,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginHorizontal: 2,
   },
+  infoMetaBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  infoMetaBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
   infoActions: {
     flexDirection: 'row',
     gap: 8,
@@ -1837,7 +1924,18 @@ const styles = StyleSheet.create({
   contractTitle: { fontSize: 15, fontWeight: '600' },
   contractStatus: { fontSize: 13, marginTop: 2 },
 
-  // Bottom Bar
+  // Bottom Bar (inline - inside scroll)
+  inlineBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  // Bottom Bar (fixed - kept for reference)
   bottomBar: {
     position: 'absolute',
     left: 0,

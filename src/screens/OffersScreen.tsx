@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { View, StyleSheet, RefreshControl, Alert, TouchableOpacity, Text, Modal, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -64,7 +64,21 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
   // Auth & Data hooks
   const { user } = useAuth();
   const userRole = isProviderMode ? 'provider' : 'organizer';
-  const { offers: realOffers, loading: offersLoading } = useOffers(user?.uid, userRole);
+  const { offers: realOffers, loading: offersLoading, refetch: refetchOffers } = useOffers(user?.uid, userRole);
+
+  // Refetch offers when screen gains focus (e.g., returning from detail screen)
+  useFocusEffect(
+    useCallback(() => {
+      // Small delay to ensure Firebase has processed any updates
+      const timer = setTimeout(() => {
+        if (refetchOffers) {
+          console.log('[OffersScreen] Screen focused, refreshing offers...');
+          refetchOffers();
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }, [refetchOffers])
+  );
 
   // Check if user has real data
   const hasRealData = user && realOffers.length > 0;
@@ -120,9 +134,16 @@ export function OffersScreen({ isProviderMode }: OffersScreenProps) {
       eventId: o.eventId,
       eventTitle: o.eventTitle,
       eventDate: o.eventDate || '',
-      eventCity: o.eventCity || '',
-      eventDistrict: o.formData?.district || '',
-      eventVenue: o.formData?.venue || '',
+      eventTime: o.eventTime || o.formData?.time || '',
+      eventCity: o.eventCity || o.formData?.city || '',
+      eventDistrict: o.formData?.district || (o as any).eventDistrict || '',
+      eventVenue: o.formData?.venue || (o as any).eventVenue || '',
+      // Event details from formData
+      eventGuestCount: o.formData?.guestCount || '',
+      eventVenueCapacity: o.formData?.venueCapacity || '',
+      eventIndoorOutdoor: o.formData?.indoorOutdoor || '',
+      eventSeatingType: o.formData?.seatingType || '',
+      eventAgeLimit: o.formData?.ageLimit || '',
       location: locationStr, // For ProviderOfferCard
       // Nested organizer object (expected by ProviderOfferCard)
       organizer: {

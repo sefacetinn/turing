@@ -25,6 +25,16 @@ export interface Provider {
   responseTime: string;
   specialties: string[];
   subcategory?: string; // For operation subcategories
+  // Extended fields for professional card design
+  website?: string;
+  socialMedia?: {
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+    youtube?: string;
+  };
+  responseRate?: number;
+  serviceRegions?: string[];
 }
 
 export type FilterTab = 'all' | 'worked';
@@ -43,6 +53,7 @@ export const categoryConfig: Record<string, { title: string; gradient: readonly 
   booking: { title: 'Booking', gradient: ['#4b30b8', '#7c3aed'], icon: 'musical-notes' },
   artist: { title: 'Booking', gradient: ['#4b30b8', '#7c3aed'], icon: 'musical-notes' }, // Alias for booking
   technical: { title: 'Teknik', gradient: ['#059669', '#34d399'], icon: 'volume-high' },
+  'sound-light': { title: 'Ses-Işık', gradient: ['#059669', '#34d399'], icon: 'volume-high' }, // Alias for technical
   transport: { title: 'Ulaşım', gradient: ['#dc2626', '#f87171'], icon: 'car' },
   venue: { title: 'Mekan', gradient: ['#2563eb', '#60a5fa'], icon: 'business' },
   accommodation: { title: 'Konaklama', gradient: ['#db2777', '#f472b6'], icon: 'bed' },

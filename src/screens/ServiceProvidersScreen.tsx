@@ -57,38 +57,102 @@ export function ServiceProvidersScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Fetch booking providers from Firebase for booking category
+  // Fetch providers from Firebase
   const { providers: bookingProviders, loading: providersLoading, error: providersError } = useBookingProviders();
 
   const config = categoryConfig[category] || categoryConfig.booking;
 
-  // Check if this is booking category
+  // Check category type
   const isBookingCategory = category === 'booking' || category === 'artist';
+  const isTechnicalCategory = category === 'technical' || category === 'sound-light';
 
   const allProviders: Provider[] = useMemo(() => {
     if (isBookingCategory) {
       // Show booking companies (not individual artists)
-      return bookingProviders.map((bp: FirestoreBookingProvider): Provider => ({
-        id: bp.id,
-        name: bp.companyName || bp.displayName,
-        rating: bp.rating || 0,
-        reviewCount: bp.reviewCount || 0,
-        description: bp.bio || 'Booking ve sanatçı menajerlik hizmetleri',
-        city: bp.city || 'İstanbul',
-        teamSize: '1-10',
-        image: bp.photoURL || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
-        previouslyWorked: false,
-        phone: bp.phone || '',
-        verified: bp.isVerified,
-        yearsExperience: 0,
-        completedEvents: bp.completedJobs || 0,
-        priceRange: 'Sanatçıya göre değişir',
-        responseTime: 'Hızlı yanıt',
-        specialties: ['Booking', 'Menajerlik'],
-      }));
+      return bookingProviders
+        .filter(bp => !bp.providerServices || bp.providerServices.includes('booking') || bp.providerServices.includes('artist') || bp.providerServices.length === 0)
+        .map((bp: FirestoreBookingProvider): Provider => {
+        // Calculate years of experience from founded year
+        const currentYear = new Date().getFullYear();
+        const foundedYear = bp.foundedYear ? parseInt(bp.foundedYear) : currentYear;
+        const yearsExp = Math.max(0, currentYear - foundedYear);
+
+        // Get service categories or default
+        const services = bp.serviceCategories?.length
+          ? bp.serviceCategories.slice(0, 3)
+          : bp.providerServices?.slice(0, 3) || ['Booking'];
+
+        return {
+          id: bp.id,
+          name: bp.companyName || bp.displayName,
+          rating: bp.rating || 0,
+          reviewCount: bp.reviewCount || 0,
+          description: bp.bio || 'Profesyonel sanatçı yönetimi ve booking hizmetleri',
+          city: bp.city || 'İstanbul',
+          teamSize: bp.employeeCount || '1-10',
+          image: bp.photoURL || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400',
+          previouslyWorked: false,
+          phone: bp.phone || '',
+          verified: bp.isVerified,
+          yearsExperience: yearsExp,
+          completedEvents: bp.completedJobs || 0,
+          priceRange: 'Sanatçıya göre değişir',
+          responseTime: bp.responseRate && bp.responseRate >= 90 ? 'Hızlı yanıt' : 'Normal',
+          specialties: services,
+          // Extended fields for better card design
+          website: bp.website,
+          socialMedia: bp.socialMedia,
+          responseRate: bp.responseRate || 95,
+          serviceRegions: bp.serviceRegions,
+        };
+      });
     }
+
+    // For technical category (sound-light, technical)
+    if (isTechnicalCategory) {
+      // Filter providers who offer technical services
+      return bookingProviders
+        .filter(bp => bp.providerServices?.some(s =>
+          s.toLowerCase().includes('technical') ||
+          s.toLowerCase().includes('teknik') ||
+          s.toLowerCase().includes('sound') ||
+          s.toLowerCase().includes('light') ||
+          s.toLowerCase().includes('ses') ||
+          s.toLowerCase().includes('ışık')
+        ))
+        .map((bp: FirestoreBookingProvider): Provider => {
+          const currentYear = new Date().getFullYear();
+          const foundedYear = bp.foundedYear ? parseInt(bp.foundedYear) : currentYear;
+          const yearsExp = Math.max(0, currentYear - foundedYear);
+          const services = bp.serviceCategories?.slice(0, 3) || bp.providerServices?.slice(0, 3) || ['Teknik'];
+
+          return {
+            id: bp.id,
+            name: bp.companyName || bp.displayName,
+            rating: bp.rating || 0,
+            reviewCount: bp.reviewCount || 0,
+            description: bp.bio || 'Profesyonel ses ve ışık hizmetleri',
+            city: bp.city || 'İstanbul',
+            teamSize: bp.employeeCount || '1-10',
+            image: bp.photoURL || 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400',
+            previouslyWorked: false,
+            phone: bp.phone || '',
+            verified: bp.isVerified,
+            yearsExperience: yearsExp,
+            completedEvents: bp.completedJobs || 0,
+            priceRange: 'Projeye göre değişir',
+            responseTime: bp.responseRate && bp.responseRate >= 90 ? 'Hızlı yanıt' : 'Normal',
+            specialties: services,
+            website: bp.website,
+            socialMedia: bp.socialMedia,
+            responseRate: bp.responseRate || 95,
+            serviceRegions: bp.serviceRegions,
+          };
+        });
+    }
+
     return getProvidersByCategory(category);
-  }, [category, bookingProviders, isBookingCategory]);
+  }, [category, bookingProviders, isBookingCategory, isTechnicalCategory]);
 
   const activeFilterCount = [filters.city, filters.minRating, filters.budgetRange].filter(Boolean).length;
 
@@ -355,6 +419,7 @@ export function ServiceProvidersScreen() {
             )}
 
             <View style={styles.providerContent}>
+              {/* Header: Logo + Name + Rating */}
               <View style={styles.providerTop}>
                 <View style={styles.imageContainer}>
                   <OptimizedImage source={provider.image} style={styles.providerImage} />
@@ -371,51 +436,85 @@ export function ServiceProvidersScreen() {
                     </View>
                     <View style={styles.ratingContainer}>
                       <Ionicons name="star" size={12} color="#fbbf24" />
-                      <Text style={styles.ratingText}>{provider.rating}</Text>
+                      <Text style={styles.ratingText}>{provider.rating.toFixed(1)}</Text>
                       <Text style={[styles.reviewCountText, { color: colors.textMuted }]}>({provider.reviewCount})</Text>
                     </View>
                   </View>
-                  <Text style={[styles.providerDescription, { color: colors.textMuted }]} numberOfLines={2}>
+                  <Text style={[styles.providerDescription, { color: colors.textSecondary }]} numberOfLines={2}>
                     {provider.description}
                   </Text>
+                  {/* Location + Response Rate Row */}
                   <View style={styles.providerMeta}>
                     <View style={styles.metaItem}>
-                      <Ionicons name="location" size={12} color={colors.zinc[500]} />
+                      <Ionicons name="location" size={12} color={colors.textMuted} />
                       <Text style={[styles.metaText, { color: colors.textMuted }]}>{provider.city}</Text>
                     </View>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="time" size={12} color={colors.success} />
-                      <Text style={[styles.metaText, { color: colors.success }]}>{provider.responseTime}</Text>
-                    </View>
+                    {provider.responseRate && provider.responseRate >= 90 && (
+                      <View style={[styles.metaItem, { backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }]}>
+                        <Ionicons name="flash" size={10} color="#10B981" />
+                        <Text style={[styles.metaText, { color: '#10B981', fontWeight: '500' }]}>%{provider.responseRate} yanıt</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </View>
 
-              <View style={styles.specialtiesRow}>
-                {provider.specialties.slice(0, 3).map((specialty, index) => (
-                  <View key={index} style={styles.specialtyTag}>
-                    <Text style={[styles.specialtyText, { color: colors.brand[400] }]}>{specialty}</Text>
+              {/* Service Tags + Social Media */}
+              <View style={styles.tagsAndSocialRow}>
+                <View style={styles.specialtiesRow}>
+                  {provider.specialties.slice(0, 2).map((specialty, index) => (
+                    <View key={index} style={[styles.specialtyTag, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.08)' }]}>
+                      <Text style={[styles.specialtyText, { color: colors.brand[400] }]}>{specialty}</Text>
+                    </View>
+                  ))}
+                </View>
+                {/* Social Media Icons */}
+                {provider.socialMedia && (provider.socialMedia.instagram || provider.socialMedia.youtube) && (
+                  <View style={styles.socialIcons}>
+                    {provider.socialMedia.instagram && (
+                      <View style={[styles.socialIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                        <Ionicons name="logo-instagram" size={14} color="#E4405F" />
+                      </View>
+                    )}
+                    {provider.socialMedia.youtube && (
+                      <View style={[styles.socialIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                        <Ionicons name="logo-youtube" size={14} color="#FF0000" />
+                      </View>
+                    )}
+                    {provider.socialMedia.linkedin && (
+                      <View style={[styles.socialIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                        <Ionicons name="logo-linkedin" size={14} color="#0A66C2" />
+                      </View>
+                    )}
                   </View>
-                ))}
+                )}
               </View>
 
+              {/* Stats Row */}
               <View style={[styles.statsRow, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.text }]}>{provider.yearsExperience} yıl</Text>
-                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Deneyim</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>
+                    {provider.yearsExperience > 0 ? `${provider.yearsExperience}+` : '-'}
+                  </Text>
+                  <Text style={[styles.statLabel, { color: colors.textMuted }]}>Yıl</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.text }]}>{provider.completedEvents}</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>
+                    {provider.completedEvents > 0 ? provider.completedEvents : '-'}
+                  </Text>
                   <Text style={[styles.statLabel, { color: colors.textMuted }]}>Etkinlik</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.text, fontSize: 11 }]}>{provider.priceRange}</Text>
+                  <Text style={[styles.statValue, { color: colors.brand[400], fontSize: 12 }]}>
+                    {provider.priceRange.length > 15 ? 'Değişken' : provider.priceRange}
+                  </Text>
                   <Text style={[styles.statLabel, { color: colors.textMuted }]}>Fiyat</Text>
                 </View>
               </View>
 
+              {/* Action Buttons */}
               <View style={[styles.providerBottom, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.04)' : colors.border }]}>
                 <View style={styles.actionButtons}>
                   <TouchableOpacity
@@ -428,26 +527,27 @@ export function ServiceProvidersScreen() {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                     >
+                      <Ionicons name="paper-plane" size={14} color="white" style={{ marginRight: 4 }} />
                       <Text style={styles.offerButtonText}>Teklif Al</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.iconButton, { borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground }]}
+                    style={[styles.iconButton, { borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.2)', backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)' }]}
                     onPress={() => handleCall(provider)}
                   >
-                    <Ionicons name="call" size={16} color={colors.success} />
+                    <Ionicons name="call" size={16} color="#10B981" />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.iconButton, { borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground }]}
+                    style={[styles.iconButton, { borderColor: isDark ? 'rgba(75, 48, 184, 0.3)' : 'rgba(75, 48, 184, 0.2)', backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)' }]}
                     onPress={() => handleMessage(provider)}
                   >
                     <Ionicons name="chatbubble" size={16} color={colors.brand[400]} />
                   </TouchableOpacity>
                 </View>
                 {provider.previouslyWorked && (
-                  <View style={styles.workedBadge}>
-                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                    <Text style={[styles.workedBadgeText, { color: colors.success }]}>Daha önce çalıştık</Text>
+                  <View style={[styles.workedBadge, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                    <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                    <Text style={[styles.workedBadgeText, { color: '#10B981' }]}>Çalıştık</Text>
                   </View>
                 )}
               </View>
@@ -616,9 +716,12 @@ const styles = StyleSheet.create({
   providerMeta: { flexDirection: 'row', gap: 12, marginTop: 6 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontSize: 11 },
-  specialtiesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  specialtyTag: { paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(75, 48, 184, 0.1)', borderRadius: 6 },
-  specialtyText: { fontSize: 10, fontWeight: '500' },
+  tagsAndSocialRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
+  specialtiesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, flex: 1 },
+  specialtyTag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  specialtyText: { fontSize: 11, fontWeight: '500' },
+  socialIcons: { flexDirection: 'row', gap: 6 },
+  socialIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.04)' },
   statItem: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: 12, fontWeight: '600' },
@@ -629,7 +732,7 @@ const styles = StyleSheet.create({
   workedBadgeText: { fontSize: 11, fontWeight: '500' },
   actionButtons: { flexDirection: 'row', gap: 8 },
   offerButton: { borderRadius: 10, overflow: 'hidden' },
-  offerButtonGradient: { paddingHorizontal: 16, paddingVertical: 10 },
+  offerButtonGradient: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
   offerButtonText: { fontSize: 13, fontWeight: '600', color: 'white' },
   iconButton: { width: 36, height: 36, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', backgroundColor: 'rgba(255, 255, 255, 0.03)', alignItems: 'center', justifyContent: 'center' },
   bulkOfferContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 100, backgroundColor: 'rgba(9, 9, 11, 0.95)', borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.06)' },

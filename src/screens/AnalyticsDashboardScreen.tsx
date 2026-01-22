@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Text,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,14 @@ import Animated, {
 import { ScrollHeader, LargeTitle } from '../components/navigation';
 import { useTheme } from '../theme/ThemeContext';
 import { useApp } from '../../App';
+import { useAuth } from '../context/AuthContext';
+import {
+  useUserEvents,
+  useOrganizerOffers,
+  useProviderOffers,
+  useProviderJobs,
+} from '../hooks/useFirestoreData';
+import { useOrganizerAnalytics, useProviderAnalytics } from '../hooks/useAnalytics';
 import {
   KPICard,
   TrendBadge,
@@ -28,8 +37,6 @@ import {
   TransactionItem,
 } from '../components/analytics';
 import {
-  organizerAnalytics,
-  providerAnalytics,
   formatCurrency,
   formatCompactCurrency,
   getDataByPeriod,
@@ -39,6 +46,7 @@ import {
 export function AnalyticsDashboardScreen() {
   const { colors, isDark } = useTheme();
   const { isProviderMode } = useApp();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('monthly');
@@ -49,6 +57,20 @@ export function AnalyticsDashboardScreen() {
       scrollY.value = event.contentOffset.y;
     },
   });
+
+  // Fetch real data from Firebase
+  const { events, loading: eventsLoading } = useUserEvents(user?.uid);
+  const { offers: organizerOffers, loading: orgOffersLoading } = useOrganizerOffers(user?.uid);
+  const { offers: providerOffers, loading: provOffersLoading } = useProviderOffers(user?.uid);
+  const { jobs, loading: jobsLoading } = useProviderJobs(user?.uid);
+
+  // Calculate real analytics
+  const organizerAnalytics = useOrganizerAnalytics(events, organizerOffers);
+  const providerAnalytics = useProviderAnalytics(jobs, providerOffers);
+
+  const isLoading = isProviderMode
+    ? (jobsLoading || provOffersLoading)
+    : (eventsLoading || orgOffersLoading);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -521,7 +543,16 @@ export function AnalyticsDashboardScreen() {
           </View>
         </View>
 
-        {isProviderMode ? renderProviderDashboard() : renderOrganizerDashboard()}
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={accentColor} />
+            <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+              Veriler yükleniyor...
+            </Text>
+          </View>
+        ) : (
+          isProviderMode ? renderProviderDashboard() : renderOrganizerDashboard()
+        )}
 
         <View style={{ height: 100 }} />
       </Animated.ScrollView>
@@ -686,5 +717,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Loading State Styles
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
   },
 });

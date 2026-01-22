@@ -222,8 +222,21 @@ export function ChatScreen() {
 
       // If providerId is passed, create/get conversation
       if (params?.providerId && params?.providerName) {
+        // Validate providerId is a valid string
+        if (!params.providerId || typeof params.providerId !== 'string' || params.providerId.trim() === '') {
+          console.error('[ChatScreen] Invalid providerId:', params.providerId);
+          Alert.alert('Hata', 'Geçersiz kullanıcı kimliği');
+          return;
+        }
+
         setIsCreatingConversation(true);
         try {
+          console.log('[ChatScreen] Creating conversation with:', {
+            userId: user.uid,
+            userName: user.displayName,
+            providerId: params.providerId,
+            providerName: params.providerName,
+          });
           const convId = await createOrGetConversation(
             user.uid,
             user.displayName || 'Kullanıcı',
@@ -233,14 +246,30 @@ export function ChatScreen() {
             params.providerImage || '',
             params.serviceCategory
           );
+          console.log('[ChatScreen] Conversation created/retrieved:', convId);
           setConversationId(convId);
           setParticipantId(params.providerId);
           setParticipantName(params.providerName);
           // Fetch real user data from Firebase to get actual profile photo
           await fetchParticipantData(params.providerId);
-        } catch (error) {
-          console.warn('Error creating conversation:', error);
-          Alert.alert('Hata', 'Sohbet başlatılamadı');
+        } catch (error: any) {
+          console.error('[ChatScreen] Error creating conversation:', error);
+          console.error('[ChatScreen] Error code:', error?.code);
+          console.error('[ChatScreen] Error message:', error?.message);
+
+          // If we got a permission error, try to use the conversation ID anyway
+          // (the conversation might exist and we can still send messages to it)
+          if (error?.code === 'permission-denied') {
+            console.log('[ChatScreen] Permission denied - using generated conversation ID anyway');
+            const sortedIds = [user.uid, params.providerId].sort();
+            const fallbackConvId = `conv_${sortedIds[0]}_${sortedIds[1]}`;
+            setConversationId(fallbackConvId);
+            setParticipantId(params.providerId);
+            setParticipantName(params.providerName);
+            await fetchParticipantData(params.providerId);
+          } else {
+            Alert.alert('Hata', `Sohbet başlatılamadı: ${error?.code || error?.message || 'Bilinmeyen hata'}`);
+          }
         } finally {
           setIsCreatingConversation(false);
         }
