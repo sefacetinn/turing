@@ -1,7 +1,17 @@
 import * as Sentry from '@sentry/react-native';
 
-// Sentry DSN - Replace with your actual Sentry DSN
-const SENTRY_DSN = 'https://your-sentry-dsn@sentry.io/project-id';
+// Track if Sentry is enabled
+let sentryEnabled = false;
+
+// Sentry DSN - Set via environment variable or replace with your actual DSN
+const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+
+// Check if DSN is valid (not a placeholder)
+const isValidDsn = (dsn: string): boolean => {
+  return dsn.length > 0 &&
+         !dsn.includes('your-sentry-dsn') &&
+         !dsn.includes('project-id');
+};
 
 // Environment detection
 const getEnvironment = (): string => {
@@ -14,33 +24,46 @@ const getEnvironment = (): string => {
  * Call this in App.tsx before any other code
  */
 export function initSentry(): void {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: getEnvironment(),
-    debug: __DEV__, // Enable debug mode in development
-    enableAutoSessionTracking: true,
-    sessionTrackingIntervalMillis: 30000,
-    tracesSampleRate: __DEV__ ? 1.0 : 0.2, // Sample 20% of transactions in production
-    attachScreenshot: true,
-    attachViewHierarchy: true,
-    enableNativeCrashHandling: true,
-    enableAutoPerformanceTracing: true,
-    // Ignore common non-critical errors
-    ignoreErrors: [
-      'Network request failed',
-      'Failed to fetch',
-      'AbortError',
-      'timeout',
-    ],
-    beforeSend(event) {
-      // Don't send events in development unless explicitly enabled
-      if (__DEV__) {
-        console.log('[Sentry] Event captured (not sent in dev):', event.message || event.exception);
-        return null;
-      }
-      return event;
-    },
-  });
+  // Skip Sentry in development or if DSN is not configured
+  if (__DEV__ || !isValidDsn(SENTRY_DSN)) {
+    console.log('[Sentry] Skipped initialization (development mode or DSN not configured)');
+    sentryEnabled = false;
+    return;
+  }
+
+  try {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      environment: getEnvironment(),
+      debug: false,
+      enableAutoSessionTracking: true,
+      sessionTrackingIntervalMillis: 30000,
+      tracesSampleRate: 0.2, // Sample 20% of transactions in production
+      attachScreenshot: true,
+      attachViewHierarchy: true,
+      enableNativeCrashHandling: true,
+      enableAutoPerformanceTracing: true,
+      // Ignore common non-critical errors
+      ignoreErrors: [
+        'Network request failed',
+        'Failed to fetch',
+        'AbortError',
+        'timeout',
+      ],
+    });
+    sentryEnabled = true;
+    console.log('[Sentry] Initialized successfully');
+  } catch (error) {
+    console.warn('[Sentry] Failed to initialize:', error);
+    sentryEnabled = false;
+  }
+}
+
+/**
+ * Check if Sentry is enabled
+ */
+export function isSentryEnabled(): boolean {
+  return sentryEnabled && !__DEV__ && isValidDsn(SENTRY_DSN);
 }
 
 /**
@@ -53,6 +76,7 @@ export function setUser(user: {
   username?: string;
   role?: string;
 }): void {
+  if (!isSentryEnabled()) return;
   Sentry.setUser({
     id: user.id,
     email: user.email,
@@ -65,6 +89,7 @@ export function setUser(user: {
  * Clear user information on logout
  */
 export function clearUser(): void {
+  if (!isSentryEnabled()) return;
   Sentry.setUser(null);
 }
 
@@ -75,6 +100,12 @@ export function captureException(
   error: Error | unknown,
   context?: Record<string, unknown>
 ): string {
+  // Always log errors in development
+  if (__DEV__) {
+    console.error('[Sentry] Exception:', error, context);
+    return '';
+  }
+  if (!isSentryEnabled()) return '';
   if (context) {
     Sentry.setContext('additional', context);
   }
@@ -88,6 +119,11 @@ export function captureMessage(
   message: string,
   level: Sentry.SeverityLevel = 'info'
 ): string {
+  if (__DEV__) {
+    console.log('[Sentry] Message:', level, message);
+    return '';
+  }
+  if (!isSentryEnabled()) return '';
   return Sentry.captureMessage(message, level);
 }
 
@@ -100,6 +136,7 @@ export function addBreadcrumb(breadcrumb: {
   level?: Sentry.SeverityLevel;
   data?: Record<string, unknown>;
 }): void {
+  if (!isSentryEnabled()) return;
   Sentry.addBreadcrumb({
     category: breadcrumb.category,
     message: breadcrumb.message,
@@ -115,6 +152,7 @@ export function setContext(
   name: string,
   context: Record<string, unknown>
 ): void {
+  if (!isSentryEnabled()) return;
   Sentry.setContext(name, context);
 }
 
@@ -122,6 +160,7 @@ export function setContext(
  * Set a tag for filtering errors
  */
 export function setTag(key: string, value: string): void {
+  if (!isSentryEnabled()) return;
   Sentry.setTag(key, value);
 }
 
@@ -132,6 +171,7 @@ export function startTransaction(
   name: string,
   op: string
 ): Sentry.Span | undefined {
+  if (!isSentryEnabled()) return undefined;
   return Sentry.startInactiveSpan({ name, op });
 }
 
