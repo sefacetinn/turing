@@ -50,11 +50,52 @@ export interface ContractTemplate {
   sections: { title: string; content: string }[];
 }
 
+// Get contract title based on service category
+export function getContractTitle(serviceCategory: string): string {
+  const titles: Record<string, string> = {
+    'booking': 'SANATÇI/PERFORMANS SÖZLEŞMESİ',
+    'technical': 'TEKNİK HİZMET SÖZLEŞMESİ',
+    'catering': 'İKRAM HİZMET SÖZLEŞMESİ',
+    'transport': 'ULAŞIM/TRANSFER HİZMET SÖZLEŞMESİ',
+    'venue': 'MEKAN/DEKORASYON HİZMET SÖZLEŞMESİ',
+    'photography': 'FOTOĞRAF/VİDEO HİZMET SÖZLEŞMESİ',
+    'security': 'GÜVENLİK HİZMET SÖZLEŞMESİ',
+    'sound-light': 'SES VE IŞIK HİZMET SÖZLEŞMESİ',
+  };
+  return titles[serviceCategory] || 'HİZMET SÖZLEŞMESİ';
+}
+
+// Generate readable contract number from offer ID and date
+export function generateContractNumber(offerId: string, acceptedAt?: Date | { toDate: () => Date } | null): string {
+  const date = acceptedAt
+    ? (acceptedAt instanceof Date ? acceptedAt : acceptedAt.toDate?.() || new Date())
+    : new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const shortId = offerId.slice(-6).toUpperCase();
+  return `SZL-${year}${month}-${shortId}`;
+}
+
+// Format date helper
+export function formatContractDate(date?: Date | { toDate: () => Date } | null): string {
+  if (!date) return '';
+  const d = date instanceof Date ? date : date.toDate?.();
+  if (!d) return '';
+  return d.toLocaleDateString('tr-TR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 // Contract templates based on service category
 export const getContractTemplate = (category: string): ContractTemplate => {
+  // Get the dynamic title based on category
+  const dynamicTitle = getContractTitle(category);
+
   const templates: Record<string, ContractTemplate> = {
     technical: {
-      title: 'TEKNİK HİZMET SÖZLEŞMESİ',
+      title: dynamicTitle,
       sections: [
         {
           title: '1. TARAFLAR',
@@ -95,7 +136,7 @@ export const getContractTemplate = (category: string): ContractTemplate => {
       ],
     },
     booking: {
-      title: 'SANATÇI/PERFORMANS SÖZLEŞMESİ',
+      title: dynamicTitle,
       sections: [
         {
           title: '1. TARAFLAR',
@@ -136,7 +177,7 @@ export const getContractTemplate = (category: string): ContractTemplate => {
       ],
     },
     venue: {
-      title: 'DEKORASYON/MEKAN HİZMET SÖZLEŞMESİ',
+      title: dynamicTitle,
       sections: [
         {
           title: '1. TARAFLAR',
@@ -177,7 +218,7 @@ export const getContractTemplate = (category: string): ContractTemplate => {
       ],
     },
     transport: {
-      title: 'ULAŞIM/TRANSFER HİZMET SÖZLEŞMESİ',
+      title: dynamicTitle,
       sections: [
         {
           title: '1. TARAFLAR',

@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { gradients, darkTheme as defaultColors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
-import { ContractStatus, ContractParams, Contract, mockContract, getContractTemplate, fillTemplate, getContractStatusInfo } from '../data/contractData';
+import { ContractStatus, ContractParams, Contract, mockContract, getContractTemplate, fillTemplate, getContractStatusInfo, getContractTitle, generateContractNumber, formatContractDate } from '../data/contractData';
 import { useOffer } from '../hooks';
 import { doc, updateDoc, Timestamp, getDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
@@ -90,30 +90,51 @@ export function ContractScreen() {
 
       console.log('[ContractScreen] Calculated status:', status);
 
+      // Generate contract number from offer ID and acceptedAt date
+      const contractNumber = generateContractNumber(firebaseOffer.id, firebaseOffer.acceptedAt);
+
+      // Format dates from Firebase
+      const createdAtDate = formatContractDate(firebaseOffer.acceptedAt || firebaseOffer.createdAt);
+      const updatedAtDate = formatContractDate(firebaseOffer.contractSignedAt || firebaseOffer.updatedAt);
+
       return {
         ...mockContract,
-        id: firebaseOffer.id,
+        id: contractNumber,
+        offerId: firebaseOffer.id,
+        category: firebaseOffer.serviceCategory || 'technical',
         eventName: firebaseOffer.eventTitle || params.eventTitle || 'Etkinlik',
         eventDate: firebaseOffer.eventDate || params.eventDate || '',
         eventLocation: firebaseOffer.eventCity || '',
         serviceName: firebaseOffer.artistName || params.artistName || 'Hizmet',
         amount: firebaseOffer.finalAmount || firebaseOffer.amount || params.amount || 0,
+        createdAt: createdAtDate || mockContract.createdAt,
+        updatedAt: updatedAtDate || mockContract.updatedAt,
         organizer: {
-          ...mockContract.organizer,
-          name: firebaseOffer.organizerName || params.organizerName || 'Organizatör',
+          name: firebaseOffer.organizerCompanyName || firebaseOffer.organizerName || params.organizerName || 'Organizatör',
+          representative: firebaseOffer.organizerUserName || firebaseOffer.organizerName || '',
+          title: firebaseOffer.organizerUserRole || 'Organizatör',
+          phone: firebaseOffer.organizerPhone || '',
+          email: '', // Not available in offer
+          address: '', // Not available in offer
+          taxId: '', // Not available in offer
         },
         provider: {
-          ...mockContract.provider,
-          name: firebaseOffer.providerName || 'Hizmet Sağlayıcı',
+          name: firebaseOffer.providerCompanyName || firebaseOffer.providerName || 'Hizmet Sağlayıcı',
+          representative: firebaseOffer.providerUserName || firebaseOffer.providerName || '',
+          title: firebaseOffer.providerUserRole || 'Hizmet Sağlayıcı',
+          phone: firebaseOffer.providerPhone || '',
+          email: '', // Not available in offer
+          address: '', // Not available in offer
+          taxId: '', // Not available in offer
         },
         organizerSignature: {
           signed: firebaseOffer.contractSignedByOrganizer || false,
-          signedAt: firebaseOffer.contractSignedByOrganizer ? new Date().toLocaleDateString('tr-TR') : '',
+          signedAt: firebaseOffer.contractSignedByOrganizer ? formatContractDate(firebaseOffer.contractSignedAt) || new Date().toLocaleDateString('tr-TR') : '',
           signatureData: '',
         },
         providerSignature: {
           signed: firebaseOffer.contractSignedByProvider || false,
-          signedAt: firebaseOffer.contractSignedByProvider ? new Date().toLocaleDateString('tr-TR') : '',
+          signedAt: firebaseOffer.contractSignedByProvider ? formatContractDate(firebaseOffer.contractSignedAt) || new Date().toLocaleDateString('tr-TR') : '',
           signatureData: '',
         },
         status,
@@ -406,8 +427,19 @@ export function ContractScreen() {
               <View style={styles.partyCard}>
                 <View style={styles.partyHeader}><View style={[styles.partyIcon, { backgroundColor: item.iconBg }]}><Ionicons name={item.icon as any} size={18} color={item.iconColor} /></View><Text style={[styles.partyLabel, { color: colors.textMuted }]}>{item.label}</Text></View>
                 <Text style={[styles.partyName, { color: colors.text }]}>{item.party.name}</Text>
-                <Text style={[styles.partyRep, { color: colors.textMuted }]}>{item.party.representative} - {item.party.title}</Text>
-                <View style={styles.partyContact}><View style={styles.partyContactItem}><Ionicons name="mail-outline" size={12} color={colors.textMuted} /><Text style={[styles.partyContactText, { color: colors.textMuted }]}>{item.party.email}</Text></View><View style={styles.partyContactItem}><Ionicons name="call-outline" size={12} color={colors.textMuted} /><Text style={[styles.partyContactText, { color: colors.textMuted }]}>{item.party.phone}</Text></View></View>
+                {item.party.representative && item.party.representative !== item.party.name && (
+                  <Text style={[styles.partyRep, { color: colors.textMuted }]}>{item.party.representative}{item.party.title ? ` - ${item.party.title}` : ''}</Text>
+                )}
+                {(item.party.email || item.party.phone) && (
+                  <View style={styles.partyContact}>
+                    {item.party.email && (
+                      <View style={styles.partyContactItem}><Ionicons name="mail-outline" size={12} color={colors.textMuted} /><Text style={[styles.partyContactText, { color: colors.textMuted }]}>{item.party.email}</Text></View>
+                    )}
+                    {item.party.phone && (
+                      <View style={styles.partyContactItem}><Ionicons name="call-outline" size={12} color={colors.textMuted} /><Text style={[styles.partyContactText, { color: colors.textMuted }]}>{item.party.phone}</Text></View>
+                    )}
+                  </View>
+                )}
                 {item.signature.signed ? <View style={styles.signatureStatus}><Ionicons name="checkmark-circle" size={14} color={colors.success} /><Text style={[styles.signatureStatusText, { color: colors.success }]}>İmzalandı - {item.signature.signedAt}</Text></View> : <View style={[styles.signatureStatus, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}><Ionicons name="time-outline" size={14} color={colors.warning} /><Text style={[styles.signatureStatusText, { color: colors.warning }]}>İmza Bekleniyor</Text></View>}
               </View>
             </React.Fragment>
@@ -418,7 +450,7 @@ export function ContractScreen() {
         <View style={styles.serviceSummary}>
           <View style={styles.serviceSummaryHeader}><Ionicons name="receipt-outline" size={18} color={colors.brand[400]} /><Text style={[styles.serviceSummaryTitle, { color: colors.text }]}>Hizmet Özeti</Text></View>
           <View style={styles.serviceSummaryContent}>
-            {[{ label: 'Etkinlik', value: contract.eventName }, { label: 'Tarih', value: contract.eventDate }, { label: 'Konum', value: contract.eventLocation }, { label: 'Hizmet', value: contract.serviceName }].map((row, i) => <View key={i} style={styles.summaryRow}><Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{row.label}</Text><Text style={[styles.summaryValue, { color: colors.text }]}>{row.value}</Text></View>)}
+            {[{ label: 'Etkinlik', value: contract.eventName }, { label: 'Tarih', value: contract.eventDate }, { label: 'Konum', value: contract.eventLocation }, { label: 'Hizmet', value: contract.serviceName }].filter(row => row.value).map((row, i) => <View key={i} style={styles.summaryRow}><Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{row.label}</Text><Text style={[styles.summaryValue, { color: colors.text }]}>{row.value}</Text></View>)}
             <View style={[styles.summaryRow, styles.summaryRowTotal]}><Text style={[styles.summaryLabelTotal, { color: colors.text }]}>Toplam Tutar</Text><Text style={[styles.summaryValueTotal, { color: colors.success }]}>₺{contract.amount.toLocaleString('tr-TR')}</Text></View>
           </View>
         </View>
