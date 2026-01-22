@@ -2120,12 +2120,49 @@ export function ProviderRequestDetailScreen() {
                   )}
 
                   {offer.formData?.backstage !== undefined && (
-                    <View style={[styles.detailRow, { borderBottomColor: 'transparent' }]}>
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
                       <View style={styles.detailRowLeft}>
                         <Ionicons name="enter-outline" size={16} color="#6366F1" />
                         <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Kulis</Text>
                       </View>
                       <Text style={[styles.detailRowValue, { color: colors.text }]}>{offer.formData.backstage ? 'Mevcut' : 'Yok'}</Text>
+                    </View>
+                  )}
+
+                  {/* Booking-specific fields */}
+                  {offer.formData?.livePerformance !== undefined && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="musical-notes-outline" size={16} color="#EC4899" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Canlı Performans</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: offer.formData.livePerformance ? '#10B981' : colors.textMuted }]}>
+                        {offer.formData.livePerformance ? 'Evet' : 'Hayır'}
+                      </Text>
+                    </View>
+                  )}
+
+                  {offer.formData?.djSet !== undefined && (
+                    <View style={[styles.detailRow, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="mic-outline" size={16} color="#8B5CF6" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>DJ Set</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: offer.formData.djSet ? '#10B981' : colors.textMuted }]}>
+                        {offer.formData.djSet ? 'Evet' : 'Hayır'}
+                      </Text>
+                    </View>
+                  )}
+
+                  {offer.formData?.meetGreet !== undefined && (
+                    <View style={[styles.detailRow, { borderBottomColor: 'transparent' }]}>
+                      <View style={styles.detailRowLeft}>
+                        <Ionicons name="people-outline" size={16} color="#F59E0B" />
+                        <Text style={[styles.detailRowLabel, { color: colors.textSecondary }]}>Meet & Greet</Text>
+                      </View>
+                      <Text style={[styles.detailRowValue, { color: offer.formData.meetGreet ? '#10B981' : colors.textMuted }]}>
+                        {offer.formData.meetGreet ? 'Evet' : 'Hayır'}
+                      </Text>
                     </View>
                   )}
                 </View>
