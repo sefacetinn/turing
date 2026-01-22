@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -81,6 +82,7 @@ export function CategoryRequestScreen() {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(existingDraft?.eventId || eventId || null);
   const [selectedDates, setSelectedDates] = useState<string[]>(existingDraft?.formData?.selectedDates || []);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [budget, setBudget] = useState(existingDraft?.budget || '');
   const [notes, setNotes] = useState(existingDraft?.notes || '');
 
@@ -100,6 +102,58 @@ export function CategoryRequestScreen() {
     }
   };
 
+  // Helper function to format a single date
+  const formatDateDisplay = useCallback((dateStr: string): string => {
+    const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const [year, month, day] = dateStr.split('-');
+    return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+  }, []);
+
+  // Helper function to generate dates between start and end
+  const generateDateRange = useCallback((startDate: string, endDate: string): string[] => {
+    const dates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const current = new Date(start);
+    while (current <= end) {
+      dates.push(current.toISOString().split('T')[0]);
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  }, []);
+
+  // Get event date options based on selected event
+  const eventDateOptions = useMemo(() => {
+    if (!selectedEvent) return [];
+    const eventData = firebaseEvents.find(e => e.id === selectedEvent);
+    if (!eventData || !eventData.date) return [];
+
+    const options: { id: string; label: string; date: string }[] = [];
+
+    // Check if event has end date (multi-day event)
+    if (eventData.endDate && eventData.endDate !== eventData.date) {
+      // Generate all dates between start and end
+      const dateRange = generateDateRange(eventData.date, eventData.endDate);
+      dateRange.forEach((date, index) => {
+        options.push({
+          id: date,
+          label: `${formatDateDisplay(date)}${index === 0 ? ' (Başlangıç)' : index === dateRange.length - 1 ? ' (Bitiş)' : ''}`,
+          date: date,
+        });
+      });
+    } else {
+      // Single day event
+      options.push({
+        id: eventData.date,
+        label: `${formatDateDisplay(eventData.date)} (Etkinlik tarihi)`,
+        date: eventData.date,
+      });
+    }
+
+    return options;
+  }, [selectedEvent, firebaseEvents, formatDateDisplay, generateDateRange]);
+
   // Format selected dates for display
   const formattedServiceDate = useMemo(() => {
     if (selectedDates.length === 0) return '';
@@ -116,6 +170,27 @@ export function CategoryRequestScreen() {
     }
     return `${parseInt(day1)} ${months[parseInt(month1) - 1]} - ${parseInt(day2)} ${months[parseInt(month2) - 1]} ${year2}`;
   }, [selectedDates]);
+
+  // Handle date selection from dropdown
+  const handleDateOptionSelect = useCallback((dateOption: { id: string; date: string } | 'other') => {
+    setShowDateDropdown(false);
+    if (dateOption === 'other') {
+      setShowDatePicker(true);
+    } else {
+      setSelectedDates([dateOption.date]);
+    }
+  }, []);
+
+  // Auto-select event date when event is selected (for single-day events)
+  React.useEffect(() => {
+    if (selectedEvent && selectedDates.length === 0) {
+      const eventData = firebaseEvents.find(e => e.id === selectedEvent);
+      if (eventData?.date && !eventData.endDate) {
+        // Single day event - auto-select the date
+        setSelectedDates([eventData.date]);
+      }
+    }
+  }, [selectedEvent, firebaseEvents]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -849,7 +924,13 @@ export function CategoryRequestScreen() {
                 borderColor: selectedDates.length > 0 ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border),
               }
             ]}
-            onPress={() => setShowDatePicker(true)}
+            onPress={() => {
+              if (selectedEvent && eventDateOptions.length > 0) {
+                setShowDateDropdown(true);
+              } else {
+                setShowDatePicker(true);
+              }
+            }}
           >
             <Ionicons
               name="calendar-outline"
@@ -872,6 +953,90 @@ export function CategoryRequestScreen() {
             <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </FormSection>
+
+        {/* Date Selection Dropdown Modal */}
+        <Modal
+          visible={showDateDropdown}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowDateDropdown(false)}
+        >
+          <TouchableOpacity
+            style={styles.dateDropdownOverlay}
+            activeOpacity={1}
+            onPress={() => setShowDateDropdown(false)}
+          >
+            <View style={[styles.dateDropdownContainer, { backgroundColor: colors.cardBackground }]}>
+              <View style={[styles.dateDropdownHeader, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
+                <Text style={[styles.dateDropdownTitle, { color: colors.text }]}>Hizmet Tarihi Seçin</Text>
+                <TouchableOpacity onPress={() => setShowDateDropdown(false)}>
+                  <Ionicons name="close" size={24} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.dateDropdownList} showsVerticalScrollIndicator={false}>
+                {/* Event date options */}
+                {eventDateOptions.map((option) => {
+                  const isSelected = selectedDates.includes(option.date);
+                  return (
+                    <TouchableOpacity
+                      key={option.id}
+                      style={[
+                        styles.dateDropdownItem,
+                        {
+                          backgroundColor: isSelected
+                            ? (isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)')
+                            : 'transparent',
+                          borderColor: isSelected ? colors.brand[400] : (isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border),
+                        }
+                      ]}
+                      onPress={() => handleDateOptionSelect(option)}
+                    >
+                      <View style={[styles.dateDropdownItemIcon, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
+                        <Ionicons name="calendar" size={18} color="#10B981" />
+                      </View>
+                      <View style={styles.dateDropdownItemContent}>
+                        <Text style={[styles.dateDropdownItemText, { color: colors.text }]}>
+                          {option.label}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <Ionicons name="checkmark-circle" size={22} color={colors.brand[500]} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* Divider */}
+                <View style={[styles.dateDropdownDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]} />
+
+                {/* Other date option */}
+                <TouchableOpacity
+                  style={[
+                    styles.dateDropdownItem,
+                    {
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+                    }
+                  ]}
+                  onPress={() => handleDateOptionSelect('other')}
+                >
+                  <View style={[styles.dateDropdownItemIcon, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.15)' : 'rgba(75, 48, 184, 0.1)' }]}>
+                    <Ionicons name="calendar-outline" size={18} color={colors.brand[400]} />
+                  </View>
+                  <View style={styles.dateDropdownItemContent}>
+                    <Text style={[styles.dateDropdownItemText, { color: colors.brand[500] }]}>
+                      Diğer tarih seç
+                    </Text>
+                    <Text style={[styles.dateDropdownItemHint, { color: colors.textMuted }]}>
+                      Takvimden farklı bir tarih seçin
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {renderCategoryFields()}
 
@@ -1009,4 +1174,16 @@ const styles = StyleSheet.create({
   eventDetailTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   eventDetailTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   eventDetailTagText: { fontSize: 12, fontWeight: '500' },
+  // Date Dropdown Styles
+  dateDropdownOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  dateDropdownContainer: { width: '100%', maxWidth: 400, maxHeight: '70%', borderRadius: 20, overflow: 'hidden' },
+  dateDropdownHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 },
+  dateDropdownTitle: { fontSize: 17, fontWeight: '600' },
+  dateDropdownList: { padding: 16 },
+  dateDropdownItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
+  dateDropdownItemIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  dateDropdownItemContent: { flex: 1 },
+  dateDropdownItemText: { fontSize: 15, fontWeight: '500' },
+  dateDropdownItemHint: { fontSize: 12, marginTop: 2 },
+  dateDropdownDivider: { height: 1, marginVertical: 8 },
 });
