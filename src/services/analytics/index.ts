@@ -1,4 +1,10 @@
-import analytics from '@react-native-firebase/analytics';
+/**
+ * Analytics Service
+ *
+ * Expo Go compatible analytics implementation.
+ * Logs events to console in development.
+ * Can be extended to use Firebase Analytics in production builds.
+ */
 
 // Event types for type safety
 export type AnalyticsEventType =
@@ -39,16 +45,17 @@ export interface UserProperties {
   preferred_mode?: 'organizer' | 'provider';
 }
 
+// Store user properties in memory for logging context
+let currentUserProperties: UserProperties = {};
+
+const isDev = __DEV__;
+
 /**
  * Initialize analytics (call in App.tsx)
  */
 export async function initializeAnalytics(): Promise<void> {
-  try {
-    // Enable analytics collection
-    await analytics().setAnalyticsCollectionEnabled(true);
-    console.log('[Analytics] Initialized');
-  } catch (error) {
-    console.error('[Analytics] Initialization error:', error);
+  if (isDev) {
+    console.log('[Analytics] Initialized (development mode - console logging only)');
   }
 }
 
@@ -56,24 +63,9 @@ export async function initializeAnalytics(): Promise<void> {
  * Set user properties for segmentation
  */
 export async function setUserProperties(properties: UserProperties): Promise<void> {
-  try {
-    if (properties.user_id) {
-      await analytics().setUserId(properties.user_id);
-    }
-
-    // Set individual user properties
-    const { user_id, ...otherProperties } = properties;
-
-    for (const [key, value] of Object.entries(otherProperties)) {
-      if (value !== undefined) {
-        const stringValue = Array.isArray(value)
-          ? value.join(',')
-          : String(value);
-        await analytics().setUserProperty(key, stringValue);
-      }
-    }
-  } catch (error) {
-    console.error('[Analytics] Error setting user properties:', error);
+  currentUserProperties = { ...currentUserProperties, ...properties };
+  if (isDev) {
+    console.log('[Analytics] User properties set:', properties);
   }
 }
 
@@ -81,11 +73,9 @@ export async function setUserProperties(properties: UserProperties): Promise<voi
  * Clear user properties on logout
  */
 export async function clearUserProperties(): Promise<void> {
-  try {
-    await analytics().setUserId(null);
-    await analytics().resetAnalyticsData();
-  } catch (error) {
-    console.error('[Analytics] Error clearing user properties:', error);
+  currentUserProperties = {};
+  if (isDev) {
+    console.log('[Analytics] User properties cleared');
   }
 }
 
@@ -96,13 +86,8 @@ export async function logScreenView(
   screenName: string,
   screenClass?: string
 ): Promise<void> {
-  try {
-    await analytics().logScreenView({
-      screen_name: screenName,
-      screen_class: screenClass || screenName,
-    });
-  } catch (error) {
-    console.error('[Analytics] Error logging screen view:', error);
+  if (isDev) {
+    console.log('[Analytics] Screen view:', screenName, screenClass || '');
   }
 }
 
@@ -113,10 +98,8 @@ export async function logEvent(
   eventName: AnalyticsEventType,
   params?: Record<string, any>
 ): Promise<void> {
-  try {
-    await analytics().logEvent(eventName, params);
-  } catch (error) {
-    console.error('[Analytics] Error logging event:', error);
+  if (isDev) {
+    console.log('[Analytics] Event:', eventName, params || {});
   }
 }
 
@@ -126,21 +109,21 @@ export async function logEvent(
  * Log user login
  */
 export async function logLogin(method: 'email' | 'google' | 'apple' | 'biometric'): Promise<void> {
-  await analytics().logLogin({ method });
+  await logEvent('login', { method });
 }
 
 /**
  * Log user sign up
  */
 export async function logSignUp(method: 'email' | 'google' | 'apple'): Promise<void> {
-  await analytics().logSignUp({ method });
+  await logEvent('sign_up', { method });
 }
 
 /**
  * Log search
  */
 export async function logSearch(searchTerm: string): Promise<void> {
-  await analytics().logSearch({ search_term: searchTerm });
+  await logEvent('search', { search_term: searchTerm });
 }
 
 /**
@@ -150,7 +133,7 @@ export async function logSelectContent(
   contentType: string,
   itemId: string
 ): Promise<void> {
-  await analytics().logSelectContent({
+  await logEvent('select_content', {
     content_type: contentType,
     item_id: itemId,
   });
@@ -164,14 +147,10 @@ export async function logViewItem(
   itemName: string,
   itemCategory: string
 ): Promise<void> {
-  await analytics().logViewItem({
-    items: [
-      {
-        item_id: itemId,
-        item_name: itemName,
-        item_category: itemCategory,
-      },
-    ],
+  await logEvent('view_item', {
+    item_id: itemId,
+    item_name: itemName,
+    item_category: itemCategory,
   });
 }
 
@@ -183,7 +162,7 @@ export async function logShare(
   itemId: string,
   method: string
 ): Promise<void> {
-  await analytics().logShare({
+  await logEvent('share', {
     content_type: contentType,
     item_id: itemId,
     method,
@@ -287,5 +266,24 @@ export async function logRemoveFromFavorites(itemData: {
   await logEvent('remove_from_favorites', itemData);
 }
 
-// Export analytics instance for advanced usage
-export { analytics };
+// Mock analytics object for compatibility
+export const analytics = () => ({
+  logEvent: logEvent,
+  logScreenView: logScreenView,
+  setUserId: async (id: string | null) => {
+    if (id) {
+      currentUserProperties.user_id = id;
+    } else {
+      delete currentUserProperties.user_id;
+    }
+  },
+  setUserProperty: async (name: string, value: string | null) => {
+    if (value !== null) {
+      (currentUserProperties as any)[name] = value;
+    }
+  },
+  setAnalyticsCollectionEnabled: async (_enabled: boolean) => {},
+  resetAnalyticsData: async () => {
+    currentUserProperties = {};
+  },
+});
