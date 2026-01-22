@@ -1465,11 +1465,13 @@ const docToChatConversation = (doc: any): FirestoreChatConversation => {
   const data = doc.data();
   return {
     id: doc.id,
-    participants: data.participants || [],
+    // Support both 'participants' and 'participantIds' for backward compatibility
+    participants: data.participants || data.participantIds || [],
     participantNames: data.participantNames || {},
     participantImages: data.participantImages || {},
     lastMessage: data.lastMessage || '',
-    lastMessageTime: toDate(data.lastMessageTime),
+    // Support both 'lastMessageTime' and 'lastMessageAt' for backward compatibility
+    lastMessageTime: toDate(data.lastMessageTime || data.lastMessageAt),
     lastMessageSenderId: data.lastMessageSenderId || '',
     unreadCount: data.unreadCount || {},
     createdAt: toDate(data.createdAt),
@@ -1522,7 +1524,26 @@ export function useChatConversations(userId: string | undefined) {
       q,
       (snapshot) => {
         const convList = snapshot.docs.map(docToChatConversation);
-        setConversations(convList);
+
+        // Deduplicate conversations by other participant
+        // If multiple conversations exist with the same person, keep the one with most recent message
+        const deduplicatedMap = new Map<string, FirestoreChatConversation>();
+        for (const conv of convList) {
+          // Get the other participant's ID
+          const otherParticipantId = conv.participants.find(id => id !== userId);
+          if (!otherParticipantId) continue;
+
+          const existing = deduplicatedMap.get(otherParticipantId);
+          if (!existing || conv.lastMessageTime > existing.lastMessageTime) {
+            deduplicatedMap.set(otherParticipantId, conv);
+          }
+        }
+
+        // Convert back to array and sort by lastMessageTime desc
+        const deduplicatedList = Array.from(deduplicatedMap.values())
+          .sort((a, b) => b.lastMessageTime.getTime() - a.lastMessageTime.getTime());
+
+        setConversations(deduplicatedList);
         setLoading(false);
         setError(null);
       },
@@ -1603,10 +1624,10 @@ export async function sendChatMessage(
     createdAt: Timestamp.now(),
   });
 
-  // Update conversation's last message (use lastMessageAt for existing hook compatibility)
+  // Update conversation's last message (use lastMessageTime to match query orderBy field)
   await updateDoc(doc(db, 'conversations', conversationId), {
     lastMessage: message.text || (message.type === 'offer' ? 'Teklif gönderildi' : message.type === 'meeting' ? 'Toplantı daveti' : 'Dosya gönderildi'),
-    lastMessageAt: Timestamp.now(),
+    lastMessageTime: Timestamp.now(),
   });
 
   return msgRef.id;
@@ -1702,7 +1723,7 @@ export async function createOrGetConversation(
   try {
     // Use merge: true to avoid overwriting if document somehow exists
     await setDoc(conversationRef, {
-      participantIds: [userId, otherUserId].sort(), // Sorted for consistency
+      participants: [userId, otherUserId].sort(), // Sorted for consistency (matches query field)
       participantNames: {
         [userId]: userName,
         [otherUserId]: otherUserName,
@@ -1712,7 +1733,7 @@ export async function createOrGetConversation(
         [otherUserId]: otherUserImage || '',
       },
       lastMessage: '',
-      lastMessageAt: now,
+      lastMessageTime: now, // Matches query orderBy field
       unreadCount: {
         [userId]: 0,
         [otherUserId]: 0,
@@ -1807,7 +1828,7 @@ export async function createOrGetConversationWithCompany(
   // Create new conversation with deterministic ID using setDoc
   const now = Timestamp.now();
   const conversationData: Record<string, any> = {
-    participantIds: [participant1.userId, participant2.userId].sort(),
+    participants: [participant1.userId, participant2.userId].sort(), // Matches query field
     participantNames: {
       [participant1.userId]: name1,
       [participant2.userId]: name2,
@@ -1821,7 +1842,7 @@ export async function createOrGetConversationWithCompany(
     participantCompanyLogos: {},
     participantRoles: {},
     lastMessage: '',
-    lastMessageAt: now,
+    lastMessageTime: now, // Matches query orderBy field
     unreadCount: {
       [participant1.userId]: 0,
       [participant2.userId]: 0,
