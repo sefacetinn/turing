@@ -1053,38 +1053,6 @@ export function OfferDetailScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Counter Offer Section - Only show during negotiation, not after acceptance */}
-        {firebaseOffer?.counterAmount && offer.status !== 'accepted' && offer.status !== 'rejected' && (
-          <View style={[styles.card, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderLeftWidth: 3, borderLeftColor: colors.brand[400] }]}>
-            <View style={styles.counterOfferHeader}>
-              <View style={[styles.counterOfferIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)' }]}>
-                <Ionicons name="swap-horizontal" size={18} color={colors.brand[400]} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { color: colors.text, marginBottom: 2 }]}>
-                  {firebaseOffer.counterBy === 'organizer' ? 'Organizatör Karşı Teklifi' : 'Sağlayıcı Karşı Teklifi'}
-                </Text>
-                {firebaseOffer.counterAt && (
-                  <Text style={[styles.counterOfferDate, { color: colors.textMuted }]}>
-                    {firebaseOffer.counterAt.toLocaleDateString('tr-TR')}
-                  </Text>
-                )}
-              </View>
-            </View>
-            <View style={[styles.counterOfferAmount, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.05)' }]}>
-              <Text style={[styles.counterOfferAmountLabel, { color: colors.textMuted }]}>Yeni Teklif Tutarı</Text>
-              <Text style={[styles.counterOfferAmountValue, { color: colors.brand[400] }]}>
-                ₺{firebaseOffer.counterAmount.toLocaleString('tr-TR')}
-              </Text>
-            </View>
-            {firebaseOffer.counterMessage && (
-              <View style={styles.counterOfferMessage}>
-                <Text style={[styles.notesText, { color: colors.text }]}>"{firebaseOffer.counterMessage}"</Text>
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Offer Timeline / History - Expandable */}
         {offerHistory.length > 0 && (
           <TouchableOpacity
@@ -1112,6 +1080,37 @@ export function OfferDetailScreen() {
               </View>
             )}
           </TouchableOpacity>
+        )}
+
+        {/* Compact Counter Offer Card - Only show during negotiation */}
+        {firebaseOffer?.counterAmount && offer.status !== 'accepted' && offer.status !== 'rejected' && (
+          <View style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}>
+            <View style={[styles.infoCardContent, { minHeight: 72, padding: 16 }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.06)' }]}>
+                <Ionicons name="swap-horizontal" size={18} color="#F59E0B" />
+              </View>
+              <View style={styles.infoCardDetails}>
+                <Text style={[styles.infoName, { color: colors.text }]}>
+                  {firebaseOffer.counterBy === 'organizer' ? 'Karşı Teklifiniz' : 'Karşı Teklif'}
+                </Text>
+                <View style={styles.infoMetaRow}>
+                  <Text style={[styles.infoMetaText, { color: '#F59E0B', fontSize: 16, fontWeight: '700' }]}>
+                    ₺{firebaseOffer.counterAmount.toLocaleString('tr-TR')}
+                  </Text>
+                  {firebaseOffer.counterAt && (
+                    <Text style={[styles.infoMetaText, { color: colors.textMuted, marginLeft: 8 }]}>
+                      • {firebaseOffer.counterAt.toLocaleDateString('tr-TR')}
+                    </Text>
+                  )}
+                </View>
+                {firebaseOffer.counterMessage && (
+                  <Text style={[styles.infoMetaText, { color: colors.textSecondary, marginTop: 4 }]} numberOfLines={1}>
+                    "{firebaseOffer.counterMessage}"
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
         )}
 
         {/* Contract Link (if accepted) */}
