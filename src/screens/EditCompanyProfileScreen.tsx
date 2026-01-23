@@ -23,6 +23,8 @@ import { OptimizedImage } from '../components/OptimizedImage';
 import { useApp } from '../../App';
 import { useAuth } from '../context/AuthContext';
 import { uriToBlob, uploadFile } from '../services/firebase/storage';
+import { useUserCompanies } from '../hooks/useCompany';
+import { updateCompany } from '../services/firebase/companyService';
 
 // Service category type
 interface ServiceCategory {
@@ -54,6 +56,7 @@ export function EditCompanyProfileScreen() {
   const { colors, isDark } = useTheme();
   const { isProviderMode } = useApp();
   const { user, userProfile, updateProfile, refreshProfile } = useAuth();
+  const { primaryCompany } = useUserCompanies(user?.uid);
 
   // Company Info State - Initialize empty, will be filled from Firebase
   const [companyName, setCompanyName] = useState('');
@@ -403,6 +406,48 @@ export function EditCompanyProfileScreen() {
 
       // Update user profile via AuthContext
       await updateProfile(profileData);
+
+      // Also update company document if user has a primary company
+      if (primaryCompany?.id) {
+        try {
+          const companyUpdateData: any = {
+            name: companyName,
+          };
+          // Update company logo if photoURL was set
+          if (profileData.photoURL) {
+            companyUpdateData.logo = profileData.photoURL;
+          }
+          if (profileData.coverImage) {
+            companyUpdateData.coverImage = profileData.coverImage;
+          }
+          if (description) {
+            companyUpdateData.bio = description;
+          }
+          if (phone) {
+            companyUpdateData.phone = phone;
+          }
+          if (website) {
+            companyUpdateData.website = website;
+          }
+          if (address) {
+            companyUpdateData.address = address;
+          }
+          if (foundedYear) {
+            companyUpdateData.foundedYear = foundedYear;
+          }
+          if (employeeCount) {
+            companyUpdateData.employeeCount = employeeCount;
+          }
+          if (Object.keys(socialMediaData).length > 0) {
+            companyUpdateData.socialMedia = socialMediaData;
+          }
+          await updateCompany(primaryCompany.id, companyUpdateData);
+          console.log('[EditCompanyProfile] Company document updated successfully');
+        } catch (companyError) {
+          console.warn('[EditCompanyProfile] Error updating company document:', companyError);
+          // Don't block success - user profile was updated
+        }
+      }
 
       // Refresh profile to get updated data
       await refreshProfile();

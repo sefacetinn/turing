@@ -182,8 +182,8 @@ export function BookingProviderProfileScreen() {
           {/* Company Info */}
           <View style={styles.companyInfo}>
             <View style={[styles.companyLogo, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)' }]}>
-              {(provider.userPhotoURL || provider.photoURL) ? (
-                <OptimizedImage source={(provider.userPhotoURL || provider.photoURL)!} style={styles.companyLogoImage} />
+              {(provider.photoURL || provider.userPhotoURL) ? (
+                <OptimizedImage source={(provider.photoURL || provider.userPhotoURL)!} style={styles.companyLogoImage} />
               ) : (
                 <Ionicons name="business" size={40} color={colors.brand[400]} />
               )}

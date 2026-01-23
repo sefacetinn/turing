@@ -269,7 +269,7 @@ export function ProviderDetailScreen() {
 
   // Get display values with fallbacks
   const displayName = provider.displayName || provider.companyName || 'İsimsiz Kullanıcı';
-  const profileImage = provider.userPhotoURL || provider.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200';
+  const profileImage = provider.photoURL || provider.userPhotoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200';
   const coverImage = provider.coverImage || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800';
   const location = provider.city || 'Türkiye';
   const bio = provider.bio || 'Bu kullanıcı henüz bir açıklama eklememiş.';

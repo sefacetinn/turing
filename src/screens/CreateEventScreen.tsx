@@ -288,9 +288,9 @@ export function CreateEventScreen() {
         budget: budgetValue,
         status: 'planning',
         organizerId: user.uid,
-        // Kişisel organizatör bilgileri (fallback)
+        // Kişisel organizatör bilgileri
         organizerName: userProfile?.displayName || user.displayName || '',
-        organizerImage: userProfile?.userPhotoURL || userProfile?.photoURL || user.photoURL || '',
+        organizerImage: userProfile?.userPhotoURL || '', // Sadece kişisel fotoğraf
         providerIds: isProviderMode ? [user.uid] : [],
         services: eventData.services.length > 0 ? eventData.services.map(serviceId => ({
           id: serviceId,
@@ -301,15 +301,21 @@ export function CreateEventScreen() {
       };
 
       // Şirket bilgilerini ekle (varsa)
+      // Şirket logosu - company doc'tan veya user's photoURL'den (şirket profil fotoğrafı)
+      const companyLogo = primaryCompany?.logo || userProfile?.photoURL || '';
+
       if (primaryCompany) {
         eventDoc.organizerCompanyId = primaryCompany.id;
         eventDoc.organizerCompanyName = primaryCompany.name;
-        if (primaryCompany.logo) {
-          eventDoc.organizerCompanyLogo = primaryCompany.logo;
+        if (companyLogo) {
+          eventDoc.organizerCompanyLogo = companyLogo;
         }
         // Kişi bilgileri (şirket içindeki kullanıcı)
         eventDoc.organizerUserId = user.uid;
         eventDoc.organizerUserName = userProfile?.displayName || user.displayName || '';
+      } else if (companyLogo) {
+        // Şirket yoksa bile şirket logosu varsa ekle
+        eventDoc.organizerCompanyLogo = companyLogo;
       }
 
       // Add optional fields only if they have values

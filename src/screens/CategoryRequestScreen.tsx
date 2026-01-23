@@ -247,14 +247,18 @@ export function CategoryRequestScreen() {
       if (selectedEventData?.indoorOutdoor) eventFormData.indoorOutdoor = selectedEventData.indoorOutdoor;
       if (selectedEventData?.time) eventFormData.time = selectedEventData.time;
 
+      // Organizatör kişisel fotoğrafı (userPhotoURL) ve şirket logosu (photoURL) ayrı
+      const organizerPersonalPhoto = userProfile?.userPhotoURL || '';
+      const organizerCompanyLogo = primaryCompany?.logo || userProfile?.photoURL || '';
+
       const requestData: any = {
         // Event info
         eventId: selectedEvent,
         eventTitle: selectedEventData?.title || '',
-        // Organizer info (kişisel - fallback)
+        // Organizer info - kişisel bilgiler
         organizerId: user.uid,
         organizerName: userProfile?.displayName || user.displayName || 'Organizatör',
-        organizerImage: userProfile?.userPhotoURL || userProfile?.photoURL || user.photoURL || '',
+        organizerImage: organizerPersonalPhoto, // Kişisel fotoğraf
         // Provider info
         providerId: provider.id,
         providerName: provider.name || '',
@@ -269,12 +273,16 @@ export function CategoryRequestScreen() {
       if (primaryCompany) {
         requestData.organizerCompanyId = primaryCompany.id;
         requestData.organizerCompanyName = primaryCompany.name;
-        if (primaryCompany.logo) {
-          requestData.organizerCompanyLogo = primaryCompany.logo;
+        // Şirket logosu - company doc'tan veya user's photoURL'den
+        if (organizerCompanyLogo) {
+          requestData.organizerCompanyLogo = organizerCompanyLogo;
         }
         // Kişi bilgileri (şirket içindeki kullanıcı)
         requestData.organizerUserId = user.uid;
         requestData.organizerUserName = userProfile?.displayName || user.displayName || '';
+      } else if (organizerCompanyLogo) {
+        // Şirket yoksa bile şirket logosu varsa ekle
+        requestData.organizerCompanyLogo = organizerCompanyLogo;
       }
 
       // Add optional fields only if they have values

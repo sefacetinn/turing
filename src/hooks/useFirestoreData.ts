@@ -1872,11 +1872,11 @@ export async function createOrGetConversation(
     throw setDocError;
   }
 
-  // Add welcome message
+  // Add welcome message (no user name to avoid confusion - message is visible to both parties)
   try {
     await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
       senderId: 'system',
-      text: `Sohbet başlatıldı. ${otherUserName} ile iletişime geçebilirsiniz.`,
+      text: 'Sohbet başlatıldı. Mesaj göndererek iletişime geçebilirsiniz.',
       time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       date: new Date().toLocaleDateString('tr-TR'),
       type: 'text',
@@ -1993,14 +1993,10 @@ export async function createOrGetConversationWithCompany(
 
   await setDoc(conversationRef, conversationData);
 
-  // Add welcome message with company name if available
-  const welcomeName = participant2.companyName
-    ? `${participant2.companyName} (${participant2.userName})`
-    : participant2.userName;
-
+  // Add welcome message (no user name to avoid confusion - message is visible to both parties)
   await addDoc(collection(db, 'conversations', conversationId, 'messages'), {
     senderId: 'system',
-    text: `Sohbet başlatıldı. ${welcomeName} ile iletişime geçebilirsiniz.`,
+    text: 'Sohbet başlatıldı. Mesaj göndererek iletişime geçebilirsiniz.',
     time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
     date: new Date().toLocaleDateString('tr-TR'),
     type: 'text',
