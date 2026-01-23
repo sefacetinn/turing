@@ -351,6 +351,34 @@ export function EventDetailScreen() {
 
         {activeTab === 'overview' && (
           <View style={styles.overviewSection}>
+            {/* Organizatör Bilgisi */}
+            {(event.organizerCompanyName || event.organizerName) && (
+              <View style={[styles.organizerCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.border }]}>
+                <View style={styles.organizerCardHeader}>
+                  <Ionicons name="business-outline" size={16} color={colors.brand[400]} />
+                  <Text style={[styles.organizerCardTitle, { color: colors.textMuted }]}>Organizatör</Text>
+                </View>
+                <View style={styles.organizerCardContent}>
+                  {(event.organizerCompanyLogo || event.organizerImage) && (
+                    <OptimizedImage
+                      source={event.organizerCompanyLogo || event.organizerImage || 'https://via.placeholder.com/48'}
+                      style={styles.organizerLogo}
+                    />
+                  )}
+                  <View style={styles.organizerInfo}>
+                    <Text style={[styles.organizerName, { color: colors.text }]}>
+                      {event.organizerCompanyName || event.organizerName}
+                    </Text>
+                    {event.organizerCompanyName && event.organizerUserName && (
+                      <Text style={[styles.organizerUserName, { color: colors.textMuted }]}>
+                        {event.organizerUserName}{event.organizerUserRole ? ` • ${event.organizerUserRole}` : ''}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </View>
+            )}
+
             {/* Timeline */}
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Zaman Çizelgesi</Text>
             <View style={styles.timeline}>
@@ -903,6 +931,45 @@ const styles = StyleSheet.create({
   overviewSection: {
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  organizerCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 20,
+  },
+  organizerCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  organizerCardTitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  organizerCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  organizerLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+  },
+  organizerInfo: {
+    flex: 1,
+  },
+  organizerName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  organizerUserName: {
+    fontSize: 13,
+    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 16,

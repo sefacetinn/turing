@@ -48,6 +48,13 @@ export interface FirestoreEvent {
   organizerName?: string;
   organizerImage?: string;
   organizerPhone?: string;
+  // Organizer company info (new - company profile)
+  organizerCompanyId?: string;
+  organizerCompanyName?: string;
+  organizerCompanyLogo?: string;
+  organizerUserId?: string;      // Kişi ID (organizerId'den farklı olabilir)
+  organizerUserName?: string;    // Kişi adı
+  organizerUserRole?: string;    // Şirketteki rolü (Sahip, Yönetici vb.)
   providerIds?: string[]; // Providers assigned to this event
   artistId?: string;
   artistName?: string;
@@ -253,6 +260,17 @@ const docToEvent = (doc: any): FirestoreEvent => {
     venuePhone: data.venuePhone,
     status: data.status || 'draft',
     organizerId: data.organizerId || '',
+    // Organizer personal info
+    organizerName: data.organizerName,
+    organizerImage: data.organizerImage,
+    organizerPhone: data.organizerPhone,
+    // Organizer company info
+    organizerCompanyId: data.organizerCompanyId,
+    organizerCompanyName: data.organizerCompanyName,
+    organizerCompanyLogo: data.organizerCompanyLogo,
+    organizerUserId: data.organizerUserId,
+    organizerUserName: data.organizerUserName,
+    organizerUserRole: data.organizerUserRole,
     providerIds: data.providerIds,
     artistId: data.artistId,
     artistName: data.artistName,
@@ -364,11 +382,13 @@ const docToConversation = (doc: any): FirestoreConversation => {
   const data = doc.data();
   return {
     id: doc.id,
-    participantIds: data.participantIds || [],
+    // Support both 'participantIds' and 'participants' for backward compatibility
+    participantIds: data.participantIds || data.participants || [],
     participantNames: data.participantNames || {},
     participantImages: data.participantImages || {},
     lastMessage: data.lastMessage || '',
-    lastMessageAt: toDate(data.lastMessageAt),
+    // Support both 'lastMessageAt' and 'lastMessageTime' for backward compatibility
+    lastMessageAt: toDate(data.lastMessageAt || data.lastMessageTime),
     unreadCount: data.unreadCount || {},
     eventId: data.eventId,
     eventTitle: data.eventTitle,
@@ -457,119 +477,68 @@ export function useProviderJobs(providerId: string | undefined) {
 
     setLoading(true);
 
-    // Query 1: Events where provider is in providerIds array (realtime listener)
-    const providerQuery = query(
-      collection(db, 'events'),
-      where('providerIds', 'array-contains', providerId)
+    // Query accepted offers for this provider (each offer = separate job)
+    const acceptedOffersQuery = query(
+      collection(db, 'offers'),
+      where('providerId', '==', providerId),
+      where('status', '==', 'accepted')
     );
 
-    // Use onSnapshot for realtime updates on the main query
+    // Use onSnapshot for realtime updates
     const unsubscribe = onSnapshot(
-      providerQuery,
-      async (providerSnapshot) => {
+      acceptedOffersQuery,
+      async (offersSnapshot) => {
         try {
-          // Query 2: Events where provider is the organizer (self-created events)
-          const organizerQuery = query(
-            collection(db, 'events'),
-            where('organizerId', '==', providerId)
-          );
+          console.log('[useProviderJobs] Accepted offers:', offersSnapshot.docs.length);
 
-          // Query 3: Offers where provider has accepted and contract is signed
-          // This catches jobs from contracts signed before the providerIds fix
-          const signedOffersQuery = query(
-            collection(db, 'offers'),
-            where('providerId', '==', providerId),
-            where('status', '==', 'accepted')
-          );
-
-          const [organizerSnapshot, signedOffersSnapshot] = await Promise.all([
-            getDocs(organizerQuery),
-            getDocs(signedOffersQuery)
-          ]);
-
-          // Build a map of eventId -> contractAmount from accepted offers
-          const contractAmountMap = new Map<string, number>();
-          signedOffersSnapshot.docs.forEach(d => {
-            const data = d.data();
-            if (data.eventId) {
-              // Use finalAmount if available, otherwise use amount
-              const amount = data.finalAmount ?? data.amount ?? 0;
-              if (amount > 0) {
-                contractAmountMap.set(data.eventId, amount);
-              }
-            }
-          });
-
-          console.log('[useProviderJobs] Contract amounts:', Object.fromEntries(contractAmountMap));
-
-          // Combine results, avoiding duplicates
-          const eventMap = new Map<string, FirestoreEvent>();
-
-          console.log('[useProviderJobs] Provider query returned', providerSnapshot.docs.length, 'events');
-          console.log('[useProviderJobs] Organizer query returned', organizerSnapshot.docs.length, 'events');
-          console.log('[useProviderJobs] Signed offers query returned', signedOffersSnapshot.docs.length, 'offers');
-
-          providerSnapshot.docs.forEach(docSnap => {
-            const event = docToEvent(docSnap);
-            // Add contract amount if available
-            event.contractAmount = contractAmountMap.get(event.id);
-            eventMap.set(docSnap.id, event);
-          });
-
-          organizerSnapshot.docs.forEach(docSnap => {
-            if (!eventMap.has(docSnap.id)) {
-              const event = docToEvent(docSnap);
-              event.contractAmount = contractAmountMap.get(event.id);
-              eventMap.set(docSnap.id, event);
-            }
-          });
-
-          // Fetch events from signed offers (where contract is signed)
-          const signedOfferDocs = signedOffersSnapshot.docs.filter(d => {
-            const data = d.data();
-            // Only include if contract is fully signed
-            return data.contractSigned === true ||
-                   (data.contractSignedByOrganizer === true && data.contractSignedByProvider === true);
-          });
-
-          const eventIdsFromOffers = signedOfferDocs
-            .map(d => d.data().eventId)
-            .filter((id): id is string => !!id && !eventMap.has(id));
-
-          // Remove duplicates
-          const uniqueEventIds = [...new Set(eventIdsFromOffers)];
-          console.log('[useProviderJobs] Event IDs from signed offers:', uniqueEventIds);
-
-          // Fetch these events
-          if (uniqueEventIds.length > 0) {
-            const eventPromises = uniqueEventIds.map(async (eventId) => {
-              try {
-                const eventDoc = await getDoc(doc(db, 'events', eventId));
-                if (eventDoc.exists()) {
-                  return { id: eventDoc.id, ...eventDoc.data() };
-                }
-              } catch (e) {
-                console.warn('[useProviderJobs] Error fetching event:', eventId, e);
-              }
-              return null;
-            });
-
-            const eventResults = await Promise.all(eventPromises);
-            eventResults.forEach(eventData => {
-              if (eventData && !eventMap.has(eventData.id)) {
-                const event = docToEvent({ id: eventData.id, data: () => eventData });
-                // Add contract amount
-                event.contractAmount = contractAmountMap.get(event.id);
-                eventMap.set(eventData.id, event);
-              }
-            });
+          if (offersSnapshot.empty) {
+            setJobs([]);
+            setLoading(false);
+            return;
           }
 
-          // Fetch organizer data for all jobs
-          const organizerIds = [...new Set(Array.from(eventMap.values()).map(e => e.organizerId).filter(Boolean))];
-          console.log('[useProviderJobs] Fetching organizer data for:', organizerIds);
+          // Group offers by eventId to fetch events efficiently
+          const offersByEvent = new Map<string, any[]>();
+          offersSnapshot.docs.forEach(offerDoc => {
+            const offerData = { id: offerDoc.id, ...offerDoc.data() } as any;
+            const eventId = offerData.eventId;
+            if (eventId) {
+              if (!offersByEvent.has(eventId)) {
+                offersByEvent.set(eventId, []);
+              }
+              offersByEvent.get(eventId)!.push(offerData);
+            }
+          });
 
+          console.log('[useProviderJobs] Unique events:', offersByEvent.size);
+
+          // Fetch all events
+          const eventIds = Array.from(offersByEvent.keys());
+          const eventMap = new Map<string, any>();
+
+          const eventPromises = eventIds.map(async (eventId) => {
+            try {
+              const eventDoc = await getDoc(doc(db, 'events', eventId));
+              if (eventDoc.exists()) {
+                return { id: eventDoc.id, ...eventDoc.data() };
+              }
+            } catch (e) {
+              console.warn('[useProviderJobs] Error fetching event:', eventId, e);
+            }
+            return null;
+          });
+
+          const eventResults = await Promise.all(eventPromises);
+          eventResults.forEach(eventData => {
+            if (eventData) {
+              eventMap.set(eventData.id, eventData);
+            }
+          });
+
+          // Fetch organizer data
+          const organizerIds = [...new Set(Array.from(eventMap.values()).map(e => e.organizerId).filter(Boolean))];
           const organizerMap = new Map<string, { name: string; image?: string; phone?: string }>();
+
           if (organizerIds.length > 0) {
             const organizerPromises = organizerIds.map(async (orgId) => {
               try {
@@ -597,22 +566,51 @@ export function useProviderJobs(providerId: string | undefined) {
             });
           }
 
-          // Add organizer info to each event
-          eventMap.forEach((event, eventId) => {
-            const orgInfo = organizerMap.get(event.organizerId);
-            if (orgInfo) {
-              event.organizerName = orgInfo.name;
-              event.organizerImage = orgInfo.image;
-              event.organizerPhone = orgInfo.phone;
-            }
+          // Create a job entry for EACH accepted offer (not per event!)
+          // This allows multiple jobs per event when provider provides multiple services
+          const jobsList: FirestoreEvent[] = [];
+
+          offersByEvent.forEach((offers, eventId) => {
+            const eventData = eventMap.get(eventId);
+            if (!eventData) return;
+
+            // Create a separate job for each offer
+            offers.forEach(offer => {
+              const event = docToEvent({ id: eventData.id, data: () => eventData });
+
+              // Add organizer info
+              const orgInfo = organizerMap.get(event.organizerId);
+              if (orgInfo) {
+                event.organizerName = orgInfo.name;
+                event.organizerImage = orgInfo.image;
+                event.organizerPhone = orgInfo.phone;
+              }
+
+              // Add offer-specific info to make each job unique
+              // Use offerId as part of the job's unique identifier
+              event.id = `${eventData.id}_${offer.id}`; // Unique job ID
+              event.contractAmount = offer.finalAmount ?? offer.counterAmount ?? offer.amount ?? 0;
+
+              // Store artist/service info for this specific job
+              if (offer.artistId) {
+                event.artistId = offer.artistId;
+                event.artistName = offer.artistName;
+                event.artistImage = offer.artistImage;
+              }
+
+              // Store the original eventId and offerId for navigation
+              (event as any).originalEventId = eventData.id;
+              (event as any).offerId = offer.id;
+              (event as any).serviceCategory = offer.serviceCategory;
+
+              jobsList.push(event);
+            });
           });
 
-          // Sort by date descending (client-side)
-          const jobsList = Array.from(eventMap.values()).sort((a, b) =>
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
+          // Sort by date descending
+          jobsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-          console.log('[useProviderJobs] Total jobs:', jobsList.length);
+          console.log('[useProviderJobs] Total jobs (one per offer):', jobsList.length);
           setJobs(jobsList);
           setLoading(false);
           setError(null);
@@ -694,6 +692,7 @@ export function useOffers(userId: string | undefined, role: 'organizer' | 'provi
 
 /**
  * Hook to fetch conversations
+ * Queries both 'participantIds' and 'participants' fields for backward compatibility
  */
 export function useConversations(userId: string | undefined) {
   const [conversations, setConversations] = useState<FirestoreConversation[]>([]);
@@ -709,31 +708,98 @@ export function useConversations(userId: string | undefined) {
 
     setLoading(true);
 
-    // Use simple query without orderBy to avoid composite index requirement
-    const q = query(
+    // Query for both field names to support old and new conversation formats
+    const q1 = query(
       collection(db, 'conversations'),
       where('participantIds', 'array-contains', userId)
     );
 
-    const unsubscribe = onSnapshot(
-      q,
+    const q2 = query(
+      collection(db, 'conversations'),
+      where('participants', 'array-contains', userId)
+    );
+
+    // Track results from both queries
+    let results1: FirestoreConversation[] = [];
+    let results2: FirestoreConversation[] = [];
+    let query1Done = false;
+    let query2Done = false;
+
+    const mergeAndDeduplicate = () => {
+      if (!query1Done || !query2Done) return;
+
+      // Merge results from both queries, using Map to avoid duplicates by document ID
+      const allConvsById = new Map<string, FirestoreConversation>();
+      [...results1, ...results2].forEach(conv => {
+        // If same document ID exists, keep the one with more recent lastMessageAt
+        const existing = allConvsById.get(conv.id);
+        if (!existing || conv.lastMessageAt > existing.lastMessageAt) {
+          allConvsById.set(conv.id, conv);
+        }
+      });
+
+      // Sort by lastMessageAt desc
+      const convList = Array.from(allConvsById.values())
+        .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+
+      // Deduplicate conversations by other participant
+      // If multiple conversations exist with the same person, keep the one with most recent message
+      const deduplicatedMap = new Map<string, FirestoreConversation>();
+      for (const conv of convList) {
+        // Get the other participant's ID
+        const otherParticipantId = conv.participantIds.find(id => id !== userId);
+
+        if (!otherParticipantId) {
+          continue;
+        }
+
+        const existing = deduplicatedMap.get(otherParticipantId);
+        if (!existing || conv.lastMessageAt > existing.lastMessageAt) {
+          deduplicatedMap.set(otherParticipantId, conv);
+        }
+      }
+
+      // Convert back to array and sort by lastMessageAt desc
+      const deduplicatedList = Array.from(deduplicatedMap.values())
+        .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+
+      setConversations(deduplicatedList);
+      setLoading(false);
+      setError(null);
+    };
+
+    const unsubscribe1 = onSnapshot(
+      q1,
       (snapshot) => {
-        // Sort client-side by lastMessageAt desc
-        const convList = snapshot.docs
-          .map(docToConversation)
-          .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
-        setConversations(convList);
-        setLoading(false);
-        setError(null);
+        results1 = snapshot.docs.map(docToConversation);
+        query1Done = true;
+        mergeAndDeduplicate();
       },
       (err) => {
-        console.warn('Error fetching conversations:', err?.message || err);
-        setError('Mesajlar yüklenirken hata oluştu');
-        setLoading(false);
+        console.warn('Error fetching conversations (participantIds):', err?.message || err);
+        query1Done = true;
+        mergeAndDeduplicate();
       }
     );
 
-    return () => unsubscribe();
+    const unsubscribe2 = onSnapshot(
+      q2,
+      (snapshot) => {
+        results2 = snapshot.docs.map(docToConversation);
+        query2Done = true;
+        mergeAndDeduplicate();
+      },
+      (err) => {
+        console.warn('Error fetching conversations (participants):', err?.message || err);
+        query2Done = true;
+        mergeAndDeduplicate();
+      }
+    );
+
+    return () => {
+      unsubscribe1();
+      unsubscribe2();
+    };
   }, [userId]);
 
   return { conversations, loading, error };
@@ -878,12 +944,53 @@ export function useProviderDashboard(userId: string | undefined) {
 
       // Calculate stats
       const now = new Date();
-      const activeJobs = jobs.filter(j => j.status === 'confirmed' || j.status === 'planning');
-      const completedJobs = jobs.filter(j => j.status === 'completed');
+      const activeJobsFromEvents = jobs.filter(j => j.status === 'confirmed' || j.status === 'planning');
+      const completedJobsFromEvents = jobs.filter(j => j.status === 'completed');
+
+      // Also count accepted offers as active work if event not yet linked
+      const acceptedOffersWithFutureEvents = allOffers.filter(o => {
+        if (o.status !== 'accepted') return false;
+        // Check if event date is in the future
+        const eventDate = o.eventDate ? new Date(o.eventDate) : null;
+        return eventDate && eventDate >= now;
+      });
+
+      // Count completed offers (events in the past with accepted offer)
+      const completedOffersFromPast = allOffers.filter(o => {
+        if (o.status !== 'accepted') return false;
+        const eventDate = o.eventDate ? new Date(o.eventDate) : null;
+        return eventDate && eventDate < now;
+      });
+
+      // Use the maximum count between events and accepted offers
+      // This ensures we show work even if events aren't linked with providerIds yet
+      const activeJobs = Math.max(activeJobsFromEvents.length, acceptedOffersWithFutureEvents.length);
+      const completedJobs = Math.max(completedJobsFromEvents.length, completedOffersFromPast.length);
+
+      // Get accepted offers to attach contract amounts
+      // Group by eventId and sum amounts (provider may have multiple services for same event)
+      const contractAmountsByEvent = new Map<string, number>();
+      allOffers
+        .filter(o => o.status === 'accepted')
+        .forEach(offer => {
+          const offerAmount = offer.finalAmount || offer.counterAmount || offer.amount || 0;
+          const currentTotal = contractAmountsByEvent.get(offer.eventId) || 0;
+          contractAmountsByEvent.set(offer.eventId, currentTotal + offerAmount);
+        });
+
+      // Attach contract amount from accepted offers to each job
       const upcoming = jobs
         .filter(j => new Date(j.date) >= now && j.status !== 'cancelled')
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 5);
+        .slice(0, 5)
+        .map(job => {
+          const contractAmount = contractAmountsByEvent.get(job.id);
+          if (contractAmount) {
+            // Use total contract amount from all accepted offers for this event
+            job.contractAmount = contractAmount;
+          }
+          return job;
+        });
 
       // Calculate total earnings from accepted offers
       const acceptedOffers = allOffers.filter(o => o.status === 'accepted');
@@ -903,7 +1010,7 @@ export function useProviderDashboard(userId: string | undefined) {
       // Calculate completion rate (completed jobs / total non-cancelled jobs)
       const nonCancelledJobs = jobs.filter(j => j.status !== 'cancelled');
       const completionRate = nonCancelledJobs.length > 0
-        ? Math.round((completedJobs.length / nonCancelledJobs.length) * 100)
+        ? Math.round((completedJobs / nonCancelledJobs.length) * 100)
         : 100;
 
       // Fetch reviews for this provider
@@ -932,10 +1039,13 @@ export function useProviderDashboard(userId: string | undefined) {
         console.warn('Could not fetch reviews:', reviewError);
       }
 
+      // Total jobs = all accepted offers (unique events)
+      const totalJobsCount = Math.max(jobs.length, allOffers.filter(o => o.status === 'accepted').length);
+
       setStats({
-        totalJobs: jobs.length,
-        activeJobs: activeJobs.length,
-        completedJobs: completedJobs.length,
+        totalJobs: totalJobsCount,
+        activeJobs: activeJobs,
+        completedJobs: completedJobs,
         pendingRequests: offers.length,
         totalEarnings,
         rating,
@@ -1531,7 +1641,10 @@ export function useChatConversations(userId: string | undefined) {
         for (const conv of convList) {
           // Get the other participant's ID
           const otherParticipantId = conv.participants.find(id => id !== userId);
-          if (!otherParticipantId) continue;
+
+          if (!otherParticipantId) {
+            continue;
+          }
 
           const existing = deduplicatedMap.get(otherParticipantId);
           if (!existing || conv.lastMessageTime > existing.lastMessageTime) {
@@ -1723,7 +1836,9 @@ export async function createOrGetConversation(
   try {
     // Use merge: true to avoid overwriting if document somehow exists
     await setDoc(conversationRef, {
-      participants: [userId, otherUserId].sort(), // Sorted for consistency (matches query field)
+      // Write both field names for backward compatibility
+      participantIds: [userId, otherUserId].sort(), // Used by query
+      participants: [userId, otherUserId].sort(), // Legacy field
       participantNames: {
         [userId]: userName,
         [otherUserId]: otherUserName,
@@ -1733,7 +1848,9 @@ export async function createOrGetConversation(
         [otherUserId]: otherUserImage || '',
       },
       lastMessage: '',
-      lastMessageTime: now, // Matches query orderBy field
+      // Write both field names for backward compatibility
+      lastMessageAt: now, // Used by query
+      lastMessageTime: now, // Legacy field
       unreadCount: {
         [userId]: 0,
         [otherUserId]: 0,
@@ -1828,7 +1945,9 @@ export async function createOrGetConversationWithCompany(
   // Create new conversation with deterministic ID using setDoc
   const now = Timestamp.now();
   const conversationData: Record<string, any> = {
-    participants: [participant1.userId, participant2.userId].sort(), // Matches query field
+    // Write both field names for backward compatibility
+    participantIds: [participant1.userId, participant2.userId].sort(), // Used by query
+    participants: [participant1.userId, participant2.userId].sort(), // Legacy field
     participantNames: {
       [participant1.userId]: name1,
       [participant2.userId]: name2,
@@ -1842,7 +1961,9 @@ export async function createOrGetConversationWithCompany(
     participantCompanyLogos: {},
     participantRoles: {},
     lastMessage: '',
-    lastMessageTime: now, // Matches query orderBy field
+    // Write both field names for backward compatibility
+    lastMessageAt: now, // Used by query
+    lastMessageTime: now, // Legacy field
     unreadCount: {
       [participant1.userId]: 0,
       [participant2.userId]: 0,
@@ -2402,12 +2523,44 @@ export function useProviderOffers(providerId: string | undefined) {
  * Hook to fetch provider's accepted/signed offer for a specific event
  * Returns the contract amount (finalAmount or amount) for the provider's job
  */
-export function useProviderEventOffer(providerId: string | undefined, eventId: string | undefined) {
+export function useProviderEventOffer(providerId: string | undefined, eventId: string | undefined, offerId?: string) {
   const [offer, setOffer] = useState<FirestoreOffer | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If we have a specific offerId, fetch that directly
+    if (offerId) {
+      setLoading(true);
+      const unsubscribe = onSnapshot(
+        doc(db, 'offers', offerId),
+        (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const offerData = docToOffer(docSnapshot);
+            console.log('[useProviderEventOffer] Found offer by ID:', {
+              offerId: offerData.id,
+              artistName: offerData.artistName,
+              finalAmount: offerData.finalAmount,
+              amount: offerData.amount,
+            });
+            setOffer(offerData);
+          } else {
+            console.log('[useProviderEventOffer] Offer not found by ID:', offerId);
+            setOffer(null);
+          }
+          setLoading(false);
+          setError(null);
+        },
+        (err) => {
+          console.warn('Error fetching offer by ID:', err?.message || err);
+          setError('Teklif yüklenirken hata oluştu');
+          setLoading(false);
+        }
+      );
+      return () => unsubscribe();
+    }
+
+    // Fallback: query by providerId and eventId
     if (!providerId || !eventId) {
       setOffer(null);
       setLoading(false);
@@ -2432,6 +2585,7 @@ export function useProviderEventOffer(providerId: string | undefined, eventId: s
           const offerData = docToOffer(snapshot.docs[0]);
           console.log('[useProviderEventOffer] Found accepted offer:', {
             offerId: offerData.id,
+            artistName: offerData.artistName,
             finalAmount: offerData.finalAmount,
             amount: offerData.amount,
             contractSigned: offerData.contractSigned,
@@ -2452,7 +2606,7 @@ export function useProviderEventOffer(providerId: string | undefined, eventId: s
     );
 
     return () => unsubscribe();
-  }, [providerId, eventId]);
+  }, [providerId, eventId, offerId]);
 
   // Return the contract amount (finalAmount takes priority, then amount)
   const contractAmount = offer?.finalAmount ?? offer?.amount ?? 0;
@@ -2499,6 +2653,162 @@ export function useOffer(offerId: string | undefined) {
   }, [offerId]);
 
   return { offer, loading, error };
+}
+
+/**
+ * Contract interface for the contracts list
+ */
+export interface UserContract {
+  id: string;
+  offerId: string;
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  serviceName: string;
+  serviceCategory: string;
+  otherPartyId: string;
+  otherPartyName: string;
+  otherPartyImage: string;
+  amount: number;
+  status: 'pending_signature' | 'signed' | 'completed' | 'cancelled';
+  createdAt: Date;
+  needsMySignature: boolean;
+  contractSignedByProvider: boolean;
+  contractSignedByOrganizer: boolean;
+}
+
+/**
+ * Hook to fetch user's contracts (accepted offers)
+ * Works for both providers and organizers
+ */
+export function useUserContracts(userId: string | undefined) {
+  const [contracts, setContracts] = useState<UserContract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) {
+      setContracts([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // We need to fetch offers where user is either provider or organizer
+    // and status is 'accepted'
+    // Since Firestore doesn't support OR queries easily, we'll do two queries
+
+    const fetchContracts = async () => {
+      try {
+        // Query 1: User is provider
+        const providerQuery = query(
+          collection(db, 'offers'),
+          where('providerId', '==', userId),
+          where('status', '==', 'accepted')
+        );
+
+        // Query 2: User is organizer
+        const organizerQuery = query(
+          collection(db, 'offers'),
+          where('organizerId', '==', userId),
+          where('status', '==', 'accepted')
+        );
+
+        const [providerSnapshot, organizerSnapshot] = await Promise.all([
+          getDocs(providerQuery),
+          getDocs(organizerQuery)
+        ]);
+
+        // Combine results, avoiding duplicates
+        const offerMap = new Map<string, FirestoreOffer>();
+
+        providerSnapshot.docs.forEach(doc => {
+          const offer = docToOffer(doc);
+          offerMap.set(offer.id, offer);
+        });
+
+        organizerSnapshot.docs.forEach(doc => {
+          const offer = docToOffer(doc);
+          offerMap.set(offer.id, offer);
+        });
+
+        // Convert offers to contracts
+        const contractsList: UserContract[] = [];
+        const isUserProvider = (offer: FirestoreOffer) => offer.providerId === userId;
+
+        offerMap.forEach((offer) => {
+          const userIsProvider = isUserProvider(offer);
+
+          // Determine contract status
+          let status: UserContract['status'] = 'pending_signature';
+          if (offer.contractSigned) {
+            status = 'signed';
+          } else if (offer.contractSignedByProvider && offer.contractSignedByOrganizer) {
+            status = 'signed';
+          }
+
+          // Determine if user needs to sign
+          const needsMySignature = userIsProvider
+            ? !offer.contractSignedByProvider
+            : !offer.contractSignedByOrganizer;
+
+          contractsList.push({
+            id: offer.contractId || offer.id,
+            offerId: offer.id,
+            eventId: offer.eventId,
+            eventName: offer.eventTitle || 'Etkinlik',
+            eventDate: offer.eventDate || '',
+            serviceName: offer.artistName || offer.serviceCategory || 'Hizmet',
+            serviceCategory: offer.serviceCategory || 'booking',
+            otherPartyId: userIsProvider ? offer.organizerId : offer.providerId,
+            otherPartyName: userIsProvider
+              ? (offer.organizerCompanyName || offer.organizerName || 'Organizatör')
+              : (offer.providerCompanyName || offer.providerName || 'Tedarikçi'),
+            otherPartyImage: userIsProvider
+              ? (offer.organizerCompanyLogo || offer.organizerImage || '')
+              : (offer.providerCompanyLogo || offer.providerImage || ''),
+            amount: offer.finalAmount || offer.counterAmount || offer.amount || 0,
+            status,
+            createdAt: offer.acceptedAt || offer.createdAt || new Date(),
+            needsMySignature,
+            contractSignedByProvider: offer.contractSignedByProvider || false,
+            contractSignedByOrganizer: offer.contractSignedByOrganizer || false,
+          });
+        });
+
+        // Sort by date (newest first)
+        contractsList.sort((a, b) => {
+          const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+          const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+          return dateB.getTime() - dateA.getTime();
+        });
+
+        console.log('[useUserContracts] Found contracts:', contractsList.length);
+        setContracts(contractsList);
+        setError(null);
+      } catch (err: any) {
+        console.warn('[useUserContracts] Error:', err?.message || err);
+        setError('Sözleşmeler yüklenirken hata oluştu');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContracts();
+  }, [userId]);
+
+  // Calculate stats
+  const stats = {
+    pending: contracts.filter(c => c.status === 'pending_signature').length,
+    needsSignature: contracts.filter(c => c.needsMySignature).length,
+    signed: contracts.filter(c => c.status === 'signed' || c.status === 'completed').length,
+    totalValue: contracts
+      .filter(c => c.status === 'signed' || c.status === 'completed')
+      .reduce((sum, c) => sum + c.amount, 0),
+  };
+
+  return { contracts, stats, loading, error };
 }
 
 /**
@@ -2683,6 +2993,15 @@ export async function syncOffersToEventServices(eventId: string): Promise<void> 
       'sound-light': ['sound-light', 'technical'],
     };
 
+    // IMPORTANT: Preserve all existing confirmed/contract_pending booking services
+    // This prevents accidental deletion when syncing new offers
+    const existingBookingServices = services.filter(
+      (s: any) => (s.category === 'booking' || s.category === 'artist') &&
+                  (s.status === 'confirmed' || s.status === 'contract_pending') &&
+                  s.offerId // Only preserve services that have an offerId (came from accepted offers)
+    );
+    console.log('[syncOffersToEventServices] Preserving existing booking services:', existingBookingServices.length);
+
     // Process each accepted offer
     for (const offerDoc of offersSnapshot.docs) {
       const offer = offerDoc.data();
@@ -2793,8 +3112,21 @@ export async function syncOffersToEventServices(eventId: string): Promise<void> 
       }
     }
 
+    // SAFETY CHECK: Ensure all preserved booking services are still present
+    // This prevents accidental deletion of existing artists
+    for (const preservedService of existingBookingServices) {
+      const stillExists = services.some((s: any) => s.offerId === preservedService.offerId);
+      if (!stillExists) {
+        console.log('[syncOffersToEventServices] Re-adding missing booking service:', preservedService.artistName || preservedService.name);
+        services.push(preservedService);
+        servicesUpdated = true;
+      }
+    }
+
     // Update event if services changed
     if (servicesUpdated) {
+      console.log('[syncOffersToEventServices] Final services count:', services.length);
+      console.log('[syncOffersToEventServices] Booking services:', services.filter((s: any) => s.category === 'booking' || s.category === 'artist').length);
       await updateDoc(eventRef, {
         services,
         updatedAt: Timestamp.now(),

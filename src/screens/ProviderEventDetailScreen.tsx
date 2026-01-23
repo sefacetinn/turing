@@ -68,7 +68,7 @@ import { OptimizedImage } from '../components/OptimizedImage';
 
 // Route params type
 type RootStackParamList = {
-  ProviderEventDetail: { eventId: string };
+  ProviderEventDetail: { eventId: string; offerId?: string };
   Chat: { conversationId?: string; providerId?: string; providerName?: string; providerImage?: string; serviceCategory?: string };
 };
 
@@ -123,9 +123,10 @@ export function ProviderEventDetailScreen() {
     return { opacity, transform: [{ translateY }] };
   });
 
-  // Get eventId from route params
+  // Get eventId and offerId from route params
   const eventId = route.params?.eventId || 'pe1';
-  console.log('[ProviderEventDetailScreen] Received eventId from route:', eventId);
+  const offerId = route.params?.offerId;
+  console.log('[ProviderEventDetailScreen] Received eventId from route:', eventId, 'offerId:', offerId);
   console.log('[ProviderEventDetailScreen] Full route params:', JSON.stringify(route.params));
 
   // Get current user
@@ -135,7 +136,8 @@ export function ProviderEventDetailScreen() {
   const { event: firebaseEvent, loading: eventLoading, error: eventError } = useEvent(eventId);
 
   // Fetch provider's accepted offer for this event to get contract amount
-  const { contractAmount, offer: providerOffer } = useProviderEventOffer(user?.uid, eventId);
+  // If offerId is provided, fetch that specific offer (for multi-service scenarios)
+  const { contractAmount, offer: providerOffer } = useProviderEventOffer(user?.uid, eventId, offerId);
 
   // Fetch artist data if this is a booking event
   const artistId = firebaseEvent?.artistId || providerOffer?.artistId;
@@ -1095,7 +1097,7 @@ export function ProviderEventDetailScreen() {
         </TouchableOpacity>
 
         {/* Artist Card - Expandable */}
-        {(artistId || artistData || firebaseEvent?.artistName) && (
+        {(artistId || artistData || providerOffer?.artistName || firebaseEvent?.artistName) && (
           <TouchableOpacity
             style={[
               styles.infoCard,
@@ -1110,7 +1112,7 @@ export function ProviderEventDetailScreen() {
               </View>
               <View style={styles.infoCardDetails}>
                 <Text style={[styles.infoName, { color: colors.text }]} numberOfLines={1}>
-                  {artistData?.stageName || artistData?.name || firebaseEvent?.artistName || 'Sanatçı'}
+                  {artistData?.stageName || artistData?.name || providerOffer?.artistName || firebaseEvent?.artistName || 'Sanatçı'}
                 </Text>
                 <View style={styles.infoMetaRow}>
                   <Ionicons name="mic-outline" size={11} color={colors.textSecondary} />
@@ -1131,7 +1133,7 @@ export function ProviderEventDetailScreen() {
               <View style={[styles.expandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
                 {/* Artist Bio */}
                 <Text style={[styles.expandedBio, { color: colors.textSecondary }]}>
-                  {artistData?.bio || artistData?.description || `${firebaseEvent?.artistName || 'Sanatçı'} hakkında detaylı bilgi için profili ziyaret edin.`}
+                  {artistData?.bio || artistData?.description || `${providerOffer?.artistName || firebaseEvent?.artistName || 'Sanatçı'} hakkında detaylı bilgi için profili ziyaret edin.`}
                 </Text>
 
                 {/* Artist Stats */}

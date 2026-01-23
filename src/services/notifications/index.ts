@@ -24,6 +24,9 @@ export type NotificationType =
   | 'new_message'
   | 'event_reminder'
   | 'event_update'
+  | 'event_revision_request'
+  | 'event_revision_approved'
+  | 'event_revision_rejected'
   | 'contract_signed'
   | 'payment_received'
   | 'review_request'
@@ -179,6 +182,9 @@ function getNotificationChannel(type: NotificationType): string {
       return 'offers';
     case 'event_reminder':
     case 'event_update':
+    case 'event_revision_request':
+    case 'event_revision_approved':
+    case 'event_revision_rejected':
       return 'events';
     default:
       return 'default';
@@ -300,6 +306,83 @@ export function removeNotificationSubscription(
   subscription: Notifications.Subscription
 ): void {
   subscription.remove();
+}
+
+// ============================================
+// REVISION NOTIFICATION HELPERS
+// ============================================
+
+/**
+ * Send a local notification for event revision request
+ * This notifies providers about pending revision approvals
+ */
+export async function sendRevisionRequestNotification(
+  eventTitle: string,
+  revisionType: string,
+  eventId: string,
+  revisionId: string
+): Promise<string> {
+  const typeLabels: Record<string, string> = {
+    date: 'Tarih Değişikliği',
+    venue: 'Mekan Değişikliği',
+    budget: 'Bütçe Güncelleme',
+    other: 'Değişiklik Talebi',
+  };
+
+  return scheduleLocalNotification({
+    type: 'event_update',
+    title: 'Etkinlik Değişiklik Talebi',
+    body: `"${eventTitle}" etkinliği için ${typeLabels[revisionType] || 'değişiklik'} talebi var. Onayınız bekleniyor.`,
+    data: {
+      eventId,
+      screen: 'ProviderEventDetail',
+      params: { eventId, revisionId },
+    },
+  });
+}
+
+/**
+ * Send a notification when revision is approved by a provider
+ */
+export async function sendRevisionApprovedNotification(
+  eventTitle: string,
+  providerName: string,
+  isFullyApproved: boolean,
+  eventId: string
+): Promise<string> {
+  return scheduleLocalNotification({
+    type: 'event_update',
+    title: isFullyApproved ? 'Değişiklik Onaylandı' : 'Tedarikçi Onayı',
+    body: isFullyApproved
+      ? `"${eventTitle}" için değişiklik tüm tedarikçiler tarafından onaylandı.`
+      : `${providerName} "${eventTitle}" için değişikliği onayladı.`,
+    data: {
+      eventId,
+      screen: 'OrganizerEventDetail',
+      params: { eventId },
+    },
+  });
+}
+
+/**
+ * Send a notification when revision is rejected by a provider
+ */
+export async function sendRevisionRejectedNotification(
+  eventTitle: string,
+  providerName: string,
+  eventId: string,
+  comment?: string
+): Promise<string> {
+  return scheduleLocalNotification({
+    type: 'event_update',
+    title: 'Değişiklik Reddedildi',
+    body: `${providerName} "${eventTitle}" için değişikliği reddetti.${comment ? ` Sebep: ${comment}` : ''}`,
+    data: {
+      eventId,
+      screen: 'OrganizerEventDetail',
+      params: { eventId },
+    },
+  });
 }
 
 // Export Notifications for advanced usage

@@ -1082,6 +1082,60 @@ export function OfferDetailScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Current Offer Card - For Organizer View */}
+        {!isUserProvider && (
+          <View style={[styles.currentOfferCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}>
+            <View style={styles.currentOfferHeader}>
+              <View style={[styles.currentOfferIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.06)' }]}>
+                <Ionicons name="pricetag" size={20} color="#10B981" />
+              </View>
+              <View style={styles.currentOfferTitleArea}>
+                <Text style={[styles.currentOfferTitle, { color: colors.text }]}>Güncel Teklif</Text>
+                <Text style={[styles.currentOfferSubtitle, { color: colors.textSecondary }]}>
+                  {offer.status === 'pending' ? 'Bütçeniz' :
+                   offer.status === 'quoted' ? 'Provider Teklifi' :
+                   offer.status === 'counter_offered' ? (firebaseOffer?.counterBy === 'organizer' ? 'Karşı Teklifiniz' : 'Karşı Teklif') :
+                   offer.status === 'accepted' ? 'Anlaşılan Fiyat' :
+                   'Son Teklif'}
+                </Text>
+              </View>
+              <View style={[styles.currentOfferStatusBadge, { backgroundColor: statusConfig.bg }]}>
+                <View style={[styles.currentOfferStatusDot, { backgroundColor: statusConfig.color }]} />
+                <Text style={[styles.currentOfferStatusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+              </View>
+            </View>
+
+            <View style={[styles.currentOfferBody, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+              <View style={styles.currentOfferAmountArea}>
+                <Text style={[styles.currentOfferAmount, { color: colors.text }]}>
+                  ₺{(firebaseOffer?.finalAmount || firebaseOffer?.counterAmount || firebaseOffer?.amount || offer.amount || 0).toLocaleString('tr-TR')}
+                </Text>
+                {firebaseOffer?.counterAmount && firebaseOffer.amount && firebaseOffer.counterAmount !== firebaseOffer.amount && (
+                  <Text style={[styles.currentOfferOriginal, { color: colors.textMuted }]}>
+                    Başlangıç: ₺{firebaseOffer.amount.toLocaleString('tr-TR')}
+                  </Text>
+                )}
+              </View>
+
+              {/* Provider Info */}
+              <View style={[styles.currentOfferProvider, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
+                <OptimizedImage
+                  source={firebaseOffer?.providerCompanyLogo || firebaseOffer?.providerImage || 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=200'}
+                  style={styles.currentOfferProviderImage}
+                />
+                <View style={styles.currentOfferProviderInfo}>
+                  <Text style={[styles.currentOfferProviderName, { color: colors.text }]} numberOfLines={1}>
+                    {firebaseOffer?.providerCompanyName || firebaseOffer?.providerName || 'Hizmet Sağlayıcı'}
+                  </Text>
+                  <Text style={[styles.currentOfferProviderService, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {firebaseOffer?.artistName || firebaseOffer?.serviceCategory || 'Hizmet'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Compact Counter Offer Card - Only show during negotiation */}
         {firebaseOffer?.counterAmount && offer.status !== 'accepted' && offer.status !== 'rejected' && (
           <View style={[styles.infoCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', marginHorizontal: 16, marginBottom: 16 }]}>
@@ -2103,6 +2157,93 @@ const styles = StyleSheet.create({
   rejectionOptionDesc: {
     fontSize: 13,
     lineHeight: 18,
+  },
+
+  // Current Offer Card - Organizer View
+  currentOfferCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  currentOfferHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  currentOfferIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentOfferTitleArea: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  currentOfferTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  currentOfferSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  currentOfferStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    gap: 5,
+  },
+  currentOfferStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  currentOfferStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  currentOfferBody: {
+    borderTopWidth: 1,
+    padding: 16,
+    paddingTop: 14,
+  },
+  currentOfferAmountArea: {
+    marginBottom: 14,
+  },
+  currentOfferAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  currentOfferOriginal: {
+    fontSize: 13,
+    marginTop: 4,
+    textDecorationLine: 'line-through',
+  },
+  currentOfferProvider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  currentOfferProviderImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+  },
+  currentOfferProviderInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  currentOfferProviderName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  currentOfferProviderService: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });
 

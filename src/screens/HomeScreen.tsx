@@ -19,7 +19,7 @@ import { gradients } from '../theme/colors';
 import { useApp } from '../../App';
 import { scrollToTopEmitter } from '../utils/scrollToTop';
 import { useAuth } from '../context/AuthContext';
-import { useOrganizerDashboard, useProviderDashboard, useUserEvents, useOrganizerOffers, useProviderOffers } from '../hooks';
+import { useOrganizerDashboard, useProviderDashboard, useUserEvents, useOrganizerOffers, useProviderOffers, useProviderPendingRevisions } from '../hooks';
 import {
   HomeHeader,
   SearchBar,
@@ -30,6 +30,7 @@ import {
   CalendarWidget,
 } from '../components/home';
 import { EmptyState } from '../components/EmptyState';
+import { PendingRevisionsAlert } from '../components/PendingRevisionsAlert';
 import { CalendarEvent, isSameDay } from '../utils/calendarUtils';
 import { categories } from '../data/homeData'; // Static service categories for UI
 import { operationSubcategories } from '../data/createEventData'; // Static operation subcategories
@@ -675,6 +676,9 @@ function ProviderHomeContent() {
   const { user, userProfile } = useAuth();
   const { stats: realStats, upcomingJobs: realJobs, pendingOffers: realOffers, loading: dashboardLoading, refresh: refreshDashboard } = useProviderDashboard(user?.uid);
 
+  // Pending revisions hook for provider
+  const { pendingRevisions, approveRevision, rejectRevision, refetch: refetchRevisions } = useProviderPendingRevisions(user?.uid);
+
   // Check if user has real data (registered provider vs demo)
   const hasRealData = user && (realJobs.length > 0 || realOffers.length > 0);
   const isLoading = dashboardLoading;
@@ -685,10 +689,13 @@ function ProviderHomeContent() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setRefreshing(true);
     if (user) {
-      await refreshDashboard();
+      await Promise.all([
+        refreshDashboard(),
+        refetchRevisions(),
+      ]);
     }
     setTimeout(() => setRefreshing(false), 800);
-  }, [user, refreshDashboard]);
+  }, [user, refreshDashboard, refetchRevisions]);
 
   // Animated scroll
   const scrollY = useSharedValue(0);
@@ -961,6 +968,14 @@ function ProviderHomeContent() {
           onOffersPress={() => navigation.navigate('OffersTab' as any)}
           onJobsPress={() => navigation.navigate('EventsTab' as any)}
           onCalendarPress={() => navigation.navigate('CalendarView')}
+        />
+
+        {/* Pending Revisions Alert */}
+        <PendingRevisionsAlert
+          pendingRevisions={pendingRevisions}
+          onApprove={approveRevision}
+          onReject={rejectRevision}
+          onRefresh={refetchRevisions}
         />
 
         <SectionHeader title="Yaklaşan İşler" onViewAll={() => navigation.navigate('EventsTab' as any)} />

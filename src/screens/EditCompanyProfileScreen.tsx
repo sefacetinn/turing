@@ -22,6 +22,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { OptimizedImage } from '../components/OptimizedImage';
 import { useApp } from '../../App';
 import { useAuth } from '../context/AuthContext';
+import { uriToBlob, uploadFile } from '../services/firebase/storage';
 
 // Service category type
 interface ServiceCategory {
@@ -72,8 +73,8 @@ export function EditCompanyProfileScreen() {
   useEffect(() => {
     if (user && userProfile) {
       setCompanyName(userProfile.companyName || '');
-      setDescription(userProfile.bio || '');
-      setPhone(userProfile.phoneNumber || userProfile.phone || '');
+      setDescription(userProfile.companyDescription || '');
+      setPhone(userProfile.companyPhone || userProfile.phoneNumber || '');
       setEmail(user.email || '');
       setWebsite(userProfile.website || '');
       setAddress(userProfile.address || userProfile.city || '');
@@ -120,6 +121,11 @@ export function EditCompanyProfileScreen() {
             return saved ? { ...wh, ...saved } : wh;
           })
         );
+      }
+
+      // Load portfolio images
+      if (userProfile.portfolioImages && Array.isArray(userProfile.portfolioImages)) {
+        setPortfolioImages(userProfile.portfolioImages);
       }
     }
   }, [user, userProfile]);
@@ -319,11 +325,10 @@ export function EditCompanyProfileScreen() {
       // Firebase doesn't accept undefined values in updateDoc()
       const profileData: Record<string, any> = {
         companyName: companyName,
-        bio: description,
-        phoneNumber: phone,
+        companyDescription: description, // Şirket açıklaması (bio'dan ayrı)
+        companyPhone: phone, // Şirket telefonu
         website: website,
         address: address,
-        city: address, // Keep city for backwards compatibility
         foundedYear: foundedYear,
         employeeCount: employeeCount,
         serviceCategories: enabledCategories,
@@ -331,13 +336,67 @@ export function EditCompanyProfileScreen() {
         workingHours: workingHoursData,
       };
 
-      // Only add optional fields if they have values
+      // Upload company logo to Firebase Storage if it's a local file
       if (companyLogo) {
-        profileData.photoURL = companyLogo;
+        if (companyLogo.startsWith('file://') || companyLogo.startsWith('ph://')) {
+          try {
+            const imageBlob = await uriToBlob(companyLogo);
+            const imagePath = `users/${user.uid}/company_logo_${Date.now()}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            profileData.photoURL = imageUrl;
+          } catch (uploadError) {
+            console.warn('Error uploading company logo:', uploadError);
+            // Keep existing URL if upload fails
+          }
+        } else {
+          // If it's already a URL (https://), keep it
+          profileData.photoURL = companyLogo;
+        }
       }
+
+      // Upload cover image to Firebase Storage if it's a local file
       if (coverImage) {
-        profileData.coverImage = coverImage;
+        if (coverImage.startsWith('file://') || coverImage.startsWith('ph://')) {
+          try {
+            const imageBlob = await uriToBlob(coverImage);
+            const imagePath = `users/${user.uid}/cover_image_${Date.now()}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            profileData.coverImage = imageUrl;
+          } catch (uploadError) {
+            console.warn('Error uploading cover image:', uploadError);
+            // Keep existing URL if upload fails
+          }
+        } else {
+          // If it's already a URL (https://), keep it
+          profileData.coverImage = coverImage;
+        }
       }
+
+      // Upload portfolio images to Firebase Storage if they are local files
+      if (portfolioImages.length > 0) {
+        const uploadedPortfolioUrls: string[] = [];
+        for (let i = 0; i < portfolioImages.length; i++) {
+          const img = portfolioImages[i];
+          if (img.startsWith('file://') || img.startsWith('ph://')) {
+            try {
+              const imageBlob = await uriToBlob(img);
+              const imagePath = `users/${user.uid}/portfolio/image_${Date.now()}_${i}.jpg`;
+              const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+              uploadedPortfolioUrls.push(imageUrl);
+            } catch (uploadError) {
+              console.warn('Error uploading portfolio image:', uploadError);
+              // Skip failed uploads
+            }
+          } else {
+            // If it's already a URL (https://), keep it
+            uploadedPortfolioUrls.push(img);
+          }
+        }
+        if (uploadedPortfolioUrls.length > 0) {
+          profileData.portfolioImages = uploadedPortfolioUrls;
+        }
+      }
+
       if (Object.keys(socialMediaData).length > 0) {
         profileData.socialMedia = socialMediaData;
       }

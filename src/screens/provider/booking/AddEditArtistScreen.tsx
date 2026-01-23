@@ -22,6 +22,7 @@ import { useTheme } from '../../../theme/ThemeContext';
 import { Artist } from '../../../data/provider/artistData';
 import { useAuth } from '../../../context/AuthContext';
 import { addDocument, updateDocument, getDocument, Collections } from '../../../services/firebase/firestore';
+import { uriToBlob, uploadFile } from '../../../services/firebase/storage';
 
 type RouteParams = {
   AddEditArtist: { artistId?: string };
@@ -219,9 +220,41 @@ export function AddEditArtistScreen() {
         artistData.socialMedia = socialMedia;
       }
 
-      // Images - use selected or default
-      artistData.image = profileImage || 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400';
-      if (coverImage) artistData.coverImage = coverImage;
+      // Upload images to Firebase Storage if they are local files
+      const artistIdForUpload = artistId || `new_${Date.now()}`;
+
+      if (profileImage) {
+        if (profileImage.startsWith('file://') || profileImage.startsWith('ph://')) {
+          try {
+            const imageBlob = await uriToBlob(profileImage);
+            const imagePath = `artists/${artistIdForUpload}/profile_${Date.now()}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            artistData.image = imageUrl;
+          } catch (uploadError) {
+            console.warn('Error uploading artist profile image:', uploadError);
+            artistData.image = 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400';
+          }
+        } else {
+          artistData.image = profileImage;
+        }
+      } else {
+        artistData.image = 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400';
+      }
+
+      if (coverImage) {
+        if (coverImage.startsWith('file://') || coverImage.startsWith('ph://')) {
+          try {
+            const imageBlob = await uriToBlob(coverImage);
+            const imagePath = `artists/${artistIdForUpload}/cover_${Date.now()}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            artistData.coverImage = imageUrl;
+          } catch (uploadError) {
+            console.warn('Error uploading artist cover image:', uploadError);
+          }
+        } else {
+          artistData.coverImage = coverImage;
+        }
+      }
 
       if (isEditing && artistId) {
         await updateDocument(Collections.ARTISTS, artistId, artistData);

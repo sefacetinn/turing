@@ -22,9 +22,11 @@ export interface UserProfile {
   isProvider: boolean;
   isOrganizer: boolean;
   companyName?: string;
+  companyDescription?: string; // Şirket açıklaması
+  companyPhone?: string; // Şirket telefonu
   phone?: string;
-  phoneNumber?: string;
-  bio?: string;
+  phoneNumber?: string; // Kişisel telefon
+  bio?: string; // Kişisel biyografi
   city?: string;
   website?: string;
   providerServices?: string[];
@@ -56,6 +58,8 @@ export interface UserProfile {
   // Company membership fields (new)
   companyIds?: string[];             // Kullanıcının üye olduğu firmalar
   primaryCompanyId?: string;         // Aktif firma
+  // Portfolio images for providers
+  portfolioImages?: string[];
 }
 
 // Register new user

@@ -209,6 +209,7 @@ export const Collections = {
   REVIEWS: 'reviews',
   NOTIFICATIONS: 'notifications',
   TRANSACTIONS: 'transactions',
+  EVENT_REVISIONS: 'eventRevisions',
 } as const;
 
 // Re-export query helpers

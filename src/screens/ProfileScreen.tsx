@@ -15,6 +15,7 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useUserCompanies } from '../hooks/useCompany';
+import { useUserEvents, useOrganizerOffers, useProviderDashboard } from '../hooks/useFirestoreData';
 // No mock data imports - profile comes from Firebase
 import { useApp } from '../../App';
 import { isOrganizerStats, isProviderStats } from '../types';
@@ -32,8 +33,9 @@ interface ProfileScreenProps {
 }
 
 const organizerMenuItems = [
-  { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
-  { id: 'team', icon: 'people-outline', label: 'Ekip Yönetimi', chevron: true },
+  { id: 'account', icon: 'person-outline', label: 'Kişisel Bilgilerim', chevron: true, description: 'Ad, e-posta, telefon, biyografi' },
+  { id: 'company', icon: 'business-outline', label: 'Şirket Profili', chevron: true, description: 'Firma bilgileri, logo, iletişim' },
+  { id: 'team', icon: 'people-outline', label: 'Ekip Yönetimi', chevron: true, description: 'Takım üyeleri ve roller' },
   { id: 'contracts', icon: 'document-text-outline', label: 'Sözleşmelerim', chevron: true },
   { id: 'reviews', icon: 'star-outline', label: 'Değerlendirmelerim', chevron: true },
   { id: 'favorites', icon: 'heart-outline', label: 'Favorilerim', chevron: true },
@@ -45,8 +47,9 @@ const organizerMenuItems = [
 ];
 
 const providerMenuItems = [
-  { id: 'account', icon: 'person-outline', label: 'Hesap Bilgileri', chevron: true },
-  { id: 'team', icon: 'people-outline', label: 'Ekip Yönetimi', chevron: true },
+  { id: 'account', icon: 'person-outline', label: 'Kişisel Bilgilerim', chevron: true, description: 'Ad, e-posta, telefon, biyografi' },
+  { id: 'company', icon: 'business-outline', label: 'Şirket Profili', chevron: true, description: 'Firma bilgileri, logo, iletişim' },
+  { id: 'team', icon: 'people-outline', label: 'Ekip Yönetimi', chevron: true, description: 'Takım üyeleri ve roller' },
   { id: 'services', icon: 'construct-outline', label: 'Verdiğim Hizmetler', chevron: true },
   { id: 'contracts', icon: 'document-text-outline', label: 'Sözleşmelerim', chevron: true },
   { id: 'reviews', icon: 'star-outline', label: 'Değerlendirmelerim', chevron: true },
@@ -83,6 +86,13 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
   const { companies, primaryCompany, switchPrimaryCompany, loading: companiesLoading } = useUserCompanies(user?.uid);
   const hasMultipleCompanies = companies.length > 1;
 
+  // Fetch real stats from Firebase
+  const { events: userEvents } = useUserEvents(user?.uid);
+  const { offers: userOffers } = useOrganizerOffers(user?.uid);
+
+  // Provider stats from Firebase
+  const { stats: providerStats, loading: providerStatsLoading } = useProviderDashboard(isProviderMode ? user?.uid : undefined);
+
   // Animated scroll
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler({
@@ -107,6 +117,25 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     setTimeout(() => setRefreshing(false), 800);
   }, []);
 
+  // Calculate real stats from Firebase data
+  const realStats = useMemo(() => {
+    if (isProviderMode) {
+      // Provider stats
+      return {
+        completedJobs: providerStats.completedJobs,
+        activeJobs: providerStats.activeJobs,
+        rating: providerStats.rating,
+        reviewCount: providerStats.reviewCount,
+        totalEarnings: providerStats.totalEarnings,
+        pendingRequests: providerStats.pendingRequests,
+      };
+    }
+    // Organizer stats
+    const totalEvents = userEvents.length;
+    const totalOffers = userOffers.length;
+    return { totalEvents, totalOffers, rating: 0, reviewCount: 0 };
+  }, [isProviderMode, providerStats, userEvents, userOffers]);
+
   // Use Firebase auth user data, empty profile for non-logged-in users
   const profile = useMemo(() => {
     // If user is logged in with Firebase, use their profile data
@@ -119,12 +148,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         verified: user.emailVerified || false,
         // User's personal photo - prefer userPhotoURL from Firestore, fallback to Firebase Auth photoURL
         avatar: authUserProfile.userPhotoURL || user.photoURL || null,
-        stats: {
-          totalEvents: 0,
-          totalOffers: 0,
-          rating: 0,
-          reviewCount: 0,
-        },
+        stats: realStats,
       };
     }
     // Fall back to currentAccount if available
@@ -139,14 +163,9 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
       company: '',
       verified: false,
       avatar: null,
-      stats: {
-        totalEvents: 0,
-        totalOffers: 0,
-        rating: 0,
-        reviewCount: 0,
-      },
+      stats: realStats,
     };
-  }, [user, authUserProfile, currentAccount]);
+  }, [user, authUserProfile, currentAccount, realStats]);
 
   // Filter business management items based on provider's active services
   const filteredBusinessItems = useMemo(() => {
@@ -162,6 +181,9 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     switch (itemId) {
       case 'account':
         navigation.navigate('EditProfile');
+        break;
+      case 'company':
+        navigation.navigate('EditCompanyProfile');
         break;
       case 'team':
         navigation.navigate('Team');
@@ -520,10 +542,10 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
     <View style={dynamicStyles.container}>
       {/* Animated Scroll Header */}
       <ScrollHeader
-        title="Profil"
+        title={authUserProfile?.companyName || profile.name || 'Profil'}
         scrollY={scrollY}
         threshold={60}
-        showBackButton={true}
+        showBackButton={false}
         rightAction={
           <TouchableOpacity
             style={styles.settingsButton}
@@ -589,10 +611,10 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
             </View>
             <View style={styles.profileInfo}>
               <Text style={dynamicStyles.profileName}>{profile.name}</Text>
-              {profile.company && (
-                <Text style={[dynamicStyles.profileEmail, { marginBottom: 2 }]}>{profile.company}</Text>
-              )}
               <Text style={dynamicStyles.profileEmail}>{profile.email}</Text>
+              {profile.phone && (
+                <Text style={[dynamicStyles.profileEmail, { marginTop: 2 }]}>{profile.phone}</Text>
+              )}
               {profile.verified && (
                 <View style={styles.verifiedBadge}>
                   <Ionicons name="checkmark-circle" size={14} color={colors.success} />
@@ -737,11 +759,9 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
         <View style={styles.statsRow}>
           <View style={dynamicStyles.statCard}>
             <Text style={dynamicStyles.statNumber}>
-              {isProviderMode && isProviderStats(profile.stats)
-                ? profile.stats.completedJobs
-                : isOrganizerStats(profile.stats)
-                ? profile.stats.totalEvents
-                : 0}
+              {isProviderMode
+                ? realStats.completedJobs || 0
+                : realStats.totalEvents || 0}
             </Text>
             <Text style={dynamicStyles.statLabel}>
               {isProviderMode ? 'Tamamlanan İş' : 'Etkinlik'}
@@ -749,11 +769,9 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           </View>
           <View style={dynamicStyles.statCard}>
             <Text style={dynamicStyles.statNumber}>
-              {isProviderMode && isProviderStats(profile.stats)
-                ? profile.stats.activeJobs
-                : isOrganizerStats(profile.stats)
-                ? profile.stats.totalOffers
-                : 0}
+              {isProviderMode
+                ? realStats.activeJobs || 0
+                : realStats.totalOffers || 0}
             </Text>
             <Text style={dynamicStyles.statLabel}>
               {isProviderMode ? 'Aktif İş' : 'Teklif'}
@@ -762,7 +780,7 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
           <View style={dynamicStyles.statCard}>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={14} color="#fbbf24" />
-              <Text style={dynamicStyles.statNumber}>{profile.stats.rating}</Text>
+              <Text style={dynamicStyles.statNumber}>{realStats.rating?.toFixed(1) || '0'}</Text>
             </View>
             <Text style={dynamicStyles.statLabel}>Puan</Text>
           </View>

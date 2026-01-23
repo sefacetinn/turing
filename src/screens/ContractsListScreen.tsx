@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,32 +14,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { darkTheme as defaultColors, gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
+import { useUserContracts, type UserContract } from '../hooks';
+import { useAuth } from '../context/AuthContext';
 
 const colors = defaultColors;
 
-type ContractStatus = 'pending_signature' | 'signed' | 'completed' | 'cancelled';
 type TabType = 'pending' | 'signed' | 'all';
-
-interface Contract {
-  id: string;
-  eventName: string;
-  serviceName: string;
-  serviceCategory: string;
-  otherPartyName: string;
-  otherPartyImage: string;
-  amount: number;
-  status: ContractStatus;
-  date: string;
-  eventDate: string;
-  needsMySignature: boolean;
-}
 
 interface ContractsListScreenProps {
   isProviderMode?: boolean;
 }
-
-// TODO: Fetch contracts from Firebase
-// Empty initial state for production
 
 const getCategoryColor = (category: string) => {
   const categoryColors: Record<string, string> = {
@@ -54,16 +39,18 @@ const getCategoryColor = (category: string) => {
 export function ContractsListScreen({ isProviderMode = true }: ContractsListScreenProps) {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [refreshing, setRefreshing] = useState(false);
 
-  // TODO: Fetch contracts from Firebase
-  const [contracts, setContracts] = useState<Contract[]>([]);
+  // Fetch contracts from Firebase
+  const { contracts, stats, loading, error } = useUserContracts(user?.uid);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
+    // The hook will automatically refetch when we trigger a refresh
     setTimeout(() => setRefreshing(false), 1000);
-  };
+  }, []);
 
   const filteredContracts = useMemo(() => {
     if (activeTab === 'pending') {
@@ -75,16 +62,7 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
     return contracts;
   }, [activeTab, contracts]);
 
-  const stats = useMemo(() => ({
-    pending: contracts.filter(c => c.status === 'pending_signature').length,
-    needsSignature: contracts.filter(c => c.needsMySignature).length,
-    signed: contracts.filter(c => c.status === 'signed' || c.status === 'completed').length,
-    totalValue: contracts
-      .filter(c => c.status === 'signed' || c.status === 'completed')
-      .reduce((sum, c) => sum + c.amount, 0),
-  }), [contracts]);
-
-  const getStatusInfo = (contract: Contract) => {
+  const getStatusInfo = (contract: UserContract) => {
     if (contract.status === 'pending_signature') {
       if (contract.needsMySignature) {
         return { label: 'İmzanız Bekleniyor', color: colors.warning, icon: 'create-outline' as const };
@@ -100,9 +78,12 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
     return { label: 'İptal', color: colors.error, icon: 'close-circle' as const };
   };
 
-  const renderContractCard = (contract: Contract) => {
+  const renderContractCard = (contract: UserContract) => {
     const statusInfo = getStatusInfo(contract);
     const categoryColor = getCategoryColor(contract.serviceCategory);
+    const contractDate = contract.createdAt instanceof Date
+      ? contract.createdAt.toLocaleDateString('tr-TR')
+      : new Date(contract.createdAt).toLocaleDateString('tr-TR');
 
     return (
       <TouchableOpacity
@@ -114,7 +95,11 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
           contract.needsMySignature && styles.contractCardUrgent
         ]}
         activeOpacity={0.9}
-        onPress={() => navigation.navigate('Contract', { contractId: contract.id })}
+        onPress={() => navigation.navigate('Contract', {
+          contractId: contract.id,
+          offerId: contract.offerId,
+          eventId: contract.eventId,
+        })}
       >
         {/* Category Top Bar */}
         <View style={[styles.categoryBar, { backgroundColor: categoryColor }]} />
@@ -130,8 +115,8 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
         {/* Card Header */}
         <View style={styles.cardHeader}>
           <View style={styles.cardHeaderLeft}>
-            <Text style={[styles.contractId, { color: colors.textSecondary }]}>#{contract.id.toUpperCase()}</Text>
-            <Text style={[styles.contractDate, { color: colors.textMuted }]}>{contract.date}</Text>
+            <Text style={[styles.contractId, { color: colors.textSecondary }]}>#{contract.id.slice(0, 8).toUpperCase()}</Text>
+            <Text style={[styles.contractDate, { color: colors.textMuted }]}>{contractDate}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: `${statusInfo.color}15` }]}>
             <Ionicons name={statusInfo.icon} size={12} color={statusInfo.color} />
@@ -167,7 +152,11 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
         {contract.needsMySignature && (
           <TouchableOpacity
             style={styles.signNowButton}
-            onPress={() => navigation.navigate('Contract', { contractId: contract.id })}
+            onPress={() => navigation.navigate('Contract', {
+              contractId: contract.id,
+              offerId: contract.offerId,
+              eventId: contract.eventId,
+            })}
           >
             <LinearGradient
               colors={gradients.primary}
@@ -306,7 +295,12 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
           />
         }
       >
-        {filteredContracts.length > 0 ? (
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={colors.brand[400]} />
+            <Text style={[styles.loadingText, { color: colors.textMuted }]}>Sözleşmeler yükleniyor...</Text>
+          </View>
+        ) : filteredContracts.length > 0 ? (
           filteredContracts.map(renderContractCard)
         ) : (
           <View style={styles.emptyState}>
@@ -315,7 +309,11 @@ export function ContractsListScreen({ isProviderMode = true }: ContractsListScre
             </View>
             <Text style={[styles.emptyStateTitle, { color: colors.text }]}>Sözleşme Bulunamadı</Text>
             <Text style={[styles.emptyStateText, { color: colors.textMuted }]}>
-              Bu kategoride henüz sözleşme bulunmuyor.
+              {activeTab === 'pending'
+                ? 'Bekleyen sözleşmeniz bulunmuyor.'
+                : activeTab === 'signed'
+                ? 'İmzalanmış sözleşmeniz bulunmuyor.'
+                : 'Henüz sözleşmeniz bulunmuyor. Teklifler kabul edildiğinde burada görünecektir.'}
             </Text>
           </View>
         )}
@@ -588,6 +586,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: 'white',
+  },
+  loadingState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 14,
   },
   emptyState: {
     alignItems: 'center',

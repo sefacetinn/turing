@@ -55,6 +55,7 @@ export {
   useProviderEventOffer,
   useProviderOffers,
   useOrganizerOffers,
+  useUserContracts,
   syncOffersToEventServices,
   syncOffersToEventServicesWithDebug,
   // Artist team and rider hooks
@@ -79,6 +80,7 @@ export {
   type DashboardStats,
   type ArtistTeamMember,
   type ArtistRider,
+  type UserContract,
 } from './useFirestoreData';
 
 // Offline data hooks (WatermelonDB)
@@ -95,3 +97,21 @@ export {
   type UseOfflineDataResult,
   type UseOfflineItemResult,
 } from './useOfflineData';
+
+// Event Revisions hooks
+export {
+  useEventRevisions,
+  useProviderPendingRevisions,
+  getRevisionTypeLabel,
+  getRevisionTypeIcon,
+  getRevisionStatusLabel,
+  getRevisionStatusColor,
+  formatRevisionValue,
+  type EventRevision,
+  type RevisionType,
+  type RevisionStatus,
+  type ApprovalStatus,
+  type ProviderApproval,
+  type UseEventRevisionsResult,
+  type UseProviderPendingRevisionsResult,
+} from './useEventRevisions';

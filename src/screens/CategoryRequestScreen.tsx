@@ -22,6 +22,7 @@ import { gradients } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useUserEvents, useProviderArtists, createOfferRequest, type FirestoreArtist } from '../hooks';
+import { useUserCompanies } from '../hooks/useCompany';
 import { SelectionChips, SwitchRow, FormSection, InputLabel } from '../components/categoryRequest';
 import { CalendarPickerModal } from '../components/createEvent';
 import { categoryConfig, categoryOptions } from '../data/categoryRequestData';
@@ -45,6 +46,9 @@ export function CategoryRequestScreen() {
   }) || { category: 'booking' };
   const { colors, isDark, helpers } = useTheme();
   const { user, userProfile } = useAuth();
+
+  // Fetch user's primary company for offer requests
+  const { primaryCompany } = useUserCompanies(user?.uid);
 
   // Fetch user's events from Firebase
   const { events: firebaseEvents, loading: eventsLoading } = useUserEvents(user?.uid);
@@ -247,7 +251,7 @@ export function CategoryRequestScreen() {
         // Event info
         eventId: selectedEvent,
         eventTitle: selectedEventData?.title || '',
-        // Organizer info
+        // Organizer info (kişisel - fallback)
         organizerId: user.uid,
         organizerName: userProfile?.displayName || user.displayName || 'Organizatör',
         organizerImage: userProfile?.photoURL || userProfile?.userPhotoURL || user.photoURL || '',
@@ -260,6 +264,18 @@ export function CategoryRequestScreen() {
         formData: eventFormData,
         serviceDates: selectedDates.length > 0 ? selectedDates : [],
       };
+
+      // Organizatör şirket bilgileri (varsa)
+      if (primaryCompany) {
+        requestData.organizerCompanyId = primaryCompany.id;
+        requestData.organizerCompanyName = primaryCompany.name;
+        if (primaryCompany.logo) {
+          requestData.organizerCompanyLogo = primaryCompany.logo;
+        }
+        // Kişi bilgileri (şirket içindeki kullanıcı)
+        requestData.organizerUserId = user.uid;
+        requestData.organizerUserName = userProfile?.displayName || user.displayName || '';
+      }
 
       // Add optional fields only if they have values
       if (selectedEventData?.date) requestData.eventDate = selectedEventData.date;

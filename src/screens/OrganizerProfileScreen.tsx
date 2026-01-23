@@ -43,6 +43,9 @@ interface FirebaseUser {
   isOrganizer?: boolean;
   isProvider?: boolean;
   createdAt?: any;
+  // Company membership
+  primaryCompanyId?: string;
+  companyIds?: string[];
   // Social media
   instagram?: string;
   twitter?: string;
@@ -52,6 +55,18 @@ interface FirebaseUser {
     twitter?: string;
     facebook?: string;
   };
+}
+
+// Company type for display
+interface CompanyInfo {
+  id: string;
+  name: string;
+  logo?: string;
+  coverImage?: string;
+  description?: string;
+  city?: string;
+  website?: string;
+  isVerified?: boolean;
 }
 
 type OrganizerProfileParams = {
@@ -67,6 +82,7 @@ export function OrganizerProfileScreen() {
   const organizerId = route.params?.organizerId;
 
   const [organizer, setOrganizer] = useState<FirebaseUser | null>(null);
+  const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +110,32 @@ export function OrganizerProfileScreen() {
           id: userDoc.id,
           ...userData,
         } as FirebaseUser);
+
+        // Fetch company data if user has a primary company
+        if (userData.primaryCompanyId) {
+          try {
+            console.log('[OrganizerProfileScreen] Fetching company:', userData.primaryCompanyId);
+            const companyDoc = await getDoc(doc(db, 'companies', userData.primaryCompanyId));
+            if (companyDoc.exists()) {
+              const companyData = companyDoc.data();
+              setCompany({
+                id: companyDoc.id,
+                name: companyData.name,
+                logo: companyData.logo,
+                coverImage: companyData.coverImage,
+                description: companyData.description,
+                city: companyData.city,
+                website: companyData.website,
+                isVerified: companyData.isVerified,
+              });
+              console.log('[OrganizerProfileScreen] Company data found:', companyData.name);
+            }
+          } catch (companyErr) {
+            console.warn('[OrganizerProfileScreen] Error fetching company:', companyErr);
+            // Don't fail the whole profile if company fetch fails
+          }
+        }
+
         setError(null);
       } else {
         console.log('[OrganizerProfileScreen] User not found:', organizerId);
@@ -197,18 +239,29 @@ export function OrganizerProfileScreen() {
     );
   }
 
-  // Get display values with fallbacks
-  const displayName = organizer.displayName || organizer.companyName || 'İsimsiz Kullanıcı';
-  const profileImage = organizer.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200';
-  const coverImage = organizer.coverImage || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800';
-  const location = organizer.city || 'Türkiye';
+  // Get display values with fallbacks - prefer company info if available
+  const hasCompany = !!company;
+  const displayName = hasCompany ? company.name : (organizer.displayName || organizer.companyName || 'İsimsiz Kullanıcı');
+  const profileImage = hasCompany && company.logo
+    ? company.logo
+    : (organizer.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200');
+  const coverImage = hasCompany && company.coverImage
+    ? company.coverImage
+    : (organizer.coverImage || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800');
+  const location = hasCompany && company.city ? company.city : (organizer.city || 'Türkiye');
   const title = organizer.isProvider ? 'Hizmet Sağlayıcı' : 'Etkinlik Organizatörü';
-  const bio = organizer.bio || 'Bu kullanıcı henüz bir açıklama eklememiş.';
+  const bio = hasCompany && company.description
+    ? company.description
+    : (organizer.bio || 'Bu kullanıcı henüz bir açıklama eklememiş.');
+  const isVerified = hasCompany ? company.isVerified : organizer.isVerified;
   const socialMedia = organizer.socialMedia || {
     instagram: organizer.instagram,
     twitter: organizer.twitter,
     facebook: organizer.facebook,
   };
+  // User info for subtitle when showing company
+  const userName = organizer.displayName || '';
+  const userImage = organizer.photoURL;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -252,13 +305,22 @@ export function OrganizerProfileScreen() {
             <View style={styles.profileInfo}>
               <View style={styles.nameRow}>
                 <Text style={[styles.profileName, { color: colors.text }]}>{displayName}</Text>
-                {organizer.isVerified && (
+                {isVerified && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={18} color="#3B82F6" />
                   </View>
                 )}
               </View>
-              <Text style={[styles.profileTitle, { color: colors.textSecondary }]}>{title}</Text>
+              {hasCompany && userName ? (
+                <View style={styles.companyUserRow}>
+                  {userImage && (
+                    <OptimizedImage source={userImage} style={styles.companyUserImage} />
+                  )}
+                  <Text style={[styles.companyUserName, { color: colors.textSecondary }]}>{userName}</Text>
+                </View>
+              ) : (
+                <Text style={[styles.profileTitle, { color: colors.textSecondary }]}>{title}</Text>
+              )}
               <View style={styles.locationRow}>
                 <Ionicons name="location-outline" size={14} color={colors.textMuted} />
                 <Text style={[styles.locationText, { color: colors.textMuted }]}>{location}</Text>
@@ -573,6 +635,20 @@ const styles = StyleSheet.create({
   profileTitle: {
     fontSize: 14,
     marginTop: 2,
+  },
+  companyUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  companyUserImage: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  companyUserName: {
+    fontSize: 14,
   },
   locationRow: {
     flexDirection: 'row',

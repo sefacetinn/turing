@@ -204,6 +204,9 @@ export function ProviderEventsScreen() {
 
       return {
         id: job.id,
+        // Store original event ID for navigation (job.id might be composite like "eventId_offerId")
+        originalEventId: (job as any).originalEventId || job.id.split('_')[0],
+        offerId: (job as any).offerId,
         eventTitle: job.title,
         eventDate: job.date,
         eventTime: job.time || '20:00',
@@ -298,8 +301,9 @@ export function ProviderEventsScreen() {
         }]}
         activeOpacity={0.8}
         onPress={() => {
-          console.log('[ProviderEventsScreen] Navigating to event with ID:', event.id);
-          navigation.navigate('ProviderEventDetail', { eventId: event.id });
+          const eventId = event.originalEventId || event.id;
+          console.log('[ProviderEventsScreen] Navigating to event with ID:', eventId, 'offerId:', event.offerId);
+          navigation.navigate('ProviderEventDetail', { eventId, offerId: event.offerId });
         }}
       >
         <View style={styles.eventImageContainer}>

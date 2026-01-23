@@ -22,6 +22,7 @@ import { useApp } from '../../App';
 import { useAuth } from '../context/AuthContext';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { uriToBlob, uploadFile } from '../services/firebase/storage';
 
 interface SocialAccount {
   id: string;
@@ -104,19 +105,30 @@ export function EditProfileScreen() {
 
     setSaving(true);
     try {
-      // Build profile data, only include userPhotoURL if it has a value
+      // Build profile data - only personal info, not company info
       const profileData: Record<string, any> = {
         displayName: name,
         phoneNumber: phone,
         bio: bio,
-        companyName: company,
         city: location,
-        website: website,
       };
 
-      // Only add userPhotoURL if it has a value (avoid Firebase undefined error)
+      // Upload profile photo to Firebase Storage if it's a local file
       if (userPhoto) {
-        profileData.userPhotoURL = userPhoto;
+        if (userPhoto.startsWith('file://') || userPhoto.startsWith('ph://')) {
+          try {
+            const imageBlob = await uriToBlob(userPhoto);
+            const imagePath = `users/${user.uid}/profile_${Date.now()}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            profileData.userPhotoURL = imageUrl;
+          } catch (uploadError) {
+            console.warn('Error uploading profile image:', uploadError);
+            // Keep existing photo URL if upload fails
+          }
+        } else {
+          // If it's already a URL (https://), keep it
+          profileData.userPhotoURL = userPhoto;
+        }
       }
 
       // Update user profile via AuthContext
@@ -220,7 +232,7 @@ export function EditProfileScreen() {
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Profili Düzenle</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Kişisel Bilgilerim</Text>
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: colors.brand[500], opacity: saving ? 0.7 : 1 }]}
           onPress={handleSave}
@@ -415,49 +427,72 @@ export function EditProfileScreen() {
           </View>
         </View>
 
-        {/* Company Info */}
+        {/* Role/Position in Company */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Firma Bilgileri</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Firma İçi Bilgiler</Text>
 
           <View style={[styles.inputCard, {
             backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.cardBackground,
             borderColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border,
           }]}>
+            {/* Show current company (read-only) */}
             <View style={styles.inputRow}>
               <View style={[styles.inputIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5' }]}>
                 <Ionicons name="business" size={16} color={colors.textMuted} />
               </View>
               <View style={styles.inputContent}>
-                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Şirket Adı</Text>
-                <TextInput
-                  style={[styles.inputValue, { color: colors.text }]}
-                  value={company}
-                  onChangeText={setCompany}
-                  placeholder="Şirket"
-                  placeholderTextColor={colors.zinc[500]}
-                />
+                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Firma</Text>
+                <Text style={[styles.inputValue, { color: colors.text }]}>
+                  {company || 'Firma bilgisi yok'}
+                </Text>
               </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('EditCompanyProfile')}
+                style={{ padding: 4 }}
+              >
+                <Ionicons name="open-outline" size={18} color={colors.brand[400]} />
+              </TouchableOpacity>
             </View>
 
             <View style={[styles.inputDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : colors.border }]} />
 
             <View style={styles.inputRow}>
               <View style={[styles.inputIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F5F5F5' }]}>
-                <Ionicons name="globe" size={16} color={colors.textMuted} />
+                <Ionicons name="briefcase" size={16} color={colors.textMuted} />
               </View>
               <View style={styles.inputContent}>
-                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Web Sitesi</Text>
+                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>Pozisyon / Rol</Text>
                 <TextInput
                   style={[styles.inputValue, { color: colors.text }]}
-                  value={website}
-                  onChangeText={setWebsite}
-                  placeholder="www.example.com"
+                  value={userProfile?.role || ''}
+                  placeholder="Örn: Etkinlik Yöneticisi, Proje Koordinatörü"
                   placeholderTextColor={colors.zinc[500]}
-                  autoCapitalize="none"
+                  editable={false}
                 />
               </View>
             </View>
           </View>
+
+          {/* Company profile link */}
+          <TouchableOpacity
+            style={[styles.companyLinkCard, {
+              backgroundColor: isDark ? 'rgba(75, 48, 184, 0.08)' : 'rgba(75, 48, 184, 0.05)',
+              borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)',
+            }]}
+            onPress={() => navigation.navigate('EditCompanyProfile')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.companyLinkContent}>
+              <Ionicons name="business-outline" size={20} color={colors.brand[400]} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.companyLinkTitle, { color: colors.text }]}>Şirket Profilini Düzenle</Text>
+                <Text style={[styles.companyLinkDescription, { color: colors.textMuted }]}>
+                  Logo, iletişim bilgileri, hizmetler
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.brand[400]} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Social Accounts */}
@@ -873,6 +908,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modeDesc: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  // Company Link Card
+  companyLinkCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  companyLinkContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  companyLinkTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  companyLinkDescription: {
     fontSize: 12,
     marginTop: 2,
   },

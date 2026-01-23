@@ -26,6 +26,8 @@ import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../../App';
 import { addDocument, Collections } from '../services/firebase/firestore';
+import { uriToBlob, uploadFile } from '../services/firebase/storage';
+import { useUserCompanies } from '../hooks/useCompany';
 import {
   StepProgress,
   SelectModal,
@@ -61,8 +63,9 @@ export function CreateEventScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const { isProviderMode } = useApp();
+  const { primaryCompany, loading: companyLoading } = useUserCompanies(user?.uid);
   const TAB_BAR_HEIGHT = 80;
   const [currentStep, setCurrentStep] = useState<Step>('type');
   const [activeDropdown, setActiveDropdown] = useState<DropdownType>(null);
@@ -285,6 +288,9 @@ export function CreateEventScreen() {
         budget: budgetValue,
         status: 'planning',
         organizerId: user.uid,
+        // Kişisel organizatör bilgileri (fallback)
+        organizerName: userProfile?.displayName || user.displayName || '',
+        organizerImage: userProfile?.photoURL || user.photoURL || '',
         providerIds: isProviderMode ? [user.uid] : [],
         services: eventData.services.length > 0 ? eventData.services.map(serviceId => ({
           id: serviceId,
@@ -293,6 +299,18 @@ export function CreateEventScreen() {
           status: 'pending',
         })) : [],
       };
+
+      // Şirket bilgilerini ekle (varsa)
+      if (primaryCompany) {
+        eventDoc.organizerCompanyId = primaryCompany.id;
+        eventDoc.organizerCompanyName = primaryCompany.name;
+        if (primaryCompany.logo) {
+          eventDoc.organizerCompanyLogo = primaryCompany.logo;
+        }
+        // Kişi bilgileri (şirket içindeki kullanıcı)
+        eventDoc.organizerUserId = user.uid;
+        eventDoc.organizerUserName = userProfile?.displayName || user.displayName || '';
+      }
 
       // Add optional fields only if they have values
       if (eventData.selectedDates.length > 1) {
@@ -304,7 +322,19 @@ export function CreateEventScreen() {
       if (eventData.guestCount) {
         eventDoc.expectedAttendees = parseInt(eventData.guestCount.replace(/\D/g, '')) || 0;
       }
-      if (eventData.image) {
+      // Upload image to Firebase Storage if provided
+      if (eventData.image && (eventData.image.startsWith('file://') || eventData.image.startsWith('ph://'))) {
+        try {
+          const imageBlob = await uriToBlob(eventData.image);
+          const imagePath = `events/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+          const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+          eventDoc.image = imageUrl;
+        } catch (uploadError) {
+          console.warn('Error uploading event image:', uploadError);
+          // Continue without image if upload fails
+        }
+      } else if (eventData.image) {
+        // If it's already a URL (e.g., from editing), keep it
         eventDoc.image = eventData.image;
       }
       // New event detail fields

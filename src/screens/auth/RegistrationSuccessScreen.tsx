@@ -10,7 +10,11 @@ import { useTheme } from '../../theme/ThemeContext';
 import { UserRole } from '../../types/auth';
 import { AuthNavigationProp, RootStackParamList } from '../../types/navigation';
 
-export function RegistrationSuccessScreen() {
+interface RegistrationSuccessScreenProps {
+  onLogin: (asProvider: boolean) => void;
+}
+
+export function RegistrationSuccessScreen({ onLogin }: RegistrationSuccessScreenProps) {
   const navigation = useNavigation<AuthNavigationProp>();
   const route = useRoute<RouteProp<RootStackParamList, 'RegistrationSuccess'>>();
   const { role } = route.params || { role: 'organizer' };
@@ -54,8 +58,8 @@ export function RegistrationSuccessScreen() {
       });
     } else {
       // User is already logged in via Firebase after registration
-      // Just navigate back - App.tsx will detect auth state and show MainTabs
-      navigation.getParent()?.goBack();
+      // Call onLogin to update app state and show MainTabs
+      onLogin(false);
     }
   };
 

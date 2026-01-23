@@ -412,7 +412,9 @@ function AuthStack({ onLogin }: { onLogin: (asProvider: boolean, account?: TestA
       <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
       <Stack.Screen name="OrganizerRegistration" component={OrganizerRegistrationScreen} />
       <Stack.Screen name="ProviderRegistration" component={ProviderRegistrationScreen} />
-      <Stack.Screen name="RegistrationSuccess" component={RegistrationSuccessScreen} />
+      <Stack.Screen name="RegistrationSuccess">
+        {() => <RegistrationSuccessScreen onLogin={onLogin} />}
+      </Stack.Screen>
       <Stack.Screen name="AccountPending">
         {() => <AccountPendingScreen onLogout={() => {}} />}
       </Stack.Screen>

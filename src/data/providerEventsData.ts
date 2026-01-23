@@ -47,6 +47,9 @@ export interface ProviderEvent {
   daysUntil: number;
   teamSize: number;
   tasks: { total: number; completed: number };
+  // Optional fields for navigation
+  originalEventId?: string;
+  offerId?: string;
 }
 
 // Mock provider events data - EventPro 360 (Full-Service Provider)

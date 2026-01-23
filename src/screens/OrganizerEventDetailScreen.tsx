@@ -44,7 +44,7 @@ import type { TicketPlatform, TicketCategory } from '../types';
 import { PosterGenerator } from '../components/poster';
 import { RatingModal } from '../components/rating';
 import { OptimizedImage } from '../components/OptimizedImage';
-import { useEvent, syncOffersToEventServices, syncOffersToEventServicesWithDebug } from '../hooks';
+import { useEvent, syncOffersToEventServices, syncOffersToEventServicesWithDebug, useEventRevisions, getRevisionTypeLabel, getRevisionTypeIcon, getRevisionStatusLabel, getRevisionStatusColor, formatRevisionValue } from '../hooks';
 import { ageLimitOptions, seatingTypeOptions, indoorOutdoorOptions, eventTypes } from '../data/createEventData';
 import { deleteDocument, Collections } from '../services/firebase/firestore';
 
@@ -199,6 +199,9 @@ export function OrganizerEventDetailScreen() {
   // Fetch event from Firebase
   const { event: firebaseEvent, loading: eventLoading, error: eventError } = useEvent(eventId);
 
+  // Fetch revisions for this event
+  const { revisions, pendingRevisions, loading: revisionsLoading, refetch: refetchRevisions } = useEventRevisions(eventId);
+
   // Sync accepted offers to event services when screen loads
   useEffect(() => {
     if (eventId && !eventLoading) {
@@ -248,8 +251,49 @@ export function OrganizerEventDetailScreen() {
       venueCapacity: firebaseEvent.venueCapacity || '',
       guestCount: firebaseEvent.guestCount || '',
       eventType: firebaseEvent.eventType || '',
+      // Organizatör şirket bilgileri
+      organizerCompanyId: firebaseEvent.organizerCompanyId,
+      organizerCompanyName: firebaseEvent.organizerCompanyName,
+      organizerCompanyLogo: firebaseEvent.organizerCompanyLogo,
+      organizerUserId: firebaseEvent.organizerUserId,
+      organizerUserName: firebaseEvent.organizerUserName,
+      organizerUserRole: firebaseEvent.organizerUserRole,
+      organizerName: firebaseEvent.organizerName,
+      organizerImage: firebaseEvent.organizerImage,
     };
   }, [firebaseEvent]);
+
+  // Check if event date is in the past
+  const isEventPast = useMemo(() => {
+    if (!event?.date) return false;
+    const dateString = event.date;
+    let eventDate: Date;
+
+    if (dateString.includes('-')) {
+      // ISO format: 2026-01-22
+      eventDate = new Date(dateString);
+    } else {
+      // Turkish format: 22 Ocak 2026
+      const months: Record<string, number> = {
+        'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+        'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+      };
+      const parts = dateString.split(' ');
+      if (parts.length >= 3) {
+        const day = parseInt(parts[0], 10);
+        const month = months[parts[1]] ?? 0;
+        const year = parseInt(parts[2], 10);
+        eventDate = new Date(year, month, day);
+      } else {
+        return false;
+      }
+    }
+
+    // Set time to end of day for comparison
+    eventDate.setHours(23, 59, 59, 999);
+    const today = new Date();
+    return eventDate < today;
+  }, [event?.date]);
 
   // Check if event has ticketing enabled (mock - always true for demo)
   const isTicketed = true;
@@ -309,13 +353,23 @@ export function OrganizerEventDetailScreen() {
     );
   };
 
+  // Normalize category to group related categories together
+  const normalizeCategory = (category: string): string => {
+    // "artist", "sanatçı", "booking" are all the same category
+    if (category === 'artist' || category === 'sanatçı') return 'booking';
+    // "sound-light", "ses-isik", "technical" can be grouped
+    if (category === 'ses-isik' || category === 'sound-light') return 'technical';
+    return category;
+  };
+
   // Hooks must be called before any early returns
   const servicesByCategory = useMemo(() => {
     if (!event) return {};
     const grouped: Record<string, Service[]> = {};
     event.services.forEach((service: Service) => {
-      if (!grouped[service.category]) grouped[service.category] = [];
-      grouped[service.category].push(service);
+      const normalizedCategory = normalizeCategory(service.category);
+      if (!grouped[normalizedCategory]) grouped[normalizedCategory] = [];
+      grouped[normalizedCategory].push(service);
     });
     return grouped;
   }, [event?.services]);
@@ -713,7 +767,9 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
 
   const renderServiceCard = (service: Service) => {
     const statusInfo = getServiceStatusInfo(service.status, colors);
-    const categoryInfo = getCategoryInfo(service.category);
+    // Use normalized category for display (artist/sanatçı -> booking)
+    const normalizedCat = normalizeCategory(service.category);
+    const categoryInfo = getCategoryInfo(normalizedCat);
 
     return (
       <View
@@ -761,7 +817,7 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           </View>
         </View>
 
-        {service.status === 'pending' && (
+        {service.status === 'pending' && !isEventPast && (
           <TouchableOpacity
             style={styles.serviceActionButton}
             activeOpacity={0.8}
@@ -975,6 +1031,22 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           </View>
         </View>
 
+        {/* Organizatör Şirket Bilgisi */}
+        {event.organizerCompanyName && (
+          <View style={[styles.organizerBadge, { backgroundColor: isDark ? 'rgba(75, 48, 184, 0.1)' : 'rgba(75, 48, 184, 0.08)', borderColor: isDark ? 'rgba(75, 48, 184, 0.2)' : 'rgba(75, 48, 184, 0.15)' }]}>
+            <View style={styles.organizerBadgeContent}>
+              {event.organizerCompanyLogo && (
+                <OptimizedImage source={event.organizerCompanyLogo} style={styles.organizerBadgeLogo} />
+              )}
+              <View style={styles.organizerBadgeInfo}>
+                <Text style={[styles.organizerBadgeLabel, { color: colors.textMuted }]}>Organizatör</Text>
+                <Text style={[styles.organizerBadgeName, { color: colors.text }]}>{event.organizerCompanyName}</Text>
+              </View>
+            </View>
+            <Ionicons name="checkmark-circle" size={20} color={colors.brand[400]} />
+          </View>
+        )}
+
         {/* Quick Info Cards */}
         <View style={[styles.quickInfoContainer, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border }]}>
           {[
@@ -1061,19 +1133,41 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         {/* Services Section */}
         {activeSection === 'services' && (
           <View style={styles.servicesSection}>
-            {Object.entries(servicesByCategory).map(([category, services]) => (
-              <View key={category} style={styles.serviceCategoryGroup}>
-                <View style={styles.serviceCategoryHeader}>
-                  <Text style={[styles.serviceCategoryTitle, { color: colors.text }]}>{getCategoryInfo(category).name}</Text>
-                  <Text style={[styles.serviceCategoryCount, { color: colors.textMuted }]}>{services.length} hizmet</Text>
+            {Object.entries(servicesByCategory).map(([category, services]) => {
+              // Separate services: assigned (confirmed/contract_pending/offered) vs unassigned (pending)
+              const assignedServices = services.filter(s => s.status !== 'pending');
+              const pendingServices = services.filter(s => s.status === 'pending');
+              const hasAssignedService = assignedServices.length > 0;
+
+              return (
+                <View key={category} style={styles.serviceCategoryGroup}>
+                  <View style={styles.serviceCategoryHeader}>
+                    <Text style={[styles.serviceCategoryTitle, { color: colors.text }]}>{getCategoryInfo(category).name}</Text>
+                    <Text style={[styles.serviceCategoryCount, { color: colors.textMuted }]}>{services.length} hizmet</Text>
+                  </View>
+                  {/* Render assigned services as full cards */}
+                  {assignedServices.map(service => renderServiceCard(service))}
+                  {/* If there are assigned services, show pending as simple add button (only if event is not past) */}
+                  {hasAssignedService && pendingServices.length > 0 && !isEventPast && (
+                    <TouchableOpacity
+                      style={[styles.addProviderButton, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : colors.border }]}
+                      onPress={() => navigation.navigate('ServiceProviders', { category })}
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color={colors.brand[400]} />
+                      <Text style={[styles.addProviderText, { color: colors.brand[400] }]}>Tedarikçi Ekle</Text>
+                    </TouchableOpacity>
+                  )}
+                  {/* If no assigned services, show pending as full cards */}
+                  {!hasAssignedService && pendingServices.map(service => renderServiceCard(service))}
                 </View>
-                {services.map(service => renderServiceCard(service))}
-              </View>
-            ))}
-            <TouchableOpacity style={styles.addServiceButton} onPress={() => Alert.alert('Hizmet Ekle', 'Hangi kategoriden hizmet eklemek istiyorsunuz?', [{ text: 'Booking', onPress: () => navigation.navigate('ServiceProviders', { category: 'booking' }) }, { text: 'Teknik', onPress: () => navigation.navigate('ServiceProviders', { category: 'technical' }) }, { text: 'Operasyon', onPress: () => navigation.navigate('ServiceProviders', { category: 'operation' }) }, { text: 'İptal', style: 'cancel' }])}>
-              <Ionicons name="add" size={20} color={colors.brand[400]} />
-              <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
-            </TouchableOpacity>
+              );
+            })}
+            {!isEventPast && (
+              <TouchableOpacity style={styles.addServiceButton} onPress={() => Alert.alert('Hizmet Ekle', 'Hangi kategoriden hizmet eklemek istiyorsunuz?', [{ text: 'Booking', onPress: () => navigation.navigate('ServiceProviders', { category: 'booking' }) }, { text: 'Teknik', onPress: () => navigation.navigate('ServiceProviders', { category: 'technical' }) }, { text: 'Operasyon', onPress: () => navigation.navigate('ServiceProviders', { category: 'operation' }) }, { text: 'İptal', style: 'cancel' }])}>
+                <Ionicons name="add" size={20} color={colors.brand[400]} />
+                <Text style={[styles.addServiceText, { color: colors.brand[400] }]}>Hizmet Ekle</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -1098,9 +1192,88 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         {/* Timeline Section */}
         {activeSection === 'timeline' && (
           <View style={styles.timelineSection}>
-            {timeline.length > 0 ? (
-              timeline.map((item, index) => renderTimelineItem(item, index, index === timeline.length - 1))
-            ) : (
+            {/* Revision History */}
+            {revisions.length > 0 && (
+              <View style={{ marginBottom: 20 }}>
+                <Text style={[styles.timelineSectionTitle, { color: colors.text }]}>Değişiklik Geçmişi</Text>
+                {revisions.map((revision, index) => {
+                  const statusColor = getRevisionStatusColor(revision.status);
+                  const requestedDate = revision.requestedAt?.toDate?.() || new Date();
+                  return (
+                    <View
+                      key={revision.id}
+                      style={[
+                        styles.revisionHistoryItem,
+                        {
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : colors.cardBackground,
+                          borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
+                        },
+                      ]}
+                    >
+                      <View style={styles.revisionHistoryHeader}>
+                        <View style={[styles.revisionHistoryIcon, { backgroundColor: `${statusColor}15` }]}>
+                          <Ionicons name={getRevisionTypeIcon(revision.type) as any} size={16} color={statusColor} />
+                        </View>
+                        <View style={styles.revisionHistoryInfo}>
+                          <Text style={[styles.revisionHistoryTitle, { color: colors.text }]}>{revision.title}</Text>
+                          <Text style={[styles.revisionHistoryDate, { color: colors.textMuted }]}>
+                            {requestedDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </Text>
+                        </View>
+                        <View style={[styles.revisionHistoryStatus, { backgroundColor: `${statusColor}15`, borderColor: `${statusColor}30` }]}>
+                          <Text style={[styles.revisionHistoryStatusText, { color: statusColor }]}>
+                            {getRevisionStatusLabel(revision.status)}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.revisionHistoryChange}>
+                        <Text style={[styles.revisionHistoryChangeLabel, { color: colors.textMuted }]}>
+                          {getRevisionTypeLabel(revision.type)}:
+                        </Text>
+                        <View style={styles.revisionHistoryChangeValues}>
+                          <Text style={[styles.revisionHistoryOldValue, { color: colors.textMuted }]}>
+                            {formatRevisionValue(revision.type, revision.oldValue)}
+                          </Text>
+                          <Ionicons name="arrow-forward" size={12} color={colors.textMuted} style={{ marginHorizontal: 6 }} />
+                          <Text style={[styles.revisionHistoryNewValue, { color: colors.brand[400] }]}>
+                            {formatRevisionValue(revision.type, revision.newValue)}
+                          </Text>
+                        </View>
+                      </View>
+                      {revision.totalProviders > 0 && (
+                        <View style={styles.revisionHistoryApproval}>
+                          <View style={styles.revisionHistoryApprovalBar}>
+                            <View
+                              style={[
+                                styles.revisionHistoryApprovalFill,
+                                {
+                                  width: `${(revision.approvedCount / revision.totalProviders) * 100}%`,
+                                  backgroundColor: colors.success,
+                                }
+                              ]}
+                            />
+                          </View>
+                          <Text style={[styles.revisionHistoryApprovalText, { color: colors.textMuted }]}>
+                            {revision.approvedCount}/{revision.totalProviders} onay
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Original Timeline */}
+            {timeline.length > 0 && (
+              <View>
+                <Text style={[styles.timelineSectionTitle, { color: colors.text }]}>Zaman Çizelgesi</Text>
+                {timeline.map((item, index) => renderTimelineItem(item, index, index === timeline.length - 1))}
+              </View>
+            )}
+
+            {/* Empty State */}
+            {timeline.length === 0 && revisions.length === 0 && (
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                 <Ionicons name="time-outline" size={48} color={colors.textMuted} />
                 <Text style={{ color: colors.textMuted, marginTop: 12, fontSize: 14 }}>Henüz zaman çizelgesi oluşturulmadı</Text>
@@ -1518,8 +1691,8 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           </View>
         )}
 
-        {/* Action Buttons - Only in Services Tab */}
-        {activeSection === 'services' && (
+        {/* Action Buttons - Only in Services Tab and when event is not past */}
+        {activeSection === 'services' && !isEventPast && (
           <>
             <View style={styles.actionButtons}>
               <TouchableOpacity style={[styles.actionButtonSecondary, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : colors.cardBackground, borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : colors.border }, isDark ? {} : helpers.getShadow('sm')]} onPress={() => setShowReviseModal(true)}>
@@ -1537,13 +1710,36 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
           </>
         )}
 
+        {/* Bottom Spacing when event is past */}
+        {activeSection === 'services' && isEventPast && (
+          <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 20 }} />
+        )}
+
         {/* Bottom Spacing for other tabs */}
         {activeSection !== 'services' && (
           <View style={{ height: insets.bottom + TAB_BAR_HEIGHT + 20 }} />
         )}
       </Animated.ScrollView>
 
-      <ReviseEventModal visible={showReviseModal} onClose={() => setShowReviseModal(false)} onSubmit={() => { Alert.alert('Başarılı', 'Değişiklik talebi gönderildi.'); setShowReviseModal(false); }} eventTitle={event.title} />
+      <ReviseEventModal
+        visible={showReviseModal}
+        onClose={() => setShowReviseModal(false)}
+        onSubmit={() => setShowReviseModal(false)}
+        eventId={eventId}
+        eventTitle={event.title}
+        eventDate={event.date}
+        eventVenue={event.venue}
+        eventBudget={event.budget}
+        eventCity={event.district?.split(',')[0]?.trim()}
+        confirmedProviders={event.services
+          .filter((s: Service) => s.status === 'confirmed' && s.providerId)
+          .map((s: Service) => ({
+            id: s.providerId!,
+            name: s.provider || 'Tedarikçi',
+            category: s.category,
+            offerId: s.offerId,
+          }))}
+      />
       <CancelEventModal visible={showCancelModal} onClose={() => setShowCancelModal(false)} onConfirm={async () => {
         try {
           await deleteDocument(Collections.EVENTS, eventId);
@@ -1915,6 +2111,13 @@ const styles = StyleSheet.create({
   progressStatItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   progressStatDot: { width: 8, height: 8, borderRadius: 4 },
   progressStatText: { fontSize: 12 },
+  // Organizatör Rozeti
+  organizerBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 16, padding: 14, borderRadius: 14, borderWidth: 1 },
+  organizerBadgeContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  organizerBadgeLogo: { width: 40, height: 40, borderRadius: 10 },
+  organizerBadgeInfo: { gap: 2 },
+  organizerBadgeLabel: { fontSize: 11, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.3 },
+  organizerBadgeName: { fontSize: 15, fontWeight: '600' },
   quickInfoContainer: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 16, gap: 12, borderBottomWidth: 1 },
   quickInfoCard: { flex: 1, alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1 },
   quickInfoValue: { fontSize: 16, fontWeight: '700', marginTop: 8 },
@@ -1960,7 +2163,27 @@ const styles = StyleSheet.create({
   confirmedActionText: { fontSize: 12, fontWeight: '600' },
   addServiceButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(75, 48, 184, 0.3)', borderStyle: 'dashed', gap: 8 },
   addServiceText: { fontSize: 14, fontWeight: '500' },
+  addProviderButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', gap: 6, marginBottom: 10 },
+  addProviderText: { fontSize: 13, fontWeight: '600' },
   timelineSection: { padding: 20 },
+  timelineSectionTitle: { fontSize: 15, fontWeight: '600', marginBottom: 14 },
+  revisionHistoryItem: { padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
+  revisionHistoryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  revisionHistoryIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  revisionHistoryInfo: { flex: 1 },
+  revisionHistoryTitle: { fontSize: 14, fontWeight: '500' },
+  revisionHistoryDate: { fontSize: 11, marginTop: 2 },
+  revisionHistoryStatus: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  revisionHistoryStatusText: { fontSize: 11, fontWeight: '500' },
+  revisionHistoryChange: { marginBottom: 8 },
+  revisionHistoryChangeLabel: { fontSize: 12, marginBottom: 4 },
+  revisionHistoryChangeValues: { flexDirection: 'row', alignItems: 'center' },
+  revisionHistoryOldValue: { fontSize: 13, textDecorationLine: 'line-through' },
+  revisionHistoryNewValue: { fontSize: 13, fontWeight: '500' },
+  revisionHistoryApproval: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  revisionHistoryApprovalBar: { flex: 1, height: 4, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: 2, overflow: 'hidden' },
+  revisionHistoryApprovalFill: { height: '100%', borderRadius: 2 },
+  revisionHistoryApprovalText: { fontSize: 11 },
   timelineItem: { flexDirection: 'row', marginBottom: 0 },
   timelineLeft: { alignItems: 'center', marginRight: 16 },
   timelineIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

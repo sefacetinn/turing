@@ -255,15 +255,53 @@ export function OrganizerEventsScreen() {
     return []; // Empty for new users
   }, [hasRealData, convertedRealEvents]);
 
+  // Helper function to check if event date is in the past
+  const isEventPast = useCallback((dateString: string) => {
+    // Parse date string (format: "2026-01-22" or "22 Ocak 2026")
+    let eventDate: Date;
+
+    if (dateString.includes('-')) {
+      // ISO format: 2026-01-22
+      eventDate = new Date(dateString);
+    } else {
+      // Turkish format: 22 Ocak 2026
+      const months: Record<string, number> = {
+        'Ocak': 0, 'Şubat': 1, 'Mart': 2, 'Nisan': 3, 'Mayıs': 4, 'Haziran': 5,
+        'Temmuz': 6, 'Ağustos': 7, 'Eylül': 8, 'Ekim': 9, 'Kasım': 10, 'Aralık': 11
+      };
+      const parts = dateString.split(' ');
+      if (parts.length >= 3) {
+        const day = parseInt(parts[0], 10);
+        const month = months[parts[1]] ?? 0;
+        const year = parseInt(parts[2], 10);
+        eventDate = new Date(year, month, day);
+      } else {
+        return false;
+      }
+    }
+
+    // Set time to end of day for comparison
+    eventDate.setHours(23, 59, 59, 999);
+    const today = new Date();
+    return eventDate < today;
+  }, []);
+
   // Filter events
   const filteredEvents = useMemo(() => {
     let filtered = allEvents;
 
-    // Tab filter
+    // Tab filter - also consider event date
     if (activeTab === 'active') {
-      filtered = filtered.filter(e => ['planning', 'confirmed'].includes(e.status));
+      filtered = filtered.filter(e => {
+        // Past events should not be in active tab
+        if (isEventPast(e.date)) return false;
+        return ['planning', 'confirmed'].includes(e.status);
+      });
     } else if (activeTab === 'past') {
-      filtered = filtered.filter(e => ['completed', 'cancelled'].includes(e.status));
+      filtered = filtered.filter(e => {
+        // Events are past if: status is completed/cancelled OR date has passed
+        return ['completed', 'cancelled'].includes(e.status) || isEventPast(e.date);
+      });
     }
 
     // Search filter
@@ -277,12 +315,17 @@ export function OrganizerEventsScreen() {
     }
 
     return filtered;
-  }, [activeTab, searchQuery, allEvents]);
+  }, [activeTab, searchQuery, allEvents, isEventPast]);
 
-  // Stats
+  // Stats - also consider event date
   const stats = useMemo(() => {
-    const activeEvents = allEvents.filter(e => ['planning', 'confirmed'].includes(e.status));
-    const pastEvents = allEvents.filter(e => ['completed', 'cancelled'].includes(e.status));
+    const activeEvents = allEvents.filter(e => {
+      if (isEventPast(e.date)) return false;
+      return ['planning', 'confirmed'].includes(e.status);
+    });
+    const pastEvents = allEvents.filter(e => {
+      return ['completed', 'cancelled'].includes(e.status) || isEventPast(e.date);
+    });
     const totalBudget = allEvents.reduce((sum, e) => sum + e.budget, 0);
     const totalSpent = allEvents.reduce((sum, e) => sum + e.spent, 0);
     return {
@@ -292,7 +335,7 @@ export function OrganizerEventsScreen() {
       totalBudget,
       totalSpent,
     };
-  }, [allEvents]);
+  }, [allEvents, isEventPast]);
 
   // Generate card title - use event title directly
   const getCardTitle = (event: Event) => {
