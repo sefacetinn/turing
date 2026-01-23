@@ -33,6 +33,7 @@ interface FirebaseUser {
   phone?: string;
   phoneNumber?: string;
   photoURL?: string;
+  userPhotoURL?: string;
   coverImage?: string;
   bio?: string;
   city?: string;
@@ -244,7 +245,7 @@ export function OrganizerProfileScreen() {
   const displayName = hasCompany ? company.name : (organizer.displayName || organizer.companyName || 'İsimsiz Kullanıcı');
   const profileImage = hasCompany && company.logo
     ? company.logo
-    : (organizer.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200');
+    : (organizer.userPhotoURL || organizer.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=6366F1&color=fff&size=200');
   const coverImage = hasCompany && company.coverImage
     ? company.coverImage
     : (organizer.coverImage || 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800');
@@ -261,7 +262,7 @@ export function OrganizerProfileScreen() {
   };
   // User info for subtitle when showing company
   const userName = organizer.displayName || '';
-  const userImage = organizer.photoURL;
+  const userImage = organizer.userPhotoURL || organizer.photoURL;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

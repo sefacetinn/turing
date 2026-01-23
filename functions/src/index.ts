@@ -275,6 +275,81 @@ export const verifySmsCode = onCall(
   }
 );
 
+// ==================== TEAM INVITATION ====================
+
+export const sendTeamInvitation = onCall(
+  { secrets: [resendApiKey], region: 'europe-west1' },
+  async (request) => {
+    const { email, inviterName, companyName, roleName, message, invitationToken } = request.data;
+
+    if (!email || !companyName || !inviterName) {
+      throw new HttpsError('invalid-argument', 'Email, firma adı ve davet eden kişi adı gerekli.');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new HttpsError('invalid-argument', 'Geçersiz email formatı.');
+    }
+
+    console.log(`📧 Sending team invitation to ${email} for company ${companyName}`);
+
+    // Send email via Resend
+    const apiKey = resendApiKey.value();
+    if (apiKey) {
+      const resend = new Resend(apiKey);
+      try {
+        const webLink = `https://turingtr.com/invitation?token=${invitationToken || 'pending'}`;
+
+        const result = await resend.emails.send({
+          from: 'turing <noreply@turingtr.com>',
+          to: email,
+          subject: `${inviterName} sizi ${companyName} ekibine davet ediyor`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #4b30b8; margin: 0;">turing</h1>
+              </div>
+              <div style="background: linear-gradient(135deg, #4b30b8 0%, #a855f7 100%); border-radius: 16px; padding: 30px; text-align: center; color: white;">
+                <h2 style="margin: 0 0 10px 0;">Ekip Daveti</h2>
+                <p style="margin: 0 0 20px 0; opacity: 0.9; font-size: 16px;">
+                  <strong>${inviterName}</strong> sizi <strong>${companyName}</strong> ekibine davet ediyor.
+                </p>
+                ${roleName ? `<p style="margin: 0 0 20px 0; opacity: 0.8; font-size: 14px;">Rol: ${roleName}</p>` : ''}
+                ${message ? `
+                <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 16px; margin: 20px 0; text-align: left;">
+                  <p style="margin: 0; font-size: 14px; font-style: italic;">"${message}"</p>
+                </div>
+                ` : ''}
+              </div>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${webLink}" style="display: inline-block; background: #4b30b8; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                  Daveti Kabul Et
+                </a>
+              </div>
+              <p style="color: #666; font-size: 14px; text-align: center; margin-top: 20px;">
+                Bu daveti kabul etmek için turing uygulamasını açın veya yukarıdaki butona tıklayın.
+              </p>
+              <p style="color: #999; font-size: 12px; text-align: center; margin-top: 30px;">
+                Bu davet 7 gün içinde geçerliliğini yitirecektir.<br/>
+                Eğer bu daveti siz istemediyseniz, bu emaili görmezden gelebilirsiniz.
+              </p>
+            </div>
+          `,
+        });
+        console.log('📧 Invitation email sent:', JSON.stringify(result));
+        return { success: true, message: 'Davet emaili gönderildi.' };
+      } catch (error: any) {
+        console.error('❌ Resend Error:', error);
+        throw new HttpsError('internal', 'Email gönderilemedi. Lütfen tekrar deneyin.');
+      }
+    } else {
+      console.log(`⚠️ No Resend API key configured - invitation email not sent to ${email}`);
+      return { success: false, message: 'Email servisi yapılandırılmamış.' };
+    }
+  }
+);
+
 // ==================== CLEANUP FUNCTION ====================
 
 // Clean up expired verification codes (run every hour)

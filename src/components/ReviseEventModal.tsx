@@ -12,13 +12,16 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, gradients } from '../theme/colors';
 import { CalendarPickerModal } from './createEvent/CalendarPickerModal';
 import { locationData, Venue } from '../data/createEventData';
 import { addDocument, updateDocument, Collections } from '../services/firebase/firestore';
+import { uriToBlob, uploadFile } from '../services/firebase/storage';
 import { Timestamp } from 'firebase/firestore';
 
 // Provider info for the event
@@ -40,6 +43,7 @@ interface ReviseEventModalProps {
   eventBudget?: number;
   eventCity?: string;
   eventDistrict?: string;
+  eventImage?: string;
   confirmedProviders?: EventProvider[];
 }
 
@@ -50,9 +54,11 @@ interface RevisionData {
   date?: string;
   venue?: string;
   budget?: string;
+  image?: string;
 }
 
 const revisionTypes = [
+  { id: 'image', label: 'Görsel Değişikliği', icon: 'image-outline' as const },
   { id: 'date', label: 'Tarih Değişikliği', icon: 'calendar-outline' as const },
   { id: 'venue', label: 'Mekan Değişikliği', icon: 'location-outline' as const },
   { id: 'budget', label: 'Bütçe Güncelleme', icon: 'wallet-outline' as const },
@@ -101,6 +107,7 @@ export function ReviseEventModal({
   eventBudget,
   eventCity,
   eventDistrict,
+  eventImage,
   confirmedProviders = []
 }: ReviseEventModalProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -110,12 +117,34 @@ export function ReviseEventModal({
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [newVenue, setNewVenue] = useState('');
   const [newBudget, setNewBudget] = useState('');
+  const [newImage, setNewImage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Modal states
   const [showCalendar, setShowCalendar] = useState(false);
   const [showVenuePicker, setShowVenuePicker] = useState(false);
   const [venueSearch, setVenueSearch] = useState('');
+
+  // Image picker function
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('İzin Gerekli', 'Galeri erişimi için izin vermeniz gerekiyor.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setNewImage(result.assets[0].uri);
+    }
+  };
 
   // Get all available venues
   const allVenues = useMemo(() => getAllVenues(), []);
@@ -162,7 +191,27 @@ export function ReviseEventModal({
       let oldValue: string | undefined;
       let newValue: string | undefined;
 
-      if (selectedType === 'date') {
+      if (selectedType === 'image') {
+        oldValue = eventImage;
+        // Upload new image to Firebase Storage
+        if (newImage && (newImage.startsWith('file://') || newImage.startsWith('ph://') || newImage.startsWith('content://'))) {
+          setIsUploadingImage(true);
+          try {
+            const imageBlob = await uriToBlob(newImage);
+            const imagePath = `events/${eventId}/image_${Date.now()}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            newValue = imageUrl;
+          } catch (uploadError) {
+            console.error('Error uploading image:', uploadError);
+            Alert.alert('Hata', 'Görsel yüklenirken bir hata oluştu.');
+            setIsSaving(false);
+            setIsUploadingImage(false);
+            return;
+          } finally {
+            setIsUploadingImage(false);
+          }
+        }
+      } else if (selectedType === 'date') {
         oldValue = eventDate;
         newValue = selectedDates[0];
       } else if (selectedType === 'venue') {
@@ -252,7 +301,9 @@ export function ReviseEventModal({
 
     const updateData: Record<string, any> = {};
 
-    if (type === 'date') {
+    if (type === 'image') {
+      updateData.image = newValue;
+    } else if (type === 'date') {
       updateData.date = newValue;
     } else if (type === 'venue') {
       updateData.venue = newValue;
@@ -273,9 +324,12 @@ export function ReviseEventModal({
     setSelectedDates([]);
     setNewVenue('');
     setNewBudget('');
+    setNewImage(null);
   };
 
-  const isFormValid = selectedType && title.length > 0 && description.length > 0;
+  // Form validation - for image type, also require a new image to be selected
+  const isFormValid = selectedType && title.length > 0 && description.length > 0 &&
+    (selectedType !== 'image' || newImage !== null);
 
   return (
     <Modal
@@ -382,6 +436,42 @@ export function ReviseEventModal({
                       keyboardType="numeric"
                     />
                   </View>
+                </View>
+              )}
+
+              {selectedType === 'image' && (
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Yeni Görsel</Text>
+                  <TouchableOpacity
+                    style={styles.imagePickerButton}
+                    onPress={pickImage}
+                  >
+                    {newImage ? (
+                      <Image source={{ uri: newImage }} style={styles.imagePreview} />
+                    ) : eventImage ? (
+                      <>
+                        <Image source={{ uri: eventImage }} style={styles.imagePreviewCurrent} />
+                        <View style={styles.imageOverlay}>
+                          <Ionicons name="camera" size={28} color="white" />
+                          <Text style={styles.imageOverlayText}>Değiştirmek için dokun</Text>
+                        </View>
+                      </>
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="image-outline" size={40} color={colors.zinc[500]} />
+                        <Text style={styles.imagePlaceholderText}>Görsel Seç</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {newImage && (
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => setNewImage(null)}
+                    >
+                      <Ionicons name="close-circle" size={20} color={colors.error} />
+                      <Text style={styles.removeImageText}>Seçimi Kaldır</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
@@ -818,5 +908,65 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.zinc[500],
     marginTop: 12,
+  },
+  // Image picker styles
+  imagePickerButton: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  imagePreviewCurrent: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.5,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  imageOverlayText: {
+    fontSize: 13,
+    color: 'white',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  imagePlaceholderText: {
+    fontSize: 14,
+    color: colors.zinc[500],
+    marginTop: 8,
+  },
+  removeImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 6,
+  },
+  removeImageText: {
+    fontSize: 13,
+    color: colors.error,
+    fontWeight: '500',
   },
 });

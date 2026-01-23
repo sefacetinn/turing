@@ -170,6 +170,7 @@ export function ProviderEventDetailScreen() {
   // Card expanded states
   const [artistExpanded, setArtistExpanded] = useState(false);
   const [venueExpanded, setVenueExpanded] = useState(false);
+  const [performanceExpanded, setPerformanceExpanded] = useState(false);
 
   // Organizer data state
   const [organizerData, setOrganizerData] = useState<{
@@ -1011,7 +1012,7 @@ export function ProviderEventDetailScreen() {
           </View>
         </View>
 
-        {/* Event Info Card - Date, Time, Venue, Location */}
+        {/* Event Info Card - Date & Time */}
         <View style={[styles.eventInfoCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.cardBackground }]}>
           <View style={styles.eventInfoRow}>
             <View style={styles.eventInfoItem}>
@@ -1020,7 +1021,21 @@ export function ProviderEventDetailScreen() {
               </View>
               <View style={styles.eventInfoContent}>
                 <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>TARİH</Text>
-                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{event.eventDate}</Text>
+                <Text style={[styles.eventInfoValue, { color: colors.text }]}>
+                  {(() => {
+                    const turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+                    const dateStr = event.eventDate;
+                    if (!dateStr) return 'Belirtilmedi';
+                    const parts = dateStr.split('-');
+                    if (parts.length === 3) {
+                      const day = parseInt(parts[2], 10);
+                      const month = parseInt(parts[1], 10) - 1;
+                      const year = parts[0];
+                      return `${day} ${turkishMonths[month]} ${year}`;
+                    }
+                    return dateStr;
+                  })()}
+                </Text>
               </View>
             </View>
             <View style={styles.eventInfoItem}>
@@ -1034,27 +1049,6 @@ export function ProviderEventDetailScreen() {
                     ? `${firebaseEvent.startTime} - ${firebaseEvent.endTime}`
                     : firebaseEvent?.time || event.eventTime || 'Belirtilmedi'}
                 </Text>
-              </View>
-            </View>
-          </View>
-          <View style={[styles.eventInfoDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]} />
-          <View style={styles.eventInfoRow}>
-            <View style={styles.eventInfoItem}>
-              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)' }]}>
-                <Ionicons name="business" size={18} color="#10B981" />
-              </View>
-              <View style={styles.eventInfoContent}>
-                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>MEKAN</Text>
-                <Text style={[styles.eventInfoValue, { color: colors.text }]} numberOfLines={1}>{event.venue}</Text>
-              </View>
-            </View>
-            <View style={styles.eventInfoItem}>
-              <View style={[styles.eventInfoIconBox, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)' }]}>
-                <Ionicons name="location" size={18} color="#8B5CF6" />
-              </View>
-              <View style={styles.eventInfoContent}>
-                <Text style={[styles.eventInfoLabel, { color: colors.textMuted }]}>KONUM</Text>
-                <Text style={[styles.eventInfoValue, { color: colors.text }]}>{firebaseEvent?.district ? `${firebaseEvent.district}, ` : ''}{firebaseEvent?.city || ''}</Text>
               </View>
             </View>
           </View>
@@ -1282,57 +1276,78 @@ export function ProviderEventDetailScreen() {
         )}
 
         {/* Performance Details Card */}
-        <View style={[
-          styles.performanceCard,
-          {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground,
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : colors.border,
-          },
-        ]}>
-          <Text style={[styles.performanceTitle, { color: colors.textMuted }]}>PERFORMANS DETAYLARI</Text>
-
-          <View style={styles.performanceGrid}>
-            <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-              <View style={styles.performanceLeft}>
-                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="time-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Sahne Saati</Text>
-              </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.stageTime}</Text>
+        {/* Performance Details - Expandable Card */}
+        <TouchableOpacity
+          style={[
+            styles.infoCard,
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : colors.cardBackground, marginTop: 8, marginHorizontal: 16 },
+          ]}
+          onPress={() => setPerformanceExpanded(!performanceExpanded)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.infoCardContent}>
+            <View style={[styles.infoIconBox, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+              <Ionicons name="stats-chart" size={18} color="#6366F1" />
             </View>
-
-            <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-              <View style={styles.performanceLeft}>
-                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="hourglass-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Performans Süresi</Text>
+            <View style={styles.infoCardDetails}>
+              <Text style={[styles.infoName, { color: colors.text }]}>Performans Detayları</Text>
+              <View style={styles.infoMetaRow}>
+                <Ionicons name="time-outline" size={11} color={colors.textSecondary} />
+                <Text style={[styles.infoMetaText, { color: colors.textSecondary }]}>
+                  {performanceDetails.stageTime} • {performanceDetails.expectedAttendance}
+                </Text>
               </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.duration}</Text>
             </View>
-
-            <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
-              <View style={styles.performanceLeft}>
-                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="musical-notes-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Set Sayısı</Text>
-              </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.setCount}</Text>
-            </View>
-
-            <View style={[styles.performanceItem, { borderBottomWidth: 0 }]}>
-              <View style={styles.performanceLeft}>
-                <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
-                  <Ionicons name="people-outline" size={16} color="#6366F1" />
-                </View>
-                <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Beklenen Katılım</Text>
-              </View>
-              <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.expectedAttendance}</Text>
-            </View>
+            <Ionicons name={performanceExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
           </View>
-        </View>
+
+          {/* Expanded Content */}
+          {performanceExpanded && (
+            <View style={[styles.expandedContent, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9' }]}>
+              <View style={styles.performanceGrid}>
+                <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+                  <View style={styles.performanceLeft}>
+                    <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                      <Ionicons name="time-outline" size={16} color="#6366F1" />
+                    </View>
+                    <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Sahne Saati</Text>
+                  </View>
+                  <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.stageTime}</Text>
+                </View>
+
+                <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+                  <View style={styles.performanceLeft}>
+                    <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                      <Ionicons name="hourglass-outline" size={16} color="#6366F1" />
+                    </View>
+                    <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Performans Süresi</Text>
+                  </View>
+                  <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.duration}</Text>
+                </View>
+
+                <View style={[styles.performanceItem, { borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : colors.border }]}>
+                  <View style={styles.performanceLeft}>
+                    <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                      <Ionicons name="musical-notes-outline" size={16} color="#6366F1" />
+                    </View>
+                    <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Set Sayısı</Text>
+                  </View>
+                  <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.setCount}</Text>
+                </View>
+
+                <View style={[styles.performanceItem, { borderBottomWidth: 0 }]}>
+                  <View style={styles.performanceLeft}>
+                    <View style={[styles.performanceIcon, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)' }]}>
+                      <Ionicons name="people-outline" size={16} color="#6366F1" />
+                    </View>
+                    <Text style={[styles.performanceLabel, { color: colors.textMuted }]}>Beklenen Katılım</Text>
+                  </View>
+                  <Text style={[styles.performanceValue, { color: colors.text }]}>{performanceDetails.expectedAttendance}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </TouchableOpacity>
 
         {/* Earnings Card - Compact Inline */}
         <View style={[

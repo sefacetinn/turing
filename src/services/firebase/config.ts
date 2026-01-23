@@ -2,6 +2,7 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getFunctions, Functions } from 'firebase/functions';
 
 // Firebase configuration
 // Bu değerleri Firebase Console'dan almalısınız:
@@ -20,6 +21,7 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
+let functions: Functions;
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
@@ -30,6 +32,7 @@ if (getApps().length === 0) {
 auth = getAuth(app);
 db = getFirestore(app);
 storage = getStorage(app);
+functions = getFunctions(app, 'europe-west1');
 
-export { app, auth, db, storage };
+export { app, auth, db, storage, functions };
 export default app;

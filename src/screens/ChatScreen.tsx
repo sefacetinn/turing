@@ -75,13 +75,26 @@ export function ChatScreen() {
     : participantName;
 
   // Fetch real user data from Firebase (including company info)
-  const fetchParticipantData = async (userId: string) => {
+  // Returns data for use in conversation creation, also updates state
+  const fetchParticipantData = async (userId: string): Promise<{
+    role: 'organizer' | 'provider' | null;
+    image: string;
+    name: string;
+    companyName: string | null;
+    userRole: string | null;
+  } | null> => {
     try {
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const role = userData.role || userData.userType || null;
+        const rawRole = userData.role || userData.userType || null;
+        const role: 'organizer' | 'provider' | null =
+          rawRole === 'organizer' || rawRole === 'provider' ? rawRole : null;
         setParticipantRole(role);
+
+        let companyName: string | null = null;
+        let companyLogo: string | null = null;
+        let userRoleInCompany: string | null = null;
 
         // Check if user has a primary company
         const primaryCompanyId = userData.primaryCompanyId;
@@ -90,10 +103,12 @@ export function ChatScreen() {
             const companyDoc = await getDoc(doc(db, 'companies', primaryCompanyId));
             if (companyDoc.exists()) {
               const companyData = companyDoc.data();
+              companyName = companyData.name;
               setParticipantCompanyName(companyData.name);
 
               // Use company logo if available
               if (companyData.logo) {
+                companyLogo = companyData.logo;
                 setParticipantImage(companyData.logo);
               }
 
@@ -101,6 +116,7 @@ export function ChatScreen() {
               const membersQuery = await getDoc(doc(db, 'company_members', `member_${userId}_${primaryCompanyId}`));
               if (membersQuery.exists()) {
                 const memberData = membersQuery.data();
+                userRoleInCompany = memberData.roleName;
                 setParticipantUserRole(memberData.roleName);
               }
             }
@@ -109,22 +125,29 @@ export function ChatScreen() {
           }
         }
 
-        // Fallback to user image if no company logo
+        // Get user image (fallback if no company logo)
         const userImage = userData.photoURL || userData.profileImage || userData.image;
-        if (userImage && !participantCompanyName) {
+        const finalImage = companyLogo || userImage || '';
+        if (userImage && !companyLogo) {
           setParticipantImage(userImage);
         }
 
         // Update name (personal name, for the "Firma - Kişi" format)
-        const userName = userData.displayName || userData.name;
+        const userName = userData.displayName || userData.name || '';
         if (userName) {
           setParticipantName(userName);
-        } else if (userData.companyName && !participantCompanyName) {
+        } else if (userData.companyName && !companyName) {
           // Use companyName only as fallback if no personal name and no company fetched
           setParticipantName(userData.companyName);
         }
 
-        return { role, image: userImage, name: userName, companyId: primaryCompanyId };
+        return {
+          role,
+          image: finalImage,
+          name: userName || userData.companyName || 'Kullanıcı',
+          companyName,
+          userRole: userRoleInCompany
+        };
       }
     } catch (error) {
       console.warn('Error fetching participant data:', error);
@@ -221,7 +244,7 @@ export function ChatScreen() {
       }
 
       // If providerId is passed, create/get conversation
-      if (params?.providerId && params?.providerName) {
+      if (params?.providerId) {
         // Validate providerId is a valid string
         if (!params.providerId || typeof params.providerId !== 'string' || params.providerId.trim() === '') {
           console.error('[ChatScreen] Invalid providerId:', params.providerId);
@@ -231,27 +254,39 @@ export function ChatScreen() {
 
         setIsCreatingConversation(true);
         try {
-          console.log('[ChatScreen] Creating conversation with:', {
+          // FIRST: Fetch real user data from Firebase before creating conversation
+          console.log('[ChatScreen] Fetching real user data for:', params.providerId);
+          const realUserData = await fetchParticipantData(params.providerId);
+
+          // Use real data if available, otherwise fall back to params
+          const providerName = realUserData?.name || params.providerName || 'Kullanıcı';
+          const providerImage = realUserData?.image || params.providerImage || '';
+
+          // Build display name for conversation: "Company - Name" if company exists
+          const displayNameForConversation = realUserData?.companyName
+            ? `${realUserData.companyName} - ${realUserData.name}`
+            : providerName;
+
+          console.log('[ChatScreen] Creating conversation with real data:', {
             userId: user.uid,
             userName: user.displayName,
             providerId: params.providerId,
-            providerName: params.providerName,
+            providerName: displayNameForConversation,
+            providerImage: providerImage ? 'has image' : 'no image',
           });
+
           const convId = await createOrGetConversation(
             user.uid,
             user.displayName || 'Kullanıcı',
             user.photoURL || '',
             params.providerId,
-            params.providerName,
-            params.providerImage || '',
+            displayNameForConversation,
+            providerImage,
             params.serviceCategory
           );
           console.log('[ChatScreen] Conversation created/retrieved:', convId);
           setConversationId(convId);
           setParticipantId(params.providerId);
-          setParticipantName(params.providerName);
-          // Fetch real user data from Firebase to get actual profile photo
-          await fetchParticipantData(params.providerId);
         } catch (error: any) {
           console.error('[ChatScreen] Error creating conversation:', error);
           console.error('[ChatScreen] Error code:', error?.code);
@@ -265,7 +300,7 @@ export function ChatScreen() {
             const fallbackConvId = `conv_${sortedIds[0]}_${sortedIds[1]}`;
             setConversationId(fallbackConvId);
             setParticipantId(params.providerId);
-            setParticipantName(params.providerName);
+            // Fetch real data even on error
             await fetchParticipantData(params.providerId);
           } else {
             Alert.alert('Hata', `Sohbet başlatılamadı: ${error?.code || error?.message || 'Bilinmeyen hata'}`);

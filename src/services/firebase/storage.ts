@@ -150,9 +150,27 @@ export async function uploadContractDocument(
 
 // Convert URI to Blob (for React Native)
 export async function uriToBlob(uri: string): Promise<Blob> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  return blob;
+  console.log('[uriToBlob] Converting URI to blob:', uri.substring(0, 100));
+
+  try {
+    const response = await fetch(uri);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch URI: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    console.log('[uriToBlob] Blob created successfully, size:', blob.size, 'type:', blob.type);
+
+    if (blob.size === 0) {
+      throw new Error('Blob is empty (size = 0)');
+    }
+
+    return blob;
+  } catch (error: any) {
+    console.error('[uriToBlob] Error converting URI to blob:', error?.message || error);
+    throw error;
+  }
 }
 
 // Generate unique file name

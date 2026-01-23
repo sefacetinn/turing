@@ -20,7 +20,8 @@ import {
   arrayRemove,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from './config';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from './config';
 import type {
   CompanyDocument,
   CompanyMemberDocument,
@@ -391,6 +392,23 @@ export async function createInvitation(
 
   await setDoc(doc(db, COMPANY_INVITATIONS_COLLECTION, invitationId), invitationData);
 
+  // Send invitation email via Cloud Function
+  try {
+    const sendTeamInvitation = httpsCallable(functions, 'sendTeamInvitation');
+    await sendTeamInvitation({
+      email: params.email,
+      inviterName,
+      companyName,
+      roleName: role.name,
+      message: params.message,
+      invitationToken: token,
+    });
+    console.log('[createInvitation] Invitation email sent successfully');
+  } catch (emailError) {
+    // Log but don't fail - invitation is still created
+    console.warn('[createInvitation] Failed to send invitation email:', emailError);
+  }
+
   return invitationId;
 }
 
@@ -493,13 +511,39 @@ export async function cancelInvitation(invitationId: string): Promise<void> {
  * Resend invitation
  */
 export async function resendInvitation(invitationId: string): Promise<void> {
+  // Get existing invitation data
+  const invDoc = await getDoc(doc(db, COMPANY_INVITATIONS_COLLECTION, invitationId));
+  if (!invDoc.exists()) throw new Error('Davet bulunamadı');
+
+  const invitation = invDoc.data() as Omit<CompanyInvitation, 'id'>;
+
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
+
+  // Generate new token
+  const newToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
   await updateDoc(doc(db, COMPANY_INVITATIONS_COLLECTION, invitationId), {
     createdAt: Timestamp.now(),
     expiresAt: Timestamp.fromDate(expiresAt),
+    token: newToken,
   });
+
+  // Resend invitation email
+  try {
+    const sendTeamInvitation = httpsCallable(functions, 'sendTeamInvitation');
+    await sendTeamInvitation({
+      email: invitation.email,
+      inviterName: invitation.inviterName,
+      companyName: invitation.companyName,
+      roleName: invitation.roleName,
+      message: invitation.message,
+      invitationToken: newToken,
+    });
+    console.log('[resendInvitation] Invitation email resent successfully');
+  } catch (emailError) {
+    console.warn('[resendInvitation] Failed to resend invitation email:', emailError);
+  }
 }
 
 /**

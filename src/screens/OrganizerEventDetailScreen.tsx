@@ -1730,6 +1730,7 @@ Bu talep turing Etkinlik Yönetim Sistemi üzerinden gönderilmiştir.
         eventDate={event.date}
         eventVenue={event.venue}
         eventBudget={event.budget}
+        eventImage={event.image}
         eventCity={event.district?.split(',')[0]?.trim()}
         confirmedProviders={event.services
           .filter((s: Service) => s.status === 'confirmed' && s.providerId)

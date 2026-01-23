@@ -115,19 +115,32 @@ export function EditProfileScreen() {
 
       // Upload profile photo to Firebase Storage if it's a local file
       if (userPhoto) {
-        if (userPhoto.startsWith('file://') || userPhoto.startsWith('ph://')) {
+        console.log('[EditProfileScreen] Processing profile photo:', userPhoto.substring(0, 50));
+
+        if (userPhoto.startsWith('file://') || userPhoto.startsWith('ph://') || userPhoto.startsWith('content://')) {
           try {
+            console.log('[EditProfileScreen] Uploading profile image...');
             const imageBlob = await uriToBlob(userPhoto);
+            console.log('[EditProfileScreen] Blob created, size:', imageBlob.size);
             const imagePath = `users/${user.uid}/profile_${Date.now()}.jpg`;
             const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            console.log('[EditProfileScreen] Image uploaded successfully:', imageUrl);
             profileData.userPhotoURL = imageUrl;
-          } catch (uploadError) {
-            console.warn('Error uploading profile image:', uploadError);
-            // Keep existing photo URL if upload fails
+          } catch (uploadError: any) {
+            console.error('[EditProfileScreen] Error uploading profile image:', uploadError);
+            Alert.alert(
+              'Uyarı',
+              'Profil fotoğrafı yüklenemedi. Diğer bilgiler kaydedilecek.',
+              [{ text: 'Tamam' }]
+            );
+            // Continue without updating the photo
           }
-        } else {
-          // If it's already a URL (https://), keep it
+        } else if (userPhoto.startsWith('http://') || userPhoto.startsWith('https://')) {
+          // If it's already a URL, keep it
+          console.log('[EditProfileScreen] Photo is already a URL, keeping it');
           profileData.userPhotoURL = userPhoto;
+        } else {
+          console.warn('[EditProfileScreen] Unknown photo URI format:', userPhoto.substring(0, 50));
         }
       }
 

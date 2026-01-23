@@ -20,7 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../theme/ThemeContext';
 import { useRBAC } from '../context/RBACContext';
-import { RoleSelector, PermissionList } from '../components/team';
+import { RoleSelector } from '../components/team';
+import { PermissionList, PermissionState, PermissionKey, getDefaultPermissionsFromRole } from '../components/team/PermissionList';
 import { getRoleById } from '../config/roles';
 import type { ProfileStackNavigationProp } from '../types';
 
@@ -39,6 +40,9 @@ export default function InviteMemberScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Custom permissions state - allows editing permissions after role selection
+  const [customPermissions, setCustomPermissions] = useState<PermissionState | null>(null);
 
   // Focus states
   const [emailFocused, setEmailFocused] = useState(false);
@@ -152,6 +156,18 @@ export default function InviteMemberScreen() {
   const handleRoleSelect = (roleId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedRoleId(roleId);
+
+    // Set default permissions from the selected role
+    const role = getRoleById(roleId);
+    if (role) {
+      setCustomPermissions(getDefaultPermissionsFromRole(role));
+    }
+  };
+
+  // Handle individual permission toggle
+  const handlePermissionChange = (key: PermissionKey, value: boolean) => {
+    if (!customPermissions) return;
+    setCustomPermissions(prev => prev ? { ...prev, [key]: value } : null);
   };
 
   const handlePermissionToggle = () => {
@@ -378,7 +394,7 @@ export default function InviteMemberScreen() {
                 />
               </View>
               <Text style={[styles.permissionToggleText, { color: colors.brand[500] }]}>
-                {showPermissions ? 'Yetkileri Gizle' : 'Yetkileri Görüntüle'}
+                {showPermissions ? 'Yetkileri Gizle' : 'Yetkileri Düzenle'}
               </Text>
               <Ionicons
                 name={showPermissions ? 'chevron-up' : 'chevron-down'}
@@ -389,7 +405,12 @@ export default function InviteMemberScreen() {
 
             {showPermissions && (
               <View style={styles.permissionContainer}>
-                <PermissionList role={selectedRole} />
+                <PermissionList
+                  role={selectedRole}
+                  editable={true}
+                  customPermissions={customPermissions || undefined}
+                  onPermissionToggle={handlePermissionChange}
+                />
               </View>
             )}
           </View>
@@ -448,8 +469,8 @@ export default function InviteMemberScreen() {
           </Text>
         </View>
 
-        {/* Bottom Spacer */}
-        <View style={{ height: 100 }} />
+        {/* Bottom Spacer - extra space for fixed button and tab bar */}
+        <View style={{ height: 180 }} />
       </ScrollView>
 
       {/* Submit Button */}
@@ -457,7 +478,7 @@ export default function InviteMemberScreen() {
         style={[
           styles.bottomContainer,
           {
-            paddingBottom: insets.bottom + 16,
+            paddingBottom: insets.bottom + 90, // Extra space for tab bar
             backgroundColor: colors.background,
             borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb',
           },

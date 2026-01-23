@@ -323,19 +323,38 @@ export function CreateEventScreen() {
         eventDoc.expectedAttendees = parseInt(eventData.guestCount.replace(/\D/g, '')) || 0;
       }
       // Upload image to Firebase Storage if provided
-      if (eventData.image && (eventData.image.startsWith('file://') || eventData.image.startsWith('ph://'))) {
-        try {
-          const imageBlob = await uriToBlob(eventData.image);
-          const imagePath = `events/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-          const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
-          eventDoc.image = imageUrl;
-        } catch (uploadError) {
-          console.warn('Error uploading event image:', uploadError);
-          // Continue without image if upload fails
+      if (eventData.image) {
+        console.log('[CreateEventScreen] Image URI:', eventData.image);
+        console.log('[CreateEventScreen] Image URI type check - file://', eventData.image.startsWith('file://'), 'ph://', eventData.image.startsWith('ph://'));
+
+        if (eventData.image.startsWith('file://') || eventData.image.startsWith('ph://') || eventData.image.startsWith('content://')) {
+          try {
+            console.log('[CreateEventScreen] Starting image upload...');
+            const imageBlob = await uriToBlob(eventData.image);
+            console.log('[CreateEventScreen] Blob created, size:', imageBlob.size);
+            const imagePath = `events/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+            const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
+            console.log('[CreateEventScreen] Image uploaded successfully:', imageUrl);
+            eventDoc.image = imageUrl;
+          } catch (uploadError: any) {
+            console.error('[CreateEventScreen] Error uploading event image:', uploadError);
+            console.error('[CreateEventScreen] Upload error details:', uploadError?.message, uploadError?.code);
+            // Show user a warning but don't block event creation
+            Alert.alert(
+              'Uyarı',
+              'Etkinlik görseli yüklenemedi. Etkinlik görselsiz oluşturulacak.',
+              [{ text: 'Tamam' }]
+            );
+          }
+        } else if (eventData.image.startsWith('http://') || eventData.image.startsWith('https://')) {
+          // If it's already a URL (e.g., from editing), keep it
+          console.log('[CreateEventScreen] Image is already a URL, keeping it');
+          eventDoc.image = eventData.image;
+        } else {
+          console.warn('[CreateEventScreen] Unknown image URI format:', eventData.image.substring(0, 50));
         }
-      } else if (eventData.image) {
-        // If it's already a URL (e.g., from editing), keep it
-        eventDoc.image = eventData.image;
+      } else {
+        console.log('[CreateEventScreen] No image provided');
       }
       // New event detail fields
       if (eventData.ageLimit) {
