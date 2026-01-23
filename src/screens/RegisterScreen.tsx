@@ -224,6 +224,10 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                   placeholder="En az 8 karakter"
                   placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -253,6 +257,10 @@ export function RegisterScreen({ onRegister, onNavigateToLogin }: RegisterScreen
                   placeholder="Şifrenizi tekrar girin"
                   placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="newPassword"
+                  autoComplete="password-new"
                 />
                 <TouchableOpacity
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}

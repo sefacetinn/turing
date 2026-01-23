@@ -254,7 +254,7 @@ export function CategoryRequestScreen() {
         // Organizer info (kişisel - fallback)
         organizerId: user.uid,
         organizerName: userProfile?.displayName || user.displayName || 'Organizatör',
-        organizerImage: userProfile?.photoURL || userProfile?.userPhotoURL || user.photoURL || '',
+        organizerImage: userProfile?.userPhotoURL || userProfile?.photoURL || user.photoURL || '',
         // Provider info
         providerId: provider.id,
         providerName: provider.name || '',

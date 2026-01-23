@@ -56,7 +56,7 @@ export function BookingProviderProfileScreen() {
         'provider',
         provider.id,
         provider.companyName || provider.displayName,
-        provider.photoURL
+        provider.userPhotoURL || provider.photoURL
       );
     } catch (error) {
       console.warn('Error toggling favorite:', error);
@@ -102,7 +102,7 @@ export function BookingProviderProfileScreen() {
     navigation.navigate('Chat', {
       providerId: provider.id,
       providerName: provider.companyName || provider.displayName,
-      providerImage: provider.photoURL,
+      providerImage: provider.userPhotoURL || provider.photoURL,
     });
   };
 
@@ -182,8 +182,8 @@ export function BookingProviderProfileScreen() {
           {/* Company Info */}
           <View style={styles.companyInfo}>
             <View style={[styles.companyLogo, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)' }]}>
-              {provider.photoURL ? (
-                <OptimizedImage source={provider.photoURL} style={styles.companyLogoImage} />
+              {(provider.userPhotoURL || provider.photoURL) ? (
+                <OptimizedImage source={(provider.userPhotoURL || provider.photoURL)!} style={styles.companyLogoImage} />
               ) : (
                 <Ionicons name="business" size={40} color={colors.brand[400]} />
               )}

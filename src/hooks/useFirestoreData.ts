@@ -548,7 +548,7 @@ export function useProviderJobs(providerId: string | undefined) {
                   return {
                     id: orgId,
                     name: userData.displayName || userData.name || userData.companyName || 'Organizatör',
-                    image: userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image,
+                    image: userData.userPhotoURL || userData.photoURL || userData.profileImage || userData.image,
                     phone: userData.phone || userData.phoneNumber,
                   };
                 }
@@ -1309,6 +1309,7 @@ export interface FirestoreBookingProvider {
   email: string;
   phone?: string;
   photoURL?: string;
+  userPhotoURL?: string;
   coverImage?: string;
   bio?: string;
   city?: string;
@@ -1350,6 +1351,7 @@ const docToBookingProvider = (doc: any): FirestoreBookingProvider => {
     email: data.email || '',
     phone: data.phone || data.phoneNumber,
     photoURL: data.photoURL,
+    userPhotoURL: data.userPhotoURL,
     coverImage: data.coverImage,
     bio: data.bio,
     city: data.city,

@@ -90,7 +90,7 @@ export function MessagesScreen({ isProviderMode }: MessagesScreenProps) {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const userName = userData.displayName || userData.name || 'Kullanıcı';
-            let userImage = userData.photoURL || userData.profileImage || userData.image || '';
+            let userImage = userData.userPhotoURL || userData.photoURL || userData.profileImage || userData.image || '';
             let companyName: string | undefined;
             let userRole: string | undefined;
 

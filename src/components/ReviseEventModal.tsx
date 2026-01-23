@@ -182,36 +182,64 @@ export function ReviseEventModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedType || !title || !description) return;
+    // For image changes, only require newImage; for others, require title and description
+    if (!selectedType) return;
+    if (selectedType !== 'image' && (!title || !description)) return;
+    if (selectedType === 'image' && !newImage) return;
 
     setIsSaving(true);
 
     try {
-      // Determine old and new values based on revision type
-      let oldValue: string | undefined;
-      let newValue: string | undefined;
-
+      // Special handling for image changes - no approval needed, direct update
       if (selectedType === 'image') {
-        oldValue = eventImage;
-        // Upload new image to Firebase Storage
+        console.log('[ReviseEventModal] Processing image change, newImage:', newImage?.substring(0, 80));
+
         if (newImage && (newImage.startsWith('file://') || newImage.startsWith('ph://') || newImage.startsWith('content://'))) {
           setIsUploadingImage(true);
           try {
+            console.log('[ReviseEventModal] Converting URI to blob...');
             const imageBlob = await uriToBlob(newImage);
+            console.log('[ReviseEventModal] Blob created, size:', imageBlob.size);
+
             const imagePath = `events/${eventId}/image_${Date.now()}.jpg`;
+            console.log('[ReviseEventModal] Uploading to:', imagePath);
+
             const imageUrl = await uploadFile(imagePath, imageBlob, { contentType: 'image/jpeg' });
-            newValue = imageUrl;
-          } catch (uploadError) {
-            console.error('Error uploading image:', uploadError);
-            Alert.alert('Hata', 'Görsel yüklenirken bir hata oluştu.');
-            setIsSaving(false);
-            setIsUploadingImage(false);
+            console.log('[ReviseEventModal] Upload successful:', imageUrl);
+
+            // Directly update the event image without revision/approval
+            await updateDocument(Collections.EVENTS, eventId, { image: imageUrl });
+            console.log('[ReviseEventModal] Event image updated directly');
+
+            Alert.alert(
+              'Görsel Güncellendi',
+              'Etkinlik görseli başarıyla değiştirildi.',
+              [{ text: 'Tamam' }]
+            );
+
+            resetForm();
+            onClose();
+            onSubmit({ type: 'image', title: 'Görsel güncellendi', description: '', image: imageUrl });
+            return;
+          } catch (uploadError: any) {
+            console.error('[ReviseEventModal] Error uploading image:', uploadError);
+            console.error('[ReviseEventModal] Error message:', uploadError?.message);
+            console.error('[ReviseEventModal] Error code:', uploadError?.code);
+            Alert.alert('Hata', `Görsel yüklenirken bir hata oluştu: ${uploadError?.message || 'Bilinmeyen hata'}`);
             return;
           } finally {
             setIsUploadingImage(false);
+            setIsSaving(false);
           }
         }
-      } else if (selectedType === 'date') {
+        return;
+      }
+
+      // For other change types, proceed with revision flow
+      let oldValue: string | undefined;
+      let newValue: string | undefined;
+
+      if (selectedType === 'date') {
         oldValue = eventDate;
         newValue = selectedDates[0];
       } else if (selectedType === 'venue') {
@@ -287,9 +315,11 @@ export function ReviseEventModal({
       // Reset form
       resetForm();
       onClose();
-    } catch (error) {
-      console.warn('Error saving revision:', error);
-      Alert.alert('Hata', 'Değişiklik kaydedilirken bir hata oluştu.');
+    } catch (error: any) {
+      console.error('[ReviseEventModal] Error saving revision:', error);
+      console.error('[ReviseEventModal] Error message:', error?.message);
+      console.error('[ReviseEventModal] Error code:', error?.code);
+      Alert.alert('Hata', `Değişiklik kaydedilirken bir hata oluştu: ${error?.message || 'Bilinmeyen hata'}`);
     } finally {
       setIsSaving(false);
     }
@@ -327,9 +357,12 @@ export function ReviseEventModal({
     setNewImage(null);
   };
 
-  // Form validation - for image type, also require a new image to be selected
-  const isFormValid = selectedType && title.length > 0 && description.length > 0 &&
-    (selectedType !== 'image' || newImage !== null);
+  // Form validation - for image type, only require a new image (no title/description needed)
+  const isFormValid = selectedType && (
+    selectedType === 'image'
+      ? newImage !== null
+      : title.length > 0 && description.length > 0
+  );
 
   return (
     <Modal
@@ -475,40 +508,42 @@ export function ReviseEventModal({
                 </View>
               )}
 
-              {/* Title */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Değişiklik Başlığı</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Kısa bir başlık yazın"
-                  placeholderTextColor={colors.zinc[600]}
-                  value={title}
-                  onChangeText={setTitle}
-                />
-              </View>
+              {/* Title, Description, Info Note - hidden for image changes */}
+              {selectedType !== 'image' && (
+                <>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>Değişiklik Başlığı</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Kısa bir başlık yazın"
+                      placeholderTextColor={colors.zinc[600]}
+                      value={title}
+                      onChangeText={setTitle}
+                    />
+                  </View>
 
-              {/* Description */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Açıklama</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Değişikliğin detaylarını açıklayın..."
-                  placeholderTextColor={colors.zinc[600]}
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-              </View>
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>Açıklama</Text>
+                    <TextInput
+                      style={[styles.input, styles.textArea]}
+                      placeholder="Değişikliğin detaylarını açıklayın..."
+                      placeholderTextColor={colors.zinc[600]}
+                      value={description}
+                      onChangeText={setDescription}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                    />
+                  </View>
 
-              {/* Info Note */}
-              <View style={styles.infoNote}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.info} />
-                <Text style={styles.infoNoteText}>
-                  Değişiklik talebi tedarikçilere bildirilecek ve onayları istenecektir.
-                </Text>
-              </View>
+                  <View style={styles.infoNote}>
+                    <Ionicons name="information-circle-outline" size={18} color={colors.info} />
+                    <Text style={styles.infoNoteText}>
+                      Değişiklik talebi tedarikçilere bildirilecek ve onayları istenecektir.
+                    </Text>
+                  </View>
+                </>
+              )}
             </ScrollView>
 
             {/* Actions */}
@@ -533,7 +568,7 @@ export function ReviseEventModal({
                     <>
                       <Ionicons name="checkmark" size={18} color="white" />
                       <Text style={styles.submitButtonText}>
-                        {confirmedProviders.length > 0 ? 'Onaya Gönder' : 'Değişikliği Kaydet'}
+                        {selectedType === 'image' ? 'Görseli Güncelle' : (confirmedProviders.length > 0 ? 'Onaya Gönder' : 'Değişikliği Kaydet')}
                       </Text>
                     </>
                   )}

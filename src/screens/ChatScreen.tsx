@@ -55,7 +55,7 @@ export function ChatScreen() {
   const route = useRoute();
   const { colors, isDark, helpers } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const params = (route.params || {}) as ChatParams;
 
   // Conversation state
@@ -126,7 +126,7 @@ export function ChatScreen() {
         }
 
         // Get user image (fallback if no company logo)
-        const userImage = userData.photoURL || userData.profileImage || userData.image;
+        const userImage = userData.userPhotoURL || userData.photoURL || userData.profileImage || userData.image;
         const finalImage = companyLogo || userImage || '';
         if (userImage && !companyLogo) {
           setParticipantImage(userImage);
@@ -278,7 +278,7 @@ export function ChatScreen() {
           const convId = await createOrGetConversation(
             user.uid,
             user.displayName || 'Kullanıcı',
-            user.photoURL || '',
+            userProfile?.userPhotoURL || user.photoURL || '',
             params.providerId,
             displayNameForConversation,
             providerImage,

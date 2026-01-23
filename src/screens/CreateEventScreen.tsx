@@ -290,7 +290,7 @@ export function CreateEventScreen() {
         organizerId: user.uid,
         // Kişisel organizatör bilgileri (fallback)
         organizerName: userProfile?.displayName || user.displayName || '',
-        organizerImage: userProfile?.photoURL || user.photoURL || '',
+        organizerImage: userProfile?.userPhotoURL || userProfile?.photoURL || user.photoURL || '',
         providerIds: isProviderMode ? [user.uid] : [],
         services: eventData.services.length > 0 ? eventData.services.map(serviceId => ({
           id: serviceId,

@@ -294,7 +294,7 @@ export function ProviderRequestDetailScreen() {
         const userDoc = await getDoc(doc(db, 'users', firebaseOffer.organizerId));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          const profileImage = userData.photoURL || userData.userPhotoURL || userData.profileImage || userData.image;
+          const profileImage = userData.userPhotoURL || userData.photoURL || userData.profileImage || userData.image;
           if (profileImage) {
             setRealOrganizerImage(profileImage);
           }

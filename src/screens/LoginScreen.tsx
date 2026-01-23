@@ -376,6 +376,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   placeholder="••••••••"
                   placeholderTextColor={colors.textMuted}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="password"
+                  autoComplete="password"
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}

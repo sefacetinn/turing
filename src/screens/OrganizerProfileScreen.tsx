@@ -194,7 +194,7 @@ export function OrganizerProfileScreen() {
     navigation.navigate('Chat', {
       providerId: organizer.id,
       providerName: organizer.displayName || organizer.companyName || 'Kullanıcı',
-      providerImage: organizer.photoURL,
+      providerImage: organizer.userPhotoURL || organizer.photoURL,
     });
   };
 
