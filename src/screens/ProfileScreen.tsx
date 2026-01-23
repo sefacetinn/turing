@@ -659,9 +659,9 @@ export function ProfileScreen({ isProviderMode, onToggleMode, onLogout }: Profil
             activeOpacity={0.8}
           >
             <View style={styles.companyCardContent}>
-              {(authUserProfile.userPhotoURL || authUserProfile.photoURL) ? (
+              {(authUserProfile.photoURL || authUserProfile.userPhotoURL) ? (
                 <OptimizedImage
-                  source={(authUserProfile.userPhotoURL || authUserProfile.photoURL)!}
+                  source={(authUserProfile.photoURL || authUserProfile.userPhotoURL)!}
                   style={styles.companyLogo}
                 />
               ) : (
