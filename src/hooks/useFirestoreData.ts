@@ -3452,3 +3452,256 @@ export function useArtistShows(artistId: string | undefined) {
 
   return { shows, loading, error };
 }
+
+// ==================== SERVICE OPERATIONS ====================
+
+// Types for Service Operations
+export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface ServiceOperationTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  assignee: string;
+  time: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ServiceOperationScheduleItem {
+  id: string;
+  time: string;
+  title: string;
+  status: 'done' | 'active' | 'upcoming';
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ServiceOperationTeamMember {
+  id: string;
+  name: string;
+  role: string;
+  image?: string;
+  phone: string;
+  status: 'online' | 'busy' | 'offline';
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ServiceOperationPayment {
+  id: string;
+  title: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'overdue';
+  dueDate: string;
+  paidDate?: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ServiceOperationNote {
+  id: string;
+  text: string;
+  author: string;
+  authorId: string;
+  timestamp: string;
+  isPinned?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ServiceOperationsData {
+  tasks: ServiceOperationTask[];
+  schedule: ServiceOperationScheduleItem[];
+  team: ServiceOperationTeamMember[];
+  payments: ServiceOperationPayment[];
+  notes: ServiceOperationNote[];
+  updatedAt?: Date;
+}
+
+/**
+ * Hook to fetch and subscribe to service operations data in real-time
+ * Data is stored at: events/{eventId}/serviceOperations/{serviceId}
+ * Both organizer and provider can read/write
+ */
+export function useServiceOperations(eventId: string | undefined, serviceId: string | undefined) {
+  const [operations, setOperations] = useState<ServiceOperationsData>({
+    tasks: [],
+    schedule: [],
+    team: [],
+    payments: [],
+    notes: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!eventId || !serviceId) {
+      setOperations({ tasks: [], schedule: [], team: [], payments: [], notes: [] });
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    // Listen to the operations document
+    const operationsDocRef = doc(db, 'events', eventId, 'serviceOperations', serviceId);
+
+    const unsubscribe = onSnapshot(
+      operationsDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setOperations({
+            tasks: (data.tasks || []).map((t: any) => ({
+              ...t,
+              createdAt: toDate(t.createdAt),
+              updatedAt: toDate(t.updatedAt),
+            })),
+            schedule: (data.schedule || []).map((s: any) => ({
+              ...s,
+              createdAt: toDate(s.createdAt),
+              updatedAt: toDate(s.updatedAt),
+            })),
+            team: (data.team || []).map((m: any) => ({
+              ...m,
+              createdAt: toDate(m.createdAt),
+              updatedAt: toDate(m.updatedAt),
+            })),
+            payments: (data.payments || []).map((p: any) => ({
+              ...p,
+              createdAt: toDate(p.createdAt),
+              updatedAt: toDate(p.updatedAt),
+            })),
+            notes: (data.notes || []).map((n: any) => ({
+              ...n,
+              createdAt: toDate(n.createdAt),
+              updatedAt: toDate(n.updatedAt),
+            })),
+            updatedAt: data.updatedAt ? toDate(data.updatedAt) : undefined,
+          });
+        } else {
+          // No data yet, return empty
+          setOperations({ tasks: [], schedule: [], team: [], payments: [], notes: [] });
+        }
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        console.warn('Error fetching service operations:', err?.message || err);
+        setError('Operasyon verileri yüklenirken hata oluştu');
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [eventId, serviceId]);
+
+  return { operations, loading, error };
+}
+
+/**
+ * Save tasks to service operations
+ */
+export async function saveOperationTasks(
+  eventId: string,
+  serviceId: string,
+  tasks: ServiceOperationTask[]
+): Promise<void> {
+  const operationsDocRef = doc(db, 'events', eventId, 'serviceOperations', serviceId);
+
+  await setDoc(operationsDocRef, {
+    tasks: tasks.map(t => ({
+      ...t,
+      createdAt: t.createdAt instanceof Timestamp ? t.createdAt : Timestamp.fromDate(t.createdAt || new Date()),
+      updatedAt: Timestamp.now(),
+    })),
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+}
+
+/**
+ * Save schedule to service operations
+ */
+export async function saveOperationSchedule(
+  eventId: string,
+  serviceId: string,
+  schedule: ServiceOperationScheduleItem[]
+): Promise<void> {
+  const operationsDocRef = doc(db, 'events', eventId, 'serviceOperations', serviceId);
+
+  await setDoc(operationsDocRef, {
+    schedule: schedule.map(s => ({
+      ...s,
+      createdAt: s.createdAt instanceof Timestamp ? s.createdAt : Timestamp.fromDate(s.createdAt || new Date()),
+      updatedAt: Timestamp.now(),
+    })),
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+}
+
+/**
+ * Save team to service operations
+ */
+export async function saveOperationTeam(
+  eventId: string,
+  serviceId: string,
+  team: ServiceOperationTeamMember[]
+): Promise<void> {
+  const operationsDocRef = doc(db, 'events', eventId, 'serviceOperations', serviceId);
+
+  await setDoc(operationsDocRef, {
+    team: team.map(m => ({
+      ...m,
+      createdAt: m.createdAt instanceof Timestamp ? m.createdAt : Timestamp.fromDate(m.createdAt || new Date()),
+      updatedAt: Timestamp.now(),
+    })),
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+}
+
+/**
+ * Save payments to service operations
+ */
+export async function saveOperationPayments(
+  eventId: string,
+  serviceId: string,
+  payments: ServiceOperationPayment[]
+): Promise<void> {
+  const operationsDocRef = doc(db, 'events', eventId, 'serviceOperations', serviceId);
+
+  await setDoc(operationsDocRef, {
+    payments: payments.map(p => ({
+      ...p,
+      createdAt: p.createdAt instanceof Timestamp ? p.createdAt : Timestamp.fromDate(p.createdAt || new Date()),
+      updatedAt: Timestamp.now(),
+    })),
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+}
+
+/**
+ * Save notes to service operations
+ */
+export async function saveOperationNotes(
+  eventId: string,
+  serviceId: string,
+  notes: ServiceOperationNote[]
+): Promise<void> {
+  const operationsDocRef = doc(db, 'events', eventId, 'serviceOperations', serviceId);
+
+  await setDoc(operationsDocRef, {
+    notes: notes.map(n => ({
+      ...n,
+      createdAt: n.createdAt instanceof Timestamp ? n.createdAt : Timestamp.fromDate(n.createdAt || new Date()),
+      updatedAt: Timestamp.now(),
+    })),
+    updatedAt: Timestamp.now(),
+  }, { merge: true });
+}

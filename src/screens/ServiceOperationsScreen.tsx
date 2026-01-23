@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { OptimizedImage } from '../components/OptimizedImage';
@@ -24,6 +25,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { ServiceCategory } from '../types';
 import * as Haptics from 'expo-haptics';
+import { useAuth } from '../context/AuthContext';
+import {
+  useServiceOperations,
+  saveOperationTasks,
+  saveOperationSchedule,
+  saveOperationTeam,
+  saveOperationPayments,
+  saveOperationNotes,
+  ServiceOperationTask,
+  ServiceOperationScheduleItem,
+  ServiceOperationTeamMember,
+  ServiceOperationPayment,
+  ServiceOperationNote,
+} from '../hooks/useFirestoreData';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -41,48 +56,12 @@ type ServiceOperationsParams = {
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed';
 
-interface OperationTask {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  assignee: string;
-  time: string;
-  description?: string;
-  priority?: 'low' | 'medium' | 'high';
-}
-
-interface OperationNote {
-  id: string;
-  text: string;
-  author: string;
-  timestamp: string;
-  isPinned?: boolean;
-}
-
-interface TeamMember {
-  id: string;
-  name: string;
-  role: string;
-  image: string;
-  phone: string;
-  status: 'online' | 'busy' | 'offline';
-}
-
-interface ScheduleItem {
-  id: string;
-  time: string;
-  title: string;
-  status: 'done' | 'active' | 'upcoming';
-}
-
-interface PaymentItem {
-  id: string;
-  title: string;
-  amount: number;
-  status: 'paid' | 'pending' | 'overdue';
-  dueDate: string;
-  paidDate?: string;
-}
+// Re-export types for local use
+type OperationTask = ServiceOperationTask;
+type OperationNote = ServiceOperationNote;
+type TeamMember = ServiceOperationTeamMember;
+type ScheduleItem = ServiceOperationScheduleItem;
+type PaymentItem = ServiceOperationPayment;
 
 // Service configurations
 const serviceConfigs: Record<string, { title: string; icon: string }> = {
@@ -96,128 +75,7 @@ const serviceConfigs: Record<string, { title: string; icon: string }> = {
   accommodation: { title: 'Konaklama Operasyonları', icon: 'bed-outline' },
 };
 
-// Sample data
-const generateTasks = (category: string): OperationTask[] => {
-  const tasks: Record<string, OperationTask[]> = {
-    technical: [
-      { id: '1', title: 'Ses sistemi kurulumu', status: 'completed', assignee: 'Serkan A.', time: '08:00' },
-      { id: '2', title: 'Işık sistemleri montaj', status: 'in_progress', assignee: 'Deniz K.', time: '10:00' },
-      { id: '3', title: 'Video/LED ekran test', status: 'pending', assignee: 'Can Y.', time: '14:00' },
-      { id: '4', title: 'Ses kontrolü', status: 'pending', assignee: 'Burak S.', time: '17:00' },
-    ],
-    booking: [
-      { id: '1', title: 'Rider kontrolü', status: 'completed', assignee: 'Cem K.', time: '09:00' },
-      { id: '2', title: 'Backstage hazırlığı', status: 'in_progress', assignee: 'Emre T.', time: '12:00' },
-      { id: '3', title: 'Ses kontrolü koordinasyonu', status: 'pending', assignee: 'Tolga B.', time: '16:00' },
-    ],
-    catering: [
-      { id: '1', title: 'Mutfak kurulumu', status: 'completed', assignee: 'Ali Y.', time: '07:00' },
-      { id: '2', title: 'Malzeme kontrolü', status: 'completed', assignee: 'Fatma D.', time: '09:00' },
-      { id: '3', title: 'Ekip yemeği servisi', status: 'in_progress', assignee: 'Mehmet K.', time: '12:00' },
-      { id: '4', title: 'VIP catering hazırlığı', status: 'pending', assignee: 'Ayşe B.', time: '17:00' },
-    ],
-    security: [
-      { id: '1', title: 'Bariyer yerleşimi', status: 'completed', assignee: 'Hasan Ö.', time: '06:00' },
-      { id: '2', title: 'Ekip briefing', status: 'in_progress', assignee: 'Ayşe Y.', time: '14:00' },
-      { id: '3', title: 'Giriş noktaları kontrolü', status: 'pending', assignee: 'Murat C.', time: '17:00' },
-    ],
-    transport: [
-      { id: '1', title: 'Araç kontrolleri', status: 'completed', assignee: 'Kemal A.', time: '08:00' },
-      { id: '2', title: 'VIP transfer koordinasyonu', status: 'in_progress', assignee: 'Osman K.', time: '12:00' },
-      { id: '3', title: 'Sanatçı transferi', status: 'pending', assignee: 'Yusuf Ş.', time: '15:00' },
-    ],
-    decoration: [
-      { id: '1', title: 'Sahne dekorasyonu', status: 'in_progress', assignee: 'Selin A.', time: '08:00' },
-      { id: '2', title: 'VIP alan düzenlemesi', status: 'pending', assignee: 'Burak Y.', time: '14:00' },
-      { id: '3', title: 'Giriş alanı hazırlığı', status: 'pending', assignee: 'Zeynep K.', time: '16:00' },
-    ],
-  };
-  return tasks[category] || tasks.technical;
-};
-
-const generateTeam = (category: string): TeamMember[] => {
-  const teams: Record<string, TeamMember[]> = {
-    technical: [
-      { id: '1', name: 'Serkan Aydın', role: 'Teknik Direktör', image: 'https://i.pravatar.cc/100?img=11', phone: '+90 533 111 2233', status: 'online' },
-      { id: '2', name: 'Deniz Kaya', role: 'Işık Operatörü', image: 'https://i.pravatar.cc/100?img=12', phone: '+90 533 222 3344', status: 'busy' },
-      { id: '3', name: 'Can Yılmaz', role: 'Video Teknisyeni', image: 'https://i.pravatar.cc/100?img=13', phone: '+90 533 333 4455', status: 'online' },
-    ],
-    booking: [
-      { id: '1', name: 'Cem Karaca', role: 'Tur Menajeri', image: 'https://i.pravatar.cc/100?img=14', phone: '+90 534 111 2233', status: 'online' },
-      { id: '2', name: 'Emre Tunç', role: 'Sahne Müdürü', image: 'https://i.pravatar.cc/100?img=15', phone: '+90 534 222 3344', status: 'online' },
-    ],
-    catering: [
-      { id: '1', name: 'Ali Yıldız', role: 'Şef', image: 'https://i.pravatar.cc/100?img=16', phone: '+90 535 111 2233', status: 'busy' },
-      { id: '2', name: 'Fatma Demir', role: 'Operasyon Müdürü', image: 'https://i.pravatar.cc/100?img=17', phone: '+90 535 222 3344', status: 'online' },
-    ],
-    security: [
-      { id: '1', name: 'Hasan Öztürk', role: 'Güvenlik Amiri', image: 'https://i.pravatar.cc/100?img=18', phone: '+90 536 111 2233', status: 'online' },
-      { id: '2', name: 'Ayşe Yıldız', role: 'Saha Koordinatörü', image: 'https://i.pravatar.cc/100?img=19', phone: '+90 536 222 3344', status: 'online' },
-    ],
-    transport: [
-      { id: '1', name: 'Kemal Arslan', role: 'Filo Müdürü', image: 'https://i.pravatar.cc/100?img=20', phone: '+90 537 111 2233', status: 'online' },
-      { id: '2', name: 'Osman Koç', role: 'VIP Şoför', image: 'https://i.pravatar.cc/100?img=21', phone: '+90 537 222 3344', status: 'busy' },
-    ],
-    decoration: [
-      { id: '1', name: 'Selin Acar', role: 'Tasarım Direktörü', image: 'https://i.pravatar.cc/100?img=22', phone: '+90 538 111 2233', status: 'online' },
-      { id: '2', name: 'Burak Yılmaz', role: 'Dekoratör', image: 'https://i.pravatar.cc/100?img=23', phone: '+90 538 222 3344', status: 'offline' },
-    ],
-  };
-  return teams[category] || teams.technical;
-};
-
-const generateSchedule = (category: string): ScheduleItem[] => {
-  const schedules: Record<string, ScheduleItem[]> = {
-    technical: [
-      { id: '1', time: '06:00', title: 'Ekipman yükleme', status: 'done' },
-      { id: '2', time: '08:00', title: 'Ses sistemi kurulum', status: 'done' },
-      { id: '3', time: '10:00', title: 'Işık sistemi kurulum', status: 'active' },
-      { id: '4', time: '14:00', title: 'Video sistemi test', status: 'upcoming' },
-      { id: '5', time: '17:00', title: 'Ses kontrolü', status: 'upcoming' },
-      { id: '6', time: '19:00', title: 'Final kontrol', status: 'upcoming' },
-    ],
-    booking: [
-      { id: '1', time: '12:00', title: 'Sanatçı varış', status: 'upcoming' },
-      { id: '2', time: '14:00', title: 'Ses kontrolü', status: 'upcoming' },
-      { id: '3', time: '17:00', title: 'Dinlenme', status: 'upcoming' },
-      { id: '4', time: '20:00', title: 'Performans', status: 'upcoming' },
-    ],
-    catering: [
-      { id: '1', time: '07:00', title: 'Mutfak hazırlık', status: 'done' },
-      { id: '2', time: '12:00', title: 'Ekip yemeği', status: 'active' },
-      { id: '3', time: '17:00', title: 'VIP kokteyl', status: 'upcoming' },
-      { id: '4', time: '19:00', title: 'Ana servis', status: 'upcoming' },
-    ],
-    security: [
-      { id: '1', time: '06:00', title: 'Bariyer kurulum', status: 'done' },
-      { id: '2', time: '14:00', title: 'Ekip toplantısı', status: 'active' },
-      { id: '3', time: '18:00', title: 'Kapılar açık', status: 'upcoming' },
-      { id: '4', time: '23:00', title: 'Tahliye', status: 'upcoming' },
-    ],
-    transport: [
-      { id: '1', time: '08:00', title: 'Araç kontrol', status: 'done' },
-      { id: '2', time: '12:00', title: 'Ekip transferi', status: 'active' },
-      { id: '3', time: '15:00', title: 'Sanatçı transferi', status: 'upcoming' },
-      { id: '4', time: '23:30', title: 'Dönüş transferi', status: 'upcoming' },
-    ],
-    decoration: [
-      { id: '1', time: '06:00', title: 'Malzeme teslimi', status: 'done' },
-      { id: '2', time: '08:00', title: 'Sahne dekorasyonu', status: 'active' },
-      { id: '3', time: '14:00', title: 'VIP alan', status: 'upcoming' },
-      { id: '4', time: '17:00', title: 'Final kontrol', status: 'upcoming' },
-    ],
-  };
-  return schedules[category] || schedules.technical;
-};
-
-const generatePayments = (): PaymentItem[] => {
-  return [
-    { id: '1', title: 'Ön Ödeme', amount: 25000, status: 'paid', dueDate: '01 Ocak 2026', paidDate: '28 Aralık 2025' },
-    { id: '2', title: 'Ara Ödeme', amount: 35000, status: 'pending', dueDate: '15 Ocak 2026' },
-    { id: '3', title: 'Son Ödeme', amount: 40000, status: 'pending', dueDate: '30 Ocak 2026' },
-  ];
-};
-
+// Helper function for payment status
 const getPaymentStatusInfo = (status: PaymentItem['status']) => {
   switch (status) {
     case 'paid':
@@ -229,24 +87,22 @@ const getPaymentStatusInfo = (status: PaymentItem['status']) => {
   }
 };
 
-// Generate notes
-const generateNotes = (): OperationNote[] => [
-  { id: '1', text: 'Sanatçı ekibi 14:00\'te gelecek, backstage hazır olmalı.', author: 'Cem K.', timestamp: '10:30', isPinned: true },
-  { id: '2', text: 'Ses sisteminde feedback sorunu çözüldü.', author: 'Serkan A.', timestamp: '09:15', isPinned: false },
-  { id: '3', text: 'VIP misafirler için özel giriş ayarlandı.', author: 'Ayşe Y.', timestamp: '08:45', isPinned: false },
-];
-
 export function ServiceOperationsScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<{ params: ServiceOperationsParams }, 'params'>>();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
+  const { user, userProfile } = useAuth();
 
-  const { serviceCategory, serviceName, providerName } = route.params;
+  const { eventId, serviceId, serviceCategory, serviceName, providerName } = route.params;
   const config = serviceConfigs[serviceCategory] || serviceConfigs.technical;
+
+  // Fetch operations data from Firebase (real-time)
+  const { operations, loading: operationsLoading, error: operationsError } = useServiceOperations(eventId, serviceId);
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'schedule' | 'team' | 'payments' | 'notes'>('tasks');
   const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Modal states
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -285,12 +141,28 @@ export function ServiceOperationsScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Mutable states - start with empty arrays (no mock data)
+  // Local state for operations data (synced from Firebase)
   const [tasks, setTasks] = useState<OperationTask[]>([]);
   const [notes, setNotes] = useState<OperationNote[]>([]);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+
+  // Sync local state with Firebase data
+  useEffect(() => {
+    if (operations) {
+      setTasks(operations.tasks);
+      setSchedule(operations.schedule);
+      setTeam(operations.team);
+      setPayments(operations.payments);
+      setNotes(operations.notes);
+    }
+  }, [operations]);
+
+  // Get current user's display name for notes
+  const currentUserName = useMemo(() => {
+    return userProfile?.displayName || user?.displayName || 'Ben';
+  }, [userProfile, user]);
 
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
@@ -300,30 +172,48 @@ export function ServiceOperationsScreen() {
   }, []);
 
   // Cycle task status: pending → in_progress → completed → pending
-  const handleCycleTaskStatus = useCallback((taskId: string) => {
+  const handleCycleTaskStatus = useCallback(async (taskId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-    setTasks(prevTasks => prevTasks.map(task => {
+    const updatedTasks = tasks.map(task => {
       if (task.id !== taskId) return task;
 
       const statusCycle: TaskStatus[] = ['pending', 'in_progress', 'completed'];
       const currentIndex = statusCycle.indexOf(task.status);
       const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
 
-      return { ...task, status: nextStatus };
-    }));
-  }, []);
+      return { ...task, status: nextStatus, updatedAt: new Date() };
+    });
+
+    setTasks(updatedTasks);
+
+    // Save to Firebase
+    try {
+      await saveOperationTasks(eventId, serviceId, updatedTasks);
+    } catch (error) {
+      console.warn('Error saving task status:', error);
+    }
+  }, [tasks, eventId, serviceId]);
 
   // Complete task directly
-  const handleCompleteTask = useCallback((taskId: string) => {
+  const handleCompleteTask = useCallback(async (taskId: string) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
-    setTasks(prevTasks => prevTasks.map(task =>
-      task.id === taskId ? { ...task, status: 'completed' } : task
-    ));
-  }, []);
+    const updatedTasks = tasks.map(task =>
+      task.id === taskId ? { ...task, status: 'completed' as const, updatedAt: new Date() } : task
+    );
+
+    setTasks(updatedTasks);
+
+    // Save to Firebase
+    try {
+      await saveOperationTasks(eventId, serviceId, updatedTasks);
+    } catch (error) {
+      console.warn('Error completing task:', error);
+    }
+  }, [tasks, eventId, serviceId]);
 
   // Open add task modal
   const handleAddTask = useCallback(() => {
@@ -346,7 +236,7 @@ export function ServiceOperationsScreen() {
   }, []);
 
   // Save task (add or edit)
-  const handleSaveTask = useCallback(() => {
+  const handleSaveTask = useCallback(async () => {
     if (!taskTitle.trim() || !taskAssignee.trim() || !taskTime.trim()) {
       Alert.alert('Hata', 'Lütfen tüm zorunlu alanları doldurun.');
       return;
@@ -354,14 +244,17 @@ export function ServiceOperationsScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSaving(true);
+
+    let updatedTasks: OperationTask[];
 
     if (editingTask) {
       // Edit existing task
-      setTasks(prevTasks => prevTasks.map(task =>
+      updatedTasks = tasks.map(task =>
         task.id === editingTask.id
-          ? { ...task, title: taskTitle, assignee: taskAssignee, time: taskTime, description: taskDescription }
+          ? { ...task, title: taskTitle, assignee: taskAssignee, time: taskTime, description: taskDescription, updatedAt: new Date() }
           : task
-      ));
+      );
     } else {
       // Add new task
       const newTask: OperationTask = {
@@ -371,12 +264,26 @@ export function ServiceOperationsScreen() {
         time: taskTime,
         description: taskDescription,
         status: 'pending',
+        createdBy: user?.uid || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
-      setTasks(prevTasks => [...prevTasks, newTask]);
+      updatedTasks = [...tasks, newTask];
     }
 
+    setTasks(updatedTasks);
     setShowTaskModal(false);
-  }, [taskTitle, taskAssignee, taskTime, taskDescription, editingTask]);
+
+    // Save to Firebase
+    try {
+      await saveOperationTasks(eventId, serviceId, updatedTasks);
+    } catch (error) {
+      console.warn('Error saving task:', error);
+      Alert.alert('Hata', 'Görev kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setSaving(false);
+    }
+  }, [taskTitle, taskAssignee, taskTime, taskDescription, editingTask, tasks, eventId, serviceId, user]);
 
   // Delete task
   const handleDeleteTask = useCallback((taskId: string) => {
@@ -388,15 +295,24 @@ export function ServiceOperationsScreen() {
         {
           text: 'Sil',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-            setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+
+            const updatedTasks = tasks.filter(task => task.id !== taskId);
+            setTasks(updatedTasks);
+
+            // Save to Firebase
+            try {
+              await saveOperationTasks(eventId, serviceId, updatedTasks);
+            } catch (error) {
+              console.warn('Error deleting task:', error);
+            }
           },
         },
       ]
     );
-  }, []);
+  }, [tasks, eventId, serviceId]);
 
   // Long press on task - show options
   const handleTaskLongPress = useCallback((task: OperationTask) => {
@@ -413,7 +329,7 @@ export function ServiceOperationsScreen() {
   }, [handleEditTask, handleDeleteTask]);
 
   // Add note
-  const handleAddNote = useCallback(() => {
+  const handleAddNote = useCallback(async () => {
     if (!newNoteText.trim()) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -422,30 +338,59 @@ export function ServiceOperationsScreen() {
     const newNote: OperationNote = {
       id: Date.now().toString(),
       text: newNoteText,
-      author: 'Ben',
+      author: currentUserName,
+      authorId: user?.uid || '',
       timestamp: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
       isPinned: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
-    setNotes(prevNotes => [newNote, ...prevNotes]);
+    const updatedNotes = [newNote, ...notes];
+    setNotes(updatedNotes);
     setNewNoteText('');
     setShowNoteModal(false);
-  }, [newNoteText]);
+
+    // Save to Firebase
+    try {
+      await saveOperationNotes(eventId, serviceId, updatedNotes);
+    } catch (error) {
+      console.warn('Error saving note:', error);
+    }
+  }, [newNoteText, notes, eventId, serviceId, currentUserName, user]);
 
   // Toggle note pin
-  const handleToggleNotePin = useCallback((noteId: string) => {
+  const handleToggleNotePin = useCallback(async (noteId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setNotes(prevNotes => prevNotes.map(note =>
-      note.id === noteId ? { ...note, isPinned: !note.isPinned } : note
-    ));
-  }, []);
+
+    const updatedNotes = notes.map(note =>
+      note.id === noteId ? { ...note, isPinned: !note.isPinned, updatedAt: new Date() } : note
+    );
+    setNotes(updatedNotes);
+
+    // Save to Firebase
+    try {
+      await saveOperationNotes(eventId, serviceId, updatedNotes);
+    } catch (error) {
+      console.warn('Error toggling note pin:', error);
+    }
+  }, [notes, eventId, serviceId]);
 
   // Delete note
-  const handleDeleteNote = useCallback((noteId: string) => {
+  const handleDeleteNote = useCallback(async (noteId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-  }, []);
+
+    const updatedNotes = notes.filter(note => note.id !== noteId);
+    setNotes(updatedNotes);
+
+    // Save to Firebase
+    try {
+      await saveOperationNotes(eventId, serviceId, updatedNotes);
+    } catch (error) {
+      console.warn('Error deleting note:', error);
+    }
+  }, [notes, eventId, serviceId]);
 
   // Sort notes - pinned first
   const sortedNotes = useMemo(() => {
@@ -471,7 +416,7 @@ export function ServiceOperationsScreen() {
     setShowScheduleModal(true);
   }, []);
 
-  const handleSaveSchedule = useCallback(() => {
+  const handleSaveSchedule = useCallback(async () => {
     if (!scheduleTime.trim() || !scheduleTitle.trim()) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
@@ -479,25 +424,42 @@ export function ServiceOperationsScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSaving(true);
+
+    let updatedSchedule: ScheduleItem[];
 
     if (editingSchedule) {
-      setSchedule(prev => prev.map(item =>
+      updatedSchedule = schedule.map(item =>
         item.id === editingSchedule.id
-          ? { ...item, time: scheduleTime, title: scheduleTitle }
+          ? { ...item, time: scheduleTime, title: scheduleTitle, updatedAt: new Date() }
           : item
-      ));
+      );
     } else {
       const newItem: ScheduleItem = {
         id: Date.now().toString(),
         time: scheduleTime,
         title: scheduleTitle,
         status: 'upcoming',
+        createdBy: user?.uid || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
-      setSchedule(prev => [...prev, newItem].sort((a, b) => a.time.localeCompare(b.time)));
+      updatedSchedule = [...schedule, newItem].sort((a, b) => a.time.localeCompare(b.time));
     }
 
+    setSchedule(updatedSchedule);
     setShowScheduleModal(false);
-  }, [scheduleTime, scheduleTitle, editingSchedule]);
+
+    // Save to Firebase
+    try {
+      await saveOperationSchedule(eventId, serviceId, updatedSchedule);
+    } catch (error) {
+      console.warn('Error saving schedule:', error);
+      Alert.alert('Hata', 'Program kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setSaving(false);
+    }
+  }, [scheduleTime, scheduleTitle, editingSchedule, schedule, eventId, serviceId, user]);
 
   const handleDeleteSchedule = useCallback((itemId: string) => {
     Alert.alert('Programı Sil', 'Bu program öğesini silmek istediğinizden emin misiniz?', [
@@ -505,14 +467,23 @@ export function ServiceOperationsScreen() {
       {
         text: 'Sil',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          setSchedule(prev => prev.filter(item => item.id !== itemId));
+
+          const updatedSchedule = schedule.filter(item => item.id !== itemId);
+          setSchedule(updatedSchedule);
+
+          // Save to Firebase
+          try {
+            await saveOperationSchedule(eventId, serviceId, updatedSchedule);
+          } catch (error) {
+            console.warn('Error deleting schedule item:', error);
+          }
         },
       },
     ]);
-  }, []);
+  }, [schedule, eventId, serviceId]);
 
   const handleScheduleLongPress = useCallback((item: ScheduleItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -540,7 +511,7 @@ export function ServiceOperationsScreen() {
     setShowTeamModal(true);
   }, []);
 
-  const handleSaveTeamMember = useCallback(() => {
+  const handleSaveTeamMember = useCallback(async () => {
     if (!teamName.trim() || !teamRole.trim() || !teamPhone.trim()) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
@@ -548,13 +519,16 @@ export function ServiceOperationsScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSaving(true);
+
+    let updatedTeam: TeamMember[];
 
     if (editingTeamMember) {
-      setTeam(prev => prev.map(member =>
+      updatedTeam = team.map(member =>
         member.id === editingTeamMember.id
-          ? { ...member, name: teamName, role: teamRole, phone: teamPhone }
+          ? { ...member, name: teamName, role: teamRole, phone: teamPhone, updatedAt: new Date() }
           : member
-      ));
+      );
     } else {
       const newMember: TeamMember = {
         id: Date.now().toString(),
@@ -563,12 +537,26 @@ export function ServiceOperationsScreen() {
         phone: teamPhone,
         image: `https://i.pravatar.cc/100?u=${Date.now()}`,
         status: 'online',
+        createdBy: user?.uid || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
-      setTeam(prev => [...prev, newMember]);
+      updatedTeam = [...team, newMember];
     }
 
+    setTeam(updatedTeam);
     setShowTeamModal(false);
-  }, [teamName, teamRole, teamPhone, editingTeamMember]);
+
+    // Save to Firebase
+    try {
+      await saveOperationTeam(eventId, serviceId, updatedTeam);
+    } catch (error) {
+      console.warn('Error saving team member:', error);
+      Alert.alert('Hata', 'Ekip üyesi kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setSaving(false);
+    }
+  }, [teamName, teamRole, teamPhone, editingTeamMember, team, eventId, serviceId, user]);
 
   const handleDeleteTeamMember = useCallback((memberId: string) => {
     Alert.alert('Ekip Üyesini Çıkar', 'Bu ekip üyesini çıkarmak istediğinizden emin misiniz?', [
@@ -576,14 +564,23 @@ export function ServiceOperationsScreen() {
       {
         text: 'Çıkar',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          setTeam(prev => prev.filter(member => member.id !== memberId));
+
+          const updatedTeam = team.filter(member => member.id !== memberId);
+          setTeam(updatedTeam);
+
+          // Save to Firebase
+          try {
+            await saveOperationTeam(eventId, serviceId, updatedTeam);
+          } catch (error) {
+            console.warn('Error deleting team member:', error);
+          }
         },
       },
     ]);
-  }, []);
+  }, [team, eventId, serviceId]);
 
   const handleTeamLongPress = useCallback((member: TeamMember) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -612,7 +609,7 @@ export function ServiceOperationsScreen() {
     setShowPaymentModal(true);
   }, []);
 
-  const handleSavePayment = useCallback(() => {
+  const handleSavePayment = useCallback(async () => {
     if (!paymentTitle.trim() || !paymentAmount.trim() || !paymentDueDate.trim()) {
       Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
       return;
@@ -626,13 +623,16 @@ export function ServiceOperationsScreen() {
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSaving(true);
+
+    let updatedPayments: PaymentItem[];
 
     if (editingPayment) {
-      setPayments(prev => prev.map(p =>
+      updatedPayments = payments.map(p =>
         p.id === editingPayment.id
-          ? { ...p, title: paymentTitle, amount, dueDate: paymentDueDate }
+          ? { ...p, title: paymentTitle, amount, dueDate: paymentDueDate, updatedAt: new Date() }
           : p
-      ));
+      );
     } else {
       const newPayment: PaymentItem = {
         id: Date.now().toString(),
@@ -640,12 +640,26 @@ export function ServiceOperationsScreen() {
         amount,
         dueDate: paymentDueDate,
         status: 'pending',
+        createdBy: user?.uid || '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
-      setPayments(prev => [...prev, newPayment]);
+      updatedPayments = [...payments, newPayment];
     }
 
+    setPayments(updatedPayments);
     setShowPaymentModal(false);
-  }, [paymentTitle, paymentAmount, paymentDueDate, editingPayment]);
+
+    // Save to Firebase
+    try {
+      await saveOperationPayments(eventId, serviceId, updatedPayments);
+    } catch (error) {
+      console.warn('Error saving payment:', error);
+      Alert.alert('Hata', 'Ödeme kaydedilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setSaving(false);
+    }
+  }, [paymentTitle, paymentAmount, paymentDueDate, editingPayment, payments, eventId, serviceId, user]);
 
   const handleDeletePayment = useCallback((paymentId: string) => {
     Alert.alert('Ödemeyi Sil', 'Bu ödemeyi silmek istediğinizden emin misiniz?', [
@@ -653,14 +667,42 @@ export function ServiceOperationsScreen() {
       {
         text: 'Sil',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-          setPayments(prev => prev.filter(p => p.id !== paymentId));
+
+          const updatedPayments = payments.filter(p => p.id !== paymentId);
+          setPayments(updatedPayments);
+
+          // Save to Firebase
+          try {
+            await saveOperationPayments(eventId, serviceId, updatedPayments);
+          } catch (error) {
+            console.warn('Error deleting payment:', error);
+          }
         },
       },
     ]);
-  }, []);
+  }, [payments, eventId, serviceId]);
+
+  const handleMarkPaymentPaid = useCallback(async (paymentId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+
+    const updatedPayments = payments.map(p =>
+      p.id === paymentId
+        ? { ...p, status: 'paid' as const, paidDate: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }), updatedAt: new Date() }
+        : p
+    );
+    setPayments(updatedPayments);
+
+    // Save to Firebase
+    try {
+      await saveOperationPayments(eventId, serviceId, updatedPayments);
+    } catch (error) {
+      console.warn('Error marking payment paid:', error);
+    }
+  }, [payments, eventId, serviceId]);
 
   const handlePaymentLongPress = useCallback((payment: PaymentItem) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -670,17 +712,7 @@ export function ServiceOperationsScreen() {
       { text: 'Ödendi Olarak İşaretle', onPress: () => handleMarkPaymentPaid(payment.id) },
       { text: 'Sil', style: 'destructive', onPress: () => handleDeletePayment(payment.id) },
     ]);
-  }, [handleEditPayment, handleDeletePayment]);
-
-  const handleMarkPaymentPaid = useCallback((paymentId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setPayments(prev => prev.map(p =>
-      p.id === paymentId
-        ? { ...p, status: 'paid' as const, paidDate: new Date().toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }) }
-        : p
-    ));
-  }, []);
+  }, [handleEditPayment, handleDeletePayment, handleMarkPaymentPaid]);
 
   const tabs = [
     { key: 'tasks', label: 'Görevler', count: tasks.length },
@@ -717,8 +749,38 @@ export function ServiceOperationsScreen() {
     }
   };
 
+  // Show loading state while fetching from Firebase
+  if (operationsLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: isDark ? '#09090B' : '#FAFAFA' }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{config.title}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{providerName}</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Yükleniyor...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: isDark ? '#09090B' : '#FAFAFA' }]}>
+      {/* Saving indicator */}
+      {saving && (
+        <View style={styles.savingOverlay}>
+          <ActivityIndicator size="small" color="#FFFFFF" />
+          <Text style={styles.savingText}>Kaydediliyor...</Text>
+        </View>
+      )}
+
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -940,7 +1002,7 @@ export function ServiceOperationsScreen() {
                     delayLongPress={300}
                   >
                     <View style={styles.teamAvatarContainer}>
-                      <OptimizedImage source={member.image} style={styles.teamAvatar} />
+                      <OptimizedImage source={member.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} style={styles.teamAvatar} />
                       <View style={[styles.teamStatusDot, { backgroundColor: getMemberStatusColor(member.status) }]} />
                     </View>
                     <View style={styles.teamInfo}>
@@ -1496,6 +1558,36 @@ export function ServiceOperationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  savingOverlay: {
+    position: 'absolute',
+    top: 100,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+  },
+  savingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
   header: {
     flexDirection: 'row',

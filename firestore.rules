@@ -18,6 +18,11 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if request.auth != null &&
         resource.data.organizerId == request.auth.uid;
+
+      // Servis operasyonları subcollection - organizatör ve ilgili provider erişebilir
+      match /serviceOperations/{serviceId} {
+        allow read, write: if request.auth != null;
+      }
     }
 
     // Provider'lar
